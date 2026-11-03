@@ -12,4 +12,6 @@ echo "-- kalari-aashaan cases"
 tests/aashaan-cases.sh
 echo "-- examples"
 tests/examples.sh
+echo "-- benchmark quirks"
+bench/tests/quirks.sh
 echo "gate passed"

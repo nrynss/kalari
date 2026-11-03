@@ -4,3 +4,4 @@ kalari.toml
 *.local.toml
 /.kalari/
 /.claude/worktrees/
+__pycache__/

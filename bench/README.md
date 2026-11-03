@@ -139,15 +139,18 @@ At the measured ~$0.05 a run for a small task, budgeting ~$0.25 for these:
 - **Pilot:** each behaviour alone, fresh session, 5 runs: 25. The proposed pair under conditions 1–3 and 6, 5 runs each: ~40. About 65 runs, **~$16**.
 - **Frozen comparison:** 6 conditions × 5 repeats: ~60 runs, **~$15**.
 
-## Layout (to build)
+## Layout
 
 ```text
 bench/
 ├── README.md                this design
 ├── reference-paging/        the stack check (not a comparison)
-├── apis/                    the mock v1 and v2 services, one per upgrade (the real sources are named here, not in what arms see)
-├── workspaces/              what an arm gets: consumer, specs, docs
-├── graders/                 the hidden graders
-├── pilot/                   pilot runs: scripts and results
-└── runs/                    the frozen comparison: every run, its log, verdict and measures
+├── apis/                    built: the payouts (REST) and settlements (GraphQL) services, v1 and v2;
+│                            QUIRKS.md per service; reference consumers; deploy.sh for the VM
+├── workspaces/              built: what an arm gets (consumer, specs, vendor-style docs)
+├── prompts/                 built: the shared prompt and condition 6's
+├── graders/                 built: grade.py, the hidden grader
+├── tests/quirks.sh          built, in the gate: every obvious consumer fails as predicted, the correct one passes
+├── pilot/                   to build: pilot runs, scripts and results
+└── runs/                    to build: the frozen comparison, every run with its log, verdict and measures
 ```

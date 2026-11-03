@@ -1,0 +1,34 @@
+openapi: 3.0.3
+info:
+  title: Tallyline Payouts API
+  version: 1.4.0
+servers:
+  - url: https://payouts.example.test
+paths:
+  /v1/payouts:
+    get:
+      operationId: listPayouts
+      summary: List all payouts
+      responses:
+        "200":
+          description: Every payout on the ledger.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [payouts]
+                properties:
+                  payouts:
+                    type: array
+                    items: { $ref: "#/components/schemas/Payout" }
+components:
+  schemas:
+    Payout:
+      type: object
+      required: [id, merchant_id, amount_cents, currency, created_at]
+      properties:
+        id: { type: string, example: po_00042 }
+        merchant_id: { type: string, example: m_017 }
+        amount_cents: { type: integer, minimum: 1 }
+        currency: { type: string, example: USD }
+        created_at: { type: string, format: date-time }

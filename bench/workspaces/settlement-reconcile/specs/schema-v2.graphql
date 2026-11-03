@@ -1,0 +1,28 @@
+# Clearwell Settlements API, version 2. Endpoint: POST /v2/graphql
+
+enum SettlementStatus { SETTLED PENDING ADJUSTED }
+
+type Settlement {
+  id: ID!
+  batchDate: String!
+  amountCents: Int!
+  currency: String!
+  status: SettlementStatus!
+}
+
+type PageInfo {
+  "Where this page ended. Pass it as `after` to continue."
+  endCursor: String!
+  "Whether more settlements remain after this page."
+  hasNextPage: Boolean!
+}
+
+type SettlementConnection {
+  nodes: [Settlement!]!
+  pageInfo: PageInfo!
+}
+
+type Query {
+  "Settlements in delivery order, a page at a time. `first` is 1 to 100."
+  settlements(first: Int = 50, after: String): SettlementConnection!
+}

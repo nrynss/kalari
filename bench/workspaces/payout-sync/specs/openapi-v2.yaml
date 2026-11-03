@@ -1,0 +1,63 @@
+openapi: 3.0.3
+info:
+  title: Tallyline Payouts API
+  version: 2.0.0
+servers:
+  - url: https://payouts.example.test
+paths:
+  /v2/payouts:
+    get:
+      operationId: exportPayouts
+      summary: Export payouts
+      description: Returns payouts in creation order, one window per request. See the developer guide for resuming an export.
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          description: Opaque token from a previous response. Omit it to start from the first payout.
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          description: The most payouts to return in this response.
+          schema: { type: integer, minimum: 1, maximum: 1000, default: 100 }
+      responses:
+        "200":
+          description: One window of the export.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [payouts, cursor, drained]
+                properties:
+                  payouts:
+                    type: array
+                    items: { $ref: "#/components/schemas/Payout" }
+                  cursor:
+                    type: string
+                    description: Opaque token to resume the export from this point.
+                  drained:
+                    type: boolean
+                    description: True when the export has caught up with the ledger.
+        "400":
+          description: Invalid cursor or limit.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+components:
+  schemas:
+    Payout:
+      type: object
+      required: [id, merchant_id, amount_cents, currency, created_at]
+      properties:
+        id: { type: string, example: po_00042 }
+        merchant_id: { type: string, example: m_017 }
+        amount_cents: { type: integer, minimum: 1 }
+        currency: { type: string, example: USD }
+        created_at: { type: string, format: date-time }
+    Error:
+      type: object
+      required: [error, message]
+      properties:
+        error: { type: string }
+        message: { type: string }
