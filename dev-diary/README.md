@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0: T0.1, T0.2, T0.3 done; T0.5 (recordings) ready; T0.4 (Lambo) blocked on Lambo's next release. T1.1 ready. Open user decisions: **Vimanam's gaps (T0.3: fix Vimanam, change the spec shapes before the pilot, or both)**; the config format (T1.2); the pilot's spend (T5.2).
+**Current status:** P0: T0.1, T0.2, T0.3 done; T0.5 ready; T0.4 (Lambo) and T0.6 (Vimanam) blocked on their next releases. T1.1 and T5.1 ready. The pilot (T5.2) waits for T0.6. Open user decisions: the config format (T1.2); the pilot's spend (T5.2).
 
 ---
 
@@ -38,7 +38,7 @@ Do not wait for a whole phase to finish. If a task requires only `T1.1`, start i
 | **P2** Containment | [PHASE-2-containment.md](PHASE-2-containment.md) | P1 | P3 | `run_in_sandbox` (T4.5) |
 | **P3** Integrations | [PHASE-3-integrations.md](PHASE-3-integrations.md) | P1, T0.4 for Lambo | P2 | P4 |
 | **P4** The tools | [PHASE-4-tools.md](PHASE-4-tools.md) | P2, P3 | the pilot | the Kalari arm (T5.4) |
-| **P5** The benchmark | [PHASE-5-benchmark.md](PHASE-5-benchmark.md) | T0.2 for the pilot; T4.7 and the freeze for the Kalari arm | P1–P4 (the pilot) | P7 |
+| **P5** The benchmark | [PHASE-5-benchmark.md](PHASE-5-benchmark.md) | T0.2 for the harness, T0.6 for the pilot; T4.7 and the freeze for the Kalari arm | P1–P4 (the pilot) | P7 |
 | **P6** Surfaces | [PHASE-6-surfaces.md](PHASE-6-surfaces.md) | T4.2 | P5 | P7 |
 | **P7** Ship | [PHASE-7-ship.md](PHASE-7-ship.md) | P5, P6 | none | submission |
 
@@ -58,7 +58,7 @@ P1 is the serial bottleneck. **The pilot runs beside the whole build**: it needs
 
 | Track | Phase | Network required? | First task | Notes |
 |---|---|---|---|---|
-| **A: Pilot** | P5 | Yes (VM, Vultr Inference) | T5.1 | Starts now. Spend approved by the user before T5.2 |
+| **A: Pilot** | P5 | Yes (VM, Vultr Inference) | T5.1 | The harness starts now; the pilot runs once Vimanam's release lands (T0.6). Spend approved by the user before T5.2 |
 | **B: Contracts** | P1 | No | T1.1 (after T0.3) | Serial; small and exact |
 | **C: Containment** | P2 | `b` tasks only | T2.1 | The proved gate and the aashaan. The product's safety claims live here |
 | **D: Integrations** | P3 | `b` tasks only | T3.1, T3.3, T3.4 | T3.2 (Lambo) waits for T0.4, or starts on the 0.8.0 transcripts if the orchestrator says so |
@@ -139,12 +139,12 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 
 | Phase | Tasks complete | Status |
 |---|---|---|
-| P0 | 3 / 5 | T0.1, T0.2, T0.3 done. T0.5 ready. T0.4 blocked on Lambo's next release |
+| P0 | 3 / 6 | T0.1, T0.2, T0.3 done. T0.5 ready. T0.4 (Lambo) and T0.6 (Vimanam) blocked on their next releases |
 | P1 | 0 / 5 | T1.1 ready |
 | P2 | 0 / 5 | Waits for P1 |
 | P3 | 0 / 6 | Waits for P1 |
 | P4 | 0 / 8 | Waits for P2, P3 |
-| P5 | 0 / 6 | T5.1 ready now |
+| P5 | 0 / 6 | T5.1 ready now. T5.2 (pilot) waits for T0.6 |
 | P6 | 0 / 3 | Waits for T4.2 |
 | P7 | 0 / 4 | Waits for P5, P6 |
 
@@ -159,6 +159,7 @@ Newest first. One entry per closed task, finding, or split.
 - **Finding: OpenCode 2's `opencode run` leaves a background daemon** (`opencode serve --service`, with `microsandbox-mcp`) running after the run, holding the inference key in its environment; found half an hour after B5 and stopped. The key was never written to disk. Every run now uses `--standalone` and per-run `XDG_*` directories (both verified), so sessions are isolated and nothing is left behind.
 - **Benchmark design reviewed and revised.** Fixed: every arm reaches v1 as well as v2 (Kalari's edge is running the comparison unasked, not having access); lessons come from behaviour observed on a verified pass as well as from failures (or a first-time pass leaves nothing to learn and condition 5 collapses into 4); measures defined once for every arm, with "right first time" meaning the first run against v2 already passes the grader; agent-facing APIs and docs use neutral names, so the model can't recall a vendor's behaviour from training; the route from an arm's sandbox to the API service is proved before the pilot. Added: **condition 6**, the reference setup told to verify against v1, as a control for "Kalari is just a prompt"; a 20-minute cap on every session, with time stuck measured; docs written and frozen before the pilot; results as counts. Dedupe by ID (the dataset is fixed for a run). Pilot ~65 runs, ~$16.
 - **Benchmark designed (`bench/README.md`).** DeepSeek is strong, so Kalari's edge must come from what it can't know from specs and docs: behaviour that is undocumented in the spec, visible only at scale, silent, and uncheckable without the truth. User decisions: the v1 API stays live during the migration (so Kalari can check v2's records against v1's); both arms get specs **and** vendor-style prose docs; if the baseline passes the pilot, both harder real behaviours and leading with cost, attempts and containment. Five paging behaviours, each verified in a real API's docs (Zendesk incremental export, Microsoft Graph delta, DynamoDB, RIPE Atlas, RevenueCat). Proposed pair: a REST payout ledger modelled on Zendesk, then a GraphQL settlement connection. Protocol: servers in their own microVM, never readable; the baseline piloted first (~55 runs, ~$14); the pair, docs, prompt and grader frozen before the Kalari arm runs; every run published.
+- **Decided: wait for Vimanam.** The benchmark specs stay as built; the pilot (T5.2) now requires T0.6, a Vimanam release that reports `pagination_changed` on both specs, so the baseline and the Kalari arm read the same specs. The harness (T5.1) and everything not behind Lambo go ahead.
 - **Vimanam issues filed:** [#136](https://github.com/noemaforge/vimanam/issues/136) release with GraphQL, [#137](https://github.com/noemaforge/vimanam/issues/137) version prefixes, [#138](https://github.com/noemaforge/vimanam/issues/138) continuation fields, [#139](https://github.com/noemaforge/vimanam/issues/139) `nodes` connections, each with a test matrix of real runs.
 - **T0.3 closed: Vimanam misses `pagination_changed` on both benchmark specs as built.** 2.0.0 (crates.io) has no GraphQL: #133 was merged after the tag, so only `main` parses the settlements schema; the research note that said all three formats shipped in 2.0.0 was wrong, and is corrected. OpenAPI matches operations by method and path, so `/v1/payouts` → `/v2/payouts` is removed + added; the continuation list lacks `cursor`. GraphQL needs `edges { node }`; a `nodes`-only connection isn't recognised. Each rule fires once its condition is met (probes in `testdata/vimanam/probes/`). Three issue texts in `research/vimanam.md` for the user to file, plus a release with #133. User decision: fix Vimanam, adopt detectable real-world spec shapes before the pilot, or both.
 - **Phases planned.** P0–P7 written with every task in the pattern above. The pilot runs beside the build, since it needs no Kalari code. Open user decisions: the config format (T1.2), the pilot's spend (T5.2).

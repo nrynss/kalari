@@ -54,6 +54,20 @@ The question that matters: **does it report `pagination_changed`** on `GET /v2/p
 
 ---
 
+### T0.6: Vimanam on its next release
+```yaml
+requires:   [T0.3]
+fixture-ok: no
+size:       S · mid
+owns:       testdata/vimanam/, dev-diary/research/vimanam.md
+status:     blocked
+```
+Blocked on a Vimanam release that fixes [vimanam#136](https://github.com/noemaforge/vimanam/issues/136)–[#139](https://github.com/noemaforge/vimanam/issues/139) (user decision: wait for Vimanam; the specs stay as built). Re-run T0.3's diffs on it, and the matrices in the issues. Re-record `testdata/vimanam/`.
+
+**Done when:** `pagination_changed` is reported on both workspaces' specs as built, with the change IDs recorded; if one is still missed, the gap is reported back on its issue and this task stays blocked.
+
+---
+
 ### T0.4: Lambo on its next release
 ```yaml
 requires:   [T0.1]
@@ -90,5 +104,6 @@ What later tasks replay instead of calling the real thing:
 
 - [x] T0.1, T0.2 done.
 - [x] Vimanam's verdict on the benchmark specs is known (T0.3).
+- [ ] Vimanam re-checked on its next release (T0.6).
 - [ ] Lambo re-checked on its next release (T0.4).
 - [ ] Clef, msb, OpenCode and aashaan recordings in `testdata/` (T0.5).

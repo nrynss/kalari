@@ -26,7 +26,7 @@ Conditions 1 and 2 span both upgrades: condition 1 keeps one session (`--session
 
 ### T5.2: The baseline pilot ★
 ```yaml
-requires:   [T5.1]
+requires:   [T5.1, T0.6]
 fixture-ok: no
 size:       M · mid
 owns:       bench/pilot/, the --behaviours flag in bench/apis/*/server.py, its cases in bench/tests/quirks.sh

@@ -42,7 +42,11 @@ A connection exposing `nodes: [T!]!` and `pageInfo`, with `first`/`after`, is a 
 
 **Also:** a release including #133, so a GraphQL-capable Vimanam can be a declared dependency rather than a build of `main`. Bumping the version on `main` past 2.0.0 would also stop the two from being confused.
 
-## What this means for Kalari (a decision for the user)
+## Decided: wait for Vimanam
+
+**The specs stay as built**, and Kalari waits for Vimanam to detect them (#136–#139) rather than bending the benchmark to today's rules. The pilot (T5.2) runs only once a Vimanam release reports `pagination_changed` on both workspaces, so the specs the baseline is measured on are the ones the Kalari arm reads. Re-record `testdata/vimanam/` on that release.
+
+## The options that were weighed
 
 The specs aren't frozen yet (the pilot hasn't run), so there are three ways forward, which can be combined:
 
