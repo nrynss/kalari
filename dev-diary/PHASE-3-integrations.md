@@ -73,11 +73,29 @@ requires:   [T1.5, T0.5]
 fixture-ok: yes
 size:       S · mid
 owns:       Kalari/Clef.lean
-status:     claimed:grok-impl
+status:     in-review
 ```
 `DecisionClient` for the System One format at `/v1/systemone`, through `curl` with the key on stdin (`Examples/Curl.lean`). The three questions as typed functions: `failureCause` (a `choice`: api_change, test_setup, flaky, unrelated_bug, with probabilities and confidence), `callsChangedOperation` (a `noul`), `lessonApplies` (a `noul`). Input trimmed to the model's limit before sending (over-length is a 422, not a truncation). 429 retried after `Retry-After`; 502–504 with backoff.
 
 **Done when:** the recorded replies parse into the typed answers; an over-length input is trimmed in a test; no key in any argument (the test checks the argv).
+
+Notes:
+
+`failureCause`, `callsChangedOperation`, and `lessonApplies` each build one System One body (`model` `clef`, a `state` object, and `questions`) and return `DecisionAnswer`. `failure_cause` is a `choice` with `api_change`, `test_setup`, `flaky`, and `unrelated_bug`. The other two are `noul`, one question per hit or change. A call sends every question it was given and does not split them. More than 64 is an error. `DecisionClient.ask` was not widened. It still takes a recording case name. These three functions are not that field.
+
+The key is read from the environment variable the caller names. It is written only into curl's stdin config. It is not an argv element. `live` binds `Proc.run` with an explicit `PATH` and `inheritEnv := false`, so the child does not inherit the variable. Stdin does not use `setsid`. A curl call does not need a group kill. The checks do not call `live`, do not spawn curl, and do not need a real key.
+
+The JSON body is a temp file (`--data-binary @file`). The trim cap is 1048576 characters, which does not fit in one argv element.
+
+Trim estimate: 4 characters per token. Clef reads 262144 tokens, so `trimToCap` keeps a prefix of at most `262144 * 4` characters. Each state string is trimmed that way before sending. Past the limit the server answers 422 rather than truncating. The over-length request file is elided, so the check parses the response and does not embed the request.
+
+Retry stops after 3 attempts. 429 waits `Retry-After` seconds (`0` waits 0). A missing `Retry-After` uses the same backoff as a server error. 502, 503, and 504 wait `1000 * n` milliseconds, where `n` is how many of those failures have already happened. The check passes a delay that records the wait and returns at once. It does not sleep. A 429 with `Retry-After: 0` and a 502 each succeed on the second attempt. A run of 502, 503, then 504 stops on the third response.
+
+Surprises:
+
+- The over-length request recording is a short note, not the body that was sent. The 422 text is only in the response file.
+- Noul numbers in the response bodies are the full values. `index.json` rounds them to three decimals. The decoder uses the body.
+- Curl's write-out for that header is `%header{retry-after}`. An absent header is empty.
 
 ---
 
