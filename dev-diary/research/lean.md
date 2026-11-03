@@ -51,6 +51,8 @@ lean4's contribution rules: open an issue before any PR, and note any generative
 Tracked, filed by others:
 - [lean4#15681](https://github.com/leanprover/lean4/issues/15681): `Child.pid` leaks the `Child` and its pipe descriptors. The aashaan calls it at most once per run; acceptable for a short-lived process.
 - [lean4#15674](https://github.com/leanprover/lean4/issues/15674): `Child.takeStdin` loses `setsid`, so `kill` reaches only the child. **Don't use `takeStdin` in the aashaan.**
+
+Measured again while building `Kalari/Proc.lean`. A `tryWait` loop that sleeps 10 ms fires a 400 ms cap one tick late (417–419 ms). `/bin/sh -c 'cmd'` execs a simple command, so the shell is already gone and a kill never has to reach a child. `/bin/sh -c 'cmd & wait'` keeps the shell. With `setsid`, `Child.kill` then removes both the shell and `/bin/sleep`. `takeStdin` still drops `setsid`. `/bin/sh` with an empty environment runs builtins (`printf`, `exit`) and does not find `sleep`. An output cap of 64 bytes on a print loop returned 64 bytes and `output`. A reader still blocked after the bounded wait keeps its thread, and `lake build` waits for it, so a test that might miss the kill closes the unused pipe.
 - [lean4#14546](https://github.com/leanprover/lean4/pull/14546)–[#14548](https://github.com/leanprover/lean4/pull/14548): an HTTP client for `Std.Http`, open. Could replace the `curl` subprocess once merged.
 
 ## Reproduce

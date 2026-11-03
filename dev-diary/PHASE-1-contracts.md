@@ -84,7 +84,7 @@ requires:   [T1.1]
 fixture-ok: yes
 size:       S · mid
 owns:       Kalari/Proc.lean
-status:     in-review
+status:     done
 ```
 One way to run a subprocess for every caller (msb, Vimanam, curl, the code search): argv, an explicit environment (never inherited unless asked), optional stdin, a wall-clock cap, an output cap, and a result with exit code, stdout, stderr, wall time and whether a cap fired. The patterns in `Aashaan/Main.lean` and `Examples/Curl.lean`; the traps in `docs/lean.md` (`takeStdin` drops `setsid`; `Child.pid` leaks).
 
