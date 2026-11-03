@@ -196,11 +196,12 @@ private def runChecks : IO Unit := do
     fail "exit3: expected exit 3 and cap none"
   say "proc exit3 exit=3 cap=none"
 
-  -- Shell starts sleep. argv0 is the marker, so the check is not `pgrep sleep`.
+  -- `& wait` keeps the shell. A simple command is exec'd, so the kill would not
+  -- have to reach a child. argv0 is the marker, so this is not `pgrep sleep`.
   let pid ← IO.Process.getPID
   let toMark := s!"kalari-proc-to-{pid}x"
   let toPat := s!"kalari-proc-to-{pid}[x]"
-  let timed ← run ["/bin/sh", "-c", s!"/usr/bin/env -a {toMark} /bin/sleep 30"]
+  let timed ← run ["/bin/sh", "-c", s!"/usr/bin/env -a {toMark} /bin/sleep 30 & wait"]
     #[] false none 400 4096
   unless timed.cap == Cap.timeout && timed.exitCode.isNone && withinCap timed 4096 &&
       timed.wallMs < 5000 do
