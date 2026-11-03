@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0: T0.1, T0.2, T0.3, T0.5 done; T0.4 (Lambo) and T0.6 (Vimanam) blocked on their next releases. T1.1 done. T1.2 claimed:grok-impl (config is JSON). T5.1 ready. The pilot (T5.2) waits for T0.6. Open user decision: the pilot's spend (T5.2).
+**Current status:** P0: T0.1, T0.2, T0.3, T0.5 done; T0.4 (Lambo) and T0.6 (Vimanam) blocked on their next releases. T1.1 and T1.2 done. T1.3 next. T5.1 ready. The pilot (T5.2) waits for T0.6. Open user decision: the pilot's spend (T5.2).
 
 ---
 
@@ -140,7 +140,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | Phase | Tasks complete | Status |
 |---|---|---|
 | P0 | 4 / 6 | T0.1, T0.2, T0.3, T0.5 done. T0.4 (Lambo) and T0.6 (Vimanam) blocked on their next releases |
-| P1 | 1 / 5 | T1.1 done. T1.2 claimed:grok-impl |
+| P1 | 2 / 5 | T1.1 and T1.2 done. T1.3 next |
 | P2 | 0 / 5 | Waits for P1 |
 | P3 | 0 / 6 | Waits for P1 |
 | P4 | 0 / 8 | Waits for P2, P3 |
@@ -154,6 +154,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 
 Newest first. One entry per closed task, finding, or split.
 
+- **T1.2 closed: `kalari.json`.** `Kalari/Config.lean` parses the four sections. `parse` does not touch the environment. `load` checks that each `api_key_env` is set and stores the name only. A string that is not an environment-variable name, and a field named `api_key`, both fail with `environment variable name required` and the rejected text is not in the error. An unset variable is reported as `<field>: <name> is not set`. `sandbox.caps` is `Kalari.Model.Caps` and `allowlist` is `List AllowHost`. `backend` is `microsandbox` or `docker`. The fixture `testdata/config/kalari.json` names `KALARI_TEST_KEY` only. `.gitignore`'s `kalari.json` matches every directory, so the fixture is force-added. `IO.getEnv` is used as `Option.isSome` on the load path. Restoring a variable in a test uses `Std.Async.System.setEnvVar`, because `Init` has no setter. The gate does not need a real key.
 - **T1.1 closed: the core model.** `Kalari/Model.lean` is the wire types: `ChangeFact` (`id` and `kind` only; unknown keys ignored), `Check`, `Lesson` (`memory_concept_id` optional), `RunRequest` with `Caps` and `AllowHost`, `Verdict` (the supervisor's snake_case keys; `exit_code` optional; `cgroup_memory_limit` a `Nat`), `RunRecord`, `BlastRadius`. The eight recorded verdicts in `testdata/aashaan/verdicts.jsonl` and three recorded change objects parse. Derived JSON uses the field name as the key. A field ending in `?` would omit `none`; none of these do, so `none` is null. `UInt64`'s `FromJson` expects a string, and the supervisor prints `cgroup_memory_limit` as a number (0 in the recordings, 2^64−1 on an unconstrained host), so the field is `Nat`. Lake 5 does not build a module that only an executable imports: `lakefile.toml` has `[[lean_lib]] name = "Kalari"`, and T1.5 must keep that. The operation coordinate is not on `ChangeFact`; add an `Option` before P1 freezes if a later task must read it off the fact.
 - **Decided: config is JSON.** T1.2 loads `kalari.json`, parsed by `Lean.Json`. Keys stay environment-variable names. `docs/architecture.md` now says so.
 - **Benchmark APIs built** (`bench/apis`, `bench/workspaces`, `bench/graders`, `bench/prompts`). Payouts (REST, 2,431 records: B1 a fresh cursor on every response with `drained`, B2 a one-payout window overlap, B4 `limit` capped at 100) and settlements (GraphQL on vendored graphql-core 3.3.1, 1,873 records: B1 `endCursor: String!`, B2 19 amended repeats, B3 four 200-row void runs, so every page size meets empty pages). Neutral vendor names (Tallyline, Clearwell); `QUIRKS.md` records where each behaviour is documented. `bench/tests/quirks.sh`, now in the gate, runs six reference consumers per service: v1 unchanged crashes (410 after cutover), single page and short- or empty-page stops lose records, the cursor loops never end, appending duplicates (24 and 19), the correct ones pass. Deployed on the VM: live (v1 on) :18080/:18081, grading (v1 retired) :18090/:18091, each in its own microVM; from a Kalari-arm sandbox the same outcomes hold; closed from outside. Open: Vimanam's verdict on these specs (the local binary is a stale 1.4.2 build; needs 2.0.0).

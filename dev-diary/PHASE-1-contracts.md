@@ -50,7 +50,7 @@ requires:   [T1.1]
 fixture-ok: yes
 size:       S · frontier
 owns:       Kalari/Config.lean, testdata/config/
-status:     in-review
+status:     done
 ```
 `[models]`, `[decisions]`, `[sandbox]`, `[lambo]` (architecture.md, Configuration). Keys by environment-variable name, never values.
 
