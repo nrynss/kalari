@@ -29,6 +29,8 @@ Base URL `https://api.vultrinference.com/v1`, `Authorization: Bearer <key>`. Req
 
 **A2, DeepSeek tool calls.** Four requests (auto at `low` and `medium`, forced twice): every one `finish_reason: tool_calls`, one `run_in_sandbox` call, arguments valid JSON (forced runs also set `timeout_ms`). 348 prompt tokens; reasoning tokens 13 at `low`, 32 at `medium`. **From the second identical request, 256 of 348 prompt tokens were cached.**
 
+**Clef's limit and accuracy (T0.5):** it reads **262,144 tokens**; over that, `422` `validation_error` with both counts in the message. On nine benchmark cases (six failure causes, six code hits, three lesson checks) every answer was right, ~1 s a request: recordings in `testdata/clef/`.
+
 **A3, Clef's answer shape** (not in the docs):
 
 ```json

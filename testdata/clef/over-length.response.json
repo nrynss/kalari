@@ -1,0 +1,13 @@
+{
+ "status": 422,
+ "body": {
+  "error": {
+   "code": 422,
+   "message": "the request takes 300140 tokens, more than the 262144 this model reads",
+   "type": "validation_error",
+   "metadata": {
+    "error_type": "unprocessable"
+   }
+  }
+ }
+}

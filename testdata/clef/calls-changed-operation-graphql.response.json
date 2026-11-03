@@ -1,0 +1,21 @@
+{
+ "status": 200,
+ "ms": 926,
+ "body": {
+  "model": "clef",
+  "answers": {
+   "hit_query": {
+    "type": "noul",
+    "noul": 0.9798997044563293
+   },
+   "hit_other_query": {
+    "type": "noul",
+    "noul": 0.023554332554340363
+   }
+  },
+  "usage": {
+   "input_tokens": 334,
+   "output_tokens": 0
+  }
+ }
+}

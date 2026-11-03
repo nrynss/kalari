@@ -88,7 +88,7 @@ requires:   [T0.1]
 fixture-ok: no
 size:       M · mid
 owns:       testdata/clef/, testdata/msb/, testdata/opencode/, testdata/aashaan/
-status:     claimed:claude-opus-5-5
+status:     done
 ```
 What later tasks replay instead of calling the real thing:
 - **Clef:** `/v1/systemone` replies for the three questions (why did a run fail; does this code call the changed operation; does this lesson apply), on realistic inputs from the benchmark. A handful each, including an `unrelated_bug` and a `flaky` case.
@@ -100,10 +100,14 @@ What later tasks replay instead of calling the real thing:
 
 ---
 
+**Notes (done):** all four recorded on the VM and laptop, scrubbed (the VM's IP is `203.0.113.10`), no key in any file. Clef: 9 of 9 right, and its limit is 262,144 tokens (an over-length request is a 422). msb: only `list` has JSON; **`exec` on a stopped sandbox restarts it**, so T2.3 must remove, never just stop. OpenCode: the MCP sequence, and tools named `<server>_<tool>` with Code Mode off. Aashaan: eight verdicts (one re-recorded after a quoting slip broke the trap script).
+
+---
+
 ## Exit Criteria
 
 - [x] T0.1, T0.2 done.
 - [x] Vimanam's verdict on the benchmark specs is known (T0.3).
 - [ ] Vimanam re-checked on its next release (T0.6).
 - [ ] Lambo re-checked on its next release (T0.4).
-- [ ] Clef, msb, OpenCode and aashaan recordings in `testdata/` (T0.5).
+- [x] Clef, msb, OpenCode and aashaan recordings in `testdata/` (T0.5).

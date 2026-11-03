@@ -1,0 +1,1 @@
+error: io error: catalog ancestor /home/user/.microsandbox permits path substitution; use a storage root protected from other accounts

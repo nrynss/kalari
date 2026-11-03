@@ -1,0 +1,17 @@
+{
+ "model": "clef",
+ "state": {
+  "change": "x",
+  "log": "line of build output\\n \u00d7 60000 (1.26 MB; elided in this recording)"
+ },
+ "questions": {
+  "failure_cause": {
+   "type": "choice",
+   "instructions": "Why did this run fail?",
+   "criteria": {
+    "api_change": "the API change",
+    "flaky": "transient"
+   }
+  }
+ }
+}

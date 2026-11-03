@@ -1,0 +1,27 @@
+{
+ "model": "clef",
+ "state": {
+  "change": "GET /v2/payouts replaces GET /v1/payouts. v1 returned every payout in one response. v2 returns a window of payouts with a cursor and a drained flag; windows overlap by one payout; limit is at most 1000 but a response may hold fewer.",
+  "run": {
+   "verdict": "killed_timeout",
+   "exit_code": null,
+   "wall_ms": 120000,
+   "stdout": "",
+   "stderr": "",
+   "note": "the supervisor killed the run at its 120 s cap"
+  },
+  "code": "rows, cursor = [], None\nwhile True:\n    r = get(f'{B}/v2/payouts' + (f'?cursor={cursor}' if cursor else ''))\n    rows += r['payouts']; cursor = r.get('cursor')\n    if not cursor:\n        break"
+ },
+ "questions": {
+  "failure_cause": {
+   "type": "choice",
+   "instructions": "Why did this run fail?",
+   "criteria": {
+    "api_change": "the consumer does not handle the API change",
+    "test_setup": "our test environment, network allowlist or fixtures are wrong",
+    "flaky": "a transient or timing failure that would pass on retry",
+    "unrelated_bug": "a bug in the consumer unrelated to the API change"
+   }
+  }
+ }
+}

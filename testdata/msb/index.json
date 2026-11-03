@@ -1,0 +1,116 @@
+[
+ {
+  "case": "create-ok",
+  "argv": "msb create --name rec-msb --cpus 1 --memory 256M --no-net --net-rule allow@203.0.113.10/32:tcp:18090-18091 debian",
+  "exit": 0,
+  "ms": 457
+ },
+ {
+  "case": "create-duplicate",
+  "argv": "msb create --name rec-msb --cpus 1 --memory 256M --no-net debian",
+  "exit": 1,
+  "ms": 7
+ },
+ {
+  "case": "list-text",
+  "argv": "msb list",
+  "exit": 0,
+  "ms": 10
+ },
+ {
+  "case": "list-json",
+  "argv": "msb list --format json",
+  "exit": 0,
+  "ms": 10
+ },
+ {
+  "case": "copy-in-ok",
+  "argv": "msb copy -q in.txt rec-msb:/tmp/in.txt",
+  "exit": 0,
+  "ms": 13
+ },
+ {
+  "case": "copy-in-unknown",
+  "argv": "msb copy -q in.txt no-such-sandbox:/tmp/in.txt",
+  "exit": 1,
+  "ms": 5
+ },
+ {
+  "case": "exec-ok",
+  "argv": "msb exec rec-msb -- cat /tmp/in.txt",
+  "exit": 0,
+  "ms": 25
+ },
+ {
+  "case": "exec-exit3",
+  "argv": "msb exec rec-msb -- sh -c echo out; echo err >&2; exit 3",
+  "exit": 3,
+  "ms": 20
+ },
+ {
+  "case": "exec-unknown",
+  "argv": "msb exec no-such-sandbox -- true",
+  "exit": 1,
+  "ms": 6
+ },
+ {
+  "case": "exec-held-pipe",
+  "argv": "timeout 5 msb exec rec-msb -- sh -c (sleep 60 &) ; echo started",
+  "exit": 124,
+  "ms": 5003
+ },
+ {
+  "case": "exec-redirected-bg",
+  "argv": "timeout 5 msb exec rec-msb -- sh -c (sleep 60 >/dev/null 2>&1 &) ; echo started",
+  "exit": 0,
+  "ms": 23
+ },
+ {
+  "case": "exec-sysctl",
+  "argv": "msb exec rec-msb -- sh -c echo 1 > /proc/sys/vm/overcommit_memory && cat /proc/sys/vm/overcommit_memory",
+  "exit": 0,
+  "ms": 12
+ },
+ {
+  "case": "copy-out-ok",
+  "argv": "msb copy -q rec-msb:/tmp/in.txt ./out.txt",
+  "exit": 0,
+  "ms": 11
+ },
+ {
+  "case": "copy-out-missing",
+  "argv": "msb copy -q rec-msb:/tmp/no-such-file ./missing.txt",
+  "exit": 1,
+  "ms": 9
+ },
+ {
+  "case": "stop-ok",
+  "argv": "msb stop rec-msb",
+  "exit": 0,
+  "ms": 73
+ },
+ {
+  "case": "exec-stopped",
+  "argv": "msb exec rec-msb -- true",
+  "exit": 0,
+  "ms": 517
+ },
+ {
+  "case": "remove-ok",
+  "argv": "msb remove rec-msb",
+  "exit": 0,
+  "ms": 7
+ },
+ {
+  "case": "remove-unknown",
+  "argv": "msb remove no-such-sandbox",
+  "exit": 1,
+  "ms": 5
+ },
+ {
+  "case": "storage-group-writable",
+  "argv": "msb run debian -- true",
+  "exit": 1,
+  "ms": 3
+ }
+]

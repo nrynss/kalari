@@ -38,6 +38,8 @@ Probed with real requests from the `python` image, reading each response:
 - **Port ranges work in rules:** `allow@<IP>/32:tcp:18080-18081`.
 - **`--script` decodes `\r\n` escapes** in the script body and breaks code that contains them; use `--script-raw` with a `#!` line.
 
+**msb's CLI behaviour (T0.5, `testdata/msb/`):** only `list` has machine output (`--format json`); errors are one `error:` line on stderr, exit 1; `exec` passes the command's exit code through; **`exec` on a stopped sandbox silently starts it again**, so the backend removes sandboxes, never just stops them; `create` with an existing name fails (`sandbox already exists`).
+
 ## B3: the aashaan inside a microVM
 
 Built on the VM: `lake build` 6.4 s (peak 650 MB RSS); **3.3 MB stripped**, links glibc only, so use a glibc image (`debian`), not Alpine.

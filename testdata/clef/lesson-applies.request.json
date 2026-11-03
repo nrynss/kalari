@@ -1,0 +1,25 @@
+{
+ "model": "clef",
+ "state": {
+  "lesson": "When a list endpoint starts paging, stop on the end flag (drained or hasNextPage false), never on the cursor's presence or on a short or empty page; deduplicate records by id. Check: exact count against v1, zero duplicate ids.",
+  "changes": {
+   "to_settlements": "Query.settlements changed from [Settlement!]! to a connection settlements(first, after): nodes plus pageInfo { endCursor: String!, hasNextPage }.",
+   "to_rename": "Payout.amount was renamed to Payout.amount_cents; GET /v2/payouts is otherwise unchanged and still returns every payout in one response.",
+   "to_refunds_connection": "Query.refunds changed from [Refund!]! to refunds(first, after) returning nodes and pageInfo { endCursor: String!, hasNextPage }."
+  }
+ },
+ "questions": {
+  "to_settlements": {
+   "type": "noul",
+   "instructions": "Does the lesson apply to the change at changes.to_settlements?"
+  },
+  "to_rename": {
+   "type": "noul",
+   "instructions": "Does the lesson apply to the change at changes.to_rename?"
+  },
+  "to_refunds_connection": {
+   "type": "noul",
+   "instructions": "Does the lesson apply to the change at changes.to_refunds_connection?"
+  }
+ }
+}

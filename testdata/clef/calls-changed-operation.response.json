@@ -1,0 +1,29 @@
+{
+ "status": 200,
+ "ms": 939,
+ "body": {
+  "model": "clef",
+  "answers": {
+   "hit_v1_call": {
+    "type": "noul",
+    "noul": 0.9693966507911682
+   },
+   "hit_comment": {
+    "type": "noul",
+    "noul": 0.06644792854785919
+   },
+   "hit_table_name": {
+    "type": "noul",
+    "noul": 0.008445627987384796
+   },
+   "hit_v2_already": {
+    "type": "noul",
+    "noul": 0.9469902515411377
+   }
+  },
+  "usage": {
+   "input_tokens": 625,
+   "output_tokens": 0
+  }
+ }
+}

@@ -1,0 +1,25 @@
+{
+ "model": "clef",
+ "state": {
+  "change": "GET /v2/payouts replaces GET /v1/payouts. v1 returned every payout in one response. v2 returns a window of payouts with a cursor and a drained flag; windows overlap by one payout; limit is at most 1000 but a response may hold fewer.",
+  "run": {
+   "verdict": "exited",
+   "exit_code": 1,
+   "stderr": "ConnectionResetError: [Errno 104] Connection reset by peer (while reading window 7 of 25)",
+   "history": "the same code, unchanged, passed the check on the previous two runs and on the next run"
+  },
+  "code": "with urllib.request.urlopen(url, timeout=30) as r:\n    return json.load(r)"
+ },
+ "questions": {
+  "failure_cause": {
+   "type": "choice",
+   "instructions": "Why did this run fail?",
+   "criteria": {
+    "api_change": "the consumer does not handle the API change",
+    "test_setup": "our test environment, network allowlist or fixtures are wrong",
+    "flaky": "a transient or timing failure that would pass on retry",
+    "unrelated_bug": "a bug in the consumer unrelated to the API change"
+   }
+  }
+ }
+}

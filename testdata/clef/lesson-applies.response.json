@@ -1,0 +1,25 @@
+{
+ "status": 200,
+ "ms": 918,
+ "body": {
+  "model": "clef",
+  "answers": {
+   "to_settlements": {
+    "type": "noul",
+    "noul": 0.9802808165550232
+   },
+   "to_rename": {
+    "type": "noul",
+    "noul": 0.02595735713839531
+   },
+   "to_refunds_connection": {
+    "type": "noul",
+    "noul": 0.9731387495994568
+   }
+  },
+  "usage": {
+   "input_tokens": 498,
+   "output_tokens": 0
+  }
+ }
+}

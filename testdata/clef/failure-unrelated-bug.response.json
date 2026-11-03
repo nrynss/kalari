@@ -1,0 +1,24 @@
+{
+ "status": 200,
+ "ms": 909,
+ "body": {
+  "model": "clef",
+  "answers": {
+   "failure_cause": {
+    "type": "choice",
+    "choice": "unrelated_bug",
+    "probabilities": {
+     "api_change": 0.04826598986983299,
+     "test_setup": 0.007518391124904156,
+     "flaky": 0.008257337845861912,
+     "unrelated_bug": 0.9359583258628845
+    },
+    "confidence": 0.9146111011505127
+   }
+  },
+  "usage": {
+   "input_tokens": 412,
+   "output_tokens": 0
+  }
+ }
+}

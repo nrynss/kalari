@@ -1,0 +1,26 @@
+{
+ "model": "clef",
+ "state": {
+  "change": "GET /v2/payouts replaces GET /v1/payouts. v1 returned every payout in one response. v2 returns a window of payouts with a cursor and a drained flag; windows overlap by one payout; limit is at most 1000 but a response may hold fewer.",
+  "run": {
+   "verdict": "exited",
+   "exit_code": 0,
+   "stdout": "synced 2455 payouts",
+   "check": "every payout exactly once, compared with v1",
+   "check_result": "failed: 2455 records, 2431 unique, 24 duplicate ids (po_00100, po_00199, ...)"
+  },
+  "code": "while True:\n    r = get(f'{B}/v2/payouts' + (f'?cursor={cursor}' if cursor else ''))\n    rows += r['payouts']; cursor = r['cursor']\n    if r['drained']:\n        break"
+ },
+ "questions": {
+  "failure_cause": {
+   "type": "choice",
+   "instructions": "Why did this run fail?",
+   "criteria": {
+    "api_change": "the consumer does not handle the API change",
+    "test_setup": "our test environment, network allowlist or fixtures are wrong",
+    "flaky": "a transient or timing failure that would pass on retry",
+    "unrelated_bug": "a bug in the consumer unrelated to the API change"
+   }
+  }
+ }
+}

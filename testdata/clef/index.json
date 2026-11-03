@@ -1,0 +1,89 @@
+[
+ {
+  "case": "failure-api-change-duplicates",
+  "expect": "api_change",
+  "got": "api_change",
+  "ms": 1215,
+  "status": 200
+ },
+ {
+  "case": "failure-api-change-hang",
+  "expect": "api_change",
+  "got": "api_change",
+  "ms": 1017,
+  "status": 200
+ },
+ {
+  "case": "failure-api-change-truncated",
+  "expect": "api_change",
+  "got": "api_change",
+  "ms": 944,
+  "status": 200
+ },
+ {
+  "case": "failure-unrelated-bug",
+  "expect": "unrelated_bug",
+  "got": "unrelated_bug",
+  "ms": 909,
+  "status": 200
+ },
+ {
+  "case": "failure-flaky",
+  "expect": "flaky",
+  "got": "flaky",
+  "ms": 932,
+  "status": 200
+ },
+ {
+  "case": "failure-test-setup",
+  "expect": "test_setup",
+  "got": "test_setup",
+  "ms": 909,
+  "status": 200
+ },
+ {
+  "case": "calls-changed-operation",
+  "expect": {
+   "hit_v1_call": "yes",
+   "hit_comment": "no",
+   "hit_table_name": "no",
+   "hit_v2_already": "yes"
+  },
+  "got_p_yes": {
+   "hit_v1_call": 0.969,
+   "hit_comment": 0.066,
+   "hit_table_name": 0.008,
+   "hit_v2_already": 0.947
+  },
+  "ms": 939,
+  "status": 200
+ },
+ {
+  "case": "calls-changed-operation-graphql",
+  "expect": {
+   "hit_query": "yes",
+   "hit_other_query": "no"
+  },
+  "got_p_yes": {
+   "hit_query": 0.98,
+   "hit_other_query": 0.024
+  },
+  "ms": 926,
+  "status": 200
+ },
+ {
+  "case": "lesson-applies",
+  "expect": {
+   "to_settlements": "yes",
+   "to_rename": "no",
+   "to_refunds_connection": "yes"
+  },
+  "got_p_yes": {
+   "to_settlements": 0.98,
+   "to_rename": 0.026,
+   "to_refunds_connection": 0.973
+  },
+  "ms": 918,
+  "status": 200
+ }
+]

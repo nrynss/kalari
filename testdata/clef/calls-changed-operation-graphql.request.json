@@ -1,0 +1,20 @@
+{
+ "model": "clef",
+ "state": {
+  "change": "Query.settlements changed from [Settlement!]! to a connection settlements(first, after): nodes plus pageInfo { endCursor: String!, hasNextPage }.",
+  "hits": {
+   "hit_query": "settlement_reconcile.py:6    QUERY = \"{ settlements { id batchDate amountCents currency status } }\"",
+   "hit_other_query": "refunds.py:4    QUERY = \"{ refunds { id settlementId amountCents } }\""
+  }
+ },
+ "questions": {
+  "hit_query": {
+   "type": "noul",
+   "instructions": "Does the code at hits.hit_query call the operation described in change?"
+  },
+  "hit_other_query": {
+   "type": "noul",
+   "instructions": "Does the code at hits.hit_other_query call the operation described in change?"
+  }
+ }
+}

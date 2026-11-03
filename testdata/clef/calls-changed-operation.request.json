@@ -1,0 +1,30 @@
+{
+ "model": "clef",
+ "state": {
+  "change": "GET /v2/payouts replaces GET /v1/payouts. v1 returned every payout in one response. v2 returns a window of payouts with a cursor and a drained flag; windows overlap by one payout; limit is at most 1000 but a response may hold fewer.",
+  "hits": {
+   "hit_v1_call": "payout_sync.py:9    with urllib.request.urlopen(f\"{base_url}/v1/payouts\", timeout=30) as resp:",
+   "hit_comment": "ledger_load.py:3    # payouts.jsonl comes from payout-sync; see /v1/payouts in its README",
+   "hit_table_name": "ledger_load.py:12   PAYOUTS_TABLE = \"payouts\"",
+   "hit_v2_already": "reconcile.py:27    r = session.get(f\"{api}/v2/payouts\", params={\"limit\": 500})"
+  }
+ },
+ "questions": {
+  "hit_v1_call": {
+   "type": "noul",
+   "instructions": "Does the code at hits.hit_v1_call call the operation described in change?"
+  },
+  "hit_comment": {
+   "type": "noul",
+   "instructions": "Does the code at hits.hit_comment call the operation described in change?"
+  },
+  "hit_table_name": {
+   "type": "noul",
+   "instructions": "Does the code at hits.hit_table_name call the operation described in change?"
+  },
+  "hit_v2_already": {
+   "type": "noul",
+   "instructions": "Does the code at hits.hit_v2_already call the operation described in change?"
+  }
+ }
+}
