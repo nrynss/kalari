@@ -88,7 +88,7 @@ requires:   [T0.1]
 fixture-ok: no
 size:       M · mid
 owns:       testdata/clef/, testdata/msb/, testdata/opencode/, testdata/aashaan/
-status:     not-started
+status:     claimed:claude-opus-5-5
 ```
 What later tasks replay instead of calling the real thing:
 - **Clef:** `/v1/systemone` replies for the three questions (why did a run fail; does this code call the changed operation; does this lesson apply), on realistic inputs from the benchmark. A handful each, including an `unrelated_bug` and a `flaky` case.
