@@ -12,13 +12,27 @@ requires:   [T1.5]
 fixture-ok: yes
 size:       M · frontier
 owns:       Kalari/Gate.lean
-status:     claimed:grok-impl
+status:     in-review
 ```
 The decision every `run_in_sandbox` call passes before it reaches a backend: writes only inside the workspace, network only to the allowlisted hosts and ports, no secret in any argument (no value of a configured key variable, no string matching a key's shape), and every run capped (time, output, memory) within configured maximums. A plain, total `Bool` function over `RunRequest` and the config, and a reason when it refuses.
 
 **Theorems, checked at build time:** anything allowed writes inside the workspace; connects only to an allowlisted host and port; is capped within the maximums; carries no configured key value in its arguments. `#guard` cases for concrete allows and refusals, including one that a trivially-refusing gate would fail.
 
 **Done when:** the four theorems are proved with no `sorry`; the `#guard`s pass; a refusal's reason names the rule; the module imports nothing that touches IO.
+
+Notes:
+
+`decide : RunRequest → Caps → List AllowHost → List String → Bool × Option String`. `(true, none)` allows the run. `(false, some reason)` refuses it. The reason is the word `workspace`, `allowlist`, `caps`, `secret`, or `key-shape`, the first rule that failed, in that order. The `Bool` is the conjunction of those checks. The module imports `Kalari.Model` only. Cap comparisons call `Decidable.decide`, because this module's `decide` would shadow it. The values of configured keys arrive as the `secrets` argument. The function does not read the environment.
+
+Path rule: the workspace must start with `/`, and every segment after that slash must be non-empty and neither `.` nor `..`. The empty string `splitOn` inserts for the leading slash is the root marker, not a path segment; counting it would refuse `/workspace`. An argument is a write path when it starts with `/` or contains the substring `..`. It is inside the workspace when it is the workspace, or the workspace plus `/` plus a relative path with the same segment rule. `/workspace` does not allow `/workspace-evil`. A relative argument with no `..` is not a write path.
+
+Key shape: refuse when the workspace, any command argument, or any allowlist host contains 32 or more ASCII letters or digits in a row (`Char.isAlphanum`). This runs after the configured-secret check. No provider is named.
+
+Surprises:
+
+- `String.contains` takes a pattern. The empty pattern matches every string, so an empty secret has to be skipped before the substring check.
+- `Examples/Gate.lean` uses `startsWith`, which treats `/workspace-evil` as inside `/workspace`. The real check requires a `/` on the segment boundary.
+- A workspace of `/`, or one with a trailing slash, has an empty segment and is refused.
 
 ---
 
