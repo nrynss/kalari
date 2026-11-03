@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0: T0.1, T0.2, T0.3, T0.5 done; T0.4 (Lambo) and T0.6 (Vimanam) blocked on their next releases. T1.1 done. T1.2 next (config is JSON). T5.1 ready. The pilot (T5.2) waits for T0.6. Open user decision: the pilot's spend (T5.2).
+**Current status:** P0: T0.1, T0.2, T0.3, T0.5 done; T0.4 (Lambo) and T0.6 (Vimanam) blocked on their next releases. T1.1 done. T1.2 claimed:grok-impl (config is JSON). T5.1 ready. The pilot (T5.2) waits for T0.6. Open user decision: the pilot's spend (T5.2).
 
 ---
 
@@ -140,7 +140,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | Phase | Tasks complete | Status |
 |---|---|---|
 | P0 | 4 / 6 | T0.1, T0.2, T0.3, T0.5 done. T0.4 (Lambo) and T0.6 (Vimanam) blocked on their next releases |
-| P1 | 1 / 5 | T1.1 done. T1.2 next |
+| P1 | 1 / 5 | T1.1 done. T1.2 claimed:grok-impl |
 | P2 | 0 / 5 | Waits for P1 |
 | P3 | 0 / 6 | Waits for P1 |
 | P4 | 0 / 8 | Waits for P2, P3 |
