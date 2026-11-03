@@ -25,7 +25,11 @@ Kalari's `what_changed` rests on Vimanam reporting `pagination_changed`, and con
 
 **GraphQL** (`src/contract/graphql.rs`, `pagination_evidence()`): a Relay connection needs a named object or interface result with `pageInfo` and **`edges` whose type has `node`**, plus `first`/`after` (or `last`/`before`). A `nodes` list, the shortcut GitHub's API offers beside `edges`, doesn't qualify.
 
-## The gaps, as issue text (for the user to file)
+## The gaps, filed
+
+Filed with test matrices (every case a real run) and the benchmark specs inline: [vimanam#136](https://github.com/noemaforge/vimanam/issues/136) (a release with GraphQL), [vimanam#137](https://github.com/noemaforge/vimanam/issues/137) (version prefixes), [vimanam#138](https://github.com/noemaforge/vimanam/issues/138) (continuation fields), [vimanam#139](https://github.com/noemaforge/vimanam/issues/139) (`nodes` connections). The matrices showed more than the two cases first hit: a versioned path hides every change even with the `operationId` unchanged; 4 of 15 real-world continuation names are detected and no nested one is; `edges`, forward or backward, is detected and `nodes` alone never is.
+
+The issue text as first drafted:
 
 **1. OpenAPI: an operation moved to a new version prefix is reported as removed and added.**
 Many real APIs version in the path (`/v1/payouts` → `/v2/payouts`). Vimanam matches operations by method and path, so a versioned upgrade yields only `operation_removed` and `operation_added`: no argument, field or pagination changes, which is exactly what a consumer upgrading needs. Proposed: match across a version prefix (`/v\d+/`, or a `--version-prefix` pattern), or by an unchanged `operationId`, and report `operation_moved` with the field-level changes beneath it. Reproduce: `bench/workspaces/payout-sync/specs/openapi-v1.yaml` against `openapi-v2.yaml`.
