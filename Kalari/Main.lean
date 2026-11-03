@@ -1,6 +1,8 @@
 import Kalari.Model
 import Kalari.Config
 import Kalari.Proc
+import Kalari.Backend
+import Kalari.Fake
 /-! kalari: the main service. A stub until P1; see product.md and docs/architecture.md. -/
 
 def version : String := "0.1.0"

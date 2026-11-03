@@ -119,11 +119,36 @@ requires:   [T1.1, T1.3]
 fixture-ok: yes
 size:       M · frontier
 owns:       Kalari/Backend.lean, Kalari/Fake.lean
-status:     claimed:grok-impl
+status:     in-review
 ```
 The seams, each one structure of functions so a backend is one module: `SandboxBackend` (create with caps and a network allowlist, copy in, exec, copy out, destroy), `DecisionClient` (System One questions in, typed answers out), `MemoryClient` (derive, inspect, recall, against), `ChangeSource` (two spec versions in, change facts out). Fakes for each that replay `testdata/`, failing loudly on a miss.
 
 **Done when:** each fake serves its recordings in a test; nothing in the interfaces names Vultr, Microsandbox, Lambo, Clef or Vimanam.
+
+Notes:
+
+Built `Kalari/Backend.lean` and `Kalari/Fake.lean`. `#eval runChecks` in the fake runs during `lake build`.
+
+`SandboxBackend` is `create`, `copyIn`, `exec`, `copyOut`, and `destroy`. `create` takes the sandbox name, `Caps`, and `List AllowHost`. Every step returns `Proc.Result`. `exec` is specified that way; the other steps are the same, because every recorded step is a finished process (exit code, stdout, stderr, wall time). `cap` on a replay is `none`: the recording is the process after it finished, not a cap fired by this runner. `DecisionClient.ask` takes the question-set name and returns `DecisionAnswer`: `label` (the choice, its probabilities in name order, and the confidence), `probabilities` (one noul per question, in question-name order), or `error` (the HTTP status and its message). `MemoryClient` is `derive`, `inspect`, `«recall»`, and `against`. Each takes a key. `derive` and `against` return an id; `inspect` and `recall` return ids. `ChangeSource.diff` takes two spec paths and returns `List ChangeFact`.
+
+The sandbox fake replays `testdata/msb`. `index.json` supplies argv, exit, and timing; the `.stdout` and `.stderr` files supply the bytes. A call matches the one row whose argv contains the name, the memory size, the allowlist, and the command. `create-ok` is the row with the allowlisted host. The same name and memory with an empty allowlist is the duplicate-name row (exit 1). `exec-exit3` is exit 3 with stdout `out\n` and stderr `err\n`. `exec-unknown` is exit 1 and the recorded stderr names `no-such-sandbox`. `destroy` replays the remove row, not the stop row. The decision fake replays every `testdata/clef` response, including `over-length`. The change fake replays `testdata/vimanam`: the two benchmark spec pairs, the same-path pair, the next-cursor pair, and the edges pair. `ChangeFact`'s derived `FromJson` keeps `id` and `kind`. The memory fake does not read a file. There is no memory recording, and it does not invent a lesson.
+
+A miss is `no recording for <key>`. It is not an empty list and not a success. A recorded non-zero exit is still a replay: `exec-unknown` and the duplicate create return the row. A key with no row is the error. The key is what was asked (the case, `exec <name> <argv>`, the spec pair, or `<operation> <key>`).
+
+Decisions:
+
+- The label variant carries the probabilities and the confidence, because a choice body has all three. A noul body has no label and no confidence. The 422 body is the status plus its message. That is the response file, not a second schema.
+- `over-length` is served from its response file. It is not in `index.json`. The request body is the elided recording; the response is not. Asking for it returns status 422 and the recorded message. An unknown case name has no response file and misses.
+- The next-cursor probe has no v1 of its own. The pair is `payouts-samepath-v1.yaml` against `payouts-samepath-nextcursor-v2.yaml`. The pagination id `vc2_03e273d5658ac9349bfef95e1780793db8aad41ac574138c3399d53ec0e2f87f` is in that list and not in the same-path list.
+- Probability lists are sorted by name. The JSON object is a tree map, so file order is not stable, and equality needs an order.
+
+Surprises:
+
+- `recall` is a command (`recall ident`). A structure field of that name does not parse. The field is `«recall»`, and call sites use the same escape.
+- Two create rows share `--name rec-msb` and `--memory 256M`. Only `--net-rule` distinguishes them. A create that ignored the allowlist would hit both and miss, rather than pick one.
+- The index rounds noul values to three decimals (`0.969`). The response body has the full float (`0.96939…`). The fake returns the body. The test allows `0.001`.
+- `exec-exit3`'s streams are `out\n` and `err\n`, including the newlines. Stdout does not contain stderr.
+- The storage row's stderr is recorded text. No sandbox call in the test selects that argv, and a miss never copies it into the error string.
 
 ---
 
