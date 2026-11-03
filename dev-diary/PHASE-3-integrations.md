@@ -119,7 +119,7 @@ requires:   [T1.5, T0.3]
 fixture-ok: yes
 size:       M · frontier
 owns:       Kalari/Search.lean, testdata/search/
-status:     not-started
+status:     claimed:grok-impl
 ```
 From a change fact to the places in the consumer that call the changed operation: the endpoint path (REST), the field (GraphQL), the RPC name (gRPC), searched with `rg` through the process runner. Each hit with file, line and the line's text. Uncertain hits are confirmed by Clef's `callsChangedOperation` (T3.3), kept with their probability, and shown as uncertain, never counted.
 
