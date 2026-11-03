@@ -34,6 +34,8 @@ Probed with real requests from the `python` image, reading each response:
 - **Domain rules fail for TLS** in 0.7.13; resolve on the VM and pass IP rules. An upstream issue is still to be written.
 - **Denials on port 80 come from msb itself:** `HTTP 403 {"code":"network_policy_denied","domain":"…","message":"Request blocked by network policy."}`. The host gets 200 from the metadata service; guests never do.
 - **A bare TCP connect is not a valid probe.** msb's stack accepts the connection and then denies; only a response counts.
+- **`--no-net` denies ingress as well as egress.** A server started with it never answers a published port (`-p`). For a server, use `--net-default-egress deny` and publish on the VM's public IP: see `bench/README.md`, The network route.
+- **Port ranges work in rules:** `allow@<IP>/32:tcp:18080-18081`.
 - **`--script` decodes `\r\n` escapes** in the script body and breaks code that contains them; use `--script-raw` with a `#!` line.
 
 ## B3: the aashaan inside a microVM

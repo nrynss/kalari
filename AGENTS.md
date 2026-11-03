@@ -54,6 +54,8 @@ Rules for any agent working in this repository. The product is in [`product.md`]
 - **Run anything that starts `msb` with umask `0022`** (systemd: `UMask=0022`). msb refuses group-writable storage.
 - **No key enters a microVM.** The aashaan starts jobs with an empty environment and an explicit `PATH`.
 - **A process started in the background inside `msb exec` must redirect its output**, or `exec` waits on the held pipe forever.
+- **`--no-net` also denies ingress.** A microVM that serves a published port uses `--net-default-egress deny` instead, bound to the VM's public IP.
+- **OpenCode runs with `--standalone`** and per-run `XDG_*` directories: plain `opencode run` leaves a background daemon holding the key in its environment.
 
 ## Secrets
 

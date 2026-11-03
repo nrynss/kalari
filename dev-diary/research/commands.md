@@ -724,3 +724,49 @@ vultr-cli instance delete <instance-id>
 vultr-cli firewall group delete <firewall-group-id>
 vultr-cli ssh-key delete <ssh-key-id>
 ```
+
+### The network route for the benchmark (proved)
+
+```bash
+# On the VM. A test API: GET anything → {"service": NAME, "path": PATH}
+# api.py <bind-addr> <port> <name>   (python3 http.server; see bench/README.md)
+
+# Route A: a host process bound to the public IP only (fallback)
+timeout 600 python3 api.py <vm-public-ip> 18080 route-A-host >/dev/null 2>&1 &
+
+# Route B: its own microVM. --no-net would deny ingress too, so deny egress only.
+msb create --name route-b --cpus 1 --memory 256M --net-default-egress deny \
+  -p <vm-public-ip>:18081:8080 python
+msb copy -q api.py route-b:/srv-api.py
+msb exec route-b -- sh -c "(timeout 600 python3 /srv-api.py 0.0.0.0 8080 route-B-microvm >/dev/null 2>&1 &)"
+
+# The arms, probing each target with a real request (probe.py: host,port,label …)
+T="<vm-public-ip>,18080,A <vm-public-ip>,18081,B <vm-public-ip>,22,VM-ssh 127.0.0.1,18080,loopback <vm-tailnet-ip>,22,tailnet 169.254.169.254,80,metadata 1.1.1.1,443,internet"
+msb run --script-raw p="$(cat probe.py)" python -- /.msb/scripts/p $T                        # reference arm
+msb run --no-net --net-rule allow@<vm-public-ip>/32:tcp:18080-18081 \
+  --script-raw p="$(cat probe.py)" python -- /.msb/scripts/p $T                              # Kalari arm
+
+# From the laptop: no answer on the public IP (firewall), refused on the tailnet (bound to the public IP)
+curl -s -m 6 -o /dev/null -w '%{http_code}\n' http://<vm-public-ip>:18080/x
+curl -s -m 6 -o /dev/null -w '%{http_code}\n' http://<vm-tailnet-ip>:18080/x
+
+# Clean up
+msb stop route-b && msb remove route-b; pkill -f '^python3 api.py <vm-public-ip>'
+```
+
+### OpenCode's background daemon
+
+```bash
+pgrep -af 'opencode serve|microsandbox-mcp'        # after a plain `opencode run`: still there
+# Is the key in its environment? (count only, never the value)
+tr '\0' '\n' < /proc/<pid>/environ | grep -c '^VULTR_INFERENCE_API_KEY='
+# Was the key written anywhere? (the key arrives on stdin; only file names come back)
+printf '%s\n' "$VULTR_INFERENCE_API_KEY" | ssh <user>@kalari 'read -r K; grep -rlaF -- "$K" ~/.local/share/opencode ~/.cache ~/.config ~/b5 || echo none'
+opencode service stop                              # or kill the pid
+
+# The fix: a private server per run, and per-run state directories
+D=$(mktemp -d)
+XDG_DATA_HOME=$D/data XDG_STATE_HOME=$D/state XDG_CACHE_HOME=$D/cache \
+  opencode run --standalone --format json --auto "$(cat prompt.txt)"
+pgrep -af 'opencode serve|microsandbox-mcp' || echo none   # nothing left
+```

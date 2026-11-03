@@ -97,9 +97,33 @@ Every session, in every arm, is capped at 20 minutes. Results are reported as co
 7. **Freeze before Kalari runs.** Choose the pair from the pilot's numbers, then freeze and commit the APIs, the docs, the prompt and the grader before the Kalari arm's first run.
 8. **Publish every run**, baseline passes included, with its log, verdict and measures.
 
-## Before the pilot: the network route
+## The network route (proved)
 
-Vultr's guide says sibling sandboxes can't reach each other, so the API service can't simply be another microVM on its own. The likely route: the API service publishes a port on the VM (`msb -p`, or a plain process on the host), and arms reach it at the VM's IP. The Kalari arm allows exactly that (`allow@<vm-ip>/32:tcp:<port>`); the reference arm's default-mode sandbox reaches it anyway; the Vultr firewall keeps the port off the internet. **Prove this route first, as its own step**: both arms' sandboxes reach v1 and v2; nothing else on the host is reachable from the Kalari arm; the port is closed from outside.
+**Each API service runs in its own microVM, egress denied, with its port published on the VM's public IP.** Arms reach it at `<vm-public-ip>:<port>`. Proved on the VM with a host-process route (A) and the microVM route (B):
+
+| From | API on host (A) | API in microVM (B) | VM's SSH | Loopback | VM's tailnet IP | Metadata | Internet |
+|---|---|---|---|---|---|---|---|
+| Reference arm (default network) | 200 | 200 | **open (banner)** | refused | refused | denied | open |
+| Kalari arm (`--no-net` + `allow@<vm-public-ip>/32:tcp:<ports>`) | 200 | 200 | refused | refused | refused | denied | refused |
+| The internet (laptop, public IP) | no answer | no answer | no answer | — | — | — | — |
+| The tailnet (laptop) | refused | refused | — | — | — | — | — |
+
+- **Route B is the choice**: the server's code lives only inside its microVM, so no arm and no agent tool on the host can read it, and its own egress is denied. Route A (a host process bound to the public IP) also works and is the fallback.
+- **`--no-net` denies ingress too**, so a server started with it never answers its published port: the connection is accepted, then nothing. Start API microVMs with **`--net-default-egress deny`** (ingress stays allowed), then `-p <vm-public-ip>:<host-port>:<guest-port>`.
+- **Bind to the VM's public IP, never `0.0.0.0`**: then the port isn't on loopback or the tailnet, and the Vultr firewall (no rules) drops it from the internet.
+- **The Kalari arm's rule can name a port range**: `allow@<vm-public-ip>/32:tcp:18080-18081`.
+- **The reference arm can also reach the VM's SSH** (hairpin traffic skips the Vultr firewall). Nothing else listens on the public IP, and SSH accepts keys only; record it as part of the containment comparison.
+- A background server inside `msb exec` must redirect its output (`(python3 api.py >/dev/null 2>&1 &)`), or `exec` waits forever; and give it a moment to bind before the first request.
+
+## Isolating the agent between runs
+
+**OpenCode 2's `opencode run` starts a background daemon, `opencode serve --service`, that outlives the run** (re-parented to PID 1, with `microsandbox-mcp` under it). After the reference run it was still alive half an hour later, **with the inference key in its environment and in `microsandbox-mcp`'s**. The key was never written to disk (its database, logs and the run's output were scanned). It also keeps every session in one shared `~/.local/share/opencode/opencode.db`.
+
+So every benchmark run:
+
+- uses **`opencode run --standalone`** (a private server that exits with the run; verified: nothing left running);
+- gets its **own `XDG_DATA_HOME`, `XDG_STATE_HOME` and `XDG_CACHE_HOME`** (verified: the shared database is untouched), so a "fresh session" is really fresh, and condition 1's continuous session is a deliberate `--session` on the same directory;
+- ends with a check that no `opencode` or `microsandbox-mcp` process is left.
 
 ## If the baseline passes the pilot anyway
 

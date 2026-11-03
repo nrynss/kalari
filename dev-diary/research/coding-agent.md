@@ -72,6 +72,14 @@ What it showed:
 - **The reference setup's network limit is the agent's choice.** It created its sandbox (`cpus: 2, memoryMib: 1024`) with **no network setting, so default mode**: the internet and the VM's own public IP reachable. Nothing in Vultr's setup can stop that; Kalari's `run_in_sandbox` sets the policy itself. For a fair comparison, the baseline's egress still has to be limited outside the agent, or the gap reported as a result.
 - Its first `sandbox_create` failed on a missing `workdir` (`/app`); it retried without one, and removed the sandbox at the end.
 
+## The background daemon
+
+**`opencode run` (2.2.5) starts `opencode serve --service`, which outlives the run.** Found half an hour after B5, re-parented to PID 1, with `microsandbox-mcp` still under it, and **the inference key in both processes' environments**. Not written to disk: its database, logs and the run's output were scanned for the key. Sessions accumulate in one shared `~/.local/share/opencode/opencode.db`.
+
+- **`opencode run --standalone`** runs a private server that exits with the run (verified: nothing left running).
+- Per-run **`XDG_DATA_HOME`, `XDG_STATE_HOME`, `XDG_CACHE_HOME`** isolate the database (verified).
+- `opencode service stop` stops a daemon that was started anyway.
+
 ## Running it
 
 - **Send the prompt as a file.** Arguments after an `ssh` command are joined into one remote command string: a `;` in the prompt runs as a shell command on the VM.
