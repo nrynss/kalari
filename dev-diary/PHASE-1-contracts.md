@@ -50,13 +50,31 @@ requires:   [T1.1]
 fixture-ok: yes
 size:       S · frontier
 owns:       Kalari/Config.lean, testdata/config/
-status:     claimed:grok-impl
+status:     in-review
 ```
 `[models]`, `[decisions]`, `[sandbox]`, `[lambo]` (architecture.md, Configuration). Keys by environment-variable name, never values.
 
 **Decision for the user, through the orchestrator:** the format. TOML (as planned) needs a parser: Lean has none in `Std`, and Lake's links the compiler. JSON (`kalari.json`) is already parsed by `Lean.Json`. Bring both options with the cost of each.
 
 **Done when:** a config file in `testdata/config/` loads; a missing key variable is an error naming it; a key value in the file is rejected.
+
+Notes:
+
+Built `Kalari/Config.lean`. `parse` is pure. `load` reads the file and then checks the environment. `models` and `decisions` share `Endpoint`: `endpoint`, `model`, `api_key_env`. `sandbox` is `backend` (`microsandbox` or `docker`), `caps` (`Kalari.Model.Caps`: `timeout_ms`, `output_cap_bytes`, `memory_mib`) and `allowlist` (`List Kalari.Model.AllowHost`, `{host, port}`). `lambo` is `command` (argv) and `config_path`. Every one of those fields is required. No field is optional, so none is an `Option`.
+
+`testdata/config/kalari.json` is the one fixture. Both key fields name `KALARI_TEST_KEY`. The endpoint is `https://api.example.test`. `.gitignore` lists `kalari.json` with no slash, so the pattern matches this fixture too; it is force-added. It holds names only.
+
+A value is rejected in `parse`, before any environment read. `api_key_env` must match `[A-Za-z_][A-Za-z0-9_]*`. Anything else is an error whose text is fixed: `models.api_key_env: environment variable name required` (or `decisions.api_key_env`). The rejected characters are not interpolated. A field named `api_key`, on `models`, `decisions`, `sandbox`, `lambo` or the root, is the same class of error (`models.api_key: environment variable name required`) and its value is not read into the message. Derived `FromJson` would have ignored that key.
+
+A missing variable is reported by `load` / `checkEnv` after a successful parse. `IO.getEnv` is used only for `Option.isSome`; the value is discarded. The error is `models.api_key_env: KALARI_TEST_KEY is not set` when that variable is unset, and the decisions line when models is set and decisions is not. The message names the variable and no value.
+
+The gate never needs `VULTR_INFERENCE_API_KEY`. `#eval runLoadChecks` unsets `KALARI_TEST_KEY`, expects the missing-variable error, sets it to a dummy, checks `load` equals the parsed fixture, and restores whatever was there. The dummy is not stored and not printed. `#guard` covers the fixture, the rejected name, the `api_key` slot and the missing-variable string. `import Kalari.Config` in `Kalari/Main.lean` is what makes Lake elaborate the module.
+
+Surprises:
+
+- Derived structure `FromJson` drops unknown keys, and a bad array's error is `expected JSON array, got '...'`, which would print a key. Credential fields are parsed by hand and never spliced into an error. Caps and the allowlist still use the derived instances, after a shape check that does not quote the value.
+- Init exports `IO.getEnv` and no setter. The load test uses `Std.Async.System.setEnvVar` / `unsetEnvVar`.
+- A thrown `IO.userError` inside `#eval` fails the build and prints the message. The missing-variable check catches it and compares, so a passing build prints nothing. An `IO Unit` `#eval` that returns does not print either.
 
 ---
 
