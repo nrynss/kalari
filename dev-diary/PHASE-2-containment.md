@@ -56,7 +56,7 @@ requires:   [T1.4, T2.1, T0.5]
 fixture-ok: yes
 size:       M · mid
 owns:       Kalari/Sandbox/Microsandbox.lean
-status:     not-started
+status:     claimed:grok-impl
 ```
 `SandboxBackend` over the `msb` CLI through the process runner: create with `--no-net` and `allow@<IP>/32:tcp:<port>` rules (hostnames resolved on the VM: domain rules fail for TLS), copy the workspace and the aashaan in, set `vm.overcommit_memory=1`, exec the aashaan with the caps, copy results out, stop and remove. Every sandbox is removed, on success, failure or a Kalari crash at the next start (sandboxes are named `kalari-<run-id>`). Runs with umask `0022`.
 
