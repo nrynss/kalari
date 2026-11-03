@@ -158,7 +158,7 @@ requires:   [T1.4]
 fixture-ok: yes
 size:       S · mid
 owns:       Kalari/Main.lean, Kalari.lean, lakefile.toml, and an empty stub of every module named in P2–P6
-status:     in-review
+status:     done
 ```
 A library (`Kalari.lean` importing every module) and the thin `kalari` executable. Commands: `kalari serve` (MCP over stdio for the agent, plus the HTTP API), `kalari check <config>` (load and validate the config, reach each backend), `kalari --version`. Each module the later phases fill exists as a stub with a one-line doc comment: `Kalari/Gate.lean`, `Kalari/Sandbox/Microsandbox.lean`, `Kalari/Sandbox/Docker.lean`, `Kalari/Vimanam.lean`, `Kalari/Lambo.lean`, `Kalari/Clef.lean`, `Kalari/Search.lean`, `Kalari/Mcp.lean`, `Kalari/Tools/Changes.lean`, `Kalari/Tools/Recall.lean`, `Kalari/Tools/Run.lean`, `Kalari/Tools/Lesson.lean`, `Kalari/Evidence.lean`, `Kalari/Http.lean`.
 
@@ -191,4 +191,4 @@ Surprises:
 ## Exit Criteria
 
 - [x] Types, config, process runner and interfaces frozen.
-- [ ] Every later module exists as a stub.
+- [x] Every later module exists as a stub.
