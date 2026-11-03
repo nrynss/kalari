@@ -56,11 +56,32 @@ requires:   [T1.4, T2.1, T0.5]
 fixture-ok: yes
 size:       M · mid
 owns:       Kalari/Sandbox/Microsandbox.lean
-status:     claimed:grok-impl
+status:     in-review
 ```
 `SandboxBackend` over the `msb` CLI through the process runner: create with `--no-net` and `allow@<IP>/32:tcp:<port>` rules (hostnames resolved on the VM: domain rules fail for TLS), copy the workspace and the aashaan in, set `vm.overcommit_memory=1`, exec the aashaan with the caps, copy results out, stop and remove. Every sandbox is removed, on success, failure or a Kalari crash at the next start (sandboxes are named `kalari-<run-id>`). Runs with umask `0022`.
 
 **Done when:** tests against the msb recordings (T0.5) cover each step, a failed create, and cleanup after a failed exec; the arguments it builds never contain `--net-default allow` or omit `--no-net`.
+
+Notes:
+
+Create argv is `msb create --name <name> --cpus 1 --memory <memory_mib>M --no-net`, then one `--net-rule allow@<host>/32:tcp:<port>` per allowlist entry, then `debian`. The name argument is the `--name`. Callers pass `kalari-<run-id>`. An empty allowlist still passes `--no-net` and passes no `--net-rule`, which is the `create-duplicate` shape. No argv adds `--net-default`. Copy in is `msb copy -q <host> <name>:<guest>`. Copy out is `msb copy -q <name>:<guest> <host>`. Exec is `msb exec <name> -- <command...>`. Destroy is `msb remove <name>`.
+
+Remove is the cleanup, not stop. `exec-stopped` shows `exec` on a stopped sandbox starts it again, so a stopped sandbox is not gone. A run that created a sandbox calls `msb remove` on the way out, including when the job exits 3 (`exec-exit3`) and when a later copy fails. A failed create returns the error and does not exec or remove: `create-duplicate` can be a name this call did not create.
+
+`make` takes a runner `(argv, timeoutMs, outputCap) → IO Result`. `live` binds that runner to `Proc.run` with an explicit `PATH` and `inheritEnv` false. The checks do not call `live`. Exec uses the request `timeout_ms` and `output_cap_bytes`. Create, copy, list, and remove use 30000 ms and that same output cap. The `#eval` runner replays `testdata/msb`. A case it was not given fails the build; it is not an empty success. One script covers create, copy in, the overcommit exec (`exec-sysctl`), the job (`exec-exit3`), copy out, and remove, and checks each result against the recording. The run script does both copies, then the same execs, then remove. A third script is the failed create.
+
+The guest command is `sh -c` with `echo 1 > /proc/sys/vm/overcommit_memory`. The job argv is the caller's. This module does not wrap it, does not call the gate, and does not resolve DNS. `AllowHost.host` is already an IP.
+
+Next start: `kalariNames` keeps `name` from `msb list --format json` (the row also has `image`, `status`, and `created_at`) when the name starts with `kalari-`. `reap` removes only those. The recorded list has none, so reap does not remove.
+
+Umask: the process that starts Kalari uses `UMask=0022`. msb refuses group-writable storage (`storage-group-writable`). `Proc.run` has no umask argument, and this module does not set one.
+
+Surprises:
+
+- `SandboxBackend.exec` does not take a timeout, so `make` closes over the request timeout and the output cap.
+- `create-ok` records a port range. `AllowHost` is one port, so each rule is one `tcp:<port>`, not a range.
+- `msb exec` forwards the command exit code. Exit 3 is the job's result and is still followed by remove. The run returns that result, not the remove result.
+- The overcommit recording also cats the sysctl. The command this module runs is only the write.
 
 ---
 
