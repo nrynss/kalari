@@ -14,11 +14,26 @@ requires:   [T1.5, T0.3]
 fixture-ok: yes
 size:       S · mid
 owns:       Kalari/Vimanam.lean
-status:     claimed:grok-impl
+status:     in-review
 ```
 `ChangeSource` over the `vimanam` CLI: two spec versions (files or Git refs) in, `ChangeFact`s out from JSON contract v2, plus the focused context (`--context --max-tokens`) for the agent. OpenAPI, GraphQL and protobuf. A Vimanam error is reported with its stderr, never swallowed.
 
 **Done when:** both benchmark diffs from `testdata/vimanam/` parse into the expected change facts; a malformed spec gives a readable error.
+
+Notes:
+
+`make` takes a runner `(argv, timeoutMs, outputCap) → IO Proc.Result` and returns a `ChangeSource`. `diff` is `vimanam diff --format json <old> <new>`. The two paths are last. `vimanam diff --help` on the binary on PATH (1.7.0) prints `vimanam diff [OPTIONS] [OLD] [NEW]`, so options come before the paths. That help does not list `--context` or `--max-tokens`. Those flags are options too, so focused context is `vimanam diff --format json --context --max-tokens <n> <old> <new>`. No git-ref flags. The paths are the ones the recordings were made from: the payouts OpenAPI pair and the settlements GraphQL pair. A protobuf spec uses that same argv. There is no protobuf recording.
+
+`focusedContext` is a function in this module. It is not a field on `ChangeSource`. It runs the context argv and returns the process stdout. The recordings have no context body, so it does not parse one, and the checks do not invent one. `#guard` checks that the context argv contains `--context` and `--max-tokens`.
+
+Stdout on exit 0 is JSON contract v2. `changes[]` is decoded with derived `FromJson` on `ChangeFact`, which keeps `id` and `kind` and ignores every other key. `ChangeFact` is not widened. A non-zero exit is `Except.error`. The string is `vimanam: exit <code>: <stderr>`, so a stub with exit 1 and stderr `error: not a spec` surfaces `not a spec`. It is not `failed` and it is not an empty list. Timeout and output cap are errors too, not a parsed diff.
+
+The diff budget is 30000 ms and 1048576 bytes. The help names no other limit. Focused context uses the same budget. `live` binds `Proc.run` with an explicit `PATH` and `inheritEnv := false`, because the child environment is empty otherwise. The `#eval` replays `payouts.json` and `settlements.json`. It reads the files. It does not spawn `vimanam` and it does not call `live`. A recording the runner was not given throws, which fails the build.
+
+Surprises:
+
+- The `vimanam` on PATH is 1.7.0. Its `diff --help` has no `--context` and no `--max-tokens`. The flag order used is still that help's order: options, then the two paths.
+- OpenAPI and GraphQL are the two benchmark files. The argv does not change with the format. Protobuf would be the same command. Nothing in `testdata/vimanam/` is a protobuf diff.
 
 ---
 
