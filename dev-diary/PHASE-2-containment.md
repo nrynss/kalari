@@ -12,7 +12,7 @@ requires:   [T1.5]
 fixture-ok: yes
 size:       M · frontier
 owns:       Kalari/Gate.lean
-status:     not-started
+status:     claimed:grok-impl
 ```
 The decision every `run_in_sandbox` call passes before it reaches a backend: writes only inside the workspace, network only to the allowlisted hosts and ports, no secret in any argument (no value of a configured key variable, no string matching a key's shape), and every run capped (time, output, memory) within configured maximums. A plain, total `Bool` function over `RunRequest` and the config, and a reason when it refuses.
 
