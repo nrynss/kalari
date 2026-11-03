@@ -119,7 +119,7 @@ requires:   [T1.1, T1.3]
 fixture-ok: yes
 size:       M · frontier
 owns:       Kalari/Backend.lean, Kalari/Fake.lean
-status:     not-started
+status:     claimed:grok-impl
 ```
 The seams, each one structure of functions so a backend is one module: `SandboxBackend` (create with caps and a network allowlist, copy in, exec, copy out, destroy), `DecisionClient` (System One questions in, typed answers out), `MemoryClient` (derive, inspect, recall, against), `ChangeSource` (two spec versions in, change facts out). Fakes for each that replay `testdata/`, failing loudly on a miss.
 
