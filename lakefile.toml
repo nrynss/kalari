@@ -1,0 +1,14 @@
+name = "kalari"
+version = "0.1.0"
+defaultTargets = ["kalari", "kalari-aashaan"]
+
+# The main service on the VM: MCP for the coding agent, HTTP for the web app,
+# the orchestrator, the proved gate and the evidence store.
+[[lean_exe]]
+name = "kalari"
+root = "Kalari.Main"
+
+# The supervisor inside each microVM. Std only, so it stays small.
+[[lean_exe]]
+name = "kalari-aashaan"
+root = "Aashaan.Main"

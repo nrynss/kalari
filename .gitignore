@@ -1,0 +1,6 @@
+/.lake/
+.env
+kalari.toml
+*.local.toml
+/.kalari/
+/.claude/worktrees/
