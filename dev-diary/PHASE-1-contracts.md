@@ -24,7 +24,7 @@ Optional fields are `Option`s: derived `FromJson` ignores defaults (`docs/lean.m
 
 Notes:
 
-Built `Kalari/Model.lean`. The wire types are `ChangeFact`, `Check`, `Lesson`, `Caps`, `AllowHost`, `RunRequest`, `Verdict`, `CheckResult`, `Timings`, `Tokens`, `RunRecord`, `CallSite` and `BlastRadius`, each with derived `FromJson` and `ToJson`. `#guard`s cover a JSON round-trip of each, a missing `Option`, a wrong type, three recorded change objects, and one real supervisor line.
+Built `Kalari/Model.lean`. The wire types are `ChangeFact`, `Check`, `Lesson`, `Caps`, `AllowHost`, `RunRequest`, `Verdict`, `CheckResult`, `Timings`, `Tokens`, `RunRecord`, `CallSite` and `BlastRadius`, each with derived `FromJson` and `ToJson`. `#guard`s cover a JSON round-trip of each, a missing `Option`, a wrong type, three recorded change objects, and the eight recorded verdicts.
 
 JSON keys are the Lean field names. In 4.35, `mkJsonField` copies the name and only strips a trailing `?`, and that `?` also makes `ToJson` omit `none` instead of writing null. No field ends in `?`, so `none` renders as null. `Verdict` uses the supervisor's keys (`verdict`, `exit_code`, `wall_ms`, `stdout`, `stdout_truncated`, `stderr`, `pipe_held_open`, `supervisor_peak_rss_kb`, `cgroup_memory_limit`). The other types use the same spelling, so a record that embeds a verdict is one convention.
 
@@ -38,9 +38,9 @@ Decisions:
 - `BlastRadius` is one `change_id` and its `call_sites`. A call site is a `path` and an optional `detail`.
 - `cgroup_memory_limit` is `Nat`. The supervisor prints `constrainedMemory` as a JSON number. `UInt64`'s `FromJson` expects a string, not a number, and on an unconstrained host the number is 2^64-1, which `Nat` parses.
 
-Surprise: T0.5 has not recorded a verdict, so there is no file to parse. The exited line in the `#guard` is one host run of the normal case (`sh -c 'echo hello; echo warn >&2'`, 2000 ms, 4096 bytes). The guard checks `verdict`, `exit_code`, `stdout`, `stderr`, `stdout_truncated` and `pipe_held_open`. `wall_ms` and the memory fields vary by host, so the round-trip uses a constructed `Verdict`, not that line. `killed_timeout` (`exit_code` null) and `killed_output_cap` (`stdout_truncated` true) are synthetic lines in the same shape.
+The eight recorded verdicts are the inner object of each line, copied whole. The guards keep the stable fields: normal is `exited` 0 with stdout `hello` and stderr `warn`; exit3 is `exited` 3; loop, trapterm and fork are `killed_timeout`; flood is `killed_output_cap` with `stdout_truncated`; secret is `exited` 0 with stdout `key=[]`; escape is `killed_timeout` with `pipe_held_open`. `cgroup_memory_limit` is 0 in every recording. One extra host run of the normal command stays in the file; its clock and memory are not the recording, and on an unconstrained host that memory number is 2^64-1, which is why the field is `Nat`.
 
-Surprise: `import Kalari.Model` does not make `lake build` elaborate the module. Lake 5.0.0 turns a `lean_exe` into a library with no roots, and `Package.findModule?` only searches `lean_lib`s, so `Kalari.Model` is not a build edge. `lake build` fails with the olean of `Kalari.Model` missing. A `[[lean_lib]] name = "Kalari"` (default root `Kalari`, which makes the submodule buildable) fixes it: with that stanza the gate passed, including building `Kalari.Model`. The stanza is not in this commit. This task forbids editing `lakefile.toml`; T1.5 owns it. `Kalari/Main.lean` has the import and nothing else changed.
+`import Kalari.Model` is not a build edge by itself. Lake 5.0.0 turns a `lean_exe` into a library with no roots, and `Package.findModule?` only searches `lean_lib`s. `lakefile.toml` has `[[lean_lib]] name = "Kalari"`, whose default root makes the submodule buildable. `Kalari/Main.lean` has the import and nothing else changed.
 
 ---
 

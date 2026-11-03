@@ -13,6 +13,9 @@ root = "Kalari.Main"
 name = "kalari-aashaan"
 root = "Aashaan.Main"
 
+[[lean_lib]]
+name = "Kalari"
+
 # Verified examples for agents (docs/lean.md). Built and run by the gate, so they can't rot.
 [[lean_lib]]
 name = "Examples"

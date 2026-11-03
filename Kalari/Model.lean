@@ -244,9 +244,49 @@ private def sampleRadius : BlastRadius := {
   | .error e => e.endsWith "RunRequest.caps: Kalari.Model.Caps.timeout_ms: Natural number expected"
   | .ok _ => false
 
--- One host run of the supervisor: `sh -c 'echo hello; echo warn >&2'`, caps 2000 ms and 4096 bytes.
--- There is no recorded verdict file yet. `wall_ms` and the memory fields vary, so the guard
--- checks the stable fields. A full round-trip uses `sampleVerdict`, not this line.
+-- The eight recorded verdicts. Each literal is the inner object, copied whole.
+private def recordedNormal : String := "{\"verdict\": \"exited\", \"exit_code\": 0, \"wall_ms\": 2, \"stdout\": \"hello\\n\", \"stdout_truncated\": false, \"stderr\": \"warn\\n\", \"pipe_held_open\": false, \"supervisor_peak_rss_kb\": 5564, \"cgroup_memory_limit\": 0}"
+private def recordedExit3 : String := "{\"verdict\": \"exited\", \"exit_code\": 3, \"wall_ms\": 1, \"stdout\": \"\", \"stdout_truncated\": false, \"stderr\": \"\", \"pipe_held_open\": false, \"supervisor_peak_rss_kb\": 5352, \"cgroup_memory_limit\": 0}"
+private def recordedLoop : String := "{\"verdict\": \"killed_timeout\", \"exit_code\": null, \"wall_ms\": 809, \"stdout\": \"\", \"stdout_truncated\": false, \"stderr\": \"\", \"pipe_held_open\": false, \"supervisor_peak_rss_kb\": 5428, \"cgroup_memory_limit\": 0}"
+private def recordedTrapterm : String := "{\"verdict\": \"killed_timeout\", \"exit_code\": null, \"wall_ms\": 809, \"stdout\": \"\", \"stdout_truncated\": false, \"stderr\": \"\", \"pipe_held_open\": false, \"supervisor_peak_rss_kb\": 5536, \"cgroup_memory_limit\": 0}"
+private def recordedFork : String := "{\"verdict\": \"killed_timeout\", \"exit_code\": null, \"wall_ms\": 808, \"stdout\": \"spawned\\n\", \"stdout_truncated\": false, \"stderr\": \"\", \"pipe_held_open\": false, \"supervisor_peak_rss_kb\": 5544, \"cgroup_memory_limit\": 0}"
+private def recordedFlood : String := "{\"verdict\": \"killed_output_cap\", \"exit_code\": null, \"wall_ms\": 11, \"stdout\": \"y\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\ny\\n\", \"stdout_truncated\": true, \"stderr\": \"\", \"pipe_held_open\": false, \"supervisor_peak_rss_kb\": 5544, \"cgroup_memory_limit\": 0}"
+private def recordedSecret : String := "{\"verdict\": \"exited\", \"exit_code\": 0, \"wall_ms\": 10, \"stdout\": \"key=[]\\n\", \"stdout_truncated\": false, \"stderr\": \"\", \"pipe_held_open\": false, \"supervisor_peak_rss_kb\": 5448, \"cgroup_memory_limit\": 0}"
+private def recordedEscape : String := "{\"verdict\": \"killed_timeout\", \"exit_code\": null, \"wall_ms\": 806, \"stdout\": \"\", \"stdout_truncated\": false, \"stderr\": \"\", \"pipe_held_open\": true, \"supervisor_peak_rss_kb\": 5352, \"cgroup_memory_limit\": 0}"
+
+#guard match parse Verdict recordedNormal with
+  | .ok v => v.verdict == "exited" && v.exit_code == some 0 && v.stdout == "hello\n" && v.stderr == "warn\n"
+  | .error _ => false
+
+#guard match parse Verdict recordedExit3 with
+  | .ok v => v.verdict == "exited" && v.exit_code == some 3
+  | .error _ => false
+
+#guard match parse Verdict recordedLoop with
+  | .ok v => v.verdict == "killed_timeout"
+  | .error _ => false
+
+#guard match parse Verdict recordedTrapterm with
+  | .ok v => v.verdict == "killed_timeout"
+  | .error _ => false
+
+#guard match parse Verdict recordedFork with
+  | .ok v => v.verdict == "killed_timeout"
+  | .error _ => false
+
+#guard match parse Verdict recordedFlood with
+  | .ok v => v.verdict == "killed_output_cap" && v.stdout_truncated == true
+  | .error _ => false
+
+#guard match parse Verdict recordedSecret with
+  | .ok v => v.verdict == "exited" && v.exit_code == some 0 && v.stdout == "key=[]\n"
+  | .error _ => false
+
+#guard match parse Verdict recordedEscape with
+  | .ok v => v.verdict == "killed_timeout" && v.pipe_held_open == true
+  | .error _ => false
+
+-- An extra host run of the normal command. Its clock and memory are not the recording.
 private def supervisorExitedLine : String := "{\"verdict\":\"exited\",\"exit_code\":0,\"wall_ms\":10,\"stdout\":\"hello\\n\",\"stdout_truncated\":false,\"stderr\":\"warn\\n\",\"pipe_held_open\":false,\"supervisor_peak_rss_kb\":12668,\"cgroup_memory_limit\":18446744073709551615}"
 
 #guard match parse Verdict supervisorExitedLine with
