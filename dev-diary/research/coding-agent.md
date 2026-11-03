@@ -55,6 +55,8 @@ Permission rules combine in order, last match wins. A deny removes the tool: a c
 
 ## B5: the reference run
 
+**A stack check, not a comparison.** The task was easy on purpose (the server's source in the workspace, the end rule in a changelog, the count asked for), so its pass says nothing about Kalari against the baseline. The comparison's rules are in [`../../bench/README.md`](../../bench/README.md).
+
 OpenCode 2.2.5 + `microsandbox-mcp` 0.7.13 + DeepSeek V4.1 Flash (`low`), headless, on the task in `bench/reference-paging/`.
 
 | | |

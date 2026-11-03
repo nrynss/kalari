@@ -42,11 +42,13 @@ Only failures Clef attributes to the API change become lessons, so a flaky run o
 
 ## The demo: two upgrades, two formats
 
-1. **Upgrade one (REST).** The obvious migration gets HTTP 200 but only the first page; the check catches it. The next attempt follows the page token wrongly and **loops forever, and the aashaan's time cap kills it**: the containment moment, from a real API change, not a staged `rm -rf`. The agent repairs it, it passes, and Kalari records the lesson.
-2. **Upgrade two (GraphQL or gRPC).** Vimanam reports the same kind of change, `pagination_changed`, in another format. Lambo recalls the lesson by traversal from the change kind, and the first attempt handles paging correctly.
-3. **The measured difference:** sandbox runs, retries, seconds and tokens on the second upgrade. Every claim links to a real run's log.
+The full design, with the real API behind every quirk, is in [`bench/README.md`](bench/README.md).
 
-Frame the stakes as silent data loss: the import that returns 200 and drops records. Pick demo APIs where losing records clearly costs something. Use demo API pairs of our own choosing, not ones from earlier projects.
+1. **Upgrade one (REST): a merchant payout ledger.** v2 is a time-windowed export modelled on Zendesk's: a token on every page including the last, an end flag, deliberate duplicates at page boundaries, and a silently capped page size. The obvious loops lose payouts, double-pay them, or never end. When a loop never ends, **the aashaan's time cap kills it**: the containment moment, from a real API's behaviour, not a staged `rm -rf`. Kalari's checks catch the rest; the lesson is recorded.
+2. **Upgrade two (GraphQL): settlement batches.** A Relay-style connection whose `endCursor` is never null, with repeats across pages (Microsoft Graph delta) and empty pages that still continue (DynamoDB). Vimanam reports the same kind of change, `pagination_changed`. Lambo recalls the lesson by traversal from the change kind, including a case upgrade one never showed.
+3. **The measured difference:** first-attempt pass on the hidden grader, sandbox runs, retries, seconds and tokens on the second upgrade. Every claim links to a real run's log.
+
+Don't script the agent's mistakes: a strong model may get upgrade one right. Record real runs, and show one where the time cap fired; never claim it fires every time.
 
 ## The comparison
 
@@ -59,6 +61,8 @@ Both arms run **the same OpenCode 2 with the same model**, DeepSeek V4.1 Flash o
 | 3 | Reference setup, fresh session, no notes (first to drop if the budget is tight) |
 | 4 | OpenCode + Kalari, no stored lessons (separates the pipeline's effect from memory's) |
 | 5 | OpenCode + Kalari, with the lesson from upgrade one |
+
+**Kalari's checks include a differential check against the old API**: the v1 API stays live during the migration, and the old consumer's records on v1 are compared with the new consumer's on v2 (none missing, none extra, each exactly once). Both arms get the same specs, the same vendor-style prose docs, and the same prompt; neither can read the servers. **The baseline is piloted first, and the upgrade pair, docs, prompt and grader are frozen before the Kalari arm runs.** Every run is published (bench/README.md, Protocol).
 
 Measured on upgrade two: first-attempt pass on the hidden grader (the headline), attempts and sandbox runs, wall time, tokens, and records lost by any version that "succeeded" but fails the grader. Three to five repeats per condition. If condition 1 also passes first time, the edge is durability, sharing and enforcement, not first-attempt recall: say so plainly.
 
@@ -116,6 +120,6 @@ A live page whose first screen is a "For judges: start here" table: the runs, th
 
 ## Open questions
 
-- The demo API pairs: two real APIs, ideally in two formats, each with a genuine paging change between versions.
+- The upgrade pair is proposed in bench/README.md; the baseline pilot decides it. If the baseline passes anyway: harder real behaviours, and lead with cost, attempts and containment (both, to revisit after the pilot).
 - How the baseline arm's egress is limited outside the agent, or whether the gap is reported as a measured result.
 - Whether Vultr discounts cached input (the console's billing page; `/v1/usage` shows tokens only).

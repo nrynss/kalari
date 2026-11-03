@@ -1,5 +1,7 @@
 # Reference run: a paging upgrade
 
+**A check that the stack works, not a comparison.** It answered: can OpenCode 2 drive DeepSeek through `microsandbox-mcp` with the host shell denied, and what does a run cost? It was easy on purpose: the server's source sat in the workspace (the agent had to start it in its own sandbox), `API_CHANGES.md` spelled out how paging ends, and the prompt asked for the count. Its pass says nothing about Kalari against the baseline. The comparison's rules are in [`../README.md`](../README.md).
+
 The B5 task (`dev-diary/research/coding-agent.md`): Vultr's reference setup (OpenCode 2 + `microsandbox-mcp` + DeepSeek V4.1 Flash) fixing a consumer whose API started paging.
 
 - `repo/`: the workspace the agent gets. `api_v2.py` serves 2,431 items, 100 per page, with `next_page_token`; `import_items.py` is the v1 consumer, which exits 0 with "imported 100 items"; `API_CHANGES.md` describes v2; `opencode.jsonc` is the reference config (host shell, web and outside paths denied).
