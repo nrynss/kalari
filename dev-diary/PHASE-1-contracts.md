@@ -158,13 +158,33 @@ requires:   [T1.4]
 fixture-ok: yes
 size:       S · mid
 owns:       Kalari/Main.lean, Kalari.lean, lakefile.toml, and an empty stub of every module named in P2–P6
-status:     claimed:grok-impl
+status:     in-review
 ```
 A library (`Kalari.lean` importing every module) and the thin `kalari` executable. Commands: `kalari serve` (MCP over stdio for the agent, plus the HTTP API), `kalari check <config>` (load and validate the config, reach each backend), `kalari --version`. Each module the later phases fill exists as a stub with a one-line doc comment: `Kalari/Gate.lean`, `Kalari/Sandbox/Microsandbox.lean`, `Kalari/Sandbox/Docker.lean`, `Kalari/Vimanam.lean`, `Kalari/Lambo.lean`, `Kalari/Clef.lean`, `Kalari/Search.lean`, `Kalari/Mcp.lean`, `Kalari/Tools/Changes.lean`, `Kalari/Tools/Recall.lean`, `Kalari/Tools/Run.lean`, `Kalari/Tools/Lesson.lean`, `Kalari/Evidence.lean`, `Kalari/Http.lean`.
 
 After this task no one edits `Kalari/Main.lean`, `Kalari.lean` or `lakefile.toml` without the orchestrator's approval.
 
 **Done when:** `kalari --help` prints the commands; each stub command exits 2 with "not implemented yet"; every module exists and is imported; the gate passes.
+
+Notes:
+
+Built `Kalari.lean` as the library root. It imports every library module (`Model`, `Config`, `Proc`, `Backend`, `Fake`, and the fourteen stubs) and does not import `Kalari.Main`. `Kalari/Main.lean` keeps those five imports and adds `import Kalari`, which is what makes `lake build` elaborate the stubs. `lakefile.toml` is unchanged.
+
+Each later module is one file and one module doc, with no definitions: `Gate`, `Sandbox/Microsandbox`, `Sandbox/Docker`, `Vimanam`, `Lambo`, `Clef`, `Search`, `Mcp`, `Tools/Changes`, `Tools/Recall`, `Tools/Run`, `Tools/Lesson`, `Evidence`, `Http`.
+
+`kalari --version` prints `kalari 0.1.0` and exits 0. `kalari --help` prints `serve`, `check`, and `--version` and exits 0. `serve` and `check` (no path, or any path) print `not implemented yet` and exit 2. `check` does not open the path and does not read the environment.
+
+Decisions:
+
+- `check` matches on the head word, so a path is the same stub and is never opened.
+- `--help` prints the usage on stdout and exits 0. An unknown command still prints that usage on stderr and exits 2.
+- `serve` stays on stderr. Its exit changes from 1 to 2.
+- Provider names stay in the stub paths and their one-line comments. `Kalari/Backend.lean` was not edited.
+
+Surprises:
+
+- A module doc comment cannot sit above `import` in 4.35. `Kalari.lean` puts the imports first and the doc after them. A stub that is only a doc comment is a valid module.
+- The module name `Kalari.Tools.Recall` imports. The `recall` keyword only bites a field, not a comment or a module name.
 
 ---
 
