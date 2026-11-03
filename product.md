@@ -16,7 +16,7 @@ Kalari is a tool, not an agent. It plugs into the coding agent the developer alr
 | `blast_radius` | The callers, tests and earlier decisions each change touches | Kalari's code search, links stored in Lambo |
 | `recall_lessons` | Lessons for these kinds of change, returned **as checks that must pass** | Lambo |
 | `run_in_sandbox` | The proved gate, then a throwaway microVM run by the aashaan; returns the verdict and logs | Kalari + Microsandbox |
-| `record_lesson` | Stores what failed and what fixed it, keyed by change kind | Lambo |
+| `record_lesson` | Stores what a verified run showed about the API (a failure and its fix, or a behaviour the checks observed on a pass), keyed by change kind | Lambo |
 
 The agent does the coding. Kalari decides what has to be checked, what is at stake, what was learned, and whether the result is proved. The web app shows each run and its evidence.
 
@@ -28,7 +28,7 @@ Two layers of safety: **before acting**, the blast radius shows what is at stake
 2. `what_changed` lists the changes; `blast_radius` shows what they touch; `recall_lessons` returns checks from earlier upgrades.
 3. The agent writes the migration and calls `run_in_sandbox`. The consumer runs against the new API in a microVM with time, output and network caps; the checks run; the microVM is destroyed.
 4. On failure, the verdict, the logs and any matching lesson go back to the agent, and it retries. The retry loop is visible in the web app.
-5. On success, the user gets the patch, the passing evidence and the run history. Only a sandbox-verified outcome becomes a lesson (`record_lesson`).
+5. On success, the user gets the patch, the passing evidence and the run history. What the verified runs showed about the API becomes a lesson (`record_lesson`), even when nothing failed: a strong agent that passes first time still leaves behind what it learned.
 
 ### Three kinds of judgement
 
@@ -38,7 +38,7 @@ Two layers of safety: **before acting**, the blast radius shows what is at stake
 | Whether the upgrade works | **Sandbox runs** and a hidden grader, never a model's word |
 | The calls in between: why a run failed, whether a code location really calls a changed operation, whether a recalled lesson applies | **Clef** (decision models on Vultr Inference), answering fixed questions with probabilities. Logged as a model's opinion, never shown as a measurement. Never in the gate, never the verdict |
 
-Only failures Clef attributes to the API change become lessons, so a flaky run or a broken test setup can't teach the memory something wrong.
+A failure becomes a lesson only when Clef attributes it to the API change, so a flaky run or a broken test setup can't teach the memory something wrong. Behaviour observed on a verified pass becomes a lesson directly.
 
 ## The demo: two upgrades, two formats
 
@@ -61,10 +61,11 @@ Both arms run **the same OpenCode 2 with the same model**, DeepSeek V4.1 Flash o
 | 3 | Reference setup, fresh session, no notes (first to drop if the budget is tight) |
 | 4 | OpenCode + Kalari, no stored lessons (separates the pipeline's effect from memory's) |
 | 5 | OpenCode + Kalari, with the lesson from upgrade one |
+| 6 | Reference setup with a better prompt: the task plus "verify v2's records against v1's, record by record". A control: if it matches 5, Kalari's value is mostly the prompt, and we say so |
 
-**Kalari's checks include a differential check against the old API**: the v1 API stays live during the migration, and the old consumer's records on v1 are compared with the new consumer's on v2 (none missing, none extra, each exactly once). Both arms get the same specs, the same vendor-style prose docs, and the same prompt; neither can read the servers. **The baseline is piloted first, and the upgrade pair, docs, prompt and grader are frozen before the Kalari arm runs.** Every run is published (bench/README.md, Protocol).
+**Kalari's checks include a differential check against the old API**: the v1 API stays live during the migration, and the old consumer's records on v1 are compared with the new consumer's on v2 (none missing, none extra, each exactly once). Every arm gets the same specs, the same vendor-style prose docs, the same prompt, and the same reach to **both** v1 and v2: Kalari's edge is that it runs the comparison unasked, not that it can. No arm can read the servers, and what arms see uses neutral names, so the model can't recognise the vendor a behaviour comes from. **The baseline is piloted first, and the upgrade pair, docs, prompt and grader are frozen before the Kalari arm runs.** Every run is published (bench/README.md, Protocol).
 
-Measured on upgrade two: first-attempt pass on the hidden grader (the headline), attempts and sandbox runs, wall time, tokens, and records lost by any version that "succeeded" but fails the grader. Three to five repeats per condition. If condition 1 also passes first time, the edge is durability, sharing and enforcement, not first-attempt recall: say so plainly.
+Measured on upgrade two, as defined in bench/README.md (Measures): the hidden grader's verdict at the end of the session, right first time (the headline), sandbox runs, wall time, time stuck in hung runs, tokens, and records lost or duplicated by any version that "succeeded" but fails the grader. Five repeats per condition, every session capped at 20 minutes, reported as counts. If condition 1 also passes first time, the edge is durability, sharing and enforcement, not first-attempt recall: say so plainly.
 
 **A containment difference the reference setup can't close:** there, the agent chooses each sandbox's network setting. In the reference run it chose none, so its sandbox could reach the internet and the VM's own public IP. Kalari's `run_in_sandbox` sets the network policy itself.
 

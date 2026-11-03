@@ -1,6 +1,6 @@
 # The benchmark
 
-How the comparison in [`../product.md`](../product.md) is run so that its result can be believed. The coding model is strong: DeepSeek V4.1 Flash fixed a plain paging upgrade on its first attempt, unprompted defences included ([`reference-paging/`](reference-paging/README.md)). So Kalari's edge can't rest on the model making obvious mistakes. It has to come from what a strong model **can't know** from the specs and docs it is given.
+How the comparison in [`../product.md`](../product.md) is run so that its result can be believed. The coding model is strong: DeepSeek V4.1 Flash fixed a plain paging upgrade on its first attempt, unprompted defences included ([`reference-paging/`](reference-paging/README.md)). So Kalari's edge can't rest on the model making obvious mistakes. It has to come from what a strong model **can't know** from the specs and docs it is given, and from what Kalari **enforces** rather than suggests.
 
 ## What a strong model can't know
 
@@ -15,63 +15,105 @@ It handles anything written in the spec or the docs. It can't handle behaviour t
 
 | Edge | Shows in | Needs memory |
 |---|---|---|
-| **Differential check against the old API.** The v1 API stays live during the migration (decided). Kalari runs the old consumer against v1 and the new one against v2 on the same data and compares the record sets: none missing, none extra, each exactly once | Condition 4 | No |
-| **Lessons carry behaviour the specs don't.** "Stop on the end flag, never on the token or a short page; dedupe by ID and version" is learned by running | Condition 5 against 2 and 3 | Yes |
+| **Differential check against the old API.** The v1 API stays live during the migration (decided). Kalari runs the old consumer against v1 and the new one against v2 on the same data and compares the record sets: none missing, none extra, each exactly once. **Both arms can reach v1 and have its spec and docs**; only Kalari runs the comparison without being asked | Conditions 4 and 5 | No |
+| **Lessons carry behaviour the specs don't.** "Stop on the end flag, never on the token or a short or empty page; dedupe by ID" is learned by running | Condition 5 against 2 and 3 | Yes |
+| **Enforcement, not suggestion.** A recalled lesson is a check that must pass, not a note the agent may ignore. Condition 6 (a baseline told to do the same checks) tests whether this matters | Condition 5 against 6 | Yes |
 | **Containment.** The aashaan's time cap on a runaway loop; `--no-net` with IP rules; the reference arm's agent-chosen sandbox network | Every condition | No |
 
-If the pilot shows the baseline doing the differential check on its own, the edge narrows to memory and containment, and the result says so.
+If the pilot shows the baseline doing the differential check on its own, or condition 6 matching Kalari, the edge narrows to what's left, and the result says so.
+
+## Where lessons come from
+
+A lesson is written from **what a verified run observed about the API**, not only from a failure. Otherwise a strong agent that passes upgrade one first time leaves nothing to learn, and condition 5 collapses into condition 4.
+
+| Source | Example lesson |
+|---|---|
+| A failure Clef attributes to the API change, and the fix that passed | "The stream returned a token on its final page; the loop that stopped on the token never ended" |
+| **A behaviour the differential check or the run logs observed**, even on a pass | "v2 returned 24 boundary records twice; the passing code deduped by ID" |
+| A behaviour the passing code had to handle | "A page came back shorter than the requested limit mid-stream; the passing code ignored page length" |
+
+Every lesson names the change kind (`pagination_changed`), the observation, the run that showed it, and a check. Lessons are only written from sandbox-verified runs.
 
 ## Behaviours, each from a documented real API
 
 | Behaviour | The obvious code | Result | Real source |
 |---|---|---|---|
-| **B1. A token on every page, the last included; an end flag decides** | `while next_page:` | Never ends: the time cap kills it | Zendesk incremental export (`end_of_stream`; the final cursor is kept for the next run). Microsoft Graph delta (the last page carries a `deltaLink` for the next sync) |
-| **B2. Duplicates at page boundaries, on purpose** | Append every page | Extra records (24 in 2,431 at 100 a page) | Zendesk time-based export ("contain duplicate items to prevent items … from being skipped"; dedupe on `id` + `updated_at`). Graph delta ("the same item can appear on any page") |
-| **B3. An empty page that still has a token** | `if not items: break` | Silent truncation | DynamoDB Query and Scan with a filter (zero items and a `LastEvaluatedKey`; only a missing key ends it). Graph delta (empty pages with a `nextLink`) |
+| **B1. A token on every page, the last included; an end flag decides** | `while next_page:` | Never ends: the time cap kills it | Zendesk incremental export (an end-of-stream flag; the final cursor is kept for the next run). Microsoft Graph delta (the last page carries a link for the next sync) |
+| **B2. Duplicates at page boundaries, on purpose** | Append every page | Extra records (24 in 2,431 at 100 a page) | Zendesk time-based export (duplicates "to prevent items … from being skipped"; dedupe advised). Graph delta ("the same item can appear on any page") |
+| **B3. An empty page that still has a token** | `if not items: break` | Silent truncation | DynamoDB Query and Scan with a filter (zero items and a continuation key; only a missing key ends it). Graph delta (empty pages that still continue) |
 | **B4. Page size silently capped** | `if len(items) < limit: break` | Truncation after page one | RIPE Atlas (any `limit` over 100 becomes 100). RevenueCat V2 (at most 100 a page, whatever `limit` says) |
-| **B5. 429 with `Retry-After` partway** | No retry, or a retry that skips a page | A crash or a missing page | Universal |
+| **B5. 429 with `Retry-After` partway** | No retry, or a retry that skips a page | A crash or a missing page | Universal. Held in reserve for the harder fallback |
 
 Sources: [Zendesk: using the incremental export API](https://developer.zendesk.com/documentation/ticketing/managing-tickets/using-the-incremental-export-api/), [Zendesk: incremental exports reference](https://developer.zendesk.com/api-reference/ticketing/ticket-management/incremental_exports/), [Microsoft Graph: delta query overview](https://learn.microsoft.com/en-us/graph/delta-query-overview), [DynamoDB: paginating query results](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Query.Pagination.html), [RIPE Atlas: limit capped at 100](https://mailman.ripe.net/archives/list/ripe-atlas@ripe.net/thread/HFKJHGXLUQWBCHCXY2BJ6LO3CXA7MNBA/), [RevenueCat: max limit per page](https://community.revenuecat.com/general-questions-7/max-limit-value-to-paginate-the-next-page-6248?postid=21519).
 
-Each mock says in its docs which real API it copies. No live third-party API is ever called.
+**This table is for the benchmark's readers, never for the arms.** What an arm sees uses neutral field names and our own wording, so the model can't recognise a vendor and recall its behaviour from training. The vendors' docs are paraphrased for structure, never copied.
 
 ## The upgrade pair (proposed; the pilot decides)
 
 | | Upgrade 1: teaches the lesson | Upgrade 2: measures the comparison |
 |---|---|---|
 | Domain | **Merchant payout ledger** (`payout-sync`): a lost record is an unpaid merchant, a duplicate is a double payment | **Settlement batches** (`settlement-reconcile`): reconciling daily settlements |
-| Format | REST, OpenAPI 3.0. v1 `GET /v1/payouts` returns every payout; v2 is a time-windowed export modelled on Zendesk | GraphQL. v1 `settlements: [Settlement!]!`; v2 `settlements(first, after): SettlementConnection` with `pageInfo { endCursor: String!, hasNextPage }` |
-| Behaviours | B1 + B2 + B4 | B1 (`endCursor` never null) + B2 (repeats across pages, Graph-style) + B3 (empty pages, DynamoDB-style) |
-| Vimanam reports | `pagination_changed` on the payouts operation | `pagination_changed` on `Query.settlements` |
-| The lesson | A `constraint` on `pagination_changed`: "stop on the end flag, never on the token's presence or a short or empty page; dedupe by ID and version", with a check: exact count against v1, zero duplicate IDs | Recalled by traversal from `pagination_changed` before attempt 1 in condition 5 |
+| Format | REST, OpenAPI 3.0. v1 returns every payout in one response; v2 is a time-windowed export | GraphQL. v1 returns a plain list; v2 is a Relay-style connection whose `endCursor` is never null |
+| Behaviours | B1 + B2 + B4 | B1 + B2 (repeats across pages) + B3 (empty pages that continue) |
+| Vimanam reports | `pagination_changed` on the payouts operation | `pagination_changed` on the settlements query |
+| The lesson | A `constraint` on `pagination_changed`: "stop on the end flag, never on the token's presence or a short or empty page; dedupe by ID", with a check: exact count against v1, zero duplicate IDs | Recalled by traversal from `pagination_changed` before the first run in condition 5 |
 
-Upgrade 2 adds B3, which the lesson covers ("never … an empty page") but which upgrade 1 never showed. That is a fair test of whether a lesson generalises, not just whether it is replayed.
+The dataset is fixed for a run, so records are deduplicated by ID. Upgrade 2 adds B3, which the lesson covers ("never … an empty page") but which upgrade 1 never showed: a fair test of whether a lesson generalises, not just whether it is replayed.
+
+## Conditions
+
+Conditions 1–5 are in product.md. One control is added:
+
+| # | Condition |
+|---|---|
+| **6** | **Reference setup with a better prompt:** the same task, plus "verify v2's records against v1's, record by record: none missing, none extra, each exactly once". Fresh session, no notes |
+
+If condition 6 matches condition 5, Kalari's value is mostly a good prompt, and we say so. If it doesn't, the claim is stronger: Kalari enforces the check and remembers what it found; a prompt only asks.
+
+## Measures
+
+Defined once, the same for every arm:
+
+| Measure | Definition |
+|---|---|
+| **Verdict** | The hidden grader's result on the consumer as it stands at the end of the session: every record exactly once, against the dataset's truth |
+| **Right first time** | The first run of the consumer against v2, in any sandbox, already passes the grader (checked by grading the code as it stood at that run) |
+| **Sandbox runs** | Runs of the consumer against v1 or v2, by the agent or by Kalari |
+| **Wall time** | Session start to the agent's final answer, including time stuck in a hung run |
+| **Time stuck** | Time spent in runs that ended by a timeout, the agent's or the aashaan's |
+| **Tokens** | Input and output, from `/v1/usage` before and after the session |
+| **Records lost or duplicated** | For a session whose consumer fails the grader: how many, so "it said done but lost 2,331 payouts" is a number |
+
+Every session, in every arm, is capped at 20 minutes. Results are reported as counts ("4 of 5 against 1 of 5"), never as percentages or "always": five runs is a small sample.
 
 ## Protocol
 
-1. **Same inputs for both arms:** the consumer repository, the v1 and v2 specs, and **vendor-style prose docs** (decided) in which each behaviour is described somewhere, as the real vendors do. "It was in the docs and the agent still missed it" is the stronger result.
-2. **The same prompt for both arms:** "Upgrade this consumer from the v1 API to v2 and verify it against the v2 server."
-3. **No arm can read the servers.** The v1 and v2 APIs run as their own service, in their own microVM, reachable only through IP allow rules. The workspace holds the consumer, the specs and the docs; never server code, never a changelog written for the task.
-4. **The hidden grader** runs after each attempt in a fresh `--no-net` microVM: every record exactly once, against the dataset's truth. No arm sees it or is told what it checks.
-5. **Pilot the baseline first.** The reference setup only: each behaviour alone in a fresh session, five runs each; then the proposed pair under conditions 1–3, five runs each. Record failure rates, attempts, tokens and outcomes.
-6. **Freeze before Kalari runs.** Choose the pair from the pilot's numbers, then freeze the APIs, the docs, the prompt and the grader, and commit them before the Kalari arm's first run.
-7. **Publish every run**, baseline passes included, with its log, verdict and tokens.
+1. **Same inputs for every arm:** the consumer repository, the v1 and v2 specs, **vendor-style prose docs** (decided) in which each behaviour is described somewhere, and the v1 and v2 endpoints. Conditions differ only as the table says.
+2. **The same prompt:** "Upgrade this consumer from the v1 API to v2 and verify it against the v2 server." Condition 6 adds its one sentence.
+3. **No arm can read the servers.** The v1 and v2 APIs run as their own service, outside every workspace and outside every path the agents may read. The workspace holds the consumer, the specs and the docs; never server code, never a changelog written for the task.
+4. **The docs are the weakest point, so they are fixed first.** Written before the pilot, following the structure of the real vendor's docs, with a record (here, not in the docs) of which sentence describes each behaviour. Frozen with the pair. Never edited after seeing a result.
+5. **The hidden grader** runs after each session in a fresh `--no-net` microVM. No arm sees it or is told what it checks.
+6. **Pilot the baseline first.** The reference setup only: each behaviour alone in a fresh session, five runs each; then the proposed pair under conditions 1–3 and 6, five runs each. Record every measure.
+7. **Freeze before Kalari runs.** Choose the pair from the pilot's numbers, then freeze and commit the APIs, the docs, the prompt and the grader before the Kalari arm's first run.
+8. **Publish every run**, baseline passes included, with its log, verdict and measures.
+
+## Before the pilot: the network route
+
+Vultr's guide says sibling sandboxes can't reach each other, so the API service can't simply be another microVM on its own. The likely route: the API service publishes a port on the VM (`msb -p`, or a plain process on the host), and arms reach it at the VM's IP. The Kalari arm allows exactly that (`allow@<vm-ip>/32:tcp:<port>`); the reference arm's default-mode sandbox reaches it anyway; the Vultr firewall keeps the port off the internet. **Prove this route first, as its own step**: both arms' sandboxes reach v1 and v2; nothing else on the host is reachable from the Kalari arm; the port is closed from outside.
 
 ## If the baseline passes the pilot anyway
 
 Both (decided, to revisit after the pilot):
 
 - **Harder, still real behaviours.** Combine more of B1–B5 in one upgrade, or add B5. Nothing invented: every behaviour keeps a real source.
-- **Lead with cost, attempts and containment** instead of the pass rate: runs, retries, seconds and tokens to a verified result, and what each arm's sandbox could reach while it worked.
+- **Lead with cost, attempts and containment** instead of the pass rate: sandbox runs, time stuck, wall time and tokens to a verified result, and what each arm's sandbox could reach while it worked.
 
 ## Budget
 
 At the measured ~$0.05 a run for a small task, budgeting ~$0.25 for these:
 
-- **Pilot:** each behaviour alone, fresh session (condition 3), 5 runs: 25 runs. The proposed pair, conditions 1–3, 5 runs each (conditions 1 and 2 span both upgrades): ~30 runs. About 55 runs, **~$14**.
-- **Frozen comparison:** 5 conditions × 5 repeats, both upgrades: ~50 runs, **~$13**.
-
-Step 5 of the protocol states the pilot's shape; this is its cost.
+- **Pilot:** each behaviour alone, fresh session, 5 runs: 25. The proposed pair under conditions 1–3 and 6, 5 runs each: ~40. About 65 runs, **~$16**.
+- **Frozen comparison:** 6 conditions × 5 repeats: ~60 runs, **~$15**.
 
 ## Layout (to build)
 
@@ -79,9 +121,9 @@ Step 5 of the protocol states the pilot's shape; this is its cost.
 bench/
 ├── README.md                this design
 ├── reference-paging/        the stack check (not a comparison)
-├── apis/                    the mock v1 and v2 services, one per upgrade, each naming its real source
+├── apis/                    the mock v1 and v2 services, one per upgrade (the real sources are named here, not in what arms see)
 ├── workspaces/              what an arm gets: consumer, specs, docs
 ├── graders/                 the hidden graders
 ├── pilot/                   pilot runs: scripts and results
-└── runs/                    the frozen comparison: every run, its log, verdict and tokens
+└── runs/                    the frozen comparison: every run, its log, verdict and measures
 ```
