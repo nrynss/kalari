@@ -73,7 +73,7 @@ requires:   [T1.5, T0.5]
 fixture-ok: yes
 size:       S · mid
 owns:       Kalari/Clef.lean
-status:     in-review
+status:     done
 ```
 `DecisionClient` for the System One format at `/v1/systemone`, through `curl` with the key on stdin (`Examples/Curl.lean`). The three questions as typed functions: `failureCause` (a `choice`: api_change, test_setup, flaky, unrelated_bug, with probabilities and confidence), `callsChangedOperation` (a `noul`), `lessonApplies` (a `noul`). Input trimmed to the model's limit before sending (over-length is a 422, not a truncation). 429 retried after `Retry-After`; 502–504 with backoff.
 
