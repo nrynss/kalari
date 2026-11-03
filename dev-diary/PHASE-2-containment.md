@@ -12,7 +12,7 @@ requires:   [T1.5]
 fixture-ok: yes
 size:       M · frontier
 owns:       Kalari/Gate.lean
-status:     in-review
+status:     done
 ```
 The decision every `run_in_sandbox` call passes before it reaches a backend: writes only inside the workspace, network only to the allowlisted hosts and ports, no secret in any argument (no value of a configured key variable, no string matching a key's shape), and every run capped (time, output, memory) within configured maximums. A plain, total `Bool` function over `RunRequest` and the config, and a reason when it refuses.
 
@@ -94,6 +94,6 @@ The same interface on Docker for hosts without KVM: `--network none` plus an all
 
 ## Exit Criteria
 
-- [ ] The gate's four properties proved.
+- [x] The gate's four properties proved.
 - [ ] The aashaan's cap logic proved, eight cases passing in a microVM.
 - [ ] Untrusted code runs only through the Microsandbox backend, always `--no-net`, always removed.
