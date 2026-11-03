@@ -1,6 +1,7 @@
 /.lake/
 .env
 kalari.toml
+kalari.json
 *.local.toml
 /.kalari/
 /.claude/worktrees/

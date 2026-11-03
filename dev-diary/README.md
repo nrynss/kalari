@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0: T0.1, T0.2, T0.3, T0.5 done; T0.4 (Lambo) and T0.6 (Vimanam) blocked on their next releases. T1.1 claimed:grok-impl. T5.1 ready. The pilot (T5.2) waits for T0.6. Open user decision: the pilot's spend (T5.2). Config format (T1.2) is JSON.
+**Current status:** P0: T0.1, T0.2, T0.3, T0.5 done; T0.4 (Lambo) and T0.6 (Vimanam) blocked on their next releases. T1.1 done. T1.2 next (config is JSON). T5.1 ready. The pilot (T5.2) waits for T0.6. Open user decision: the pilot's spend (T5.2).
 
 ---
 
@@ -140,7 +140,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | Phase | Tasks complete | Status |
 |---|---|---|
 | P0 | 4 / 6 | T0.1, T0.2, T0.3, T0.5 done. T0.4 (Lambo) and T0.6 (Vimanam) blocked on their next releases |
-| P1 | 0 / 5 | T1.1 claimed:grok-impl |
+| P1 | 1 / 5 | T1.1 done. T1.2 next |
 | P2 | 0 / 5 | Waits for P1 |
 | P3 | 0 / 6 | Waits for P1 |
 | P4 | 0 / 8 | Waits for P2, P3 |
@@ -154,7 +154,8 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 
 Newest first. One entry per closed task, finding, or split.
 
-- **Decided: config is JSON.** T1.2 loads `kalari.json`, parsed by `Lean.Json`, which `kalari` links anyway. Keys stay environment-variable names. Std has no TOML parser, and Lake's parser belongs to the build tool. `docs/architecture.md` still sketches TOML; T1.2 updates that sketch.
+- **T1.1 closed: the core model.** `Kalari/Model.lean` is the wire types: `ChangeFact` (`id` and `kind` only; unknown keys ignored), `Check`, `Lesson` (`memory_concept_id` optional), `RunRequest` with `Caps` and `AllowHost`, `Verdict` (the supervisor's snake_case keys; `exit_code` optional; `cgroup_memory_limit` a `Nat`), `RunRecord`, `BlastRadius`. The eight recorded verdicts in `testdata/aashaan/verdicts.jsonl` and three recorded change objects parse. Derived JSON uses the field name as the key. A field ending in `?` would omit `none`; none of these do, so `none` is null. `UInt64`'s `FromJson` expects a string, and the supervisor prints `cgroup_memory_limit` as a number (0 in the recordings, 2^64−1 on an unconstrained host), so the field is `Nat`. Lake 5 does not build a module that only an executable imports: `lakefile.toml` has `[[lean_lib]] name = "Kalari"`, and T1.5 must keep that. The operation coordinate is not on `ChangeFact`; add an `Option` before P1 freezes if a later task must read it off the fact.
+- **Decided: config is JSON.** T1.2 loads `kalari.json`, parsed by `Lean.Json`. Keys stay environment-variable names. `docs/architecture.md` now says so.
 - **Benchmark APIs built** (`bench/apis`, `bench/workspaces`, `bench/graders`, `bench/prompts`). Payouts (REST, 2,431 records: B1 a fresh cursor on every response with `drained`, B2 a one-payout window overlap, B4 `limit` capped at 100) and settlements (GraphQL on vendored graphql-core 3.3.1, 1,873 records: B1 `endCursor: String!`, B2 19 amended repeats, B3 four 200-row void runs, so every page size meets empty pages). Neutral vendor names (Tallyline, Clearwell); `QUIRKS.md` records where each behaviour is documented. `bench/tests/quirks.sh`, now in the gate, runs six reference consumers per service: v1 unchanged crashes (410 after cutover), single page and short- or empty-page stops lose records, the cursor loops never end, appending duplicates (24 and 19), the correct ones pass. Deployed on the VM: live (v1 on) :18080/:18081, grading (v1 retired) :18090/:18091, each in its own microVM; from a Kalari-arm sandbox the same outcomes hold; closed from outside. Open: Vimanam's verdict on these specs (the local binary is a stale 1.4.2 build; needs 2.0.0).
 - **Network route proved.** Each API service runs in its own microVM with egress denied (`--net-default-egress deny`: `--no-net` also blocks ingress, so a published port never answers) and its port published on the VM's public IP. Both arms reach it; the Kalari arm (`--no-net` + an IP and port-range rule) reaches nothing else; the port is dropped from the internet and refused on the tailnet. The reference arm can also reach the VM's SSH (hairpin), noted for the containment comparison.
 - **Finding: OpenCode 2's `opencode run` leaves a background daemon** (`opencode serve --service`, with `microsandbox-mcp`) running after the run, holding the inference key in its environment; found half an hour after B5 and stopped. The key was never written to disk. Every run now uses `--standalone` and per-run `XDG_*` directories (both verified), so sessions are isolated and nothing is left behind.

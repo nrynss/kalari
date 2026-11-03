@@ -67,14 +67,18 @@ A job that starts its own session escapes the group kill and can hold a pipe ope
 
 ## Configuration
 
-`kalari.toml` (gitignored), with providers by kind and keys by environment-variable name:
+`kalari.json` (gitignored), parsed by `Lean.Json`. Providers by kind. Keys are environment-variable names, never values:
 
-```toml
-[models]      # OpenAI-compatible endpoint, model, api_key_env
-[decisions]   # System One endpoint, model, api_key_env
-[sandbox]     # backend = "microsandbox" | "docker", caps, network allowlist
-[lambo]       # command, config path
+```json
+{
+  "models": {},
+  "decisions": {},
+  "sandbox": {},
+  "lambo": {}
+}
 ```
+
+`models`: an OpenAI-compatible endpoint, the model, and `api_key_env`. `decisions`: the System One endpoint, the model, and `api_key_env`. `sandbox`: `microsandbox` or `docker`, the caps, and the network allowlist. `lambo`: the command and the config path.
 
 ## Repository layout (planned)
 

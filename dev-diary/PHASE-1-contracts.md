@@ -14,7 +14,7 @@ requires:   [T0.3]
 fixture-ok: yes
 size:       M · frontier
 owns:       Kalari/Model.lean
-status:     in-review
+status:     done
 ```
 The types the tools pass around, each with `FromJson`/`ToJson`: `ChangeFact` (Vimanam's change ID and kind, kept as Vimanam's strings), `Check` (an ID, what it asserts, how to run it), `Lesson` (change kind, observation, the run that showed it, its check, its Lambo concept ID), `RunRequest` (workspace, command, caps, network allowlist), `Verdict` (the aashaan's fields), `RunRecord` (request, verdict, checks and their results, timings, tokens if known), `BlastRadius` (change ID to call sites).
 
