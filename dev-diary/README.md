@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** scaffold only. The day-one checks are done and recorded in `research/`. The phases are not written yet.
+**Current status:** P0: T0.1 and T0.2 done; T0.3 (Vimanam) and T0.5 (recordings) ready; T0.4 (Lambo) blocked on Lambo's next release. Nothing else started. Open user decisions: the config format (T1.2); the pilot's spend (T5.2).
 
 ---
 
@@ -31,7 +31,56 @@ Do not wait for a whole phase to finish. If a task requires only `T1.1`, start i
 
 ## Phase Graph
 
-To be written.
+| Phase | Document | Requires | Runs parallel with | Blocks |
+|---|---|---|---|---|
+| **P0** Ground | [PHASE-0-ground.md](PHASE-0-ground.md) | none | none | everything |
+| **P1** Contracts | [PHASE-1-contracts.md](PHASE-1-contracts.md) | T0.3 | the pilot (T5.1, T5.2) | P2–P4, P6 |
+| **P2** Containment | [PHASE-2-containment.md](PHASE-2-containment.md) | P1 | P3 | `run_in_sandbox` (T4.5) |
+| **P3** Integrations | [PHASE-3-integrations.md](PHASE-3-integrations.md) | P1, T0.4 for Lambo | P2 | P4 |
+| **P4** The tools | [PHASE-4-tools.md](PHASE-4-tools.md) | P2, P3 | the pilot | the Kalari arm (T5.4) |
+| **P5** The benchmark | [PHASE-5-benchmark.md](PHASE-5-benchmark.md) | T0.2 for the pilot; T4.7 and the freeze for the Kalari arm | P1–P4 (the pilot) | P7 |
+| **P6** Surfaces | [PHASE-6-surfaces.md](PHASE-6-surfaces.md) | T4.2 | P5 | P7 |
+| **P7** Ship | [PHASE-7-ship.md](PHASE-7-ship.md) | P5, P6 | none | submission |
+
+```text
+  P0 ──▶ P1 ──┬──▶ P2 containment ──┐
+              └──▶ P3 integrations ─┴──▶ P4 tools ──▶ T4.7 ──┐
+  T0.2 ──▶ T5.1 harness ──▶ T5.2 pilot ──▶ T5.3 freeze ──────┴──▶ T5.4 Kalari arm ──▶ T5.6 results ──┐
+                                           T5.3 ──▶ T5.5 reference arm ───────────────▶ T5.6        ├──▶ P7 ship
+              P4's evidence store ──▶ P6 surfaces ───────────────────────────────────────────────────┘
+```
+
+P1 is the serial bottleneck. **The pilot runs beside the whole build**: it needs only the benchmark APIs (done) and the harness, never Kalari's code. That is what the protocol needs: the baseline is measured and the pair frozen before the Kalari arm's first run.
+
+---
+
+## Parallel Tracks
+
+| Track | Phase | Network required? | First task | Notes |
+|---|---|---|---|---|
+| **A: Pilot** | P5 | Yes (VM, Vultr Inference) | T5.1 | Starts now. Spend approved by the user before T5.2 |
+| **B: Contracts** | P1 | No | T1.1 (after T0.3) | Serial; small and exact |
+| **C: Containment** | P2 | `b` tasks only | T2.1 | The proved gate and the aashaan. The product's safety claims live here |
+| **D: Integrations** | P3 | `b` tasks only | T3.1, T3.3, T3.4 | T3.2 (Lambo) waits for T0.4, or starts on the 0.8.0 transcripts if the orchestrator says so |
+| **E: Surfaces** | P6 | T6.3 only | T6.1 | Starts when the evidence store (T4.2) lands |
+
+If capacity is short, run A and C first: A decides what the comparison can show, and C is what every run's safety rests on.
+
+---
+
+## Critical Path
+
+```
+Vimanam on the specs (T0.3) + recordings (T0.5)
+  -> core model (T1.1) -> config (T1.2) -> process runner (T1.3) -> interfaces (T1.4) -> layout (T1.5)
+  -> gate (T2.1) -> Microsandbox backend (T2.3)
+  -> MCP server (T4.1) + evidence (T4.2) -> run_in_sandbox (T4.5) -> record_lesson (T4.6) -> with OpenCode (T4.7)
+  harness (T5.1) -> pilot (T5.2) -> freeze (T5.3)
+  -> Kalari arm (T5.4) + reference arm (T5.5) -> results (T5.6)
+  -> web app (T6.2) -> deploy (T6.3) -> README (T7.1) -> video (T7.2) -> public (T7.3) -> submit (T7.4)
+```
+
+The demo rests on one story: a payout export that returns 200 and silently loses or double-pays merchants, an agent whose runaway loop the aashaan kills, and a lesson that makes the second upgrade, in another format, right first time. Protect everything that moment depends on before anything else.
 
 ---
 
@@ -90,7 +139,14 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 
 | Phase | Tasks complete | Status |
 |---|---|---|
-| Day-one checks | 11 / 11 | Done: recorded in `research/`. B4 re-runs on the next Lambo release |
+| P0 | 2 / 5 | T0.1, T0.2 done. T0.3, T0.5 ready. T0.4 blocked on Lambo's next release |
+| P1 | 0 / 5 | Waits for T0.3 |
+| P2 | 0 / 5 | Waits for P1 |
+| P3 | 0 / 6 | Waits for P1 |
+| P4 | 0 / 8 | Waits for P2, P3 |
+| P5 | 0 / 6 | T5.1 ready now |
+| P6 | 0 / 3 | Waits for T4.2 |
+| P7 | 0 / 4 | Waits for P5, P6 |
 
 ---
 
@@ -103,6 +159,7 @@ Newest first. One entry per closed task, finding, or split.
 - **Finding: OpenCode 2's `opencode run` leaves a background daemon** (`opencode serve --service`, with `microsandbox-mcp`) running after the run, holding the inference key in its environment; found half an hour after B5 and stopped. The key was never written to disk. Every run now uses `--standalone` and per-run `XDG_*` directories (both verified), so sessions are isolated and nothing is left behind.
 - **Benchmark design reviewed and revised.** Fixed: every arm reaches v1 as well as v2 (Kalari's edge is running the comparison unasked, not having access); lessons come from behaviour observed on a verified pass as well as from failures (or a first-time pass leaves nothing to learn and condition 5 collapses into 4); measures defined once for every arm, with "right first time" meaning the first run against v2 already passes the grader; agent-facing APIs and docs use neutral names, so the model can't recall a vendor's behaviour from training; the route from an arm's sandbox to the API service is proved before the pilot. Added: **condition 6**, the reference setup told to verify against v1, as a control for "Kalari is just a prompt"; a 20-minute cap on every session, with time stuck measured; docs written and frozen before the pilot; results as counts. Dedupe by ID (the dataset is fixed for a run). Pilot ~65 runs, ~$16.
 - **Benchmark designed (`bench/README.md`).** DeepSeek is strong, so Kalari's edge must come from what it can't know from specs and docs: behaviour that is undocumented in the spec, visible only at scale, silent, and uncheckable without the truth. User decisions: the v1 API stays live during the migration (so Kalari can check v2's records against v1's); both arms get specs **and** vendor-style prose docs; if the baseline passes the pilot, both harder real behaviours and leading with cost, attempts and containment. Five paging behaviours, each verified in a real API's docs (Zendesk incremental export, Microsoft Graph delta, DynamoDB, RIPE Atlas, RevenueCat). Proposed pair: a REST payout ledger modelled on Zendesk, then a GraphQL settlement connection. Protocol: servers in their own microVM, never readable; the baseline piloted first (~55 runs, ~$14); the pair, docs, prompt and grader frozen before the Kalari arm runs; every run published.
+- **Phases planned.** P0–P7 written with every task in the pattern above. The pilot runs beside the build, since it needs no Kalari code. Open user decisions: the config format (T1.2), the pilot's spend (T5.2).
 - **Lean guide and verified examples.** `docs/lean.md` and `Examples/`: a proved decision function (three theorems, `omega`, `#guard`), `Lean.Json`, a `Std.Http` server (routing, body cap, 400/404/413, headers), a JSON-RPC stdio loop, and `curl` with the key on stdin. The gate builds and runs them all. Found while writing them: derived `FromJson` ignores structure defaults (use `Option`), JSON errors name the fully qualified field, `compress` sorts keys, `Json.parse` is shadowed inside a `Json` namespace, `readAll` past its cap throws `IO.userError`, and `trimAscii` returns a `Slice`.
 - **Scaffold.** Licence (MIT), README, product.md, AGENTS.md, docs/architecture.md, the Lake project with two executables (`kalari` a stub; `kalari-aashaan` the verified day-one supervisor), the gate (`lake build`, `kalari --version`, seven aashaan cases on the host) and CI. `tests/live/microvm-cases.sh` runs all eight cases in a microVM on the VM.
 - **Day-one research recorded.** Every check, its commands and its result are in `research/`. The decisions they settled: OpenCode 2 for both comparison arms; DeepSeek V4.1 Flash; Clef for the three judgement calls; Qwen3 Embedding 4B for Lambo at 2560 dimensions; Microsandbox with `--no-net` and IP allow rules; the host on Ubuntu 24.04's 6.8 kernel.
