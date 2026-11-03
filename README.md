@@ -23,7 +23,7 @@ A *kalari* is the training arena of kalaripayattu, Kerala's martial art: often a
 ## Built with
 
 - [Lean 4](https://lean-lang.org/): Kalari's own executables, with the containment logic proved in the same code that ships.
-- [Vimanam](https://github.com/noemaforge/vimanam) (Apache-2.0): what changed between two API versions, for OpenAPI, GraphQL and protobuf.
+- [Vimanam](https://github.com/noemaforge/vimanam) (Apache-2.0): what changed between two API versions, for OpenAPI and protobuf, and GraphQL on its development branch.
 - [Lambo](https://github.com/nrynss/lambo): the memory of lessons across upgrades.
 - [Microsandbox](https://github.com/superradcompany/microsandbox): the microVMs.
 

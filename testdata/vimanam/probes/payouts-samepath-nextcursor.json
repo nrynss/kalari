@@ -1,0 +1,1062 @@
+{
+  "schema_version": 2,
+  "generator": {
+    "name": "vimanam",
+    "version": "2.0.0"
+  },
+  "old": {
+    "file_sha256": "d82308210d73f78e0156ce13dd303413f650ad9cb05c0143303cfb4414fb91d5",
+    "contract": {
+      "format": "openapi",
+      "title": "Tallyline Payouts API",
+      "version": "1.4.0",
+      "entities": [
+        {
+          "id": "ve2_82627720cb1a73314e1e9428a6fa42079087f62821268b5010999a8afd226536",
+          "kind": "service",
+          "name": "API",
+          "parent": null,
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": null,
+            "path": null,
+            "parameter_in": null,
+            "status": null,
+            "pointer": "/services/API",
+            "resolved": false
+          },
+          "attributes": {},
+          "references": []
+        },
+        {
+          "id": "ve2_01a712ffb41c9f2f03441ada91ca6dba35cde4059b8158b6ae1b664fd38db1b9",
+          "kind": "operation",
+          "name": "listPayouts",
+          "parent": null,
+          "services": [
+            "ve2_82627720cb1a73314e1e9428a6fa42079087f62821268b5010999a8afd226536"
+          ],
+          "native": {
+            "format": "openapi",
+            "method": "GET",
+            "path": "/payouts",
+            "parameter_in": null,
+            "status": null,
+            "pointer": "",
+            "resolved": false
+          },
+          "attributes": {
+            "operation_id": "listPayouts",
+            "deprecated": false
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_12bf94743a8072f23aec12e233466ee44c789f39722b600727b881854e94a53d",
+          "kind": "result",
+          "name": "200",
+          "parent": "ve2_01a712ffb41c9f2f03441ada91ca6dba35cde4059b8158b6ae1b664fd38db1b9",
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": "GET",
+            "path": "/payouts",
+            "parameter_in": null,
+            "status": "200",
+            "pointer": "",
+            "resolved": false
+          },
+          "attributes": {
+            "type": "object",
+            "properties": {
+              "payouts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Payout"
+                }
+              }
+            },
+            "required": [
+              "payouts"
+            ]
+          },
+          "references": [
+            "ve2_8af6c10ca92ae0d75cf8c7820ead900acfa6e01659d15022687981d9a7b3353e"
+          ]
+        },
+        {
+          "id": "ve2_8beb2987128f74077d1cc219ee55c9f6813243c02c30236d8c257704a6d405f6",
+          "kind": "field",
+          "name": "payouts",
+          "parent": "ve2_12bf94743a8072f23aec12e233466ee44c789f39722b600727b881854e94a53d",
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": "GET",
+            "path": "/payouts",
+            "parameter_in": null,
+            "status": null,
+            "pointer": "/properties/payouts",
+            "resolved": false
+          },
+          "attributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Payout"
+            },
+            "x-vimanam-required": true
+          },
+          "references": [
+            "ve2_8af6c10ca92ae0d75cf8c7820ead900acfa6e01659d15022687981d9a7b3353e"
+          ]
+        },
+        {
+          "id": "ve2_8af6c10ca92ae0d75cf8c7820ead900acfa6e01659d15022687981d9a7b3353e",
+          "kind": "type",
+          "name": "Payout",
+          "parent": null,
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": null,
+            "path": null,
+            "parameter_in": null,
+            "status": null,
+            "pointer": "/types/Payout",
+            "resolved": false
+          },
+          "attributes": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "po_00042"
+              },
+              "merchant_id": {
+                "type": "string",
+                "example": "m_017"
+              },
+              "amount_cents": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "currency": {
+                "type": "string",
+                "example": "USD"
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "merchant_id",
+              "amount_cents",
+              "currency",
+              "created_at"
+            ]
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_89f56020301f4957f812d32096ded078596af9ab231baaefa0be7b4a3e0d85fa",
+          "kind": "field",
+          "name": "id",
+          "parent": "ve2_8af6c10ca92ae0d75cf8c7820ead900acfa6e01659d15022687981d9a7b3353e",
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": null,
+            "path": null,
+            "parameter_in": null,
+            "status": null,
+            "pointer": "/properties/id",
+            "resolved": false
+          },
+          "attributes": {
+            "type": "string",
+            "example": "po_00042",
+            "x-vimanam-required": true
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_61cd73319321163c6ca55788346cc772b5ea9285f8265da3daae3ede825bf8b8",
+          "kind": "field",
+          "name": "merchant_id",
+          "parent": "ve2_8af6c10ca92ae0d75cf8c7820ead900acfa6e01659d15022687981d9a7b3353e",
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": null,
+            "path": null,
+            "parameter_in": null,
+            "status": null,
+            "pointer": "/properties/merchant_id",
+            "resolved": false
+          },
+          "attributes": {
+            "type": "string",
+            "example": "m_017",
+            "x-vimanam-required": true
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_f59c342fa2214d2aa80fe42ed3ab638857d0738399011d599abdf5f7b9be82d8",
+          "kind": "field",
+          "name": "amount_cents",
+          "parent": "ve2_8af6c10ca92ae0d75cf8c7820ead900acfa6e01659d15022687981d9a7b3353e",
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": null,
+            "path": null,
+            "parameter_in": null,
+            "status": null,
+            "pointer": "/properties/amount_cents",
+            "resolved": false
+          },
+          "attributes": {
+            "type": "integer",
+            "minimum": 1,
+            "x-vimanam-required": true
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_371163ea0f2864c258d6fabd16844841c345ef666321af73403dbfdfbc76be79",
+          "kind": "field",
+          "name": "currency",
+          "parent": "ve2_8af6c10ca92ae0d75cf8c7820ead900acfa6e01659d15022687981d9a7b3353e",
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": null,
+            "path": null,
+            "parameter_in": null,
+            "status": null,
+            "pointer": "/properties/currency",
+            "resolved": false
+          },
+          "attributes": {
+            "type": "string",
+            "example": "USD",
+            "x-vimanam-required": true
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_db249f32f59b694529f0fbe1c44cde1642aa0bc7447041871c8f72a050f9a9d0",
+          "kind": "field",
+          "name": "created_at",
+          "parent": "ve2_8af6c10ca92ae0d75cf8c7820ead900acfa6e01659d15022687981d9a7b3353e",
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": null,
+            "path": null,
+            "parameter_in": null,
+            "status": null,
+            "pointer": "/properties/created_at",
+            "resolved": false
+          },
+          "attributes": {
+            "type": "string",
+            "format": "date-time",
+            "x-vimanam-required": true
+          },
+          "references": []
+        }
+      ]
+    }
+  },
+  "new": {
+    "file_sha256": "20c06319d108ac52fff284bcf441d68a241f097015b35e5e753bf2edf4df286c",
+    "contract": {
+      "format": "openapi",
+      "title": "Tallyline Payouts API",
+      "version": "2.0.0",
+      "entities": [
+        {
+          "id": "ve2_82627720cb1a73314e1e9428a6fa42079087f62821268b5010999a8afd226536",
+          "kind": "service",
+          "name": "API",
+          "parent": null,
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": null,
+            "path": null,
+            "parameter_in": null,
+            "status": null,
+            "pointer": "/services/API",
+            "resolved": false
+          },
+          "attributes": {},
+          "references": []
+        },
+        {
+          "id": "ve2_01a712ffb41c9f2f03441ada91ca6dba35cde4059b8158b6ae1b664fd38db1b9",
+          "kind": "operation",
+          "name": "exportPayouts",
+          "parent": null,
+          "services": [
+            "ve2_82627720cb1a73314e1e9428a6fa42079087f62821268b5010999a8afd226536"
+          ],
+          "native": {
+            "format": "openapi",
+            "method": "GET",
+            "path": "/payouts",
+            "parameter_in": null,
+            "status": null,
+            "pointer": "",
+            "resolved": false
+          },
+          "attributes": {
+            "operation_id": "exportPayouts",
+            "deprecated": false
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_42ce073f2de96134bb14d3b7d41e3f9c5bff7c65c22df2cc0a51e0a53bd669ab",
+          "kind": "argument",
+          "name": "cursor",
+          "parent": "ve2_01a712ffb41c9f2f03441ada91ca6dba35cde4059b8158b6ae1b664fd38db1b9",
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": "GET",
+            "path": "/payouts",
+            "parameter_in": "query",
+            "status": null,
+            "pointer": "",
+            "resolved": false
+          },
+          "attributes": {
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_a1e8454bfb2a77ea777a87d1cd0d4bad3a4795f0dbfc88074cdb066c65d96f8f",
+          "kind": "argument",
+          "name": "limit",
+          "parent": "ve2_01a712ffb41c9f2f03441ada91ca6dba35cde4059b8158b6ae1b664fd38db1b9",
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": "GET",
+            "path": "/payouts",
+            "parameter_in": "query",
+            "status": null,
+            "pointer": "",
+            "resolved": false
+          },
+          "attributes": {
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 100
+            }
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_12bf94743a8072f23aec12e233466ee44c789f39722b600727b881854e94a53d",
+          "kind": "result",
+          "name": "200",
+          "parent": "ve2_01a712ffb41c9f2f03441ada91ca6dba35cde4059b8158b6ae1b664fd38db1b9",
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": "GET",
+            "path": "/payouts",
+            "parameter_in": null,
+            "status": "200",
+            "pointer": "",
+            "resolved": false
+          },
+          "attributes": {
+            "type": "object",
+            "properties": {
+              "payouts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Payout"
+                }
+              },
+              "next_cursor": {
+                "description": "Opaque token to resume the export from this point.",
+                "type": "string"
+              },
+              "drained": {
+                "description": "True when the export has caught up with the ledger.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "payouts",
+              "next_cursor",
+              "drained"
+            ]
+          },
+          "references": [
+            "ve2_8af6c10ca92ae0d75cf8c7820ead900acfa6e01659d15022687981d9a7b3353e"
+          ]
+        },
+        {
+          "id": "ve2_8beb2987128f74077d1cc219ee55c9f6813243c02c30236d8c257704a6d405f6",
+          "kind": "field",
+          "name": "payouts",
+          "parent": "ve2_12bf94743a8072f23aec12e233466ee44c789f39722b600727b881854e94a53d",
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": "GET",
+            "path": "/payouts",
+            "parameter_in": null,
+            "status": null,
+            "pointer": "/properties/payouts",
+            "resolved": false
+          },
+          "attributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Payout"
+            },
+            "x-vimanam-required": true
+          },
+          "references": [
+            "ve2_8af6c10ca92ae0d75cf8c7820ead900acfa6e01659d15022687981d9a7b3353e"
+          ]
+        },
+        {
+          "id": "ve2_dd2ac07114cf9a9c8771684955e9a8ca41565f6dcdd0c579972f5f42b510c336",
+          "kind": "field",
+          "name": "next_cursor",
+          "parent": "ve2_12bf94743a8072f23aec12e233466ee44c789f39722b600727b881854e94a53d",
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": "GET",
+            "path": "/payouts",
+            "parameter_in": null,
+            "status": null,
+            "pointer": "/properties/next_cursor",
+            "resolved": false
+          },
+          "attributes": {
+            "description": "Opaque token to resume the export from this point.",
+            "type": "string",
+            "x-vimanam-required": true
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_b165032064baad8eec0ac94194dc176d59b2c7b58abf19af9f0a8671091aaaaa",
+          "kind": "field",
+          "name": "drained",
+          "parent": "ve2_12bf94743a8072f23aec12e233466ee44c789f39722b600727b881854e94a53d",
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": "GET",
+            "path": "/payouts",
+            "parameter_in": null,
+            "status": null,
+            "pointer": "/properties/drained",
+            "resolved": false
+          },
+          "attributes": {
+            "description": "True when the export has caught up with the ledger.",
+            "type": "boolean",
+            "x-vimanam-required": true
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_cf50ee8b0e7078dab745bff39dfd1fbb0040c84acc8fc3ddbb53d17fef38445e",
+          "kind": "result",
+          "name": "400",
+          "parent": "ve2_01a712ffb41c9f2f03441ada91ca6dba35cde4059b8158b6ae1b664fd38db1b9",
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": "GET",
+            "path": "/payouts",
+            "parameter_in": null,
+            "status": "400",
+            "pointer": "",
+            "resolved": false
+          },
+          "attributes": {
+            "$ref": "#/components/schemas/Error"
+          },
+          "references": [
+            "ve2_7c7d0f5a329e20d38493738d9253cb7474b0d1ec7dd547d6dba09a73ed242008"
+          ]
+        },
+        {
+          "id": "ve2_8af6c10ca92ae0d75cf8c7820ead900acfa6e01659d15022687981d9a7b3353e",
+          "kind": "type",
+          "name": "Payout",
+          "parent": null,
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": null,
+            "path": null,
+            "parameter_in": null,
+            "status": null,
+            "pointer": "/types/Payout",
+            "resolved": false
+          },
+          "attributes": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "po_00042"
+              },
+              "merchant_id": {
+                "type": "string",
+                "example": "m_017"
+              },
+              "amount_cents": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "currency": {
+                "type": "string",
+                "example": "USD"
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "merchant_id",
+              "amount_cents",
+              "currency",
+              "created_at"
+            ]
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_89f56020301f4957f812d32096ded078596af9ab231baaefa0be7b4a3e0d85fa",
+          "kind": "field",
+          "name": "id",
+          "parent": "ve2_8af6c10ca92ae0d75cf8c7820ead900acfa6e01659d15022687981d9a7b3353e",
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": null,
+            "path": null,
+            "parameter_in": null,
+            "status": null,
+            "pointer": "/properties/id",
+            "resolved": false
+          },
+          "attributes": {
+            "type": "string",
+            "example": "po_00042",
+            "x-vimanam-required": true
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_61cd73319321163c6ca55788346cc772b5ea9285f8265da3daae3ede825bf8b8",
+          "kind": "field",
+          "name": "merchant_id",
+          "parent": "ve2_8af6c10ca92ae0d75cf8c7820ead900acfa6e01659d15022687981d9a7b3353e",
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": null,
+            "path": null,
+            "parameter_in": null,
+            "status": null,
+            "pointer": "/properties/merchant_id",
+            "resolved": false
+          },
+          "attributes": {
+            "type": "string",
+            "example": "m_017",
+            "x-vimanam-required": true
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_f59c342fa2214d2aa80fe42ed3ab638857d0738399011d599abdf5f7b9be82d8",
+          "kind": "field",
+          "name": "amount_cents",
+          "parent": "ve2_8af6c10ca92ae0d75cf8c7820ead900acfa6e01659d15022687981d9a7b3353e",
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": null,
+            "path": null,
+            "parameter_in": null,
+            "status": null,
+            "pointer": "/properties/amount_cents",
+            "resolved": false
+          },
+          "attributes": {
+            "type": "integer",
+            "minimum": 1,
+            "x-vimanam-required": true
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_371163ea0f2864c258d6fabd16844841c345ef666321af73403dbfdfbc76be79",
+          "kind": "field",
+          "name": "currency",
+          "parent": "ve2_8af6c10ca92ae0d75cf8c7820ead900acfa6e01659d15022687981d9a7b3353e",
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": null,
+            "path": null,
+            "parameter_in": null,
+            "status": null,
+            "pointer": "/properties/currency",
+            "resolved": false
+          },
+          "attributes": {
+            "type": "string",
+            "example": "USD",
+            "x-vimanam-required": true
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_db249f32f59b694529f0fbe1c44cde1642aa0bc7447041871c8f72a050f9a9d0",
+          "kind": "field",
+          "name": "created_at",
+          "parent": "ve2_8af6c10ca92ae0d75cf8c7820ead900acfa6e01659d15022687981d9a7b3353e",
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": null,
+            "path": null,
+            "parameter_in": null,
+            "status": null,
+            "pointer": "/properties/created_at",
+            "resolved": false
+          },
+          "attributes": {
+            "type": "string",
+            "format": "date-time",
+            "x-vimanam-required": true
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_7c7d0f5a329e20d38493738d9253cb7474b0d1ec7dd547d6dba09a73ed242008",
+          "kind": "type",
+          "name": "Error",
+          "parent": null,
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": null,
+            "path": null,
+            "parameter_in": null,
+            "status": null,
+            "pointer": "/types/Error",
+            "resolved": false
+          },
+          "attributes": {
+            "type": "object",
+            "properties": {
+              "error": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "error",
+              "message"
+            ]
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_f44723c4eb39dd796f7d8cda116d8ada5b14828833f0ff926e988ab467420a93",
+          "kind": "field",
+          "name": "error",
+          "parent": "ve2_7c7d0f5a329e20d38493738d9253cb7474b0d1ec7dd547d6dba09a73ed242008",
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": null,
+            "path": null,
+            "parameter_in": null,
+            "status": null,
+            "pointer": "/properties/error",
+            "resolved": false
+          },
+          "attributes": {
+            "type": "string",
+            "x-vimanam-required": true
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_f5756189678d4dff58069fc9897e189db0001a1c3983a0c777ea585a2a61fc36",
+          "kind": "field",
+          "name": "message",
+          "parent": "ve2_7c7d0f5a329e20d38493738d9253cb7474b0d1ec7dd547d6dba09a73ed242008",
+          "services": [],
+          "native": {
+            "format": "openapi",
+            "method": null,
+            "path": null,
+            "parameter_in": null,
+            "status": null,
+            "pointer": "/properties/message",
+            "resolved": false
+          },
+          "attributes": {
+            "type": "string",
+            "x-vimanam-required": true
+          },
+          "references": []
+        }
+      ]
+    }
+  },
+  "summary": {
+    "operations_added": 0,
+    "operations_removed": 0,
+    "operations_changed": 1,
+    "breaking": 1,
+    "non_breaking": 8,
+    "review": 1
+  },
+  "changes": [
+    {
+      "id": "vc2_b0ce16c0d7b14892f4125455725007b018186eec8b096521da0a05496f4ba836",
+      "subject": "ve2_01a712ffb41c9f2f03441ada91ca6dba35cde4059b8158b6ae1b664fd38db1b9",
+      "kind": "operation_renamed",
+      "severity": "breaking",
+      "impacts": [
+        "source"
+      ],
+      "native": {
+        "format": "openapi",
+        "method": "GET",
+        "path": "/payouts",
+        "parameter_in": null,
+        "status": null,
+        "pointer": "",
+        "resolved": false
+      },
+      "native_kind": "operation_id_changed",
+      "details": {
+        "old": "listPayouts",
+        "new": "exportPayouts"
+      }
+    },
+    {
+      "id": "vc2_dd001d0a4d2d5d25d78643d4598ca6fea7c701c27805c8e6b63400c706596746",
+      "subject": "ve2_42ce073f2de96134bb14d3b7d41e3f9c5bff7c65c22df2cc0a51e0a53bd669ab",
+      "kind": "argument_added",
+      "severity": "non_breaking",
+      "impacts": [
+        "source"
+      ],
+      "native": {
+        "format": "openapi",
+        "method": "GET",
+        "path": "/payouts",
+        "parameter_in": "query",
+        "status": null,
+        "pointer": "",
+        "resolved": false
+      },
+      "native_kind": "parameter_added",
+      "details": {
+        "name": "cursor",
+        "location": "query",
+        "required": false
+      }
+    },
+    {
+      "id": "vc2_63edfc076ebae0ac8eeade9b04b4bdbca832d2ae1b47dd1bcc1826440ca25ecc",
+      "subject": "ve2_a1e8454bfb2a77ea777a87d1cd0d4bad3a4795f0dbfc88074cdb066c65d96f8f",
+      "kind": "argument_added",
+      "severity": "non_breaking",
+      "impacts": [
+        "source"
+      ],
+      "native": {
+        "format": "openapi",
+        "method": "GET",
+        "path": "/payouts",
+        "parameter_in": "query",
+        "status": null,
+        "pointer": "",
+        "resolved": false
+      },
+      "native_kind": "parameter_added",
+      "details": {
+        "name": "limit",
+        "location": "query",
+        "required": false
+      }
+    },
+    {
+      "id": "vc2_0eb945231d881ad5a414f284f0bc4a898360758b513174dcbaf39e2e81be4843",
+      "subject": "ve2_12bf94743a8072f23aec12e233466ee44c789f39722b600727b881854e94a53d",
+      "kind": "field_added",
+      "severity": "non_breaking",
+      "impacts": [
+        "source"
+      ],
+      "native": {
+        "format": "openapi",
+        "method": "GET",
+        "path": "/payouts",
+        "parameter_in": null,
+        "status": "200",
+        "pointer": "/properties/drained",
+        "resolved": true
+      },
+      "native_kind": "response_schema_changed",
+      "details": {
+        "status": "200",
+        "schema_change": {
+          "pointer": "/properties/drained",
+          "target": "property",
+          "member": "drained",
+          "operation": "added",
+          "before": {
+            "present": false
+          },
+          "after": {
+            "present": true,
+            "value": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "vc2_4debe57c6ed77f803383f26382c11bf76dac26753c5e9824fbe315bfbd7b8682",
+      "subject": "ve2_12bf94743a8072f23aec12e233466ee44c789f39722b600727b881854e94a53d",
+      "kind": "field_added",
+      "severity": "non_breaking",
+      "impacts": [
+        "source"
+      ],
+      "native": {
+        "format": "openapi",
+        "method": "GET",
+        "path": "/payouts",
+        "parameter_in": null,
+        "status": "200",
+        "pointer": "/properties/next_cursor",
+        "resolved": true
+      },
+      "native_kind": "response_schema_changed",
+      "details": {
+        "status": "200",
+        "schema_change": {
+          "pointer": "/properties/next_cursor",
+          "target": "property",
+          "member": "next_cursor",
+          "operation": "added",
+          "before": {
+            "present": false
+          },
+          "after": {
+            "present": true,
+            "value": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "vc2_fe4efd77ec1175a54a991572e5a9aad65d8e4d058d1bd5be15a679a62809ffda",
+      "subject": "ve2_12bf94743a8072f23aec12e233466ee44c789f39722b600727b881854e94a53d",
+      "kind": "field_required_changed",
+      "severity": "non_breaking",
+      "impacts": [
+        "source"
+      ],
+      "native": {
+        "format": "openapi",
+        "method": "GET",
+        "path": "/payouts",
+        "parameter_in": null,
+        "status": "200",
+        "pointer": "/required/drained",
+        "resolved": true
+      },
+      "native_kind": "response_schema_changed",
+      "details": {
+        "status": "200",
+        "schema_change": {
+          "pointer": "/required/drained",
+          "target": "required_member",
+          "member": "drained",
+          "operation": "added",
+          "before": {
+            "present": false
+          },
+          "after": {
+            "present": true,
+            "value": "drained"
+          }
+        }
+      }
+    },
+    {
+      "id": "vc2_8ecff5f9498e92651bac00f9ead42cd38065067dc82d8e028d0c4409bcacb45e",
+      "subject": "ve2_12bf94743a8072f23aec12e233466ee44c789f39722b600727b881854e94a53d",
+      "kind": "field_required_changed",
+      "severity": "non_breaking",
+      "impacts": [
+        "source"
+      ],
+      "native": {
+        "format": "openapi",
+        "method": "GET",
+        "path": "/payouts",
+        "parameter_in": null,
+        "status": "200",
+        "pointer": "/required/next_cursor",
+        "resolved": true
+      },
+      "native_kind": "response_schema_changed",
+      "details": {
+        "status": "200",
+        "schema_change": {
+          "pointer": "/required/next_cursor",
+          "target": "required_member",
+          "member": "next_cursor",
+          "operation": "added",
+          "before": {
+            "present": false
+          },
+          "after": {
+            "present": true,
+            "value": "next_cursor"
+          }
+        }
+      }
+    },
+    {
+      "id": "vc2_a2ee5874d0c63974715048177bb733f4808fc06420097adab866f184dd5b1785",
+      "subject": "ve2_cf50ee8b0e7078dab745bff39dfd1fbb0040c84acc8fc3ddbb53d17fef38445e",
+      "kind": "result_added",
+      "severity": "non_breaking",
+      "impacts": [
+        "source"
+      ],
+      "native": {
+        "format": "openapi",
+        "method": "GET",
+        "path": "/payouts",
+        "parameter_in": null,
+        "status": "400",
+        "pointer": "",
+        "resolved": false
+      },
+      "native_kind": "response_added",
+      "details": {
+        "status": "400"
+      }
+    },
+    {
+      "id": "vc2_ef1fdb68c80a738a6e6182b5f3e8f81f141aaee6c6bafe1ae8bd0dbc7a01a2d7",
+      "subject": "ve2_7c7d0f5a329e20d38493738d9253cb7474b0d1ec7dd547d6dba09a73ed242008",
+      "kind": "type_added",
+      "severity": "non_breaking",
+      "impacts": [
+        "source"
+      ],
+      "native": {
+        "format": "openapi",
+        "method": null,
+        "path": null,
+        "parameter_in": null,
+        "status": null,
+        "pointer": "/types/Error",
+        "resolved": false
+      },
+      "native_kind": "surface_changed",
+      "details": {}
+    },
+    {
+      "id": "vc2_03e273d5658ac9349bfef95e1780793db8aad41ac574138c3399d53ec0e2f87f",
+      "subject": "ve2_01a712ffb41c9f2f03441ada91ca6dba35cde4059b8158b6ae1b664fd38db1b9",
+      "kind": "pagination_changed",
+      "severity": "review",
+      "impacts": [
+        "source"
+      ],
+      "native": {
+        "format": "openapi",
+        "method": "GET",
+        "path": "/payouts",
+        "parameter_in": null,
+        "status": null,
+        "pointer": "",
+        "resolved": true
+      },
+      "native_kind": "pagination_inferred",
+      "details": {
+        "before": null,
+        "after": {
+          "controls": [
+            {
+              "name": "cursor",
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "limit",
+              "schema": {
+                "type": "integer",
+                "maximum": 1000,
+                "minimum": 1,
+                "default": 100
+              }
+            }
+          ],
+          "responses": [
+            {
+              "status": "200",
+              "continuation": [
+                "next_cursor"
+              ]
+            }
+          ]
+        },
+        "confidence": "inferred",
+        "evidence_rule": "list+request_controls+continuation"
+      }
+    }
+  ]
+}

@@ -40,13 +40,17 @@ requires:   [T0.2]
 fixture-ok: no
 size:       S · mid
 owns:       testdata/vimanam/, dev-diary/research/vimanam.md
-status:     not-started
+status:     done
 ```
 Install Vimanam 2.0.0 (the local `target/release` binary is a stale 1.4.2 build; `~/.local/bin/vimanam` is 1.7.0, before GraphQL). Run `vimanam diff` on both workspaces' v1 and v2 specs with `--format json` (contract v2) and `--context --max-tokens`. Record the outputs in `testdata/vimanam/`.
 
 The question that matters: **does it report `pagination_changed`** on `GET /v2/payouts` (OpenAPI; its pagination inference is conservative) and on `Query.settlements` (GraphQL, a Relay-style connection)? If not on one of them, record exactly what it does report, and write the Vimanam issue text in your report. Don't change the specs to suit Vimanam without the orchestrator: the specs are frozen with the pair (bench/README.md, Protocol 7).
 
 **Done when:** both diffs are recorded; `research/vimanam.md` says which change kinds came back and with which IDs; any gap has issue text.
+
+---
+
+**Notes (done):** 2.0.0 from crates.io has no GraphQL (#133 merged after the tag); `main` does. **`pagination_changed` is reported for neither spec as built**: payouts' versioned paths are matched as removed + added, and its `cursor` field isn't on the continuation list; settlements' `nodes`-only connection isn't recognised without `edges`. Probes show each rule firing once its condition is met. Findings, rules and three issue texts in `research/vimanam.md`; recordings in `testdata/vimanam/`. **User decision raised:** fix Vimanam, adopt detectable real-world spec shapes before the pilot, or both.
 
 ---
 
@@ -85,6 +89,6 @@ What later tasks replay instead of calling the real thing:
 ## Exit Criteria
 
 - [x] T0.1, T0.2 done.
-- [ ] Vimanam's verdict on the benchmark specs is known (T0.3).
+- [x] Vimanam's verdict on the benchmark specs is known (T0.3).
 - [ ] Lambo re-checked on its next release (T0.4).
 - [ ] Clef, msb, OpenCode and aashaan recordings in `testdata/` (T0.5).

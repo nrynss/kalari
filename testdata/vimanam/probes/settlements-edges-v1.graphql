@@ -1,0 +1,16 @@
+# Clearwell Settlements API, version 1. Endpoint: POST /v1/graphql
+
+enum SettlementStatus { SETTLED PENDING ADJUSTED }
+
+type Settlement {
+  id: ID!
+  batchDate: String!
+  amountCents: Int!
+  currency: String!
+  status: SettlementStatus!
+}
+
+type Query {
+  "Every settlement."
+  settlements: [Settlement!]!
+}

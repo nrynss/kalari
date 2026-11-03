@@ -1,0 +1,883 @@
+{
+  "schema_version": 2,
+  "generator": {
+    "name": "vimanam",
+    "version": "2.0.0"
+  },
+  "old": {
+    "file_sha256": "2200b661addda9ed7865ad7c40c2edf544c62a9a46063971264d37b8953049c3",
+    "contract": {
+      "format": "graphql",
+      "title": "GraphQL schema",
+      "version": "",
+      "entities": [
+        {
+          "id": "ve2_533a9e48eae25de9e045121562b7c83a140e6e58a5f0bec887e0a74dc09a729e",
+          "kind": "service",
+          "name": "Query",
+          "parent": null,
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "Query"
+          },
+          "attributes": {
+            "operation_type": "query"
+          },
+          "references": [
+            "ve2_c62a0a2bea4053a072932021fe4629eca8af7d74006a2c7587a6fc4abaa6d175"
+          ]
+        },
+        {
+          "id": "ve2_c62a0a2bea4053a072932021fe4629eca8af7d74006a2c7587a6fc4abaa6d175",
+          "kind": "type",
+          "name": "Query",
+          "parent": null,
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "Query"
+          },
+          "attributes": {
+            "kind": "OBJECT",
+            "interfaces": [],
+            "members": [],
+            "root": "query"
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_fedf16ed9e90f557cc23f89b518009090da6dd9d1660e7295eb9c8b78e2fe3cf",
+          "kind": "operation",
+          "name": "Query.settlements",
+          "parent": "ve2_533a9e48eae25de9e045121562b7c83a140e6e58a5f0bec887e0a74dc09a729e",
+          "services": [
+            "ve2_533a9e48eae25de9e045121562b7c83a140e6e58a5f0bec887e0a74dc09a729e"
+          ],
+          "native": {
+            "format": "graphql",
+            "coordinate": "Query.settlements"
+          },
+          "attributes": {
+            "type": "[Settlement!]!",
+            "deprecated": false,
+            "deprecation_reason": null,
+            "operation_type": "query",
+            "pagination": {
+              "shape": "list",
+              "item": "Settlement"
+            }
+          },
+          "references": [
+            "ve2_18961cea295a87c517c7f2b7f48498ef1b91dee39da5d8d7dde29d392bfaeac2"
+          ]
+        },
+        {
+          "id": "ve2_18961cea295a87c517c7f2b7f48498ef1b91dee39da5d8d7dde29d392bfaeac2",
+          "kind": "type",
+          "name": "Settlement",
+          "parent": null,
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "Settlement"
+          },
+          "attributes": {
+            "kind": "OBJECT",
+            "interfaces": [],
+            "members": []
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_c1a6321722dba5ed2ccf116065b78217818baee752c16563a740a2a411287764",
+          "kind": "field",
+          "name": "Settlement.id",
+          "parent": "ve2_18961cea295a87c517c7f2b7f48498ef1b91dee39da5d8d7dde29d392bfaeac2",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "Settlement.id"
+          },
+          "attributes": {
+            "type": "ID!",
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_332c846265c21ecc0d33287ef1910d0a5d90d6672c8d3fe3263d11d594a6c474",
+          "kind": "field",
+          "name": "Settlement.batchDate",
+          "parent": "ve2_18961cea295a87c517c7f2b7f48498ef1b91dee39da5d8d7dde29d392bfaeac2",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "Settlement.batchDate"
+          },
+          "attributes": {
+            "type": "String!",
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_f55d0f0002dceb4e1dc43626d90ce8cc8475a9c4283433f67390b4303918d996",
+          "kind": "field",
+          "name": "Settlement.amountCents",
+          "parent": "ve2_18961cea295a87c517c7f2b7f48498ef1b91dee39da5d8d7dde29d392bfaeac2",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "Settlement.amountCents"
+          },
+          "attributes": {
+            "type": "Int!",
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_4a53420a5fc60c8ef4e5d703c54e995a562a92689cfeaed86aac47d37fef2d67",
+          "kind": "field",
+          "name": "Settlement.currency",
+          "parent": "ve2_18961cea295a87c517c7f2b7f48498ef1b91dee39da5d8d7dde29d392bfaeac2",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "Settlement.currency"
+          },
+          "attributes": {
+            "type": "String!",
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_25c7349001564f1bbee28ee1db804a8361286ac38e84ed65ca7aa3256f44bef3",
+          "kind": "field",
+          "name": "Settlement.status",
+          "parent": "ve2_18961cea295a87c517c7f2b7f48498ef1b91dee39da5d8d7dde29d392bfaeac2",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "Settlement.status"
+          },
+          "attributes": {
+            "type": "SettlementStatus!",
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": [
+            "ve2_0d0009f032a72a0945bd7c6923f1be1c4db6c08d69d6911fac92eae255067ac6"
+          ]
+        },
+        {
+          "id": "ve2_0d0009f032a72a0945bd7c6923f1be1c4db6c08d69d6911fac92eae255067ac6",
+          "kind": "type",
+          "name": "SettlementStatus",
+          "parent": null,
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "SettlementStatus"
+          },
+          "attributes": {
+            "kind": "ENUM",
+            "interfaces": [],
+            "members": []
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_2d3125eba12108116f6aa9e3584e3dcd318c59aaeb03c3c47b23e09a8e664716",
+          "kind": "value",
+          "name": "SettlementStatus.SETTLED",
+          "parent": "ve2_0d0009f032a72a0945bd7c6923f1be1c4db6c08d69d6911fac92eae255067ac6",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "SettlementStatus.SETTLED"
+          },
+          "attributes": {
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_c6cb3cb0826b2841632c45f83b18cbd7f310a0e8f7ba54ba331431fbbee3f677",
+          "kind": "value",
+          "name": "SettlementStatus.PENDING",
+          "parent": "ve2_0d0009f032a72a0945bd7c6923f1be1c4db6c08d69d6911fac92eae255067ac6",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "SettlementStatus.PENDING"
+          },
+          "attributes": {
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_9b1e1c8931d7e9f79bb9143509b426f1614db74c700cce7311027033a8995708",
+          "kind": "value",
+          "name": "SettlementStatus.ADJUSTED",
+          "parent": "ve2_0d0009f032a72a0945bd7c6923f1be1c4db6c08d69d6911fac92eae255067ac6",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "SettlementStatus.ADJUSTED"
+          },
+          "attributes": {
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": []
+        }
+      ]
+    }
+  },
+  "new": {
+    "file_sha256": "881fcdfded98ae5fce798c1b393ff81bfa5bd2e3c6ed731910afdf2830f15d2c",
+    "contract": {
+      "format": "graphql",
+      "title": "GraphQL schema",
+      "version": "",
+      "entities": [
+        {
+          "id": "ve2_533a9e48eae25de9e045121562b7c83a140e6e58a5f0bec887e0a74dc09a729e",
+          "kind": "service",
+          "name": "Query",
+          "parent": null,
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "Query"
+          },
+          "attributes": {
+            "operation_type": "query"
+          },
+          "references": [
+            "ve2_c62a0a2bea4053a072932021fe4629eca8af7d74006a2c7587a6fc4abaa6d175"
+          ]
+        },
+        {
+          "id": "ve2_c61f04203df0a46c80268141a4f9ad839328b40d659e7e1962c597b9198e1285",
+          "kind": "type",
+          "name": "PageInfo",
+          "parent": null,
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "PageInfo"
+          },
+          "attributes": {
+            "kind": "OBJECT",
+            "interfaces": [],
+            "members": []
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_4e3f8736a3ff4a262972a45613e0255e7da8109378a67bbb98dc3f6caf8314c3",
+          "kind": "field",
+          "name": "PageInfo.endCursor",
+          "parent": "ve2_c61f04203df0a46c80268141a4f9ad839328b40d659e7e1962c597b9198e1285",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "PageInfo.endCursor"
+          },
+          "attributes": {
+            "type": "String!",
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_fc565b6d16ca1cdb3784ed03222c05c71be35da1ad38309b3c9d5f2c0a623e77",
+          "kind": "field",
+          "name": "PageInfo.hasNextPage",
+          "parent": "ve2_c61f04203df0a46c80268141a4f9ad839328b40d659e7e1962c597b9198e1285",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "PageInfo.hasNextPage"
+          },
+          "attributes": {
+            "type": "Boolean!",
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_c62a0a2bea4053a072932021fe4629eca8af7d74006a2c7587a6fc4abaa6d175",
+          "kind": "type",
+          "name": "Query",
+          "parent": null,
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "Query"
+          },
+          "attributes": {
+            "kind": "OBJECT",
+            "interfaces": [],
+            "members": [],
+            "root": "query"
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_fedf16ed9e90f557cc23f89b518009090da6dd9d1660e7295eb9c8b78e2fe3cf",
+          "kind": "operation",
+          "name": "Query.settlements",
+          "parent": "ve2_533a9e48eae25de9e045121562b7c83a140e6e58a5f0bec887e0a74dc09a729e",
+          "services": [
+            "ve2_533a9e48eae25de9e045121562b7c83a140e6e58a5f0bec887e0a74dc09a729e"
+          ],
+          "native": {
+            "format": "graphql",
+            "coordinate": "Query.settlements"
+          },
+          "attributes": {
+            "type": "SettlementConnection!",
+            "deprecated": false,
+            "deprecation_reason": null,
+            "operation_type": "query",
+            "pagination": {
+              "shape": "connection",
+              "connection": "SettlementConnection",
+              "item": "Settlement",
+              "controls": {
+                "after": {
+                  "type": "String",
+                  "default": null
+                },
+                "first": {
+                  "type": "Int",
+                  "default": "50"
+                }
+              }
+            }
+          },
+          "references": [
+            "ve2_bedb2148ed591476ab7b6853322c4900c75fcb157b4f9a1878327663a618faef"
+          ]
+        },
+        {
+          "id": "ve2_04f8d6e90ea1885e93f4e8aec1ba67d0eeae481c925de3ced4fdaa6d01c2fb08",
+          "kind": "argument",
+          "name": "Query.settlements(first:)",
+          "parent": "ve2_fedf16ed9e90f557cc23f89b518009090da6dd9d1660e7295eb9c8b78e2fe3cf",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "Query.settlements(first:)"
+          },
+          "attributes": {
+            "type": "Int",
+            "default": "50",
+            "required": false,
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_62d7a9e359b13db2efbc0b4c3b7c5f2072ef0683a536dd9e5fd3b0363040c611",
+          "kind": "argument",
+          "name": "Query.settlements(after:)",
+          "parent": "ve2_fedf16ed9e90f557cc23f89b518009090da6dd9d1660e7295eb9c8b78e2fe3cf",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "Query.settlements(after:)"
+          },
+          "attributes": {
+            "type": "String",
+            "default": null,
+            "required": false,
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_18961cea295a87c517c7f2b7f48498ef1b91dee39da5d8d7dde29d392bfaeac2",
+          "kind": "type",
+          "name": "Settlement",
+          "parent": null,
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "Settlement"
+          },
+          "attributes": {
+            "kind": "OBJECT",
+            "interfaces": [],
+            "members": []
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_c1a6321722dba5ed2ccf116065b78217818baee752c16563a740a2a411287764",
+          "kind": "field",
+          "name": "Settlement.id",
+          "parent": "ve2_18961cea295a87c517c7f2b7f48498ef1b91dee39da5d8d7dde29d392bfaeac2",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "Settlement.id"
+          },
+          "attributes": {
+            "type": "ID!",
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_332c846265c21ecc0d33287ef1910d0a5d90d6672c8d3fe3263d11d594a6c474",
+          "kind": "field",
+          "name": "Settlement.batchDate",
+          "parent": "ve2_18961cea295a87c517c7f2b7f48498ef1b91dee39da5d8d7dde29d392bfaeac2",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "Settlement.batchDate"
+          },
+          "attributes": {
+            "type": "String!",
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_f55d0f0002dceb4e1dc43626d90ce8cc8475a9c4283433f67390b4303918d996",
+          "kind": "field",
+          "name": "Settlement.amountCents",
+          "parent": "ve2_18961cea295a87c517c7f2b7f48498ef1b91dee39da5d8d7dde29d392bfaeac2",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "Settlement.amountCents"
+          },
+          "attributes": {
+            "type": "Int!",
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_4a53420a5fc60c8ef4e5d703c54e995a562a92689cfeaed86aac47d37fef2d67",
+          "kind": "field",
+          "name": "Settlement.currency",
+          "parent": "ve2_18961cea295a87c517c7f2b7f48498ef1b91dee39da5d8d7dde29d392bfaeac2",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "Settlement.currency"
+          },
+          "attributes": {
+            "type": "String!",
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_25c7349001564f1bbee28ee1db804a8361286ac38e84ed65ca7aa3256f44bef3",
+          "kind": "field",
+          "name": "Settlement.status",
+          "parent": "ve2_18961cea295a87c517c7f2b7f48498ef1b91dee39da5d8d7dde29d392bfaeac2",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "Settlement.status"
+          },
+          "attributes": {
+            "type": "SettlementStatus!",
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": [
+            "ve2_0d0009f032a72a0945bd7c6923f1be1c4db6c08d69d6911fac92eae255067ac6"
+          ]
+        },
+        {
+          "id": "ve2_bedb2148ed591476ab7b6853322c4900c75fcb157b4f9a1878327663a618faef",
+          "kind": "type",
+          "name": "SettlementConnection",
+          "parent": null,
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "SettlementConnection"
+          },
+          "attributes": {
+            "kind": "OBJECT",
+            "interfaces": [],
+            "members": []
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_667a10d7acfb4021ac712ffa7069592cc8f8f941a29df18a3a4e394660cfe9bd",
+          "kind": "field",
+          "name": "SettlementConnection.edges",
+          "parent": "ve2_bedb2148ed591476ab7b6853322c4900c75fcb157b4f9a1878327663a618faef",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "SettlementConnection.edges"
+          },
+          "attributes": {
+            "type": "[SettlementEdge!]!",
+            "deprecated": false,
+            "deprecation_reason": null,
+            "pagination": {
+              "shape": "list",
+              "item": "SettlementEdge"
+            }
+          },
+          "references": [
+            "ve2_4baaa0e5d254708c32b8b6db561f50a06905374a490e6a5e01dae87b6c3cb68c"
+          ]
+        },
+        {
+          "id": "ve2_5c4e7a40ca0a19eda3ebfed2b8da8aae969624a69d3d1e80d89dac34d0835a50",
+          "kind": "field",
+          "name": "SettlementConnection.nodes",
+          "parent": "ve2_bedb2148ed591476ab7b6853322c4900c75fcb157b4f9a1878327663a618faef",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "SettlementConnection.nodes"
+          },
+          "attributes": {
+            "type": "[Settlement!]!",
+            "deprecated": false,
+            "deprecation_reason": null,
+            "pagination": {
+              "shape": "list",
+              "item": "Settlement"
+            }
+          },
+          "references": [
+            "ve2_18961cea295a87c517c7f2b7f48498ef1b91dee39da5d8d7dde29d392bfaeac2"
+          ]
+        },
+        {
+          "id": "ve2_c9b702f89e64c225c7d62c070c58e43f6bc2f677439bcb0fdf1f811857fc27fd",
+          "kind": "field",
+          "name": "SettlementConnection.pageInfo",
+          "parent": "ve2_bedb2148ed591476ab7b6853322c4900c75fcb157b4f9a1878327663a618faef",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "SettlementConnection.pageInfo"
+          },
+          "attributes": {
+            "type": "PageInfo!",
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": [
+            "ve2_c61f04203df0a46c80268141a4f9ad839328b40d659e7e1962c597b9198e1285"
+          ]
+        },
+        {
+          "id": "ve2_4baaa0e5d254708c32b8b6db561f50a06905374a490e6a5e01dae87b6c3cb68c",
+          "kind": "type",
+          "name": "SettlementEdge",
+          "parent": null,
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "SettlementEdge"
+          },
+          "attributes": {
+            "kind": "OBJECT",
+            "interfaces": [],
+            "members": []
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_538052e7afb0dbe77eb002edf5882f636af9c7eed95bb6f371eed31820684f9d",
+          "kind": "field",
+          "name": "SettlementEdge.node",
+          "parent": "ve2_4baaa0e5d254708c32b8b6db561f50a06905374a490e6a5e01dae87b6c3cb68c",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "SettlementEdge.node"
+          },
+          "attributes": {
+            "type": "Settlement!",
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": [
+            "ve2_18961cea295a87c517c7f2b7f48498ef1b91dee39da5d8d7dde29d392bfaeac2"
+          ]
+        },
+        {
+          "id": "ve2_a496c733778c521050c33499e7f8914661ef36a9811f24bd6c97cd39d384e65d",
+          "kind": "field",
+          "name": "SettlementEdge.cursor",
+          "parent": "ve2_4baaa0e5d254708c32b8b6db561f50a06905374a490e6a5e01dae87b6c3cb68c",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "SettlementEdge.cursor"
+          },
+          "attributes": {
+            "type": "String!",
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_0d0009f032a72a0945bd7c6923f1be1c4db6c08d69d6911fac92eae255067ac6",
+          "kind": "type",
+          "name": "SettlementStatus",
+          "parent": null,
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "SettlementStatus"
+          },
+          "attributes": {
+            "kind": "ENUM",
+            "interfaces": [],
+            "members": []
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_2d3125eba12108116f6aa9e3584e3dcd318c59aaeb03c3c47b23e09a8e664716",
+          "kind": "value",
+          "name": "SettlementStatus.SETTLED",
+          "parent": "ve2_0d0009f032a72a0945bd7c6923f1be1c4db6c08d69d6911fac92eae255067ac6",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "SettlementStatus.SETTLED"
+          },
+          "attributes": {
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_c6cb3cb0826b2841632c45f83b18cbd7f310a0e8f7ba54ba331431fbbee3f677",
+          "kind": "value",
+          "name": "SettlementStatus.PENDING",
+          "parent": "ve2_0d0009f032a72a0945bd7c6923f1be1c4db6c08d69d6911fac92eae255067ac6",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "SettlementStatus.PENDING"
+          },
+          "attributes": {
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": []
+        },
+        {
+          "id": "ve2_9b1e1c8931d7e9f79bb9143509b426f1614db74c700cce7311027033a8995708",
+          "kind": "value",
+          "name": "SettlementStatus.ADJUSTED",
+          "parent": "ve2_0d0009f032a72a0945bd7c6923f1be1c4db6c08d69d6911fac92eae255067ac6",
+          "services": [],
+          "native": {
+            "format": "graphql",
+            "coordinate": "SettlementStatus.ADJUSTED"
+          },
+          "attributes": {
+            "deprecated": false,
+            "deprecation_reason": null
+          },
+          "references": []
+        }
+      ]
+    }
+  },
+  "summary": {
+    "operations_added": 0,
+    "operations_removed": 0,
+    "operations_changed": 1,
+    "breaking": 2,
+    "non_breaking": 5,
+    "review": 0
+  },
+  "changes": [
+    {
+      "id": "vc2_c3e0f582fbd65cf9d886ed6f46cf7223c81b112fde8709fc7a1e2d5b55a41b59",
+      "subject": "ve2_04f8d6e90ea1885e93f4e8aec1ba67d0eeae481c925de3ced4fdaa6d01c2fb08",
+      "kind": "argument_added",
+      "severity": "non_breaking",
+      "impacts": [
+        "source"
+      ],
+      "native": {
+        "format": "graphql",
+        "coordinate": "Query.settlements(first:)"
+      },
+      "native_kind": "ARG_ADDED_OPTIONAL",
+      "details": {
+        "after": {
+          "type": "Int",
+          "default": "50",
+          "required": false,
+          "deprecated": false,
+          "deprecation_reason": null
+        }
+      }
+    },
+    {
+      "id": "vc2_5ed4dac48113d6d252ae0adc213efb1b76c81ca6c5ea227f2fc73af706c458ce",
+      "subject": "ve2_4baaa0e5d254708c32b8b6db561f50a06905374a490e6a5e01dae87b6c3cb68c",
+      "kind": "type_added",
+      "severity": "non_breaking",
+      "impacts": [
+        "source"
+      ],
+      "native": {
+        "format": "graphql",
+        "coordinate": "SettlementEdge"
+      },
+      "native_kind": "TYPE_ADDED",
+      "details": {
+        "kind": "OBJECT"
+      }
+    },
+    {
+      "id": "vc2_a3083d1dd65d83dc9a8a6aa199fa5f00c6b8f5d2fbc19dc8e6092f6eb867ee32",
+      "subject": "ve2_62d7a9e359b13db2efbc0b4c3b7c5f2072ef0683a536dd9e5fd3b0363040c611",
+      "kind": "argument_added",
+      "severity": "non_breaking",
+      "impacts": [
+        "source"
+      ],
+      "native": {
+        "format": "graphql",
+        "coordinate": "Query.settlements(after:)"
+      },
+      "native_kind": "ARG_ADDED_OPTIONAL",
+      "details": {
+        "after": {
+          "type": "String",
+          "default": null,
+          "required": false,
+          "deprecated": false,
+          "deprecation_reason": null
+        }
+      }
+    },
+    {
+      "id": "vc2_70de83cb459de538495fe0601ac7e463180b94be8b0328ff1655bb0cbf39ed90",
+      "subject": "ve2_bedb2148ed591476ab7b6853322c4900c75fcb157b4f9a1878327663a618faef",
+      "kind": "type_added",
+      "severity": "non_breaking",
+      "impacts": [
+        "source"
+      ],
+      "native": {
+        "format": "graphql",
+        "coordinate": "SettlementConnection"
+      },
+      "native_kind": "TYPE_ADDED",
+      "details": {
+        "kind": "OBJECT"
+      }
+    },
+    {
+      "id": "vc2_809e81681c21c88650c10aaf1f3cbbcd6d5b650d9588ca3606e01f05be71a813",
+      "subject": "ve2_c61f04203df0a46c80268141a4f9ad839328b40d659e7e1962c597b9198e1285",
+      "kind": "type_added",
+      "severity": "non_breaking",
+      "impacts": [
+        "source"
+      ],
+      "native": {
+        "format": "graphql",
+        "coordinate": "PageInfo"
+      },
+      "native_kind": "TYPE_ADDED",
+      "details": {
+        "kind": "OBJECT"
+      }
+    },
+    {
+      "id": "vc2_20ba1c46e06cf3fd01051f1892c163ceb0ccfcfe9067d498034585219dba02eb",
+      "subject": "ve2_fedf16ed9e90f557cc23f89b518009090da6dd9d1660e7295eb9c8b78e2fe3cf",
+      "kind": "pagination_changed",
+      "severity": "breaking",
+      "impacts": [
+        "source"
+      ],
+      "native": {
+        "format": "graphql",
+        "coordinate": "Query.settlements"
+      },
+      "native_kind": "RELAY_CONNECTION_ADOPTED",
+      "details": {
+        "confidence": "declared",
+        "before": {
+          "shape": "list",
+          "item": "Settlement"
+        },
+        "after": {
+          "shape": "connection",
+          "connection": "SettlementConnection",
+          "item": "Settlement",
+          "controls": {
+            "after": {
+              "type": "String",
+              "default": null
+            },
+            "first": {
+              "type": "Int",
+              "default": "50"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "vc2_dde51ee2d28bb72d0fd21f638732d9c9e55a0db75d890c9b5d8b153b4d424081",
+      "subject": "ve2_fedf16ed9e90f557cc23f89b518009090da6dd9d1660e7295eb9c8b78e2fe3cf",
+      "kind": "field_type_changed",
+      "severity": "breaking",
+      "impacts": [
+        "source"
+      ],
+      "native": {
+        "format": "graphql",
+        "coordinate": "Query.settlements"
+      },
+      "native_kind": "FIELD_TYPE_CHANGED",
+      "details": {
+        "before": "[Settlement!]!",
+        "after": "SettlementConnection!"
+      }
+    }
+  ]
+}
