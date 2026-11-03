@@ -1,5 +1,7 @@
 # Lean 4.35.0
 
+How to write the code, with verified examples: [`../../docs/lean.md`](../../docs/lean.md). This file is what the toolchain measured.
+
 Kalari's executables are Lean 4 native executables (`lake build`, through C). Lean is the implementation language, not a side project: the gate's decision function and the aashaan's cap logic carry theorems checked at build time, in the same code that ships.
 
 ## What the toolchain gives

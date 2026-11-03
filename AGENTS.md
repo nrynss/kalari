@@ -17,7 +17,7 @@ Rules for any agent working in this repository. The product is in [`product.md`]
 
 ## Stack
 
-- **Lean 4**, pinned in `lean-toolchain` (v4.35.0). Native executables through `lake build`. No Mathlib: core Lean, `Std`, and tactics such as `omega`, `decide`, `simp` and `grind`.
+- **Lean 4**, pinned in `lean-toolchain` (v4.35.0). **Read [`docs/lean.md`](docs/lean.md) before writing Lean here**: the patterns Kalari needs, each with a verified example in `Examples/`, and the traps already hit. Native executables through `lake build`. No Mathlib: core Lean, `Std`, and tactics such as `omega`, `decide`, `simp` and `grind`.
 - **`kalari-aashaan` imports `Std` only**, never `Lean`: importing `Lean.Json` links the compiler library and takes the binary from ~3 MB to ~80 MB. It runs inside every microVM.
 - **No HTTP client and no TLS in Lean.** Outbound HTTPS goes through a `curl` subprocess. Inbound TLS is Caddy's.
 - **Dependencies.** Vimanam as a CLI subprocess. Lambo as a child process (`lambo serve`, MCP over stdio), never linked. Microsandbox through the `msb` CLI. A new dependency needs a stated reason in its commit message. The planned ones are in `docs/architecture.md`.
@@ -36,7 +36,8 @@ Rules for any agent working in this repository. The product is in [`product.md`]
 
 ## The gate
 
-- `./tools/check.sh` must pass on every commit: `lake build`, then the tests.
+- `./tools/check.sh` must pass on every commit: `lake build` (which also checks the theorems and `#guard`s), the aashaan cases, and the `Examples/` executables.
+- An example in `Examples/` that stops matching `docs/lean.md` is a broken gate: fix the doc or the example in the same commit.
 - CI runs the same script on push to `main` and on pull requests.
 - The gate needs no key, no network beyond the toolchain, no `/dev/kvm` and no running server. Tests run on `testdata/` and recorded replies.
 

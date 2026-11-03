@@ -7,7 +7,7 @@ Measured before any Kalari code, on the real accounts and the real VM. Each file
 | [`vultr-inference.md`](vultr-inference.md) | Vultr Serverless Inference | Model IDs, tool calling, Clef's answer shape, embeddings, limits, prices, the measured budget |
 | [`vultr-vm.md`](vultr-vm.md) | The VM | Plan and region, access over Tailscale only, the firewall, the user, teardown |
 | [`sandbox.md`](sandbox.md) | Microsandbox and the aashaan | KVM, start-up and teardown times, the network policy and its traps, overcommit, umask, kernels |
-| [`lean.md`](lean.md) | Lean 4.35.0 | What `Std` gives (HTTP server, processes, async), what it lacks (HTTP client, TLS), binary sizes, API drift, upstream issues |
+| [`lean.md`](lean.md) (and the guide, [`../../docs/lean.md`](../../docs/lean.md)) | Lean 4.35.0 | What `Std` gives (HTTP server, processes, async), what it lacks (HTTP client, TLS), binary sizes, API drift, upstream issues |
 | [`lambo.md`](lambo.md) | Lambo 0.8.0 | Configuration, GC survival, Solo promotion timing, recall ranking on Qwen, the filed issues |
 | [`coding-agent.md`](coding-agent.md) | The coding agent | Why OpenCode 2 over Pi and Claude Code; the reference run's result, tokens and containment gap |
 | [`commands.md`](commands.md) | Everything run | Every command, in order, to rebuild the setup |

@@ -80,6 +80,7 @@ A job that starts its own session escapes the group kill and can hold a pipe ope
 
 ```text
 Kalari/            the kalari executable's modules
+Examples/          verified Lean examples for agents (docs/lean.md), built and run by the gate
 Aashaan/           kalari-aashaan
 tests/             the gate's tests; tests/live/ for live runs
 testdata/          recorded replies and fixtures
@@ -90,6 +91,10 @@ deploy/local/      the generic preset
 dev-diary/         phases, handoff log, research
 docs/              this file and other reference
 ```
+
+## Writing it
+
+The Lean patterns for each module above (HTTP server, JSON, JSON-RPC over stdio, processes, outbound HTTPS, proofs) are in [`lean.md`](lean.md), each with a verified example in `Examples/`.
 
 ## Dependencies
 

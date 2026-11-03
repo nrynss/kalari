@@ -1,6 +1,6 @@
 name = "kalari"
 version = "0.1.0"
-defaultTargets = ["kalari", "kalari-aashaan"]
+defaultTargets = ["kalari", "kalari-aashaan", "Examples", "example-http", "example-jsonrpc", "example-curl"]
 
 # The main service on the VM: MCP for the coding agent, HTTP for the web app,
 # the orchestrator, the proved gate and the evidence store.
@@ -12,3 +12,19 @@ root = "Kalari.Main"
 [[lean_exe]]
 name = "kalari-aashaan"
 root = "Aashaan.Main"
+
+# Verified examples for agents (docs/lean.md). Built and run by the gate, so they can't rot.
+[[lean_lib]]
+name = "Examples"
+
+[[lean_exe]]
+name = "example-http"
+root = "Examples.HttpServer"
+
+[[lean_exe]]
+name = "example-jsonrpc"
+root = "Examples.JsonRpc"
+
+[[lean_exe]]
+name = "example-curl"
+root = "Examples.Curl"

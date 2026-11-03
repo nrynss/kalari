@@ -10,4 +10,6 @@ echo "-- kalari --version"
 .lake/build/bin/kalari --version
 echo "-- kalari-aashaan cases"
 tests/aashaan-cases.sh
+echo "-- examples"
+tests/examples.sh
 echo "gate passed"
