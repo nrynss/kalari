@@ -14,7 +14,7 @@ requires:   [T1.5, T0.3]
 fixture-ok: yes
 size:       S · mid
 owns:       Kalari/Vimanam.lean
-status:     in-review
+status:     done
 ```
 `ChangeSource` over the `vimanam` CLI: two spec versions (files or Git refs) in, `ChangeFact`s out from JSON contract v2, plus the focused context (`--context --max-tokens`) for the agent. OpenAPI, GraphQL and protobuf. A Vimanam error is reported with its stderr, never swallowed.
 

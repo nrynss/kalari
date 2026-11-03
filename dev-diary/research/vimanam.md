@@ -6,7 +6,7 @@ Kalari's `what_changed` rests on Vimanam reporting `pagination_changed`, and con
 
 - **Vimanam 2.0.0** (crates.io, the latest release): OpenAPI and protobuf. **No GraphQL**: GraphQL support ([noemaforge/vimanam#133](https://github.com/noemaforge/vimanam/pull/133), closing #125) was merged about an hour after the 2.0.0 release was tagged. It's on `main`, unreleased. *An earlier note here said all three formats shipped in 2.0.0; that was wrong for GraphQL.*
 - `main` at `491b02c` builds as `vimanam 2.0.0` (the version wasn't bumped), which makes the two easy to confuse. Check `vimanam diff --help`, or try a `.graphql` file: 2.0.0 tries to parse it as OpenAPI.
-- `~/.local/bin/vimanam` (1.7.0) and an old `target/release` build (1.4.2) predate both.
+- `~/.local/bin/vimanam` (1.7.0) and an old `target/release` build (1.4.2) predate both. The 1.7.0 binary's `vimanam diff --help` is `vimanam diff [OPTIONS] [OLD] [NEW]`. It has `--from-ref` and `--to-ref`. It does not list `--context` or `--max-tokens`. The runner still emits those two flags: the recordings' contract is the later binary, and the spec paths are positional. Git refs are not wired from the 1.7.0 flags.
 
 ## Results
 
