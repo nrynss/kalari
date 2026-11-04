@@ -154,13 +154,21 @@ requires:   [T4.6, T5.2a]
 fixture-ok: yes
 size:       M · frontier
 owns:       Kalari/Tools/Run.lean (observer and trace validation), Kalari/Tools/Lesson.lean, bench/apis/payouts/server.py (trusted trace only), bench/tests/quirks.sh (observed trace case)
-status:     not-started
+status:     in-review
 ```
 Extend the trusted payouts observer for B5 without weakening the existing complete-chain validation. The evidence sequence is a 429, the immediately subsequent request with the same trusted full-request fingerprint, a successful response, a complete cursor chain, and a passing candidate with every check and the differential comparison passing. The fingerprint, not the cursor alone, establishes request identity. Traces carry no raw request or token. A changed request, ambiguous sequence, failed run or missing differential pass cannot emit a retry observation.
 
 Keep the observed fact separate from the transferred lesson and its runnable check. The observation claims only what the trace proves; it does not claim that the consumer honoured the retry delay unless trusted timing evidence establishes that too. Add the retry behaviour to typed lesson publication and recall-resolution fixtures.
 
 **Done when:** the real payouts reference consumer and grader produce a verified B5 trace and `record_lesson` publishes a non-empty typed retry lesson; a mismatched fingerprint or unverified traversal publishes nothing; malformed and branched traces fail closed; `./tools/check.sh` passes.
+
+**Notes (in review):** The trusted trace now holds one event per v2 request. A page event carries `status`, the incoming cursor digest, the full-request fingerprint digest, a `retry` flag and the page. A 429 event carries `status`, the incoming cursor digest, the fingerprint digest, `retry: false` and `retry_after`, and no page. The 429 reply and its append happen under the same lock as a page. The bound and the overflow marker are unchanged, and the retry journal is untouched.
+
+`pageObservations` parses each line by status. Only a 200 page and a 429 throttle are valid. A 429 must carry no page field, must be followed immediately by a 200 with the same request digest and the same fingerprint digest marked as the retry, and at most one may appear. A page marked `retry` with no 429 ahead of it fails. A trace with no 429 parses as before and keeps its old facts. A valid retry adds `rate_limit_retry`. A mismatched fingerprint, a missing retry, two throttles, an orphaned throttle, a branch, a repeated cursor or an unterminated chain fails closed. A passing run with such a trace returns an error before any evidence is appended.
+
+`Lesson.descriptions` maps `rate_limit_retry` to "The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded." The sentence claims no wait. The lesson's runnable check stays the candidate-versus-final-truth check. The build fixture publishes that lesson, resolves its reference through T4.4, and shows that a failed run and a run without a differential pass publish nothing.
+
+`Run.exercise` covers the parser cases and the observer lifecycle. `realObserver` starts the real payouts server with B5 on, runs the real `correct` consumer and the real grader, and asserts the trace holds the 429 and the matching retry. `bench/tests/quirks.sh` asserts one 429, the matching request digest and fingerprint, the retry flag, the joined cursor chain and no raw cursor.
 
 ---
 

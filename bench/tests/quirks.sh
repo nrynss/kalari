@@ -7,8 +7,10 @@
 # traversal gets one 429 and its identical retry succeeds without skipping a page, that a
 # changed GraphQL query, variable, operation name or payout parameter stays throttled, that
 # a settlements fragment or a dual `after` document reaches the same field, that an
-# ambiguous document is rejected, and that B5 off changes nothing. The retry journal block
-# checks phase counts, event types, digest shapes, overflow, evictions and grading isolation.
+# ambiguous document is rejected, and that B5 off changes nothing. The observed trace block
+# checks one 429, its identical retry, the joined cursor chain and digests only. The retry
+# journal block checks phase counts, event types, digest shapes, overflow, evictions and
+# grading isolation.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 fail=0
@@ -103,7 +105,8 @@ check settlements no_retry         "$sp" CRASH                 # B5
 check settlements partial_output   "$sp" FAIL:missing=1078,mismatched=3   # B5: 429 treated as the end
 
 # Dedicated observed instance: no page requests are used for readiness, so the
-# trace contains only this one real reference-consumer run.
+# trace contains only this one real reference-consumer run. B5 is on, so the run
+# crosses one 429 and its identical retry inside the same trace.
 op=$((sp + 1))
 python3 -I apis/payouts/server.py --port "$op" --v1 off --trace "$tmp/observed.jsonl" --trace-client 127.0.0.1 >"$tmp/observed.log" 2>&1 &
 observer_pid=$!
@@ -121,21 +124,40 @@ if ! python3 -I - "$tmp/observed.jsonl" "$tmp/observed-output.jsonl" <<'PYTRACE'
 import json, re, subprocess, sys
 raw = open(sys.argv[1], "rb").read()
 assert raw.endswith(b"\n") and len(raw) <= 262144
-pages = [json.loads(line) for line in raw.splitlines()]
-assert 1 < len(pages) <= 256 and not pages[0]["request"]
+events = [json.loads(line) for line in raw.splitlines()]
+assert 1 < len(events) <= 256
+# Exactly one 429, and the page immediately after it is the identical retry.
+throttled = [i for i, e in enumerate(events) if e.get("status") == 429]
+assert len(throttled) == 1, ("one 429 expected", throttled)
+i = throttled[0]
+assert 0 < i < len(events) - 1
+throttle, retry = events[i], events[i + 1]
+assert throttle.get("retry") is False and throttle.get("retry_after") == "1"
+assert not {"response", "first", "last", "count", "ids", "drained"} & set(throttle), "429 carries a page"
+assert retry.get("status") == 200 and retry.get("retry") is True
+assert retry.get("request") == throttle.get("request") and throttle.get("request")
+assert len(throttle.get("fingerprint", "")) == 32
+assert retry.get("fingerprint") == throttle.get("fingerprint")
+pages = [e for e in events if e.get("status") == 200]
+assert len(pages) == len(events) - 1
+assert [p for p in pages if p.get("retry")] == [retry]
+assert not pages[0]["request"]
 assert all(p["count"] == len(p["ids"]) > 0 for p in pages)
 assert all(a["response"] == b["request"] for a, b in zip(pages, pages[1:]))
 assert all(not p["drained"] for p in pages[:-1])
 assert pages[-1]["drained"] and pages[-1]["response"]
 assert all(set(a["ids"]) & set(b["ids"]) == {a["last"]} == {b["first"]} for a, b in zip(pages, pages[1:]))
-# Every request and response field is a digest, never a raw cursor.
+# Every request, response and fingerprint field is a digest, never a raw cursor.
 DIGEST = re.compile(r"[0-9a-f]{0,32}")
 assert all(DIGEST.fullmatch(p["request"]) for p in pages), "trace request is not a digest"
 assert all(DIGEST.fullmatch(p["response"]) for p in pages), "trace response is not a digest"
 assert all(len(p["response"]) == 32 for p in pages), "trace response digest is not 32 hex"
+assert DIGEST.fullmatch(throttle["request"]), "429 request is not a digest"
+assert all(DIGEST.fullmatch(e["fingerprint"]) and len(e["fingerprint"]) == 32 for e in events)
+assert b"cursor" not in raw and not re.search(rb"[A-Za-z0-9_-]{16,}\.[0-9a-f]{16}", raw), "raw cursor in the trace"
 grade = json.loads(subprocess.check_output(["python3", "-I", "graders/grade.py", "payouts", sys.argv[2]]))
 assert grade["verdict"] == "PASS"
-print(f"ok   payouts observed: {len(pages)} pages, one-record overlaps, final token, digests only, grader PASS")
+print(f"ok   payouts observed: {len(pages)} pages, one 429 and its identical retry, one-record overlaps, final token, digests only, grader PASS")
 PYTRACE
 then
   echo "FAIL observed payouts trace or grader"; fail=1

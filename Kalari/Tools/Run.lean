@@ -67,43 +67,121 @@ def payoutsObserver (serverPath : String) (endpoint : AllowHost) (guestIp : Stri
     catch _ => return .error "observer launch failed"
 }
 
-private structure PageEvent where
-  request : String
-  response : String
-  first : String
-  last : String
-  count : Nat
-  ids : List String
-  drained : Bool
-  deriving FromJson
+/-- One event from the trusted payouts trace. A page carries what the API sent.
+A 429 carries the retry delay and no page. Neither carries a raw cursor, a raw
+request or a token. -/
+private inductive TraceEvent where
+  | page (request response first last : String) (count : Nat) (ids : List String) (drained : Bool)
+      (fingerprint : Option String) (retry : Bool)
+  | throttled (request fingerprint retryAfter : String)
 
-/-- Validate one complete, unbranched cursor chain. A response is evidence of
-what the API sent, not of how the consumer used it. -/
+private def optional (json : Json) (key : String) : Option Json :=
+  (json.getObjVal? key).toOption
+
+private def optionalString (json : Json) (key : String) : Except String (Option String) :=
+  match optional json key with
+  | none => pure none
+  | some value => value.getStr?.map some
+
+/-- A page event recorded before the retry events carried no status and meant 200. -/
+private def traceStatus (json : Json) : Except String Nat :=
+  match optional json "status" with
+  | none => pure 200
+  | some value => value.getNat?.mapError fun _ => "invalid trace status"
+
+private def traceRetry (json : Json) : Except String Bool :=
+  match optional json "retry" with
+  | none => pure false
+  | some value => value.getBool?.mapError fun _ => "invalid trace retry flag"
+
+/-- The full-request fingerprint must be a digest. A raw request cannot pass it. -/
+private def traceFingerprint (fingerprint : Option String) : Except String String := do
+  let some fingerprint := fingerprint | throw "trace event has no request fingerprint"
+  unless fingerprint.length == 32 && fingerprint.toList.all (fun c => c.isDigit || ('a' ≤ c && c ≤ 'f')) do
+    throw "trace request fingerprint is not a digest"
+  return fingerprint
+
+private def parseTraceEvent (line : String) : Except String TraceEvent := do
+  let json ← Json.parse line
+  let status ← traceStatus json
+  let request ← (json.getObjVal? "request" >>= Json.getStr?).mapError
+    fun _ => "trace event has no request digest"
+  let fingerprint ← optionalString json "fingerprint"
+  let retry ← traceRetry json
+  if status == 429 then do
+    if ["response", "first", "last", "count", "ids", "drained"].any (fun key => (optional json key).isSome) then
+      throw "throttled event carries a page"
+    if retry then throw "throttled event is marked as a retry"
+    let fingerprint ← traceFingerprint fingerprint
+    let some retryAfter := (optional json "retry_after").bind (fun value => value.getStr?.toOption) |
+      throw "throttled event has no retry delay"
+    return .throttled request fingerprint retryAfter
+  unless status == 200 do throw "unexpected trace status"
+  let response ← (json.getObjVal? "response" >>= Json.getStr?).mapError
+    fun _ => "page event has no response digest"
+  let first ← (json.getObjVal? "first" >>= Json.getStr?).mapError
+    fun _ => "page event has no first record"
+  let last ← (json.getObjVal? "last" >>= Json.getStr?).mapError
+    fun _ => "page event has no last record"
+  let count ← (json.getObjVal? "count" >>= Json.getNat?).mapError
+    fun _ => "page event has no record count"
+  let ids ← (json.getObjVal? "ids" >>= Json.getArr?).mapError
+    fun _ => "page event has no record IDs"
+  let ids ← ids.toList.mapM fun id => id.getStr?.mapError fun _ => "page event has a non-string record ID"
+  let drained ← (json.getObjVal? "drained" >>= Json.getBool?).mapError
+    fun _ => "page event has no drained flag"
+  return .page request response first last count ids drained fingerprint retry
+
+/-- Validate one complete, unbranched cursor chain. A 429 has no page, and only
+the identical retry may follow it. A response is evidence of what the API sent,
+not of how the consumer used it. -/
 def pageObservations (trace : String) : Except String (List String) := do
   if trace.utf8ByteSize > 262144 || !trace.endsWith "\n" then throw "missing, truncated or oversized page trace"
   let lines := (trace.splitOn "\n").dropLast
   if lines.isEmpty || lines.length > 256 then throw "empty or oversized page trace"
-  let events ← lines.mapM fun line => Json.parse line >>= (fromJson? (α := PageEvent))
+  let events ← lines.mapM parseTraceEvent
   let mut previous := ""
   let mut previousIds : List String := []
   let mut overlap := false
   let mut terminal := false
+  let mut retries := 0
   let mut seen : List String := []
+  let mut pending : Option (String × String) := none
   for event in events do
-    if terminal || event.request != previous || event.response.isEmpty || seen.contains event.response || event.count == 0 || event.first.isEmpty || event.last.isEmpty then
-      throw "ambiguous or incomplete page trace"
-    if event.ids.length != event.count || event.ids.eraseDups.length != event.ids.length ||
-        event.ids.head? != some event.first || event.ids.getLast? != some event.last then
-      throw "invalid page IDs"
-    if !previous.isEmpty then
-      let repeated := event.ids.filter previousIds.contains
-      if repeated.length == 1 && repeated.head? == previousIds.getLast? && repeated.head? == some event.first then overlap := true
-    seen := event.response :: seen
-    previous := event.response
-    previousIds := event.ids
-    terminal := event.drained
+    match event with
+    | .throttled request fingerprint retryAfter =>
+      if terminal then throw "throttled request after the drained response"
+      if retries != 0 then throw "more than one throttled request"
+      if retryAfter.isEmpty || !retryAfter.toList.all (fun c => c.isDigit) then
+        throw "invalid retry delay"
+      if request != previous then throw "orphaned throttled request"
+      retries := retries + 1
+      pending := some (request, fingerprint)
+    | .page request response first last count ids drained fingerprint retry =>
+      if terminal then throw "page after the drained response"
+      if response.isEmpty || seen.contains response || count == 0 || first.isEmpty || last.isEmpty ||
+          ids.length != count || ids.eraseDups.length != ids.length ||
+          ids.head? != some first || ids.getLast? != some last then
+        throw "invalid page IDs"
+      match pending with
+      | some (throttledRequest, throttledFingerprint) =>
+        unless retry && request == throttledRequest && fingerprint == some throttledFingerprint do
+          throw "throttled request was not followed by the identical retry"
+        pending := none
+      | none =>
+        if retry then throw "retry page without a throttled request"
+        if request != previous then throw "ambiguous or incomplete page trace"
+      if !previous.isEmpty then
+        let repeated := ids.filter previousIds.contains
+        if repeated.length == 1 && repeated.head? == previousIds.getLast? && repeated.head? == some first then overlap := true
+      seen := response :: seen
+      previous := response
+      previousIds := ids
+      terminal := drained
+  if pending.isSome then throw "trace ends with an unanswered throttled request"
   unless terminal do throw "page trace has no drained response"
-  return (if overlap then ["boundary_overlap_one"] else []) ++ ["final_page_token"]
+  return (if overlap then ["boundary_overlap_one"] else []) ++ ["final_page_token"] ++
+    (if retries > 0 then ["rate_limit_retry"] else [])
 
 /-- Session-owned inputs. The candidate and baseline workspace paths point to
 separate prepared consumer trees; `checkWorkspace` points to a host-owned tree
@@ -519,6 +597,23 @@ private def expectOk (value : Except String α) : IO α :=
 private def row (i : Nat) : String :=
   (Json.mkObj [("id", toJson s!"P{i}"), ("amount", toJson (100 + i))]).compress ++ "\n"
 
+/-- One trace line. Omit `status` for the pre-retry shape the parser still takes. -/
+private def tracePage (request response : String) (ids : List String) (drained : Bool)
+    (fingerprint : Option String := none) (retry : Option Bool := none)
+    (status : Option Nat := none) : String :=
+  let fields : List (String × Json) := [
+    ("request", toJson request), ("response", toJson response),
+    ("first", toJson (ids.headD "")), ("last", toJson (ids.getLast?.getD "")),
+    ("count", toJson ids.length), ("ids", toJson ids), ("drained", toJson drained)]
+  let fields := match fingerprint with | some value => ("fingerprint", toJson value) :: fields | none => fields
+  let fields := match retry with | some value => ("retry", toJson value) :: fields | none => fields
+  let fields := match status with | some value => ("status", toJson value) :: fields | none => fields
+  (Json.mkObj fields).compress ++ "\n"
+
+private def traceThrottle (request fingerprint : String) (retryAfter : String := "1") : String :=
+  (Json.mkObj [("status", toJson (429 : Nat)), ("request", toJson request),
+    ("fingerprint", toJson fingerprint), ("retry_after", toJson retryAfter)]).compress ++ "\n"
+
 private def fixtureVerdict (kind : String) (code : Option Nat) (out : String := "") : Verdict :=
   { verdict := kind, exit_code := code, stdout := out, stderr := "", wall_ms := 800
     stdout_truncated := false, pipe_held_open := false, supervisor_peak_rss_kb := 5500
@@ -723,14 +818,42 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
       verify (actualCalls == ["resolve", "resolve", "pull", "create-v2"])
         "duplicate-name failure attempted cleanup"
   IO.println "run create-timeout: force cleanup; duplicate name: preserved"
-  let trace := "{\"request\":\"\",\"response\":\"a\",\"first\":\"1\",\"last\":\"2\",\"ids\":[\"1\",\"2\"],\"count\":2,\"drained\":false}\n{\"request\":\"a\",\"response\":\"b\",\"first\":\"2\",\"last\":\"3\",\"ids\":[\"2\",\"3\"],\"count\":2,\"drained\":true}\n"
+  let fingerprint := "00000000000000000000000000000001"
+  let otherFingerprint := "00000000000000000000000000000002"
+  let head := tracePage "" "a" ["1", "2"] false
+  let tail := tracePage "a" "b" ["2", "3"] true
+  let retryTail := tracePage "a" "b" ["2", "3"] true (some fingerprint) (some true) (some 200)
+  let throttle := traceThrottle "a" fingerprint
+  let trace := head ++ tail
   verify ((pageObservations trace).toOption == some ["boundary_overlap_one", "final_page_token"]) "valid trace rejected"
+  let retryTrace := head ++ throttle ++ retryTail
+  verify ((pageObservations retryTrace).toOption ==
+    some ["boundary_overlap_one", "final_page_token", "rate_limit_retry"]) "valid retry trace rejected"
   verify ((pageObservations "").isOk == false) "missing trace accepted"
   verify ((pageObservations (trace.replace "\"drained\":true" "\"drained\":false")).isOk == false) "unterminated chain accepted"
   verify ((pageObservations (trace.toSlice.dropEnd 1).toString).isOk == false) "truncated trace accepted"
   verify ((pageObservations (trace.replace "\"request\":\"a\"" "\"request\":\"x\"")).isOk == false) "ambiguous trace accepted"
+  let mismatched := head ++ throttle ++ tracePage "a" "b" ["2", "3"] true (some otherFingerprint) (some true) (some 200)
+  verify ((pageObservations mismatched).isOk == false) "mismatched retry fingerprint accepted"
+  verify ((pageObservations (head ++ throttle ++ tail)).isOk == false) "throttled request without a retry accepted"
+  verify ((pageObservations (head ++ throttle ++
+    tracePage "a" "b" ["2", "3"] true (some fingerprint) (some false) (some 200))).isOk == false)
+    "retry without the retry flag accepted"
+  verify ((pageObservations (head ++ tracePage "a" "b" ["2", "3"] true (some fingerprint) (some true) (some 200))).isOk == false)
+    "retry flag without a throttled request accepted"
+  let throttledWithPage := head ++ tracePage "a" "b" ["2", "3"] true (some fingerprint) (some false) (some 429) ++ retryTail
+  verify ((pageObservations throttledWithPage).isOk == false) "throttled event with a page accepted"
+  let midRetry := head ++ throttle ++ tracePage "a" "b" ["2", "3"] false (some fingerprint) (some true) (some 200)
+  let twoThrottles := midRetry ++ traceThrottle "b" fingerprint ++
+    tracePage "b" "c" ["3", "4"] true (some fingerprint) (some true) (some 200)
+  verify ((pageObservations twoThrottles).isOk == false) "two throttled requests accepted"
+  verify ((pageObservations (head ++ traceThrottle "x" fingerprint ++ retryTail)).isOk == false)
+    "orphaned throttled request accepted"
+  let branched := head ++ tracePage "a" "b" ["2", "3"] true ++ tracePage "a" "c" ["2", "4"] true
+  verify ((pageObservations branched).isOk == false) "branched chain accepted"
+  verify ((pageObservations midRetry).isOk == false) "unterminated retry chain accepted"
   let stopped ← IO.mkRef false
-  let observer : Observer := { endpoint := allow.headD {host := "", port := 0}, start := fun _ _ => pure (.ok (do stopped.set true; pure (.ok trace))) }
+  let observer : Observer := { endpoint := allow.headD {host := "", port := 0}, start := fun _ _ => pure (.ok (do stopped.set true; pure (.ok retryTrace))) }
   let observed := { ctx with observer := some observer }
   let mismatch ← run (fixtureRuntime calls "correct" caps truth duplicateRows tampered existsRef) observed { req with command := ["python3", "/candidate/correct.py"], allowlist := [] }
   verify (mismatch matches .error "setup: observer endpoint must be the sole candidate allowlist entry") "unrelated endpoint was accepted"
@@ -739,15 +862,19 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
   let obsExists ← IO.mkRef false
   let result ← expectOk (← run (fixtureRuntime obsCalls "correct" caps truth duplicateRows obsTamper obsExists) observed { req with command := ["python3", "/candidate/correct.py"] })
   let obsRecords := Kalari.Evidence.byRun (← Kalari.Evidence.load store) result.run_id
-  verify (result.passed && (← stopped.get) && obsRecords.any (fun r => r.kind == "page-observation" && (r.payload.getObjValAs? (List String) "behaviors").toOption == some ["boundary_overlap_one", "final_page_token"])) "verified observation not linked to run"
+  verify (result.passed && (← stopped.get) && obsRecords.any (fun r => r.kind == "page-observation" && (r.payload.getObjValAs? (List String) "behaviors").toOption == some ["boundary_overlap_one", "final_page_token", "rate_limit_retry"])) "verified retry observation not linked to run"
   stopped.set false
   let failedRun ← expectOk (← run (fixtureRuntime obsCalls "no_dedupe" caps truth duplicateRows obsTamper obsExists) observed { req with command := ["python3", "/candidate/no_dedupe.py"] })
   let failedRecords := Kalari.Evidence.byRun (← Kalari.Evidence.load store) failedRun.run_id
-  verify (!failedRun.passed && (← stopped.get) && !(failedRecords.any (fun r => r.kind == "page-observation"))) "failed run emitted observations or observer leaked"
+  verify (!failedRun.passed && (← stopped.get) && !(failedRecords.any (fun r => r.kind == "page-observation"))) "failed differential emitted a retry observation or observer leaked"
+  let badObserver : Observer := { endpoint := allow.headD {host := "", port := 0}, start := fun _ _ => pure (.ok (pure (.ok mismatched))) }
+  let beforeBad := (← Kalari.Evidence.load store).records.length
+  let badTraceRun ← run (fixtureRuntime obsCalls "correct" caps truth duplicateRows obsTamper obsExists) { ctx with observer := some badObserver } { req with command := ["python3", "/candidate/correct.py"] }
+  verify (badTraceRun.isOk == false && (← Kalari.Evidence.load store).records.length == beforeBad) "mismatched retry fingerprint emitted evidence"
   let invalid : Observer := { endpoint := allow.headD {host := "", port := 0}, start := fun _ _ => pure (.ok (pure (.ok "bad"))) }
   let rejectedTrace ← run (fixtureRuntime obsCalls "correct" caps truth duplicateRows obsTamper obsExists) { ctx with observer := some invalid } { req with command := ["python3", "/candidate/correct.py"] }
   verify (rejectedTrace.isOk == false) "invalid observed run accepted"
-  IO.println "run observer: complete linked trace accepted; malformed trace rejected"
+  IO.println "run observer: linked retry trace accepted; mismatched fingerprint, failed differential and malformed trace rejected"
 
 #guard (compareRecords
   "{\"id\":\"A\",\"amount\":2}\n{\"id\":\"B\",\"amount\":4}\n"
@@ -770,11 +897,14 @@ private def realObserver : IO Unit := IO.FS.withTempDir fun dir => do
   let run ← IO.Process.output { cmd := "python3", args := #["-I", "bench/apis/payouts/reference/correct.py", "--base-url", s!"http://127.0.0.1:{port}", "--out", (dir / "payouts.jsonl").toString] }
   let result ← stop
   let trace ← expectOk result
-  unless run.exitCode == 0 && (pageObservations trace).toOption == some ["boundary_overlap_one", "final_page_token"] do
-    throw <| .userError "real observer did not capture reference run"
+  unless run.exitCode == 0 &&
+      (pageObservations trace).toOption == some ["boundary_overlap_one", "final_page_token", "rate_limit_retry"] do
+    throw <| .userError "real observer did not capture the reference run and its retry"
+  unless trace.contains "\"status\":429" && trace.contains "\"retry\":true" do
+    throw <| .userError "real observer trace has no 429 and matching retry"
   let grade ← IO.Process.output { cmd := "python3", args := #["-I", "bench/graders/grade.py", "payouts", (dir / "payouts.jsonl").toString] }
   unless grade.exitCode == 0 && grade.stdout.contains "\"verdict\": \"PASS\"" do throw <| .userError "observed reference did not pass grader"
-  IO.println "observer actual server, reference consumer and grader: PASS"
+  IO.println "observer actual B5 server, reference consumer and grader: PASS with a verified retry trace"
 
 #eval realObserver
 

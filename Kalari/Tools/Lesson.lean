@@ -199,6 +199,7 @@ private def descriptions (values : List String) : Except String (List String) :=
     | "boundary_overlap_one" => .ok "Adjacent pages repeated one payout at their boundary."
     | "final_page_token" => .ok "The final page carried a continuation token."
     | "short_page_midstream" => .ok "A short page occurred before the end of the stream."
+    | "rate_limit_retry" => .ok "The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded."
     | "amended_policy_fixture" => .ok "A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it."
     | _ => .error s!"unknown verified behavior: {v}"
 
@@ -426,6 +427,40 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
   let resolvedPage ← IO.ofExcept (← Kalari.Tools.Recall.resolveEvidence store pageRef)
   unless resolvedPage.check == truthCheck && resolvedPage.observation == pageLesson.observation do
     throw <| .userError "recall did not resolve candidate truth check evidence"
+
+  -- A retry observed on a passing run publishes a typed lesson. Its observation
+  -- says only that the identical request succeeded after the 429. Its runnable
+  -- check is still the candidate-versus-final-truth check.
+  let retryRunId := "page-retry-pass"
+  appendRun retryRunId pageRun
+  let retrySignal : PageObservation := { source := "payouts-api", behaviors := ["boundary_overlap_one", "rate_limit_retry"] }
+  Kalari.Evidence.append store { kind := "page-observation", session_id := "s", run_id := retryRunId, change_kinds := ["pagination_changed"], payload := toJson retrySignal }
+  let retryResult ← IO.ofExcept (← record store "s" retryRunId classify write)
+  let some retryLesson := retryResult.head? | throw <| .userError "retry observation published no lesson"
+  unless retryLesson.check == truthCheck && retryLesson.observation.contains "429" &&
+      retryLesson.observation.contains "identical request" do
+    throw <| .userError "retry lesson sentence or runnable check missing"
+  let some retryRef := Kalari.Tools.Recall.parseReference (reference retryLesson) | throw <| .userError "retry lesson reference malformed"
+  let resolvedRetry ← IO.ofExcept (← Kalari.Tools.Recall.resolveEvidence store retryRef)
+  unless resolvedRetry.check == truthCheck && resolvedRetry.observation == retryLesson.observation do
+    throw <| .userError "recall did not resolve the retry lesson to the truth check"
+
+  -- A failed run or a missing differential pass publishes no retry lesson.
+  let quietWriter ← IO.mkRef ([] : List String)
+  let quiet ← makeWriter fun kind _ _ => do quietWriter.modify (· ++ [kind]); return .ok "unexpected"
+  let failedRetryId := "page-retry-failed"
+  appendRun failedRetryId { pageRun with verdict := { verdict with exit_code := some 1 } }
+  Kalari.Evidence.append store { kind := "page-observation", session_id := "s", run_id := failedRetryId, change_kinds := ["pagination_changed"], payload := toJson retrySignal }
+  let failedRetry ← IO.ofExcept (← record store "s" failedRetryId classify quiet)
+  let noDiffId := "page-retry-nodiff"
+  appendRun noDiffId { pageRun with check_results := [{ check_id := truthCheck.id, passed := true }] }
+  Kalari.Evidence.append store { kind := "page-observation", session_id := "s", run_id := noDiffId, change_kinds := ["pagination_changed"], payload := toJson retrySignal }
+  let noDiff ← IO.ofExcept (← record store "s" noDiffId classify quiet)
+  unless failedRetry.isEmpty && noDiff.isEmpty && (← quietWriter.get).isEmpty &&
+      !(← Kalari.Evidence.load store).records.any (fun r => r.kind == "lesson" &&
+        (r.run_id == failedRetryId || r.run_id == noDiffId)) do
+    throw <| .userError "a failed or undifferentiated retry run published a lesson"
+  IO.println "lesson: a retry observation publishes the truth check; a failed run and a missing differential pass publish nothing"
 
   -- An empty page observation remains a no-op even when valid policy
   -- provenance exists; provenance supplies a rule, not observed behavior.

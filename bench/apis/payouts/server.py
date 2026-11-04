@@ -30,6 +30,14 @@ carries a timestamp, a client digest, the HTTP status, the request fingerprint d
 the traversal digest and whether the request was the matching retry. It never carries a
 raw cursor, a raw request or a token. A wrong type, an overflow marker or an eviction
 marker reads as unknown, never as zero.
+
+The host trace (`--trace`) holds one event per v2 request, in send order, for a single
+exclusive client. A page event carries the HTTP status, the incoming cursor digest, the
+full-request fingerprint digest, the retry flag and the page the API sent. A 429 event
+carries the status, the incoming cursor digest, the fingerprint digest, the retry flag
+and the `Retry-After` value, and no page. The matching retry repeats the throttled
+request digest and fingerprint and is the only event marked `retry`. The trace never
+carries a raw cursor, a raw request or a token.
 """
 import argparse
 import base64
@@ -60,6 +68,7 @@ TRACE_COUNT = 0
 # 429, so the server marks the journal and the phase reads as unknown.
 B5_OFFSET = 1500
 B5_STATE_LIMIT = 4096
+RETRY_AFTER = "1"
 B5_LOCK = threading.Lock()
 B5_PENDING = {}   # traversal -> {"cursor": incoming cursor digest, "request": fingerprint}
 B5_CLEARED = {}   # traversals that already retried successfully
@@ -153,6 +162,22 @@ def client_tag(address: str) -> str:
     return hmac.new(CLIENT_KEY, address.encode(), hashlib.sha256).hexdigest()[:16]
 
 
+def trace_event(event) -> None:
+    """Append one event to the host trace.
+
+    The caller holds TRACE_LOCK while it completes the response and calls this, so
+    the host can reject branching or interleaving instead of guessing an order.
+    """
+    global TRACE_COUNT
+    if TRACE_COUNT < TRACE_LIMIT:
+        TRACE.write(json.dumps(event, separators=(",", ":")) + "\n")
+        TRACE.flush()
+    elif TRACE_COUNT == TRACE_LIMIT:
+        TRACE.write('{"overflow":true}\n')
+        TRACE.flush()
+    TRACE_COUNT += 1
+
+
 class Handler(BaseHTTPRequestHandler):
     v1_enabled = True
     trace_client = None
@@ -239,7 +264,15 @@ class Handler(BaseHTTPRequestHandler):
             cursor_key = ""
         action, candidate = b5_decide(traversal, cursor_key, start, fingerprint) if self.b5 else ("serve", False)
         if action == "throttle":
-            self.reply(429, {"error": "rate_limited", "message": "too many requests, retry after 1 second"}, retry_after="1")
+            body = {"error": "rate_limited", "message": "too many requests, retry after 1 second"}
+            if TRACE is None:
+                self.reply(429, body, retry_after=RETRY_AFTER)
+            else:
+                event = {"status": 429, "request": digest(q.get("cursor", "")),
+                         "fingerprint": fingerprint, "retry": False, "retry_after": RETRY_AFTER}
+                with TRACE_LOCK:
+                    self.reply(429, body, retry_after=RETRY_AFTER)
+                    trace_event(event)
             return self.journal(429, fingerprint, traversal, throttled=True, retry_candidate=candidate)
         if self.b1 and self.b2 and self.b4:
             # All three paging behaviours: the original paging, unchanged.
@@ -265,19 +298,14 @@ class Handler(BaseHTTPRequestHandler):
                                 retry_candidate=candidate)
         # Serialize response completion and trace appends so the host can reject
         # branching or interleaving instead of guessing an order.
-        global TRACE_COUNT
         with TRACE_LOCK:
             self.reply(200, response)
-            if TRACE_COUNT < TRACE_LIMIT:
-                event = {"request": digest(q.get("cursor", "")), "response": digest(cursor),
-                         "first": page[0]["id"] if page else "", "last": page[-1]["id"] if page else "",
-                         "ids": [p["id"] for p in page], "count": len(page), "drained": drained}
-                TRACE.write(json.dumps(event, separators=(",", ":")) + "\n")
-                TRACE.flush()
-            elif TRACE_COUNT == TRACE_LIMIT:
-                TRACE.write('{"overflow":true}\n')
-                TRACE.flush()
-            TRACE_COUNT += 1
+            event = {"status": 200, "request": digest(q.get("cursor", "")),
+                     "fingerprint": fingerprint, "retry": action == "retry",
+                     "response": digest(cursor),
+                     "first": page[0]["id"] if page else "", "last": page[-1]["id"] if page else "",
+                     "ids": [p["id"] for p in page], "count": len(page), "drained": drained}
+            trace_event(event)
         return self.journal(200, fingerprint, traversal, matching_retry=action == "retry",
                             retry_candidate=candidate)
 
