@@ -28,11 +28,21 @@ requires:   [T6.1]
 fixture-ok: yes
 size:       L · frontier
 owns:       web/
-status:     not-started
+status:     in-review
 ```
 Chaaya. The first screen is **"For judges: start here"**: the measured before-and-after, each condition's result, the containment moment (a real run where the time cap fired), and links to every run. Then a session view: the change list, the blast radius, the recalled checks, each sandbox run with its verdict and logs, the retry loop, and the lesson written. Clef's probabilities labelled as a model's opinion, never as a measurement. A product-style experience, not a dashboard of raw JSON.
 
 **Done when:** the pages render from the fixture evidence store; every number on the judges' page links to its run.
+
+**Notes (in review):** Chaaya is static HTML, CSS and ES modules under `web/site/`. The fixture store and server sit under `web/fixture/`, outside the published root. The fixture server injects a visible banner. The published pages never carry it. There are three views: the judges page, the session view and the run view.
+
+The judges page shows 70 measured pilot rows, the baseline contrast for settlements, the containment run and a run index built from `/api/runs`. Condition 1 is marked invalid. The illustrative walkthrough is labelled wherever its numbers appear. The frozen comparison shows a not-yet-published panel until T5.6 writes records. Clef percentages sit in a labelled opinion block and never in a table or a verdict.
+
+`web/check.sh` hashes every served file and every rendered page. It compares every table value and measure link to the record named by its run link. It validates the benchmark record contract, the source paths, unique run ids and the condition and arm pair. It scans every served file for external URLs and checks table captions.
+
+The first review blocked the original commit on evidence. The remediation `96ee0a4` is under independent review. It moved the app to `web/site/`, added page and asset hashes, fixed the run-link and external-URL checks, and isolated the fixture store.
+
+Residual: `web/check.sh` is not part of `tools/check.sh`, because that file is outside this task. No task yet writes `benchmark` records, so T5.6 must either write them or extend this contract. Caddy must serve `web/site/` in T6.3.
 
 ---
 

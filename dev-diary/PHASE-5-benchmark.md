@@ -105,7 +105,7 @@ requires:   [T5.1a]
 fixture-ok: yes
 size:       M · frontier
 owns:       bench/apis/, bench/workspaces/payout-sync/docs/tallyline-payouts-api.md, bench/workspaces/settlement-reconcile/docs/clearwell-settlements-api.md, bench/tests/quirks.sh, bench/harness/ (B5 retry measures only), bench/pilot/ (runner and validation scripts only; existing results stay unchanged)
-status:     not-started
+status:     in-review
 ```
 The user chose both fallbacks after the old pilot: add the reserved real behaviour B5 to both upgrades, and lead the eventual report with cost, attempts and containment while retaining correctness measures. Payouts becomes B1+B2+B4+B5 and settlements B1+B2+B3+B5. This is the final hardness adjustment, regardless of the new pilot's outcome. Keep the datasets, hidden grader, prompts and specs unchanged. Put the retry contract only in the neutral vendor-style docs shared by every arm.
 
@@ -114,6 +114,16 @@ B5 returns HTTP 429 with `Retry-After: 1` once at a deterministic mid-stream poi
 Add correct bounded-retry, no-retry crash, and partial-output skip-on-429 reference consumers. Preserve the old B1–B4 failure-mode coverage. Add trusted, run-attributed retry measurement: consumer sandbox runs, B5 429 responses, matching HTTP retry attempts and successful matching retries are separate measures, with agent and grading activity separated. Missing or ambiguous attribution is unknown, never zero.
 
 **Done when:** offline tests interleave two fresh traversals and show distinct identities, one 429 per traversal, successful identical retries and no skipped pages; both APIs' tests assert the actual HTTP 429 and `Retry-After` header; a changed GraphQL query or variables is not an identical retry; correct consumers pass, no-retry consumers crash, and partial-output consumers fail with measured record loss; retry counts remain distinct from sandbox runs; `./tools/check.sh` passes.
+
+**Notes (in review):** Implemented at `e67f317`. A fresh traversal id is minted with the first response and rides inside the signed cursor. Replaying a saved cursor keeps that lineage. The one-shot state is keyed by traversal and incoming cursor digest, under a lock. The trigger is at or past offset 1500 for payouts and 1000 for settlements. Only a full canonical request fingerprint clears the throttle. REST covers the method, the path and every query pair. GraphQL covers the exact query text, every variable and the operation name. The 429 carries `Retry-After: 1`.
+
+`correct` now retries the identical request once. New `no_retry` and `partial_output` consumers cover the crash and the silent shortfall. Offline loss is 846 payouts records and 1,078 settlements records with 3 stale versions. On the B5-only servers the partial consumers lose 431 and 873. The old B1 to B4 consumers keep their expected outcomes, and B5 off reproduces the old behaviour.
+
+A host-owned journal records request digests only. The harness truncates it at each phase and reads it over `msb exec`. The result carries `http_retries` for the agent and grading phases, separate from `sandbox_runs`. A missing or malformed journal is unknown, never zero. `deploy.sh` passes the journal path. The pilot runner routes B5 to `bench/pilot/harder/` and the existing 70 rows are untouched.
+
+Verification: `bench/tests/quirks.sh` passes with interleaved traversals for both APIs, a changed GraphQL request, real 429 and header checks, and consumer outcomes. `python3 bench/pilot/validate.py` still validates 70 of 70. `./tools/check.sh` passes.
+
+Residual: the journal read over `msb exec` was proven with a stub only. The four API microVMs must be recreated with `deploy.sh down` then `up` before T5.2b, or the journal flag will not be active.
 
 ---
 
