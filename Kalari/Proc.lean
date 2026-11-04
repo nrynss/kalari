@@ -196,15 +196,25 @@ private def runChecks : IO Unit := do
     fail "exit3: expected exit 3 and cap none"
   say "proc exit3 exit=3 cap=none"
 
-  -- `& wait` keeps the shell. A simple command is exec'd, so the kill would not
-  -- have to reach a child. argv0 is the marker, so this is not `pgrep sleep`.
+  -- `env -a` cannot name the child on Ubuntu 26.04: uutils rejects an argv0 that does not match the executable.
   let pid ← IO.Process.getPID
   let toMark := s!"kalari-proc-to-{pid}x"
   let toPat := s!"kalari-proc-to-{pid}[x]"
-  let timed ← run ["/bin/sh", "-c", s!"/usr/bin/env -a {toMark} /bin/sleep 30 & wait"]
+  let timed ← run ["/bin/sh", "-c", s!"/bin/sh -c \"while :; do :; done # {toMark}\" & wait"]
     #[] false none 400 4096
   unless timed.cap == Cap.timeout && timed.exitCode.isNone && withinCap timed 4096 &&
       timed.wallMs < 5000 do
+    let cap := match timed.cap with
+      | .none => "none"
+      | .timeout => "timeout"
+      | .output => "output"
+    let code := match timed.exitCode with
+      | some n => toString n
+      | none => "none"
+    let err := match String.fromUTF8? timed.stderr with
+      | some s => s.trimAscii.toString
+      | none => "<binary>"
+    say s!"proc timeout fail cap={cap} exit={code} wallMs={timed.wallMs} stderr={err}"
     fail "timeout: expected cap timeout, no exit code"
   waitGone "timeout" toPat
   say s!"proc timeout cap=timeout exit=none wallMs={timed.wallMs} gone=true"

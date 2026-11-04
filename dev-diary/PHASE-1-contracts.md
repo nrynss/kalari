@@ -96,19 +96,19 @@ Built `Kalari/Proc.lean`. `run` takes an argv, an explicit environment (`Array (
 
 No stdin spawns with `stdin := .null` and `setsid := true`, so `Child.kill` reaches grandchildren. Stdin is a pipe and `setsid := false`: `takeStdin` drops `setsid` (lean4#15674), so that path does not claim a group kill. `writeStdin` owns the handle, writes, flushes, and closes it on return, which is the EOF. Both pipes are read with `IO.asTask` at `Task.Priority.dedicated`. After a kill, `tryWait` and the reader wait stop at 500 ms. `Child.pid` is not called.
 
-`#eval runChecks` runs during `lake build`. Normal is `/bin/sh -c 'printf hi'` (exit 0, stdout `hi`). Non-zero is `exit 3` (exit 3, cap `none`). Timeout is `/bin/sh -c '/usr/bin/env -a <marker> /bin/sleep 30 & wait'` under a 400 ms cap (cap `timeout`, no exit code). The `&` keeps the shell, which starts sleep in the same session. The marker is in the shell's `-c` string and is sleep's argv0, and both are gone afterwards. Output is a print loop against a 64-byte cap (cap `output`, stdout length 64, process gone). Stdin is `/bin/cat` and the bytes written come back. The empty environment sets `KALARI_PROC_SENTINEL` to a harmless word on the parent, runs with inherit false and an empty `env`, and the child's `printf` of that name is empty. The parent value is not printed.
+`#eval runChecks` runs during `lake build`. Normal is `/bin/sh -c 'printf hi'` (exit 0, stdout `hi`). Non-zero is `exit 3` (exit 3, cap `none`). Timeout is `/bin/sh -c '/bin/sh -c "while :; do :; done # <marker>" & wait'` under a 400 ms cap (cap `timeout`, no exit code). The `&` keeps the outer shell, which starts an inner dash builtin loop in the same session. The marker stays on that grandchild's command line, and both shells are gone afterwards. `env -a` cannot name the child: Ubuntu 26.04's uutils rejects an argv0 that does not match the executable. Output is a print loop against a 64-byte cap (cap `output`, stdout length 64, process gone). Stdin is `/bin/cat` and the bytes written come back. The empty environment sets `KALARI_PROC_SENTINEL` to a harmless word on the parent, runs with inherit false and an empty `env`, and the child's `printf` of that name is empty. The parent value is not printed.
 
 Decisions:
 
 - Each stream is capped on its own. Passing the cap on either one kills the process and reports `output`. A returned buffer is clipped again, so it cannot be longer than the cap.
-- The timeout script is `/bin/sh -c '/usr/bin/env -a <marker> /bin/sleep 30 & wait'`. Without the `&`, bash execs a simple command and the shell is already gone, so the kill never has to reach a child. The marker is in the `-c` string and is sleep's argv0. The gone-check is `pgrep -f` of that marker with the last character in brackets, so `pgrep` does not match itself. Absolute paths, so an empty environment can still exec.
+- The timeout script is `/bin/sh -c '/bin/sh -c "while :; do :; done # <marker>" & wait'`. Without the `&`, dash execs a simple command and the shell is already gone, so the kill never has to reach a child. The marker is on the inner command line, so `pgrep -f` sees the grandchild; the last character is in brackets, so `pgrep` does not match itself. `env -a` cannot name that child: Ubuntu 26.04's uutils rejects an argv0 that does not match the executable. Absolute paths, so an empty environment can still exec.
 - `inheritEnv` defaults to false. `env` is passed through as the spawn `env`.
 
 Surprises:
 
 - A 400 ms cap came back at 419 ms. The poll sleeps 10 ms, so the wall time lands one tick past the deadline.
 - `ByteArray` has `BEq` and no `Repr` in 4.35, so `Result` does not derive `Repr`.
-- `/bin/sh` with an empty environment runs `printf` and `exit`, which are builtins, and cannot find `sleep`. The timeout case uses `/bin/sleep`.
+- `/bin/sh` with an empty environment runs `printf` and `exit`, which are builtins, and cannot find `sleep`. The timeout case is an inner dash builtin loop, not `/bin/sleep`.
 - A reader that is still blocked after the bounded wait keeps its thread until the write end closes, and `lake build` waits for those threads. The output test redirects the child's stderr to `/dev/null`, so that reader sees EOF even if the kill missed. The timeout test relies on the group kill, which closed both pipes.
 
 ---
