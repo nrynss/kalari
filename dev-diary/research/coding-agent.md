@@ -84,6 +84,8 @@ OpenCode 2.2.5 sends `initialize`, `notifications/initialized`, `tools/list`, th
 - Per-run **`XDG_DATA_HOME`, `XDG_STATE_HOME`, `XDG_CACHE_HOME`** isolate the database (verified).
 
 **T5.1, condition 3, one fresh session of each upgrade.** OpenCode 2.2.5, `--standalone`, its own `XDG_*` directories, a 20-minute cap. Payouts: grader PASS, 2,431 of 2,431, right first time, 1 sandbox run, 29.265 s, 0 stuck, 577,808 in / 7,804 out, $0.091354. Settlements: grader PASS, 1,873 of 1,873, right first time, 2 sandbox runs, 27.722 s, 0 stuck, 452,070 in / 8,629 out, $0.072988. The usage delta matched OpenCode's own step tokens. The reference arm chooses its sandbox network, so it could reach the grading API. The hidden grade does not use that check. Nothing the harness started was left running.
+
+**T5.2, the condition rows.** Forty reference sessions, $3.55. Conditions 2, 3, and 6 passed 10 of 10. Right first time missed twice, both with no consumer run against v2: condition 3 settlements repeat 1, and condition 6 payouts repeat 2. Condition 1 payouts passed 5 of 5. Condition 1 settlements resumed that session and failed 5 of 5 with grade note `no consumer output`. Condition 3 payouts repeat 5 hit the 20-minute cap and still graded PASS. The single-behaviour rows were captured separately with a restricted adapter. See [the pilot summary](../../bench/pilot/SUMMARY.md) for both sets and their comparability limits.
 - `opencode service stop` stops a daemon that was started anyway.
 
 ## Running it
