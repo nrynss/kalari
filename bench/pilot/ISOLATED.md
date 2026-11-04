@@ -47,3 +47,13 @@ processes or sandboxes. A no-inference scope probe captured a detached child and
 verified its removal after the original leader exited. The remaining sessions
 use that scope and record `cleanup.scope_verified` accordingly. The first nine
 rows retain `false` for that field; their measures were not changed.
+
+For the first 19 variants, private copies of the API and grader sources remained
+in a staging directory outside the workspace while the arm ran; OpenCode's
+external-directory permission denied access to that directory. Subsequent
+sessions remove those staged source copies after provisioning the API guests
+and before starting the arm. The grading runner remains staged, while the
+hidden grader itself runs locally after the session.
+A separate copy of the payouts server from the initial no-inference preflight
+also remained outside the workspace until it was removed during the twentieth
+variant session; the same external-directory restriction applied.

@@ -339,6 +339,11 @@ PYSHIM
   exit 0
 fi
 
+# The API and hidden grader sources are staged only to provision/check the
+# dedicated API guests. Remove those private copies before the arm starts.
+rm -rf -- "$STAGE/apis" "$STAGE/graders"
+[[ ! -e "$STAGE/apis" && ! -e "$STAGE/graders" ]] || { echo "server staging cleanup failed" >&2; exit 1; }
+echo "status=source_staging_removed" >&2
 echo "status=session" >&2
 cd "$WS"
 args=(opencode run --standalone --format json --auto --title "bench-c${COND}-${UPGRADE}")

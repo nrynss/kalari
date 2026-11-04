@@ -29,7 +29,9 @@ for upgrade, behaviours in (('payouts',('B1','B2','B4')),('settlements',('B1','B
             return 'unknown' if any(v is None for v in vals) else str(sum(vals))
         links = ', '.join(f'[{i}](results/{p.name})' for i,p in enumerate(paths,1))
         rows.append(f"| {upgrade} | {behaviour} | 5 | {sum(m['verdict']=='PASS' for m in ms)} | {sum(m['right_first_time'] for m in ms)} | {total('sandbox_runs')} | {total('records_lost')} | {total('records_duplicated')} | {sum(d['cost_usd'] for d in docs):.6f} | {links} |")
-rows += ['', '## Condition counts', '',
+variant_cost = sum(json.loads(p.read_text())['cost_usd'] for p in Path('bench/pilot/results').glob('behaviour-*.json'))
+total_cost = sum(json.loads(p.read_text())['cost_usd'] for p in Path('bench/pilot/results').glob('*.json'))
+rows += ['', f'Single-behaviour list-price spend: ${variant_cost:.6f}; all 70 pilot rows: ${total_cost:.6f}.', '', '## Condition counts', '',
          '| Condition | Upgrade | Runs | PASS | Right first time | Sandbox runs | Lost | Duplicated | Results |',
          '|---:|---|---:|---:|---:|---:|---:|---:|---|']
 for cond in (1,2,3,6):
