@@ -30,11 +30,21 @@ structure PageObservation where
   behaviors : List String
   deriving FromJson, ToJson
 
-private def amendedCheckId := "amended-last-delivery-v1"
 private def amendedCheckAssertion :=
-  "The controlled amended-record fixture proves last delivery wins by ID: keep-last matches final truth and first does not."
+  "The controlled amended-record fixture distinguishes first from last delivery by ID; keep-last matches final truth."
 private def amendedCheckProgram := "kalari_amended_policy_check.py"
 private def amendedCheckFixture := "kalari_amended_policy_fixture.json"
+private def candidateTruthCheckId := "candidate-v1-truth-v1"
+private def candidateTruthCheckAssertion :=
+  "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison."
+private def candidateTruthCheckProgram := "kalari_candidate_truth_check.py"
+def trustedTruthArtifactName : String := "kalari-v1-truth.jsonl"
+
+structure PolicyProvenance where
+  version : String
+  assertion : String
+  passed : Bool
+  deriving FromJson, ToJson, BEq
 
 private def amendedFixture : String :=
   "{\"stream\":[{\"id\":\"amended-a\",\"amount\":1200,\"status\":\"PENDING\"},{\"id\":\"stable\",\"amount\":500,\"status\":\"SETTLED\"},{\"id\":\"amended-b\",\"amount\":2000,\"status\":\"SETTLED\"},{\"id\":\"amended-a\",\"amount\":1100,\"status\":\"ADJUSTED\"},{\"id\":\"amended-b\",\"amount\":1500,\"status\":\"ADJUSTED\"}],\"truth\":[{\"id\":\"amended-a\",\"amount\":1100,\"status\":\"ADJUSTED\"},{\"id\":\"stable\",\"amount\":500,\"status\":\"SETTLED\"},{\"id\":\"amended-b\",\"amount\":1500,\"status\":\"ADJUSTED\"}]}"
@@ -59,27 +69,85 @@ private def amendedCheckProgramText : String := String.intercalate "\n" [
 /-- Provision a trusted policy check in the service-owned check workspace.
 It tests a controlled amended-record fixture, independently of payouts' identical
 boundary duplicates; it does not claim the candidate run demonstrated last-wins. -/
-def provisionAmendedPolicyCheck (checkWorkspace : String) : IO Check := do
+private def provisionAmendedPolicyFixture (checkWorkspace : String) : IO Unit := do
   if checkWorkspace.isEmpty then throw <| .userError "empty trusted check workspace"
   let root : System.FilePath := checkWorkspace
   IO.FS.createDirAll root
   IO.FS.writeFile (root / amendedCheckFixture) amendedFixture
   IO.FS.writeFile (root / amendedCheckProgram) amendedCheckProgramText
+
+private def candidateTruthCheckText : String := String.intercalate "\n" [
+  "import json", "import sys", "from pathlib import Path", "",
+  "def read_records(path):", "    rows = {}", "    with Path(path).open() as stream:",
+  "        for line_number, line in enumerate(stream, 1):", "            if not line.strip():",
+  "                continue", "            row = json.loads(line)", "            key = row.get('id')",
+  "            if not isinstance(key, str) or not key:",
+  "                raise SystemExit(f'{path}:{line_number}: missing string ID')",
+  "            if key in rows:", "                raise SystemExit(f'{path}:{line_number}: duplicate ID {key}')",
+  "            rows[key] = row", "    return rows", "",
+  "candidate = read_records(sys.argv[1])", "truth = read_records(sys.argv[2])",
+  "if candidate != truth:",
+  "    missing = sorted(set(truth) - set(candidate))",
+  "    extra = sorted(set(candidate) - set(truth))",
+  "    changed = sorted(key for key in set(candidate) & set(truth) if candidate[key] != truth[key])",
+  "    raise SystemExit(f'candidate differs from trusted v1: missing={len(missing)} extra={len(extra)} changed={len(changed)}')",
+  "print(f'candidate exactly matches trusted v1 final truth: {len(truth)} IDs')"
+]
+
+/-- Provision generic candidate-versus-truth enforcement in the trusted check
+workspace. Run must copy the candidate artifact and the same run's already
+collected v1 artifact to the two command arguments. -/
+def provisionCandidateTruthCheck (checkWorkspace artifactName : String) : IO Check := do
+  if checkWorkspace.isEmpty || artifactName.isEmpty || artifactName.contains '/' || artifactName.contains '\\' then
+    throw <| .userError "invalid trusted check workspace or artifact name"
+  let root : System.FilePath := checkWorkspace
+  IO.FS.createDirAll root
+  IO.FS.writeFile (root / candidateTruthCheckProgram) candidateTruthCheckText
   return {
-    id := amendedCheckId
-    assertion := amendedCheckAssertion
-    command := ["python3", amendedCheckProgram, amendedCheckFixture]
+    id := candidateTruthCheckId
+    assertion := candidateTruthCheckAssertion
+    command := ["python3", candidateTruthCheckProgram, artifactName, trustedTruthArtifactName]
   }
 
 /-- Attach the fixture policy check to a trusted Run Context. Call once while
 assembling the service context, before candidate runs begin. -/
-def attachAmendedPolicyCheck (ctx : Kalari.Tools.Run.Context) : IO Kalari.Tools.Run.Context := do
-  let check ← provisionAmendedPolicyCheck ctx.checkWorkspace
-  return { ctx with checks := ctx.checks.filter (·.id != amendedCheckId) ++ [check] }
+def attachLessonBootstrapChecks (ctx : Kalari.Tools.Run.Context) : IO Kalari.Tools.Run.Context := do
+  if ctx.artifact == trustedTruthArtifactName then
+    throw <| .userError "candidate artifact name collides with the reserved v1 truth artifact"
+  let truth ← provisionCandidateTruthCheck ctx.checkWorkspace ctx.artifact
+  let checks := ctx.checks.filter (·.id != candidateTruthCheckId)
+  return { ctx with checks := checks ++ [truth] }
 
-private def isAmendedPolicyCheck (check : Check) : Bool :=
-  check.id == amendedCheckId && check.assertion == amendedCheckAssertion &&
-  check.command == ["python3", amendedCheckProgram, amendedCheckFixture]
+private def isCandidateTruthCheck (check : Check) : Bool :=
+  check.id == candidateTruthCheckId && check.assertion == candidateTruthCheckAssertion &&
+  check.command.length == 4 && check.command[0]? == some "python3" &&
+  check.command[1]? == some candidateTruthCheckProgram &&
+  check.command[3]? == some trustedTruthArtifactName
+
+/-- Run the independent policy fixture once per session and record its result.
+This is provenance for the last-wins rule, not a candidate-output check. -/
+def verifyAmendedPolicyProvenance (store : Kalari.Evidence.Store) (session checkWorkspace : String) :
+    IO (Except String Unit) := do
+  provisionAmendedPolicyFixture checkWorkspace
+  let root : System.FilePath := checkWorkspace
+  let args := #[(root / amendedCheckProgram).toString, (root / amendedCheckFixture).toString]
+  let process ← IO.Process.output { cmd := "python3", args }
+  if process.exitCode != 0 then return .error "amended policy fixture did not distinguish first from last"
+  let loaded ← Kalari.Evidence.load store
+  if !loaded.warnings.isEmpty then return .error "incomplete policy provenance evidence store"
+  let policy : PolicyProvenance := {
+    version := "amended-policy-fixture/v1", assertion := amendedCheckAssertion, passed := true }
+  let existing := loaded.records.filter fun r =>
+    r.kind == "lesson-policy" && r.session_id == session && r.run_id == "amended-policy-fixture-v1"
+  if existing.isEmpty then
+    let record : Kalari.Evidence.Record := { kind := "lesson-policy", session_id := session, run_id := "amended-policy-fixture-v1", change_kinds := ["pagination_changed"], payload := toJson policy }
+    Kalari.Evidence.append store record
+    return .ok ()
+  if existing.length != 1 then return .error "ambiguous amended policy provenance records"
+  let some item := existing.head? | return .error "policy provenance disappeared"
+  match fromJson? item.payload with
+  | .error _ => return .error "corrupt amended policy provenance"
+  | .ok prior => return if prior == policy then .ok () else .error "amended policy provenance conflicts"
 
 /-- Clef receives the actual failing run and trusted service-supplied context. -/
 abbrev Classify := String → RunRecord → IO (Except String Kalari.Backend.DecisionAnswer)
@@ -131,6 +199,7 @@ private def descriptions (values : List String) : Except String (List String) :=
     | "boundary_overlap_one" => .ok "Adjacent pages repeated one payout at their boundary."
     | "final_page_token" => .ok "The final page carried a continuation token."
     | "short_page_midstream" => .ok "A short page occurred before the end of the stream."
+    | "amended_policy_fixture" => .ok "A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it."
     | _ => .error s!"unknown verified behavior: {v}"
 
 private def reference (lesson : Lesson) : String :=
@@ -163,11 +232,21 @@ private def recordUnlocked (store : Kalari.Evidence.Store) (session runId : Stri
         -- These observer IDs describe page traversal, so their explicit graph
         -- anchor is pagination_changed even when the run indexes other changes.
         let changeKind := "pagination_changed"
-        let check := run.checks.find? fun candidate =>
-          isAmendedPolicyCheck candidate &&
+        let policies := loaded.records.filter fun record =>
+          record.kind == "lesson-policy" && record.session_id == session &&
+          record.run_id == "amended-policy-fixture-v1" && record.change_kinds.contains changeKind
+        let [policyRecord] := policies | return .error "missing or ambiguous amended-record policy provenance"
+        let policy : PolicyProvenance ← match fromJson? policyRecord.payload with
+          | .error _ => return .error "corrupt amended-record policy provenance"
+          | .ok policy => pure policy
+        if policy.version != "amended-policy-fixture/v1" ||
+            policy.assertion != amendedCheckAssertion || !policy.passed then
+          return .error "invalid amended-record policy provenance"
+        let truth := run.checks.find? fun candidate =>
+          isCandidateTruthCheck candidate &&
           run.check_results.any fun result => result.check_id == candidate.id && result.passed
-        let some check := check | return .error "trusted amended-record policy check did not pass with the run"
-        pure (changeKind, check, observed.behaviors, none)
+        let some check := truth | return .error "candidate artifact did not match the trusted final truth artifact"
+        pure (changeKind, check, observed.behaviors ++ ["amended_policy_fixture"], none)
       else
         let signal : VerifiedBehavior ← match fromJson? entry.payload with
           | .error e => return .error e
@@ -275,14 +354,26 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
     sessionId := "s"
     changeKinds := ["pagination_changed"]
   }
-  let checkedContext ← attachAmendedPolicyCheck runContext
-  let some policyCheck := checkedContext.checks.head? | throw <| .userError "bootstrap check missing from Run Context"
-  unless isAmendedPolicyCheck policyCheck do throw <| .userError "wrong built-in policy check"
+  let checkedContext ← attachLessonBootstrapChecks runContext
+  let some truthCheck := checkedContext.checks.find? (·.id == candidateTruthCheckId) | throw <| .userError "candidate truth check missing from Run Context"
+  unless isCandidateTruthCheck truthCheck do throw <| .userError "wrong candidate truth check"
   let checkWorkspace : System.FilePath := checkedContext.checkWorkspace
-  let policyArgs := #[(checkWorkspace / amendedCheckProgram).toString, (checkWorkspace / amendedCheckFixture).toString]
-  let policyProcess ← IO.Process.output { cmd := "python3", args := policyArgs }
-  unless policyProcess.exitCode == 0 && policyProcess.stdout.contains "first selection loses 2 amendments" do
+  let policyResult ← verifyAmendedPolicyProvenance store "s" checkedContext.checkWorkspace
+  unless (match policyResult with | .ok () => true | .error _ => false) do
     throw <| .userError "amended policy executable did not distinguish first from last"
+  let truthText := "{\"id\":\"amended-a\",\"amount\":1100,\"status\":\"ADJUSTED\"}\n{\"id\":\"stable\",\"amount\":500,\"status\":\"SETTLED\"}\n{\"id\":\"amended-b\",\"amount\":1500,\"status\":\"ADJUSTED\"}\n"
+  let staleText := "{\"id\":\"amended-a\",\"amount\":1200,\"status\":\"PENDING\"}\n{\"id\":\"stable\",\"amount\":500,\"status\":\"SETTLED\"}\n{\"id\":\"amended-b\",\"amount\":2000,\"status\":\"SETTLED\"}\n"
+  let truthPath := checkWorkspace / trustedTruthArtifactName
+  let correctPath := checkWorkspace / "candidate-correct.jsonl"
+  let stalePath := checkWorkspace / "candidate-stale-first.jsonl"
+  IO.FS.writeFile truthPath truthText
+  IO.FS.writeFile correctPath truthText
+  IO.FS.writeFile stalePath staleText
+  let truthProgram := (checkWorkspace / candidateTruthCheckProgram).toString
+  let correctRun ← IO.Process.output { cmd := "python3", args := #[truthProgram, correctPath.toString, truthPath.toString] }
+  let staleRun ← IO.Process.output { cmd := "python3", args := #[truthProgram, stalePath.toString, truthPath.toString] }
+  unless correctRun.exitCode == 0 && staleRun.exitCode != 0 do
+    throw <| .userError "candidate truth checker did not accept correct and reject stale-first output"
   let run : RunRecord := { request, verdict, checks := [check], check_results := [{ check_id := "check-paging", passed := true }, { check_id := "differential-v1", passed := true }], timings := { wall_ms := 1 } }
   let failed : RunRecord := { run with verdict := { verdict with exit_code := some 1 }, check_results := [{ check_id := "differential-v1", passed := false }] }
   let appendRun := fun id r => Kalari.Evidence.append store { kind := "run", session_id := "s", run_id := id, change_kinds := ["pagination_changed"], payload := toJson r }
@@ -319,14 +410,34 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
   -- The differential result is provenance for the passing run, while the
   -- bootstrap check must be a real runnable check already recorded on it.
   let pageRequest : RunRequest := { request with command := ["run-page-observer"] }
-  let pageRun : RunRecord := { run with request := pageRequest, checks := [policyCheck], check_results := [{ check_id := policyCheck.id, passed := true }, { check_id := "differential-v1", passed := true }] }
+  let pageRun : RunRecord := { run with request := pageRequest, checks := [truthCheck], check_results := [{ check_id := truthCheck.id, passed := true }, { check_id := "differential-v1", passed := true }] }
   appendRun "page-pass" pageRun
   let pageSignal : PageObservation := { source := "payouts-api", behaviors := ["boundary_overlap_one", "final_page_token"] }
   let pageRecord : Kalari.Evidence.Record := { kind := "page-observation", session_id := "s", run_id := "page-pass", change_kinds := ["pagination_changed"], payload := toJson pageSignal }
   Kalari.Evidence.append store pageRecord
   let pageResult ← IO.ofExcept (← record store "s" "page-pass" classify write)
-  unless pageResult.any (fun l => l.check == policyCheck && l.observation.contains "one payout") do
+  unless pageResult.any (fun l => l.check == truthCheck && l.observation.contains "one payout" && l.observation.contains "first value loses final truth") do
     throw <| .userError "page observation did not bootstrap from the passing runnable check"
+  let some pageLesson := pageResult.head? | throw <| .userError "page lesson missing"
+  let some pageRef := Kalari.Tools.Recall.parseReference (reference pageLesson) | throw <| .userError "page lesson reference malformed"
+  let resolvedPage ← IO.ofExcept (← Kalari.Tools.Recall.resolveEvidence store pageRef)
+  unless resolvedPage.check == truthCheck && resolvedPage.observation == pageLesson.observation do
+    throw <| .userError "recall did not resolve candidate truth check evidence"
+  let staleStore ← Kalari.Evidence.openStore (dir / "stale-first")
+  let staleRunBody : RunRecord := { run with checks := [truthCheck], check_results := [
+    { check_id := truthCheck.id, passed := false }, { check_id := "differential-v1", passed := false }] }
+  let staleRunRecord : Kalari.Evidence.Record := { kind := "run", session_id := "s", run_id := "stale-first", change_kinds := ["pagination_changed"], payload := toJson staleRunBody }
+  Kalari.Evidence.append staleStore staleRunRecord
+  let stalePageRecord : Kalari.Evidence.Record := { kind := "page-observation", session_id := "s", run_id := "stale-first", change_kinds := ["pagination_changed"], payload := toJson pageSignal }
+  Kalari.Evidence.append staleStore stalePageRecord
+  let staleWrites ← IO.mkRef ([] : List String)
+  let staleWriter ← makeWriter fun kind _ _ => do
+    staleWrites.modify fun xs => xs ++ [kind]
+    return .ok "unexpected"
+  let staleLesson ← IO.ofExcept (← record staleStore "s" "stale-first" classify staleWriter)
+  unless staleLesson.isEmpty && (← staleWrites.get).isEmpty &&
+      (← Kalari.Evidence.load staleStore).records.all (·.kind != "lesson") do
+    throw <| .userError "stale-first output produced a recalled lesson"
 
   -- Simulate a graph write that fails after the typed lesson is appended.
   -- Retrying must validate and reuse that record, then finish the same writes.
@@ -359,7 +470,10 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
 
   -- Two handler calls share one writer object and therefore one transaction lane.
   let concurrentStore ← Kalari.Evidence.openStore (dir / "concurrent")
-  let concurrentRunBody : RunRecord := { run with checks := [policyCheck], check_results := [{ check_id := policyCheck.id, passed := true }, { check_id := "differential-v1", passed := true }] }
+  let concurrentPolicy ← verifyAmendedPolicyProvenance concurrentStore "s" checkedContext.checkWorkspace
+  unless (match concurrentPolicy with | .ok () => true | .error _ => false) do
+    throw <| .userError "concurrent store policy provenance missing"
+  let concurrentRunBody : RunRecord := { run with checks := [truthCheck], check_results := [{ check_id := truthCheck.id, passed := true }, { check_id := "differential-v1", passed := true }] }
   let concurrentRun : Kalari.Evidence.Record := { kind := "run", session_id := "s", run_id := "parallel-pass", change_kinds := ["pagination_changed"], payload := toJson concurrentRunBody }
   Kalari.Evidence.append concurrentStore concurrentRun
   let concurrentSignal : PageObservation := { source := "payouts-api", behaviors := ["boundary_overlap_one"] }
