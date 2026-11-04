@@ -42,7 +42,7 @@ requires:   [T1.5]
 fixture-ok: yes
 size:       S · frontier
 owns:       Aashaan/, tests/aashaan-cases.sh, tests/live/microvm-cases.sh
-status:     not-started
+status:     claimed:grok-impl
 ```
 From the day-one probe to the shipped supervisor: the cap logic as pure functions with theorems (a verdict is `killed_timeout` exactly when the wall-clock cap passed first; `killed_output_cap` exactly when the output cap was crossed first; output returned is never longer than the cap); a stderr cap as well as stdout; a JSON string escaper tested on control characters and non-ASCII. Stays `Std`-only.
 

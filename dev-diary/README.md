@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0: everything but T0.4 (Lambo) done; Vimanam 2.1.0 landed (T0.6). P1 done; P2 4/6; P3 3/7. Ready: T2.2, T3.1a, T5.1. The pilot (T5.2) needs the harness (T5.1) and the user's spend approval. Config format (T1.2) is JSON.
+**Current status:** P0: everything but T0.4 (Lambo) done; Vimanam 2.1.0 landed (T0.6). P1 done; P2 4/6; P3 3/7. T2.2 claimed. Ready: T3.1a, T5.1. The pilot (T5.2) needs the harness (T5.1) and the user's spend approval. Config format (T1.2) is JSON.
 
 ---
 
@@ -141,7 +141,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 |---|---|---|
 | P0 | 5 / 6 | T0.1, T0.2, T0.3, T0.5, T0.6 done. T0.4 (Lambo) blocked on its next release |
 | P1 | 5 / 5 | T1.1 through T1.5 done |
-| P2 | 4 / 6 | T2.1, T2.3, T2.4 and T2.5 done. T2.2 ready (its microVM step runs on the laptop) |
+| P2 | 4 / 6 | T2.1, T2.3, T2.4 and T2.5 done. T2.2 claimed (its microVM step runs on the laptop) |
 | P3 | 3 / 7 | T3.1, T3.3 and T3.4 done. T3.1a ready |
 | P4 | 0 / 8 | Waits for P2, P3 |
 | P5 | 0 / 6 | T5.1 ready. T5.2 (pilot) waits for T5.1 and the user's spend approval |
