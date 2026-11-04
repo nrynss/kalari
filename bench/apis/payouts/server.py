@@ -11,7 +11,13 @@ v2: GET /v2/payouts is a resumable export, modelled on a real time-windowed expo
       appears in both responses.
   B4  `limit` is accepted up to 1000 (as the spec says) but each response holds at most 100.
 
-Usage: server.py [--bind ADDR] [--port N] [--v1 on|off]
+Usage: server.py [--bind ADDR] [--port N] [--v1 on|off] [--behaviours B1,B2,B4]
+
+Omit --behaviours and B1, B2, and B4 are all on. A comma-separated list enables only
+those ids. Any other token, including B5, is an error that names the token. A behaviour
+that is off does the plain thing: B1 off, a drained response has `cursor` null; B2 off,
+the next window starts after the previous window's last payout; B4 off, the response
+holds up to `limit` (still at most 1000).
 """
 import argparse
 import base64
@@ -59,6 +65,9 @@ def read(token: str):
 class Handler(BaseHTTPRequestHandler):
     v1_enabled = True
     trace_client = None
+    b1 = True
+    b2 = True
+    b4 = True
 
     def reply(self, status, obj):
         data = json.dumps(obj).encode()
@@ -94,12 +103,23 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(400, {"error": "invalid_cursor", "message": "cursor is malformed or was not issued by this server"})
         else:
             start = 0
-        size = min(limit, PAGE_CAP)                     # B4
-        page = PAYOUTS[start:start + size]
-        end = start + len(page)
-        drained = end >= COUNT
-        nxt = max(end - 1, 0)                           # B2: the next window starts at this page's last payout
-        cursor = mint(nxt)
+        if self.b1 and self.b2 and self.b4:
+            # All three behaviours: the original paging, unchanged.
+            size = min(limit, PAGE_CAP)                     # B4
+            page = PAYOUTS[start:start + size]
+            end = start + len(page)
+            drained = end >= COUNT
+            nxt = max(end - 1, 0)                           # B2: the next window starts at this page's last payout
+            cursor = mint(nxt)
+        else:
+            size = min(limit, PAGE_CAP) if self.b4 else limit
+            page = PAYOUTS[start:start + size]
+            end = start + len(page)
+            drained = end >= COUNT
+            # B2 on: the next window starts at this page's last payout. Off: just after it.
+            nxt = max(end - 1, 0) if self.b2 else end
+            # B1 on: a fresh cursor on every response, the last included. Off: null once drained.
+            cursor = mint(nxt) if self.b1 or not drained else None
         response = {"payouts": page, "cursor": cursor, "drained": drained}
         if TRACE is None:
             return self.reply(200, response)
@@ -123,11 +143,21 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
+def behaviours_arg(raw):
+    known = ("B1", "B2", "B4")
+    tokens = [part.strip() for part in raw.split(",") if part.strip()]
+    for token in tokens:
+        if token not in known:
+            raise argparse.ArgumentTypeError(f"unknown behaviour: {token}")
+    return set(tokens)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--bind", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=18080)
     ap.add_argument("--v1", choices=["on", "off"], default="on")
+    ap.add_argument("--behaviours", type=behaviours_arg, help="comma-separated subset of B1,B2,B4; omit for all")
     ap.add_argument("--trace", help="exclusive host-owned page trace file")
     ap.add_argument("--trace-client", help="only this client IPv4 may access an observed instance")
     a = ap.parse_args()
@@ -139,8 +169,17 @@ def main():
         ap.error("--trace and --trace-client must be used together")
     Handler.v1_enabled = a.v1 == "on"
     Handler.trace_client = a.trace_client
+    if a.behaviours is None:
+        Handler.b1 = Handler.b2 = Handler.b4 = True
+        behaviours = ""
+    else:
+        Handler.b1 = "B1" in a.behaviours
+        Handler.b2 = "B2" in a.behaviours
+        Handler.b4 = "B4" in a.behaviours
+        names = ",".join(name for name in ("B1", "B2", "B4") if name in a.behaviours)
+        behaviours = f" behaviours {names or 'none'}"
     server = ThreadingHTTPServer((a.bind, a.port), Handler)
-    print(f"payouts listening on {a.bind}:{a.port} (v1 {a.v1})", flush=True)
+    print(f"payouts listening on {a.bind}:{a.port} (v1 {a.v1}){behaviours}", flush=True)
     server.serve_forever()
 
 

@@ -40,13 +40,21 @@ requires:   [T5.1, T0.6]
 fixture-ok: no
 size:       M · mid
 owns:       bench/pilot/, the --behaviours flag in bench/apis/*/server.py, its cases in bench/tests/quirks.sh
-status:     claimed:grok-impl
+status:     in-review
 ```
 The reference setup only (bench/README.md, Protocol 6): each behaviour alone, fresh session, five runs each; then the proposed pair under conditions 1, 2, 3 and 6, five runs each. About 65 runs, ~$16. **The user approves the spend before it starts**, and the first run's cost is checked against the budget before the rest.
 
 Single-behaviour pilots need single-behaviour variants of the APIs (`--behaviours B1,B2`): add the flag to the servers and a reference check to `bench/tests/quirks.sh` for each variant.
 
 **Done when:** every run's result file is committed under `bench/pilot/`; a summary table per behaviour and per condition, as counts.
+
+**Notes (in review):** `--behaviours` is optional. Omit it and the server is unchanged: payouts runs B1, B2, and B4; settlements runs B1, B2, and B3. A comma-separated list turns on only those ids. Payouts accepts B1, B2, and B4. Settlements accepts B1, B2, and B3. Any other token, including B5, is an error that names the token. B5 is not implemented.
+
+A behaviour that is off does the plain thing. Payouts: B1 off, a drained response has `cursor` null; B2 off, the next window starts after the previous window's last payout; B4 off, the response holds up to `limit` (still at most 1000). Settlements: B1 off, the last page's `endCursor` is null, and that field is nullable only in that mode; B2 off, each settlement is emitted once, in v1's version; B3 off, void rows are dropped before the page is cut.
+
+`bench/tests/quirks.sh` keeps the full-server lines on a server started with no flag. It also starts one server per variant and grades the consumer that behaviour breaks, and the correct consumer. Measured on those servers: payouts B1 `cursor_loop` TIMEOUT, `correct` PASS; payouts B2 `no_dedupe` FAIL:duplicates=24, `correct` PASS; payouts B4 `short_page_stop` FAIL:missing=2331, `correct` PASS; settlements B1 `cursor_loop` TIMEOUT, `correct` PASS; settlements B2 `no_dedupe` FAIL:duplicates=19,mismatched=19, `keep_first` FAIL:mismatched=19, `correct` PASS; settlements B3 `empty_page_stop` FAIL:missing=1473, `correct` PASS. The B3 line is not the full-server line: with B2 off, the first empty page comes after 400 final settlements and there is no amended copy. The same script rejects B5 on both servers, B3 on payouts, and B4 on settlements.
+
+`bench/pilot/run.sh` lists the matrix and calls `bench/harness/run.sh` only when `--run` is present. The list is 6 variants times 5 fresh sessions (harness condition 3), then conditions 1, 2, 3, and 6 on the proposed pair, five times each: 70 harness calls. Condition 1 is one session across both upgrades, payouts then settlements on that session. Behaviour calls assume that upgrade's servers were already started with `--behaviours` set to that one id; the harness has no switch for it, and this script does not deploy. No paid session was run. No result file was written. The live done-when, result files under `bench/pilot/` and the summary table, is not met.
 
 ---
 

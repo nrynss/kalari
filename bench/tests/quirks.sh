@@ -80,4 +80,56 @@ then
   echo "FAIL observed payouts trace or grader"; fail=1
 fi
 
+# One behaviour at a time. Expected lines were measured on that server.
+p_b1=$((op + 1)); p_b2=$((op + 2)); p_b4=$((op + 3))
+s_b1=$((op + 4)); s_b2=$((op + 5)); s_b3=$((op + 6))
+timeout 120 python3 -I apis/payouts/server.py --port "$p_b1" --v1 off --behaviours B1 >"$tmp/p-b1.log" 2>&1 &
+timeout 120 python3 -I apis/payouts/server.py --port "$p_b2" --v1 off --behaviours B2 >"$tmp/p-b2.log" 2>&1 &
+timeout 120 python3 -I apis/payouts/server.py --port "$p_b4" --v1 off --behaviours B4 >"$tmp/p-b4.log" 2>&1 &
+timeout 120 python3 -I apis/settlements/server.py --port "$s_b1" --v1 off --behaviours B1 >"$tmp/s-b1.log" 2>&1 &
+timeout 120 python3 -I apis/settlements/server.py --port "$s_b2" --v1 off --behaviours B2 >"$tmp/s-b2.log" 2>&1 &
+timeout 120 python3 -I apis/settlements/server.py --port "$s_b3" --v1 off --behaviours B3 >"$tmp/s-b3.log" 2>&1 &
+for _ in $(seq 1 50); do
+  curl -s "http://127.0.0.1:$p_b1/v2/payouts?limit=1" >/dev/null 2>&1 &&
+    curl -s "http://127.0.0.1:$p_b2/v2/payouts?limit=1" >/dev/null 2>&1 &&
+    curl -s "http://127.0.0.1:$p_b4/v2/payouts?limit=1" >/dev/null 2>&1 &&
+    curl -s -d '{"query":"{ __typename }"}' "http://127.0.0.1:$s_b1/v2/graphql" >/dev/null 2>&1 &&
+    curl -s -d '{"query":"{ __typename }"}' "http://127.0.0.1:$s_b2/v2/graphql" >/dev/null 2>&1 &&
+    curl -s -d '{"query":"{ __typename }"}' "http://127.0.0.1:$s_b3/v2/graphql" >/dev/null 2>&1 && break
+  sleep 0.1
+done
+
+check payouts     cursor_loop      "$p_b1" TIMEOUT              # B1
+check payouts     correct          "$p_b1" PASS
+check payouts     no_dedupe        "$p_b2" FAIL:duplicates=24   # B2
+check payouts     correct          "$p_b2" PASS
+check payouts     short_page_stop  "$p_b4" FAIL:missing=2331    # B4
+check payouts     correct          "$p_b4" PASS
+
+check settlements cursor_loop      "$s_b1" TIMEOUT              # B1
+check settlements correct          "$s_b1" PASS
+check settlements no_dedupe        "$s_b2" FAIL:duplicates=19,mismatched=19   # B2
+check settlements keep_first       "$s_b2" FAIL:mismatched=19   # B2: the first copy is not v1's
+check settlements correct          "$s_b2" PASS
+check settlements empty_page_stop  "$s_b3" FAIL:missing=1473    # B3 alone: 400 kept, no amended copy
+check settlements correct          "$s_b3" PASS
+
+# A token outside that server's set is an error that names the token. B5 is not a behaviour.
+reject() {
+  local api=$1
+  local token=$2
+  local rc=0
+  local err="$tmp/reject-$api-$token.txt"
+  timeout 3 python3 -I "apis/$api/server.py" --port $((op + 30)) --behaviours "$token" >"$tmp/reject.out" 2>"$err" || rc=$?
+  if [[ $rc -ne 0 ]] && grep -F -q "unknown behaviour: $token" "$err"; then
+    echo "ok   $api rejects $token"
+  else
+    echo "FAIL $api --behaviours $token (rc=$rc)"; cat "$err"; fail=1
+  fi
+}
+reject payouts B5
+reject payouts B3
+reject settlements B5
+reject settlements B4
+
 exit $fail
