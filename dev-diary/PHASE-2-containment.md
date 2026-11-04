@@ -105,7 +105,7 @@ requires:   [T2.3]
 fixture-ok: yes
 size:       S · mid
 owns:       Kalari/Sandbox/Docker.lean, deploy/local/
-status:     not-started
+status:     claimed:grok-impl
 ```
 The same interface on Docker for hosts without KVM: `--network none` plus an allowlist (Docker has no per-IP rule, so a user-defined network with an egress proxy or nftables; the task decides and records why), `--memory`, `--pids-limit`, `--read-only` root with a writable workspace, `--rm`. Not on the demo path: Vultr uses Microsandbox.
 
