@@ -1,0 +1,141 @@
+{
+  "invalid_lines": 0,
+  "tokens": {
+    "input": 8749,
+    "output": 2341,
+    "reasoning": 496
+  },
+  "tool_calls": {
+    "kalari_blast_radius": 2,
+    "kalari_recall_lessons": 1,
+    "kalari_record_lesson": 1,
+    "kalari_run_in_sandbox": 1,
+    "kalari_what_changed": 1
+  },
+  "elapsed_seconds": 20.233,
+  "exit_code": 0,
+  "timed_out": false,
+  "invalid_event_lines": 0,
+  "fixture": false,
+  "cutoff_reason": null,
+  "completed_steps": 10,
+  "estimated_step_cost_usd": 0.01428495,
+  "tool_failures": {},
+  "interrupted_signal": null,
+  "bootstrap": {
+    "bootstrapped": true,
+    "forwarded": true,
+    "error": null,
+    "requests": [
+      {
+        "active": false,
+        "completed": true,
+        "bytes": 4114,
+        "saw_done": true,
+        "finish_reason": "tool_calls",
+        "error": null,
+        "http_status": 200,
+        "oversized_line": false
+      },
+      {
+        "active": false,
+        "completed": true,
+        "bytes": 4603,
+        "saw_done": true,
+        "finish_reason": "tool_calls",
+        "error": null,
+        "http_status": 200,
+        "oversized_line": false
+      },
+      {
+        "active": false,
+        "completed": true,
+        "bytes": 3625,
+        "saw_done": true,
+        "finish_reason": "tool_calls",
+        "error": null,
+        "http_status": 200,
+        "oversized_line": false
+      },
+      {
+        "active": false,
+        "completed": true,
+        "bytes": 8609,
+        "saw_done": true,
+        "finish_reason": "tool_calls",
+        "error": null,
+        "http_status": 200,
+        "oversized_line": false
+      },
+      {
+        "active": false,
+        "completed": true,
+        "bytes": 3861,
+        "saw_done": true,
+        "finish_reason": "tool_calls",
+        "error": null,
+        "http_status": 200,
+        "oversized_line": false
+      },
+      {
+        "active": false,
+        "completed": true,
+        "bytes": 17371,
+        "saw_done": true,
+        "finish_reason": "tool_calls",
+        "error": null,
+        "http_status": 200,
+        "oversized_line": false
+      },
+      {
+        "active": false,
+        "completed": true,
+        "bytes": 29994,
+        "saw_done": true,
+        "finish_reason": "tool_calls",
+        "error": null,
+        "http_status": 200,
+        "oversized_line": false
+      },
+      {
+        "active": false,
+        "completed": true,
+        "bytes": 8552,
+        "saw_done": true,
+        "finish_reason": "tool_calls",
+        "error": null,
+        "http_status": 200,
+        "oversized_line": false
+      }
+    ],
+    "requests_omitted": 1
+  },
+  "grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "expected": 2431,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "grader_status": "EXIT 0",
+  "usage_delta": {
+    "deepseek-v4.1-flash-1017": {
+      "input": 83885,
+      "output": 2837
+    },
+    "clef": {
+      "input": 0,
+      "output": 0
+    },
+    "qwen3-embedding-4b": {
+      "input": 0,
+      "output": 0
+    }
+  },
+  "cost_note": "Account-wide token deltas may include concurrent sessions; calculate using current model-specific prices."
+}

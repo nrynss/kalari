@@ -1,9 +1,8 @@
 # Fresh-budget live attempts
 
-Four bounded attempts were made under a new $5 allowance. These are not
+Five bounded attempts were made under a new $5 allowance. These are not
 benchmark runs. Tool transcripts contain names and statuses only. Each attempt
-used isolated standalone OpenCode and a private session; none produced a
-candidate output for the hidden grader. Account-wide deltas can include other
+used isolated standalone OpenCode and a private session. Account-wide deltas can include other
 work and the prices below are the project-recorded $0.15 per million input and
 $0.60 per million output tokens, not a provider bill.
 
@@ -33,11 +32,22 @@ $0.60 per million output tokens, not a provider bill.
    delta was 63,371 input and 1,049 output tokens (about $0.0101), with zero
    Clef tokens. Cleanup reported one tracked sandbox, none left and no errors.
 
-Summed account-wide deltas are approximately $0.3573 at the recorded rates,
+5. With stream diagnostics and identity encoding, OpenCode called all five
+   Kalari tools (`fresh-budget-success-tools.jsonl`), exited 0 in 20.233 s,
+   and the hidden grader passed: 2,431 expected, 2,431 unique, zero missing,
+   extra, duplicates, mismatches or unreadable lines. Its sandbox run and both
+   candidate-v1-truth and differential-v1 checks passed. One blast-radius call
+   failed for a non-searchable change, and a subsequent call succeeded. The
+   lesson call completed but returned an empty list; it did not publish a
+   lesson. The full numeric measures and bounded stream markers are in
+   `fresh-budget-success-measures.json`. The account delta was 83,885 input and
+   2,837 output tokens (about $0.0143), with zero Clef tokens. Cleanup reported
+   four tracked sandboxes, none left and no errors. The runner does not record a
+   first-v2 snapshot or time-stuck measure, so neither is claimed here.
+
+Summed account-wide deltas are approximately $0.3716 at the recorded rates,
 including the overlapping benchmark. The detached session process was reaped;
 a final process inspection found only the four pre-existing API sandboxes.
-The five-tool transcript, hidden grade and complete measures required by T4.7
-remain unmet.
 
 An actual standalone OpenCode run against a local fake provider reproduced the
 MCP startup race, then confirmed that the gate and canonical aashaan path expose
