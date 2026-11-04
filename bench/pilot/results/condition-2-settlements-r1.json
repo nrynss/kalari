@@ -1,0 +1,148 @@
+{
+  "condition": 2,
+  "upgrade": "settlements",
+  "arm": "reference",
+  "setup": "OpenCode 2.2.5 with microsandbox-mcp, no Kalari tools",
+  "api_base": "the VM's public address",
+  "live_port": 18081,
+  "grading_port": 18091,
+  "prompt": "upgrade.txt",
+  "opencode_version": "opencode v2.2.5",
+  "session_continued": false,
+  "notes_attached": true,
+  "session_cap_s": 1200,
+  "session_capped": false,
+  "measures": {
+    "verdict": "PASS",
+    "right_first_time": true,
+    "sandbox_runs": 3,
+    "wall_time_s": 42.42,
+    "time_stuck_s": 0,
+    "tokens_input": 1738016,
+    "tokens_output": 24740,
+    "records_lost": 0,
+    "records_duplicated": 0
+  },
+  "sandbox_runs_against_v1": 0,
+  "sandbox_runs_against_v2": 3,
+  "records_extra": 0,
+  "records_mismatched": 0,
+  "grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 1873,
+    "unique": 1873,
+    "expected": 1873,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "first_v2_grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 1873,
+    "unique": 1873,
+    "expected": 1873,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "right_first_time_basis": "snapshot",
+  "cost_usd": 0.275546,
+  "cost_note": "DeepSeek V4.1 Flash list price, cached input counted as input, no cache discount",
+  "usage_delta": [
+    {
+      "model": "clef",
+      "input": 0,
+      "output": 0
+    },
+    {
+      "model": "deepseek-v4.1-flash-1017",
+      "input": 1738016,
+      "output": 24740
+    },
+    {
+      "model": "qwen3-embedding-4b",
+      "input": 0,
+      "output": 0
+    }
+  ],
+  "opencode_tokens": {
+    "steps": 22,
+    "input": 42053,
+    "output": 5999,
+    "reasoning": 6641,
+    "cache_read": 656640
+  },
+  "consumer_runs": [
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 1.189,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 0.852,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 1.905,
+      "timed_out": false,
+      "basis": "snapshot"
+    }
+  ],
+  "event_summary": {
+    "lines": 75,
+    "unparsed_lines": 0,
+    "types": {
+      "step_start": 22,
+      "tool_use": 30,
+      "step_finish": 22,
+      "text": 1
+    },
+    "tools": {
+      "read": 11,
+      "execute": 16,
+      "edit": 3
+    },
+    "steps": 22,
+    "bash_denied": 0,
+    "sandbox_names": [
+      "settlement-upgrade"
+    ],
+    "last_reason": "stop",
+    "final_answer": "Upgraded `settlement_reconcile.py` to the v2 API.\n\nWhat changed:\n- Switched from `POST /v1/graphql` to `POST /v2/graphql`.\n- Added cursor-based pagination using `first`/`after`, `nodes`, and `pageInfo`.\n- Continues through short/empty pages until `hasNextPage` is false.\n- Deduplicates by `id`, keeping the last-delivered version of amended settlements.\n- Restarts from the beginning without `after` when a cursor error is returned, with a retry cap.\n- Handles GraphQL errors returned either as HTTP 200 or HTTP error responses.\n- Added `--limit` (default `100`) for page size.\n\nVerified against `http://the VM's public address:18081`:\n- Full run at page size 100 reconciled **1873** settlements.\n- Full run at page size 37 also reconciled **1873** settlements.\n- Output had **1873 unique IDs**, with no duplicates or missing records.\n- Every record matched the current v1 result exactly.\n- Simulated cursor failure, empty page, and amended-settlement delivery all behaved correctly.",
+    "stderr_excerpt": "",
+    "diff_stat": "settlement_reconcile.py | 62 +++++++++++++++++++++++++++++++++++++++++++------\n 1 file changed, 55 insertions(+), 7 deletions(-)"
+  },
+  "grader_runs": {
+    "final": {
+      "status": "EXIT 0",
+      "log_excerpt": "reconciled 1873 settlements\n"
+    },
+    "first": {
+      "status": "EXIT 0",
+      "log_excerpt": "reconciled 1873 settlements\n"
+    }
+  },
+  "cleanup": {
+    "sandboxes_removed": [],
+    "sandboxes_left": [],
+    "processes_left": []
+  },
+  "process_elapsed_s": 44.0,
+  "opencode_exit": 0
+}
