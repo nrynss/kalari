@@ -1,0 +1,158 @@
+{
+  "condition": 1,
+  "upgrade": "payouts",
+  "arm": "reference",
+  "setup": "OpenCode 2.2.5 with microsandbox-mcp, no Kalari tools",
+  "api_base": "the VM's public address",
+  "live_port": 18080,
+  "grading_port": 18090,
+  "prompt": "upgrade.txt",
+  "opencode_version": "opencode v2.2.5",
+  "session_continued": false,
+  "notes_attached": false,
+  "session_cap_s": 1200,
+  "session_capped": false,
+  "measures": {
+    "verdict": "PASS",
+    "right_first_time": true,
+    "sandbox_runs": 4,
+    "wall_time_s": 21.698,
+    "time_stuck_s": 0,
+    "tokens_input": 300478,
+    "tokens_output": 5609,
+    "records_lost": 0,
+    "records_duplicated": 0
+  },
+  "sandbox_runs_against_v1": 0,
+  "sandbox_runs_against_v2": 4,
+  "records_extra": 0,
+  "records_mismatched": 0,
+  "grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "expected": 2431,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "first_v2_grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "expected": 2431,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "right_first_time_basis": "snapshot",
+  "cost_usd": 0.048437,
+  "cost_note": "DeepSeek V4.1 Flash list price, cached input counted as input, no cache discount",
+  "usage_delta": [
+    {
+      "model": "clef",
+      "input": 0,
+      "output": 0
+    },
+    {
+      "model": "deepseek-v4.1-flash-1017",
+      "input": 300478,
+      "output": 5609
+    },
+    {
+      "model": "qwen3-embedding-4b",
+      "input": 0,
+      "output": 0
+    }
+  ],
+  "opencode_tokens": {
+    "steps": 17,
+    "input": 24254,
+    "output": 3732,
+    "reasoning": 1877,
+    "cache_read": 276224
+  },
+  "consumer_runs": [
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 0.707,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 0.68,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 0.784,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 2.699,
+      "timed_out": false,
+      "basis": "snapshot"
+    }
+  ],
+  "event_summary": {
+    "lines": 57,
+    "unparsed_lines": 0,
+    "types": {
+      "step_start": 17,
+      "tool_use": 21,
+      "step_finish": 17,
+      "text": 2
+    },
+    "tools": {
+      "read": 7,
+      "glob": 1,
+      "execute": 12,
+      "write": 1
+    },
+    "steps": 17,
+    "bash_denied": 0,
+    "sandbox_names": [
+      "probe",
+      "verify-payout-sync"
+    ],
+    "last_reason": "stop",
+    "final_answer": "Now I'll upgrade the client. The key v2 behaviors: paginate via opaque `cursor`, continue until `drained: true`, and deduplicate overlapping window edges by `id`.\n\n\nUpgraded `payout_sync.py` from v1 to v2.\n\nChanges:\n- Calls `GET /v2/payouts` instead of `/v1/payouts`.\n- Follows the opaque `cursor` until `drained: true`.\n- Deduplicates payouts by `id` because adjacent windows overlap.\n- Uses `limit=1000`, the documented maximum.\n- URL-encodes the cursor safely with `urllib.parse.urlencode`.\n\nVerified against `http://the VM's public address:18080`:\n- v2 export produced **2,431 payouts**, all unique.\n- Matched the live v1 result exactly by ID set and creation order.\n- Re-ran with a forced window size of 7 to exercise many overlapping windows; still produced the same 2,431 unique payouts in the same order.",
+    "stderr_excerpt": "",
+    "diff_stat": "payout_sync.py | 31 +++++++++++++++++++++++++++++--\n 1 file changed, 29 insertions(+), 2 deletions(-)"
+  },
+  "grader_runs": {
+    "final": {
+      "status": "EXIT 0",
+      "log_excerpt": "synced 2431 payouts\n"
+    },
+    "first": {
+      "status": "EXIT 0",
+      "log_excerpt": "synced 2431 payouts\n"
+    }
+  },
+  "cleanup": {
+    "sandboxes_removed": [],
+    "sandboxes_left": [],
+    "processes_left": []
+  },
+  "process_elapsed_s": 24.0,
+  "opencode_exit": 0
+}
