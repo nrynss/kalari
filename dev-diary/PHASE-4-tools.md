@@ -28,7 +28,7 @@ requires:   [T1.5]
 fixture-ok: yes
 size:       S · mid
 owns:       Kalari/Evidence.lean
-status:     in-review
+status:     done
 ```
 Every run, every check result, every Clef answer and every lesson written, as JSON Lines in `.kalari/` (append-only, a truncated last line skipped with a warning). The source for the web app and the judges' page: every claim links to a record here.
 

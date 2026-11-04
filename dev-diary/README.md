@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0 done: Vimanam 2.1.0 (T0.6) and Lambo 0.9.0 (T0.4) landed. P1 done; P2 7/7; P3 6/7. T2.6 done. T3.1a done. T3.3b done. T3.2 done. T4.1 done. T4.2 is claimed. The run continues through P3, then P4, then P5. Ready: T5.1. Live spend is approved, including the pilot (T5.2, about $16) and T3.2b and T3.3b (each under $0.01). Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
+**Current status:** P0 done: Vimanam 2.1.0 (T0.6) and Lambo 0.9.0 (T0.4) landed. P1 done; P2 7/7; P3 6/7. T2.6 done. T3.1a done. T3.3b done. T3.2 done. T4.1 done. T4.2 done. The run continues through P3, then P4, then P5. Ready: T5.1. Live spend is approved, including the pilot (T5.2, about $16) and T3.2b and T3.3b (each under $0.01). Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
 
 ---
 
@@ -151,6 +151,8 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 ---
 
 ## Handoff Log
+
+- **T4.2 closed.** Terra implemented and independently reviewed the evidence store. The gate covers append and reload, indexed queries, interrupted tails and concurrent appends through one shared Store per path.
 
 - **T4.1 closed.** Terra implemented and independently reviewed the stdio server. Luna fixed request validation and protocol negotiation. Both recorded OpenCode sessions replay through the server, and the gate passed before and after landing.
 
