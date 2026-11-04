@@ -17,8 +17,8 @@ prefix="kalari-live-${run_id}-"
 name_correct="${prefix}correct"
 name_cursor="${prefix}cursor"
 name_deny="${prefix}deny"
-image=debian
-had_python=yes
+# Kalari.Config.defaultImage. Same string createArgv appends. Not a second image.
+image=python:3.13-slim
 py=""
 server_pid=""
 created=()
@@ -181,22 +181,11 @@ python_path() {
   fi
 }
 
-# debian first. If it has no python3, remove it and create the python image.
-# --no-net cannot apt-get.
+# The configured image. --no-net cannot apt-get, and this script does not switch images.
 ensure_runtime() {
   local name=$1
   local with_rule=$2
   create_sandbox "$name" "$with_rule"
-  if [[ "$image" == debian ]]; then
-    py=$(python_path "$name" || true)
-    if [[ -z "$py" ]]; then
-      had_python=no
-      echo "debian has no python3; removing it and creating python"
-      remove_sandbox "$name"
-      image=python
-      create_sandbox "$name" "$with_rule"
-    fi
-  fi
   py=$(python_path "$name" || true)
   if [[ -z "$py" ]]; then
     echo "guest has no python3" >&2
@@ -476,5 +465,5 @@ if bad:
     print("sandboxes still listed:", len(bad))
     raise SystemExit(1)
 ' "$prefix" "$list_raw"
-echo "outcome image=${image} debian_had_python3=${had_python}"
+echo "outcome image=${image}"
 echo "outcome list_clear=yes"

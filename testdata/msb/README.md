@@ -4,7 +4,7 @@ What Microsandbox's CLI (msb 0.7.13) prints, for the Microsandbox backend (T2.3)
 
 | Case | Exit | Notes |
 |---|---|---|
-| `create-ok` | 0 | `--no-net --net-rule allow@<ip>/32:tcp:18090-18091 debian`, ~460 ms |
+| `create-ok` | 0 | `--no-net --net-rule allow@<ip>/32:tcp:18090-18091 python:3.13-slim`, ~460 ms |
 | `create-duplicate` | 1 | `error: sandbox already exists: … remove it, start the stopped sandbox, or recreate with .replace()` |
 | `list-text`, `list-json` | 0 | **Only `list` has machine output** (`--format json`: `name`, `image`, `status`, `created_at`). Every other command is text |
 | `copy-in-ok`, `copy-in-unknown` | 0, 1 | |

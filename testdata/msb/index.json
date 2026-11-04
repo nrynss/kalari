@@ -1,13 +1,13 @@
 [
  {
   "case": "create-ok",
-  "argv": "msb create --name rec-msb --cpus 1 --memory 256M --no-net --net-rule allow@203.0.113.10/32:tcp:18090-18091 debian",
+  "argv": "msb create --name rec-msb --cpus 1 --memory 256M --no-net --net-rule allow@203.0.113.10/32:tcp:18090-18091 python:3.13-slim",
   "exit": 0,
   "ms": 457
  },
  {
   "case": "create-duplicate",
-  "argv": "msb create --name rec-msb --cpus 1 --memory 256M --no-net debian",
+  "argv": "msb create --name rec-msb --cpus 1 --memory 256M --no-net python:3.13-slim",
   "exit": 1,
   "ms": 7
  },

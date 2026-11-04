@@ -1,5 +1,6 @@
 import Lean.Data.Json
 import Kalari.Backend
+import Kalari.Config
 import Kalari.Model
 import Kalari.Proc
 
@@ -8,9 +9,10 @@ import Kalari.Proc
 The gate has already allowed the run. This module does not call it and does
 not resolve DNS: `AllowHost.host` is already an IP, and every rule is that IP.
 
-`run` pulls `debian` before create. Create always passes `--no-net`, then one
+`run` pulls its image before create. The default is `imageName`, the config
+default. Create always passes `--no-net`, then one
 `allow@<host>/32:tcp:<port>` per allowlist entry, then `--pull never`, then
-`debian`. An empty allowlist still passes `--no-net` and passes no rule. A
+that image. An empty allowlist still passes `--no-net` and passes no rule. A
 failed pull is a setup error and does not create. Cleanup is `msb remove`.
 `exec` on a stopped sandbox starts it again, so stop is not the end of a run.
 A failed create is not removed: the name may already have belonged to another
@@ -33,7 +35,8 @@ abbrev Runner :=
 /-- Create, copy, list, and remove. Exec uses the request timeout instead. -/
 def controlTimeoutMs : Nat := 30000
 
-def imageName : String := "debian"
+/-- `Kalari.Config.defaultImage`. Callers pass another string to `createArgv` and `pullArgv`. -/
+def imageName : String := Kalari.Config.defaultImage
 
 /-- `msb pull <image>`. No `--force` and no registry URL. -/
 def pullArgv (image : String) : List String :=
@@ -49,10 +52,11 @@ def netRule (host : AllowHost) : String :=
 def netRules (allow : List AllowHost) : List String :=
   allow.flatMap fun host => ["--net-rule", netRule host]
 
-def createArgv (name : String) (memoryMib : Nat) (allow : List AllowHost) : List String :=
+def createArgv (name : String) (memoryMib : Nat) (allow : List AllowHost)
+    (image : String := imageName) : List String :=
   ["msb", "create", "--name", name, "--cpus", "1", "--memory", s!"{memoryMib}M", "--no-net"]
     ++ netRules allow
-    ++ ["--pull", "never", imageName]
+    ++ ["--pull", "never", image]
 
 def copyInArgv (name hostPath guestPath : String) : List String :=
   ["msb", "copy", "-q", hostPath, s!"{name}:{guestPath}"]
@@ -102,28 +106,34 @@ private def showsCreate (argv : List String) : Bool :=
     && argv.contains "1"
     && argv.contains "--memory"
     && argv.contains "256M"
-    && argv.contains "debian"
+    && argv.contains imageName
     && argv.contains "--name"
     && argv.contains "kalari-run-1"
     && argv.any (fun arg => arg.contains "allow@" && arg.contains "/32:tcp:")
     && noNetDefault argv
     && pullNever argv
 
-#guard pullArgv imageName == ["msb", "pull", "debian"]
+#guard imageName == "python:3.13-slim"
+
+#guard pullArgv imageName == ["msb", "pull", "python:3.13-slim"]
+
+#guard pullArgv "python" == ["msb", "pull", "python"]
+
+#guard (createArgv "n" 64 [] "python").getLast? == some "python"
 
 #guard createArgv "kalari-run-1" 256 [] ==
   ["msb", "create", "--name", "kalari-run-1", "--cpus", "1", "--memory", "256M", "--no-net",
-    "--pull", "never", "debian"]
+    "--pull", "never", "python:3.13-slim"]
 
 #guard createArgv "kalari-run-1" 256 [{ host := "203.0.113.10", port := 18090 }] ==
   ["msb", "create", "--name", "kalari-run-1", "--cpus", "1", "--memory", "256M", "--no-net",
-    "--net-rule", "allow@203.0.113.10/32:tcp:18090", "--pull", "never", "debian"]
+    "--net-rule", "allow@203.0.113.10/32:tcp:18090", "--pull", "never", "python:3.13-slim"]
 
 #guard showsCreate (createArgv "kalari-run-1" 256 [{ host := "203.0.113.10", port := 18090 }])
 
 #guard !showsCreate [
   "msb", "create", "--name", "kalari-run-1", "--cpus", "1", "--memory", "256M", "--no-net",
-  "--net-rule", "allow@203.0.113.10/32:tcp:18090", "debian"]
+  "--net-rule", "allow@203.0.113.10/32:tcp:18090", "python:3.13-slim"]
 
 #guard pullNever ["--pull", "never"]
 #guard !pullNever ["--pull", "always"]
@@ -134,7 +144,7 @@ private def showsCreate (argv : List String) : Bool :=
     { host := "203.0.113.10", port := 443 }] ==
   ["msb", "create", "--name", "n", "--cpus", "1", "--memory", "128M", "--no-net",
     "--net-rule", "allow@203.0.113.10/32:tcp:80",
-    "--net-rule", "allow@203.0.113.10/32:tcp:443", "--pull", "never", "debian"]
+    "--net-rule", "allow@203.0.113.10/32:tcp:443", "--pull", "never", "python:3.13-slim"]
 
 #guard copyInArgv "kalari-run-1" "in.txt" "/tmp/in.txt" ==
   ["msb", "copy", "-q", "in.txt", "kalari-run-1:/tmp/in.txt"]
@@ -159,8 +169,8 @@ private def showsCreate (argv : List String) : Bool :=
 
 #guard kalariNames [
     { name := "api-payouts-live", image := "python", status := "Running", created_at := "a" },
-    { name := "kalari-run-1", image := "debian", status := "Running", created_at := "b" },
-    { name := "not-kalari-run", image := "debian", status := "Stopped", created_at := "c" },
+    { name := "kalari-run-1", image := "python:3.13-slim", status := "Running", created_at := "b" },
+    { name := "not-kalari-run", image := "python:3.13-slim", status := "Stopped", created_at := "c" },
   ] == ["kalari-run-1"]
 
 private def bytesText (b : ByteArray) : String :=
@@ -198,9 +208,10 @@ private def succeeded (r : Result) : Bool :=
 Create, copy, and remove use `controlTimeoutMs` and that same output cap.
 `msb exec` forwards the command's exit code, so a non-zero code stays in
 the `Result` instead of becoming an error. -/
-def make (runner : Runner) (execTimeoutMs outputCap : Nat) : SandboxBackend where
+def make (runner : Runner) (execTimeoutMs outputCap : Nat)
+    (image : String := imageName) : SandboxBackend where
   create := fun name caps allow =>
-    invoke runner "create" (createArgv name caps.memory_mib allow) controlTimeoutMs outputCap
+    invoke runner "create" (createArgv name caps.memory_mib allow image) controlTimeoutMs outputCap
   copyIn := fun name hostPath guestPath =>
     invoke runner "copy-in" (copyInArgv name hostPath guestPath) controlTimeoutMs outputCap
   exec := fun name command => do
@@ -278,18 +289,19 @@ def ensureImage (runner : Runner) (image : String) (outputCap : Nat)
   let err := (bytesText third.stderr).trimAscii.toString
   return .error s!"setup: pull {image}: {err}"
 
-/-- Pull `imageName`, then create, copy the workspace and the aashaan in,
-set overcommit, exec the job, copy results out, and remove. `wait` runs
-between failed pull attempts; the default sleeps. A failed pull is returned
-and does not create. A failed create returns the error and does not remove.
-Any create that succeeded is removed, including when the job's exit code
-is not 0. -/
+/-- Pull `image`, then create, copy the workspace and the aashaan in,
+set overcommit, exec the job, copy results out, and remove. `image` defaults
+to `imageName`. `wait` runs between failed pull attempts; the default sleeps.
+A failed pull is returned and does not create. A failed create returns the
+error and does not remove. Any create that succeeded is removed, including
+when the job's exit code is not 0. -/
 def run (runner : Runner) (spec : Run)
-    (wait : Nat → IO Unit := fun ms => do IO.sleep ms.toUInt32) : IO (Except String Result) := do
-  match ← ensureImage runner imageName spec.caps.output_cap_bytes wait with
+    (wait : Nat → IO Unit := fun ms => do IO.sleep ms.toUInt32)
+    (image : String := imageName) : IO (Except String Result) := do
+  match ← ensureImage runner image spec.caps.output_cap_bytes wait with
   | .error e => return .error e
   | .ok _ => pure ()
-  let b := make runner spec.caps.timeout_ms spec.caps.output_cap_bytes
+  let b := make runner spec.caps.timeout_ms spec.caps.output_cap_bytes image
   match ← b.create spec.name spec.caps spec.allow with
   | .error e => return .error e
   | .ok _ => pure ()
@@ -317,7 +329,7 @@ def reap (runner : Runner) (outputCap : Nat) : IO (Except String (List String)) 
       return .ok names
 
 /-! The checks below run during `lake build`. The runner replays `testdata/msb`.
-A step with no recording fails the build. A pull of `debian` is a synthetic
+A step with no recording fails the build. `pullArgv imageName` is a synthetic
 success and does not read a recording. `live` is not applied: the gate has
 no `msb` binary. Pull retries record their wait and do not sleep. -/
 
@@ -391,11 +403,11 @@ private def accepts (case : String) (argv : List String) : Bool :=
   match case with
   | "create-ok" =>
     noDefault && argv.contains "--no-net" && argv.contains "--net-rule"
-      && argv.contains "--cpus" && argv.getLast? == some "debian"
+      && argv.contains "--cpus" && argv.getLast? == some imageName
       && pullNever argv
   | "create-duplicate" =>
     noDefault && argv.contains "--no-net" && !argv.contains "--net-rule"
-      && argv.getLast? == some "debian"
+      && argv.getLast? == some imageName
       && pullNever argv
   | "copy-in-ok" =>
     match argv with
@@ -427,8 +439,8 @@ private def replayRunner (root : System.FilePath) (calls : IO.Ref (List Call))
     (left : IO.Ref (List String)) : Runner :=
   fun argv timeoutMs outputCap => do
     calls.modify fun xs => xs ++ [Call.mk argv timeoutMs outputCap]
-    -- Synthetic success. Does not consume a testdata case.
-    if argv == ["msb", "pull", "debian"] then
+    -- Synthetic success for this image. Does not consume a testdata case.
+    if argv == pullArgv imageName then
       return {
         exitCode := some 0
         stdout := ByteArray.empty
@@ -684,7 +696,7 @@ private def runChecks : IO Unit := do
     check (r.exitCode == some 0 && r.cap == .none) "pull retry: not a success"
   let retryLog ← retryCalls.get
   check (retryLog.length == 3) s!"pull retry attempts {retryLog.length}"
-  check (retryLog.all (fun c => c.argv == ["msb", "pull", "debian"])) "pull retry argv"
+  check (retryLog.all (fun c => c.argv == pullArgv imageName)) "pull retry argv"
   check (retryLog.all (fun c =>
     c.timeoutMs == controlTimeoutMs && c.outputCap == caps.output_cap_bytes)) "pull retry budget"
   check ((← retryWaits.get) == [1000, 2000]) "pull retry waits"
@@ -715,18 +727,18 @@ private def runChecks : IO Unit := do
   match ← run (scripted failScript failCalls) failedPull recordFail with
   | .ok _ => fail "pull failed: expected a setup error"
   | .error msg =>
-    check (msg.contains "debian") s!"pull failed image: {msg}"
+    check (msg.contains imageName) s!"pull failed image: {msg}"
     check (msg.contains "pull") s!"pull failed pull: {msg}"
     check (msg.contains authErr) s!"pull failed stderr: {msg}"
   let failLog ← failCalls.get
   check (failLog.length == 3) s!"pull failed attempts {failLog.length}"
-  check (failLog.all (fun c => c.argv == ["msb", "pull", "debian"])) "pull failed argv"
+  check (failLog.all (fun c => c.argv == pullArgv imageName)) "pull failed argv"
   check (failLog.all (fun c =>
     !c.argv.contains "create" && !c.argv.contains "exec" && !c.argv.contains "remove"
       && !c.argv.contains "copy")) "pull failed: not only pulls"
   check ((← failWaits.get) == [1000, 2000]) "pull failed waits"
   check (← failScript.get).isEmpty "pull failed: fourth attempt"
-  say "msb pull failed setup image=debian calls=3 create=false remove=false exec=false"
+  say s!"msb pull failed setup image={imageName} calls=3 create=false remove=false exec=false"
 
   -- Next start: the recorded list has no kalari- name, so reap removes nothing.
   let listedText ← IO.FS.readFile (root / "testdata" / "msb" / "list-json.stdout")

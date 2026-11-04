@@ -22,12 +22,17 @@ structure Endpoint where
   api_key_env : String
   deriving Repr, BEq, ToJson
 
-/-- Maximum caps and the network allowlist. `backend` is `microsandbox` or `docker`. -/
+/-- Maximum caps, the guest image, and the network allowlist.
+`backend` is `microsandbox` or `docker`. -/
 structure Sandbox where
   backend : String
+  image : String
   caps : Kalari.Model.Caps
   allowlist : List Kalari.Model.AllowHost
   deriving Repr, BEq, ToJson
+
+/-- Guest image when `sandbox.image` is absent. msb 0.7.13 accepts an OCI tag. -/
+def defaultImage : String := "python:3.13-slim"
 
 /-- How to start Lambo. `command` is the argv. `config_path` is Lambo's own config. -/
 structure Lambo where
@@ -104,12 +109,24 @@ private def asArray (j : Json) (field : String) : Except String Json :=
   | .arr _ => .ok j
   | _ => .error s!"{field}: JSON array expected"
 
+/-- An empty string is rejected. The message names the field and not the value. -/
+private def parseSandboxImage (obj : Std.TreeMap.Raw String Json) : Except String String :=
+  match obj.get? "image" with
+  | none => .ok defaultImage
+  | some (.str s) =>
+    if s.isEmpty then
+      .error "sandbox.image: empty"
+    else
+      .ok s
+  | some _ => .error "sandbox.image: String expected"
+
 private def parseSandbox (j : Json) : Except String Sandbox := do
   let obj ← getObj j "sandbox"
   rejectApiKey obj "sandbox.api_key"
   let backend ← strField obj "sandbox.backend" "backend"
   if backend != "microsandbox" && backend != "docker" then
     throw "sandbox.backend: expected microsandbox or docker"
+  let image ← parseSandboxImage obj
   let capsJson ← jsonField obj "sandbox.caps" "caps"
   discard <| asObject capsJson "sandbox.caps"
   let caps ← Except.mapError (s!"sandbox.caps: " ++ ·) (fromJson? capsJson)
@@ -117,7 +134,7 @@ private def parseSandbox (j : Json) : Except String Sandbox := do
   discard <| asArray allowJson "sandbox.allowlist"
   let allowlist ← Except.mapError (s!"sandbox.allowlist: " ++ ·)
     (fromJson? (α := List Kalari.Model.AllowHost) allowJson)
-  return { backend, caps, allowlist }
+  return { backend, image, caps, allowlist }
 
 private def parseLambo (j : Json) : Except String Lambo := do
   let obj ← getObj j "lambo"
@@ -183,6 +200,7 @@ private def expectedFixture : Config := {
   }
   sandbox := {
     backend := "microsandbox"
+    image := defaultImage
     caps := { timeout_ms := 30000, output_cap_bytes := 1048576, memory_mib := 512 }
     allowlist := [{ host := "api.example.test", port := 443 }]
   }
@@ -204,19 +222,24 @@ private def endpointJson (env : String) (extra : List (String × Json) := []) : 
   ] ++ extra)
 
 private def configJson (models decisions : Json) (backend : String := "microsandbox")
-    (rootExtra : List (String × Json) := []) : Json :=
+    (rootExtra : List (String × Json) := []) (image : Option String := none) : Json :=
+  let sandboxBase : List (String × Json) := [
+    ("backend", Json.str backend),
+    ("caps", Json.mkObj [
+      ("timeout_ms", (1 : Json)),
+      ("output_cap_bytes", (2 : Json)),
+      ("memory_mib", (3 : Json))
+    ]),
+    ("allowlist", Json.arr #[])
+  ]
+  let sandboxFields :=
+    match image with
+    | none => sandboxBase
+    | some s => sandboxBase ++ [("image", Json.str s)]
   Json.mkObj (rootExtra ++ [
     ("models", models),
     ("decisions", decisions),
-    ("sandbox", Json.mkObj [
-      ("backend", Json.str backend),
-      ("caps", Json.mkObj [
-        ("timeout_ms", (1 : Json)),
-        ("output_cap_bytes", (2 : Json)),
-        ("memory_mib", (3 : Json))
-      ]),
-      ("allowlist", Json.arr #[])
-    ]),
+    ("sandbox", Json.mkObj sandboxFields),
     ("lambo", Json.mkObj [
       ("command", toJson (["lambo", "serve"] : List String)),
       ("config_path", Json.str "lambo.toml")
@@ -234,6 +257,8 @@ private def parses (j : Json) : Except String Config :=
 #guard !isEnvVarName "9KEY"
 #guard !isEnvVarName "a=b"
 #guard !isEnvVarName "has space"
+
+#guard defaultImage == "python:3.13-slim"
 
 #guard (parse fixtureText).toOption == some expectedFixture
 
@@ -263,7 +288,18 @@ private def parses (j : Json) : Except String Config :=
 #guard match parses (configJson (endpointJson "KALARI_TEST_KEY") (endpointJson "KALARI_TEST_KEY")
     (backend := "docker")) with
   | .ok cfg => cfg.sandbox.backend == "docker" && cfg.sandbox.allowlist == []
+      && cfg.sandbox.image == defaultImage
   | .error _ => false
+
+#guard match parses (configJson (endpointJson "KALARI_TEST_KEY") (endpointJson "KALARI_TEST_KEY")
+    (image := some "python")) with
+  | .ok cfg => cfg.sandbox.image == "python" && cfg.sandbox.image != defaultImage
+  | .error _ => false
+
+#guard match parses (configJson (endpointJson "KALARI_TEST_KEY") (endpointJson "KALARI_TEST_KEY")
+    (rootExtra := [("note", Json.str pastedKey)]) (image := some "")) with
+  | .error e => e == "sandbox.image: empty" && !e.contains pastedKey
+  | .ok _ => false
 
 #guard match parses (configJson (endpointJson "KALARI_TEST_KEY") (endpointJson "KALARI_TEST_KEY")
     (backend := "podman")) with

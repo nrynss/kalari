@@ -205,13 +205,29 @@ requires:   [T2.5]
 fixture-ok: yes
 size:       S · mid
 owns:       Kalari/Sandbox/Microsandbox.lean, Kalari/Config.lean (the image setting only), testdata/msb/, tests/live/microvm-cases.sh, tests/live/sandbox.sh
-status:     claimed:grok-impl
+status:     in-review
 ```
 Found in T2.3b's report: the backend creates `debian` (`imageName`), which has no `python3`, and `--no-net` can't install it. The benchmark's consumers are Python, so `run_in_sandbox` (T4.5) would hand the agent's code a guest that can't run it. `tests/live/sandbox.sh` worked around this by switching to `python` inside the script; the backend was unchanged.
 
 Make the image a setting in Kalari's config with `python` as the default, and use it everywhere the backend names an image: `ensureImage`'s pull (T2.5) and every `create`, still `--no-net` and `--pull never`. Pin a tag if msb 0.7.13 accepts one (`python:3.13-slim` or similar: the consumers use only the standard library); otherwise `python`, with the reason in Notes. The aashaan is a glibc binary, so it runs on a Debian-based Python image; confirm that in the live run. Re-record the `create` rows in `testdata/msb/` with the new image, and point the two live scripts at the configured image instead of their own names.
 
 **Done when:** no `debian` is left in the backend or its checks; the recordings replay with the new image; live, the aashaan's eight cases pass in it and `correct.py` reaches the payouts API and passes the grader through the backend itself, not a script-side image switch; the image and its size are in `research/sandbox.md`.
+
+Notes:
+
+`sandbox.image` is optional. Absent, it is `python:3.13-slim` (`Config.defaultImage`). A present string is kept, including one that is not the default. An empty string is the error `sandbox.image: empty`, and that message does not include other text from the file. `testdata/config/kalari.json` has no image key. The fixture still parses, because the default fills the field. `imageName` is that same default. `createArgv` and `pullArgv` take the image. Every create is `--no-net`, one `allow@<host>/32:tcp:<port>` per allow entry, then `--pull never`, then the image. `getLast?` is the image. `ensureImage` pulls it. Three attempts. The waits are 1000 ms then 2000 ms, recorded by the checks and not slept. Any non-zero exit or any cap other than `none` retries. Three failures are `setup: pull {image}: {stderr}`, returned before create, copy, exec, or remove. `replayRunner` treats `pullArgv imageName` as a synthetic success and does not consume a `testdata/msb` case. It does not match on `debian`. `debian` does not appear in `Kalari/Sandbox/Microsandbox.lean`. The Docker backend is still `debian:stable-slim`.
+
+The create rows in `testdata/msb/index.json` (`create-ok`, `create-duplicate`) and the `create-ok` line in `testdata/msb/README.md` now end in `python:3.13-slim`. `list-json.stdout`, `list-text.stdout`, and the `msb run debian -- true` row still contain the word debian. They are a past list and a past run, not argv this backend builds. No check requires the backend image to be debian.
+
+Why this string: `msb create` takes a positional image, and `msb pull` takes a positional reference. A token `python:3.13-slim` is accepted as that argument. An unknown flag after it is the error, and the usage line still shows one `<IMAGE>` or `<REFERENCE>`. msb 0.7.13 already stores a tagged reference (`docker.io/library/debian:bookworm`), so a colon is a real image reference here. That check did not need a registry call. The consumers use the Python standard library. The image is Debian-based, so the glibc aashaan runs on it. The live cases confirmed that.
+
+Live, the image was not cached. The first `msb pull python:3.13-slim` failed with `registry error: Not authorized` for the `3.13-slim` manifest. The second pull succeeded. There was no third pull. The eight aashaan cases then matched: normal, secret, and exit3 `exited` (secret's stdout is `key=[]`); loop, trapterm, fork, and escape `killed_timeout` (escape has `pipe_held_open` true); flood `killed_output_cap`. `cgroup_memory_limit` was 0, which is the known guest reading. `correct.py` under the aashaan exited 0, synced 2431, and graded PASS. `cursor_loop.py` was `killed_timeout` at 804 ms. With no allow rule, metadata and the public internet were `network_policy_denied`, and the host SSH port was `ConnectionRefusedError`. Both scripts create with the backend argv for this image: `--cpus`, `--memory`, `--no-net`, an allow rule only when the run has one, `--pull never`, image last. Neither script switches images. `msb images` reports `python:3.13-slim` at 43069135 bytes. Sandboxes this run created were removed with `msb remove -f`. `msb list` afterwards had none of those names.
+
+Surprises:
+
+- The tagged name failed the first pull the same way other images do here (`Not authorized`), and the next pull cached it. The payouts run found it cached and did not pull.
+- `python:3.13-slim` is 43069135 bytes. The untagged `python` image already on this machine is 418918700 bytes.
+- Clap accepts the tag before any registry call. The failure mode for a bad flag after the tag is the flag, not a split on the colon.
 
 ---
 
