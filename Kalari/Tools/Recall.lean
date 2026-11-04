@@ -32,7 +32,7 @@ Lambo prose. -/
 structure Sources where
   linked : String → IO (List Kalari.Lambo.Lesson)
   semantic : String → IO (List Kalari.Lambo.Lesson)
-  resolve : CheckReference → IO (Option Kalari.Model.Lesson)
+  resolve : CheckReference → IO (Except String Kalari.Model.Lesson)
   applies : String → List (String × String) → IO (Except String Kalari.Backend.DecisionAnswer)
 
 def threshold : Float := 0.9
@@ -81,9 +81,10 @@ private def validLesson (lesson : Kalari.Model.Lesson) : Bool :=
 /-- Resolve only a unique typed lesson evidence record matching the check ID,
 and the run ID when the versioned Lambo reference supplies one. -/
 def resolveEvidence (store : Kalari.Evidence.Store) (reference : CheckReference) :
-    IO (Option Kalari.Model.Lesson) := do
+    IO (Except String Kalari.Model.Lesson) := do
   let loaded ← Kalari.Evidence.load store
   let mut found : List Kalari.Model.Lesson := []
+  let mut malformed := false
   for record in loaded.records do
     if record.kind == "lesson" &&
         (reference.runId.isNone || reference.runId == some record.run_id) then
@@ -93,8 +94,12 @@ def resolveEvidence (store : Kalari.Evidence.Store) (reference : CheckReference)
             lesson.check.id == reference.checkId &&
             record.change_kinds.contains lesson.change_kind then
           found := found ++ [lesson]
-      | .error _ => pure ()
-  return if found.length == 1 then found.head? else none
+        else if lesson.check.id == reference.checkId then malformed := true
+      | .error _ => malformed := true
+  if found.length > 1 then return .error s!"ambiguous lesson evidence for check {reference.checkId}"
+  if malformed then return .error s!"corrupt or inconsistent lesson evidence for check {reference.checkId}"
+  if let some lesson := found.head? then return .ok lesson
+  return .error s!"missing lesson evidence for check {reference.checkId}"
 
 private def isConfident (answer : Kalari.Backend.DecisionAnswer) (kinds : List String) : Bool :=
   match answer with
@@ -106,13 +111,18 @@ private def isConfident (answer : Kalari.Backend.DecisionAnswer) (kinds : List S
 
 private def resolveCandidate (source : Sources) (kind : String) (requireKind : Bool)
     (item : Kalari.Lambo.Lesson) :
-    IO (Option Kalari.Model.Lesson) := do
-  let some reference := parseReference item.label | return none
-  let some lesson ← source.resolve reference | return none
+    IO (Except String (Option Kalari.Model.Lesson)) := do
+  let some reference := parseReference item.label | return .ok none
+  let resolved ← source.resolve reference
+  let lesson ← match resolved with
+    | .ok lesson => pure lesson
+    | .error error => return .error error
   -- Graph-linked lessons must agree with the change kind anchoring the edge.
-  if requireKind && lesson.change_kind != kind then return none
-  if lesson.check.id != reference.checkId then return none
-  return some { lesson with memory_concept_id := some item.id }
+  if requireKind && lesson.change_kind != kind then
+    return .error s!"linked lesson {reference.checkId} has change kind {lesson.change_kind}, expected {kind}"
+  if lesson.check.id != reference.checkId then
+    return .error s!"lesson evidence check ID does not match {reference.checkId}"
+  return .ok <| some { lesson with memory_concept_id := some item.id }
 
 /-- Stale lessons remain visible, explicitly labelled, and never become checks.
 Unrecognized constraints and ambiguous/missing evidence references are skipped. -/
@@ -122,7 +132,10 @@ def call (source : Sources) (kinds : List String) : IO (List Entry) := do
   for kind in kinds do
     for item in (← source.linked kind) do
       if !seen.contains item.id then
-        if let some lesson ← resolveCandidate source kind true item then
+        match ← resolveCandidate source kind true item with
+        | .error error => throw <| .userError error
+        | .ok none => pure ()
+        | .ok (some lesson) =>
           let lesson := { lesson with memory_concept_id := some item.id }
           let entry : Entry := {
             lesson := lesson
@@ -134,7 +147,10 @@ def call (source : Sources) (kinds : List String) : IO (List Entry) := do
   for kind in kinds do
     for item in (← source.semantic kind) do
       if !seen.contains item.id then
-        if let some lesson ← resolveCandidate source kind false item then
+        match ← resolveCandidate source kind false item with
+        | .error _ => pure ()
+        | .ok none => pure ()
+        | .ok (some lesson) =>
           let status ← if item.stale then pure "stale" else do
             let query := (parseReference item.label).map CheckReference.observation |>.getD item.label
             let answer ← source.applies query (kinds.map fun k => (k, k))
@@ -155,7 +171,7 @@ private def contradiction (j : Json) : Except String Bool := do
   return false
 
 /-- Build a resolver over the same typed evidence records T4.6 writes. -/
-def evidenceResolver (store : Kalari.Evidence.Store) : CheckReference → IO (Option Kalari.Model.Lesson) :=
+def evidenceResolver (store : Kalari.Evidence.Store) : CheckReference → IO (Except String Kalari.Model.Lesson) :=
   resolveEvidence store
 
 /-- Construct the production source. Semantic ordinary constraints are retained
@@ -248,7 +264,26 @@ private def test : IO Unit := IO.FS.withTempDir fun dir => do
       payload := toJson { lesson with run_id := "r-ambiguous" } }
   let ambiguous ← resolveEvidence ambiguousStore {
     observation := "legacy", runId := none, checkId := check.id }
-  unless ambiguous.isNone do throw <| .userError "ambiguous legacy evidence reference accepted"
+  unless (match ambiguous with | .error _ => true | .ok _ => false) do
+    throw <| .userError "ambiguous legacy evidence reference accepted"
+  let missingItem : Kalari.Lambo.Lesson := {
+    id := "missing-linked", label := "missing | kalari-lesson/v1 run_id=r-missing check_id=chk-missing", stale := false }
+  let missingSource := { src with linked := fun _ => pure [missingItem], semantic := fun _ => pure [] }
+  let mut missingFailed := false
+  try
+    let _ ← call missingSource ["pagination_changed"]
+    pure ()
+  catch _ => missingFailed := true
+  unless missingFailed do throw <| .userError "recognized linked lesson with missing evidence did not fail closed"
+  let duplicateItem : Kalari.Lambo.Lesson := {
+    id := "duplicate-linked", label := "duplicate | kalari-lesson/v1 run_id=r-ambiguous check_id=chk-paging-001", stale := false }
+  let duplicateSource := { src with linked := fun _ => pure [duplicateItem], semantic := fun _ => pure [] }
+  let mut duplicateFailed := false
+  try
+    let _ ← call duplicateSource ["pagination_changed"]
+    pure ()
+  catch _ => duplicateFailed := true
+  unless duplicateFailed do throw <| .userError "recognized linked lesson with duplicate evidence did not fail closed"
   unless parseReference "ordinary prose [Constraint]" == none do
     throw <| .userError "ordinary Constraint text misidentified as a lesson"
   unless (parseReference "rule text | kalari-lesson/v1 run_id=r-001 check_id=chk-paging-001").isSome do
