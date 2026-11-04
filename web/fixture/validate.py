@@ -9,6 +9,11 @@ session_id must equal it. A source is a repo-relative path to a file that
 exists, and the payload measures must match that file. A run_id is unique
 across benchmark records. A run or session id uses only A-Z, a-z, 0-9, dot,
 underscore and hyphen. The API routes use the same rule.
+
+A view fixture may set `synthetic: true` in the payload. The validator then
+treats the record as a view test, not a measurement. It still checks every
+other field, and it still requires a source that is readable JSON. It does not
+compare the payload with that source.
 """
 
 from __future__ import annotations
@@ -183,6 +188,25 @@ def source_errors(payload: dict[str, Any]) -> list[str]:
     return errors
 
 
+def synthetic_source_errors(payload: dict[str, Any]) -> list[str]:
+    """A synthetic record is a view fixture, not a measurement.
+
+    Its source must name a readable JSON file, but the validator does not
+    compare the payload with it. No fixture claims a source that cannot be read.
+    """
+    source = payload.get("source")
+    if source is None:
+        return []
+    path, message = source_path(source)
+    if path is None:
+        return [f"a synthetic record has a source that is not a readable JSON file: {message}"]
+    try:
+        json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return ["a synthetic record has a source that is not readable JSON"]
+    return []
+
+
 def grade_errors(grade: Any, label: str = "grade") -> list[str]:
     if grade is None:
         return []
@@ -240,6 +264,9 @@ def validate_benchmark_record(record: dict[str, Any], run_ids: set[str]) -> list
 
     if payload.get("schema") != "kalari.benchmark.v1":
         errors.append("schema is not kalari.benchmark.v1")
+    synthetic = payload.get("synthetic")
+    if synthetic is not None and not isinstance(synthetic, bool):
+        errors.append("synthetic is not a boolean or null")
     if payload.get("provenance") not in PROVENANCE:
         errors.append("provenance is not pilot or frozen")
     if payload.get("status") not in STATUS:
@@ -334,7 +361,10 @@ def validate_benchmark_record(record: dict[str, Any], run_ids: set[str]) -> list
     if not isinstance(payload.get("notes"), str):
         errors.append("notes is not a string")
 
-    errors.extend(source_errors(payload))
+    if synthetic is True:
+        errors.extend(synthetic_source_errors(payload))
+    else:
+        errors.extend(source_errors(payload))
 
     return errors
 

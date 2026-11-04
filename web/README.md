@@ -37,8 +37,8 @@ does not. The server sends a strict `Content-Security-Policy` on every response,
 including 400, 404 and 413. The policy has `default-src 'self'` and
 `connect-src 'self'`. The published shells carry the same policy in a `meta`
 tag. The policy blocks every subresource from another origin. It does not block
-top-level navigation or `window.open`, so the static check rejects both, and the
-browser check loads each page and fails on any request outside the page origin.
+top-level navigation or `window.open`. The static check rejects both. The browser
+check loads each page and fails on any request outside the page origin.
 
 Options:
 
@@ -66,8 +66,8 @@ loopback and stops it on exit. It reads the rendered snapshots from
 2. Every served file and snapshot has no external URL, no `meta refresh` and no
    navigation sink. A `fetch`, `import`, `WebSocket`, `EventSource` or `Worker`
    call must take a relative literal or pass through the `localPath` guard. A
-   `window.open`, a `location` assignment, `location.assign`, `location.replace`
-   and `eval` fail.
+   `window.open`, a `location` assignment, `location.assign`, `location.replace`,
+   `eval`, `window.eval`, `document.write` and `document.writeln` fail.
 3. The fixture store and every rendered page have no IP address, email or key
    pattern.
 4. The published shells and the rendered pages carry no fixture banner, and
@@ -89,29 +89,36 @@ loopback and stops it on exit. It reads the rendered snapshots from
 11. Every table value matches the record named by its run link. Every table
     cell with a number is a known measure. A measure cell links its run exactly
     when the record holds a value.
-12. The check derives the table cells, the measure links, the not-run rows and
-    the repeat counts from the records the snapshot was rendered from. A new
-    record changes the page and the expectation together. The snapshots cover a
-    new pilot run, a single frozen condition-five record, a complete frozen
-    pair and a split frozen store.
+12. The check derives the table cells, the measure-link count, the not-run rows
+    and the repeat counts from the records the snapshot was rendered from. The
+    measure-link count covers table cells, median lines, the frozen worst-run
+    lines and the containment panel. A new record changes the page and the
+    expectation together. The snapshots cover a second pilot row for one
+    condition, a single frozen condition-five record, a complete frozen pair and
+    a split frozen store.
 13. Every median is computed from the benchmark records and compared with the
-    displayed text and its run link.
+    displayed text and its run link. Each median line holds exactly one link,
+    and that link sits inside the value span.
 14. Every table has a caption or `aria-labelledby`.
-15. A percentage in a table cell, a verdict or a heading fails. Any other
-    percentage must sit inside an element with `data-probability`, inside an
-    opinion block labelled a model's opinion, unless it sits in a log. Every
-    number inside an opinion block needs the marker. A probability-shaped
-    decimal outside a log fails.
+15. A percentage in a table cell, a verdict or a heading fails. A percentage in
+    an opinion block must sit inside an element with `data-probability`, and the
+    block must be labelled a model's opinion. A percentage in prose outside the
+    opinion block is data, so a note, a summary or a check detail may show one.
+    Every number inside an opinion block needs the marker. A probability-shaped
+    decimal follows the same scope, so it fails in a table, a verdict, a heading
+    or the opinion block.
 16. One frozen row in each upgrade does not say the comparison is published. A
     complete pair does. Frozen run and session pages carry frozen labels.
 17. A condition with no record shows an explicit `not run` row. The not-run
     rows come from the conditions missing from the store. The comparison
     heading is `The pilot baseline` with no frozen pair and `The measured before
     and after` with one. The repeat copy comes from both contrast columns.
-18. A URL in a run log is redacted before display. The check proves this for
-    stdout, stderr, command, check detail, lesson, grader log, grade note,
-    session note and change detail. It covers a full URL and a scheme-relative
-    URL.
+18. A URL in a store string is redacted before display. The check proves this
+    for stdout, stderr and the command. It also covers a check detail, a check
+    id, a lesson, a lesson check, the grader log, a grade note and the source.
+    It covers a session note, a session summary, a change title and a change
+    endpoint. It also covers a call site, a radius note, the workspace and the
+    decision question. It covers a full URL and a scheme-relative URL.
 19. An empty `/api/benchmark` renders the not-yet-published state.
 20. An absent store returns empty arrays and shows a clear state.
 
@@ -120,12 +127,15 @@ loopback and stops it on exit. It reads the rendered snapshots from
 `web/check.sh` does not start a browser. `python3 web/fixture/browser_check.py`
 drives headless Chrome over the DevTools pipe when one is installed. It reads
 the network events of the page itself, so the browser's own background traffic
-never enters the result. It loads the three shells, the walkthrough session, a
-benchmark session and the illustrative run page. It fails on any request
-outside the page origin, on a second page target outside that origin, and on a
-page that did not render its heading. The static check is authoritative for
-every other served file. The browser check is a development tool, not part of
-the gate.
+never enters the result. It loads five addresses through the three shells:
+`/`, `/session.html?id=payouts-upgrade`, `/run.html?id=pilot-c3-payouts-r5`,
+`/run.html?id=payouts-attempt-1` and `/session.html?id=pilot-c3-payouts`.
+It fails on any request outside the page origin. It fails on a second page
+target outside that origin. It fails on a page that did not render its heading.
+It does not load a shell without an id. It cannot load the rendered snapshots,
+because the fixture server does not serve them. The static scan and the snapshot
+checks cover every other state. The browser check is a development tool, not
+part of the gate.
 
 ## How the pages render from the fixture
 
@@ -136,11 +146,17 @@ walkthrough records. Run the build only when the fixture sources change.
 `web/fixture/rendered/` holds snapshots of the view output. The check parses
 these snapshots from disk. They are made by the same `web/site/app/views.mjs`
 the browser runs. The snapshots exercise states the committed pilot store cannot
-show: a new pilot run, a single frozen condition-five record, a partial frozen
-pair, a complete frozen pair with measures, a frozen run, a frozen session, and
-a page with a URL in each display path. `web/fixture/rendered/inputs.json`
-records the exact records each snapshot was rendered from, and the check derives
-its expectations from that file. They are test fixtures, not served pages.
+show. They add a second pilot row for one condition. They add a single frozen
+condition-five record, a partial frozen pair and a complete frozen pair with
+measures. They add a frozen run and a frozen session. They add a page with a URL
+in each display path. `web/fixture/rendered/inputs.json` records the exact
+records each snapshot was rendered from, and the check derives its expectations
+from that file. The records marked `synthetic` are view fixtures, not
+measurements. They are test fixtures, not served pages.
+
+The `judges-extra-run` snapshot adds a second pilot row for one condition. It
+shares a repeat number with an existing row. The repeat copy still names five
+distinct repeats, because the copy counts repeat numbers and not rows.
 
 `web/fixture/render.mjs` regenerates the snapshots. It is a development tool.
 It uses Node, but the app and the check do not need Node.
@@ -296,7 +312,7 @@ The payload fields:
 | `grader_runs` | object or null | Stage name to `{status, log_excerpt}`. |
 | `opencode_exit` | number or null | The coding agent process exit code. |
 | `process_elapsed_s` | number or null | Wall time of the harness process. |
-| `source` | string | The committed result file. Required. It is repo-relative and it exists. |
+| `source` | string | The committed result file. Required. It is repo-relative and it exists. A synthetic view fixture names a readable JSON file instead. |
 | `notes` | string | A short note for the reader. The judges page does not show it. |
 
 The `grade` object has these fields. Each may be null when it is unknown.
@@ -332,6 +348,10 @@ Rules for the producer:
   and the payload must match it. The validator compares `condition`, `upgrade`,
   `arm`, the measure fields, the source fields, `grade`, `first_v2_grade` and
   `grader_runs`. A record cannot claim a measure its source file does not hold.
+- `synthetic: true` marks a view fixture. The validator treats the record as a
+  view test and not as a measurement. It still checks every other field, and it
+  still requires a source that is readable JSON. It does not compare the payload
+  with that source. A producer never writes this field.
 - `condition` and `arm` must agree. Conditions 1, 2, 3 and 6 use
   `reference`. Conditions 4 and 5 use `kalari`.
 - `status: "diagnostic"` needs a `behaviour`. Other statuses use `null`.
@@ -375,9 +395,12 @@ The page always labels its percentages a model's opinion.
 It never treats them as a measurement, a grade or a verdict. The view formats
 every probability as a one-decimal percentage and marks it with
 `data-probability`. The check rejects a percentage in a table cell, a verdict or
-a heading. It rejects an unmarked percentage outside a log. It rejects a number
-inside an opinion block with no marker. It rejects a probability-shaped decimal
-outside a log.
+a heading. It rejects a percentage in an opinion block with no marker. It
+rejects a number inside an opinion block with no marker. It rejects a
+probability-shaped decimal in a table, a verdict, a heading or an opinion block.
+It allows a percentage or a decimal in prose outside the opinion block, so a
+note, a summary or a check detail can show one. It compares the marker value with
+the visible Clef label.
 
 ## API contract
 
@@ -394,8 +417,12 @@ outside a log.
 The fixture has no IP address, key, account detail or email.
 The illustrative command names its endpoint `ENDPOINT`.
 The app redacts a full URL and a scheme-relative URL before display.
-It does this for stdout, stderr, the command, a check detail, a lesson, the
-grader log, a grade note, a session note, a session summary and a change detail.
+It does this for stdout, stderr and the command.
+It also covers a check detail, a check id, a lesson, a lesson check, the grader
+log, a grade note and the source.
+It covers a session note, a session summary, a change title and a change
+endpoint. It also covers a call site, a radius note, the workspace and the
+decision question.
 The check counts a redaction on every one of those paths in three snapshots.
 The check scans every rendered page for an IP address, an email and a key
 pattern, not only the evidence store.

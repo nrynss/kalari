@@ -2,7 +2,7 @@
     <header class="page-head">
       <p class="breadcrumb"><a href="index.html">For judges</a> <span aria-hidden="true">/</span> Session</p>
       <div class="page-title"><h1>Redaction fixture</h1><span class="badge badge--draft">Illustrative walkthrough</span><span class="badge badge--pilot">Pilot benchmark session</span></div>
-      <p class="page-summary">summary &lt;endpoint&gt;</p>
+      <p class="page-summary">summary 0.75 complete, 100% of the rows, &lt;endpoint&gt;</p>
       <p class="session-id">Session <code>redaction-fixture</code></p>
       <p class="caveat">session note &lt;endpoint&gt;</p>
       <p class="quiet-line"><a href="index.html">Back to the evidence index</a></p>
@@ -66,9 +66,9 @@
       <span class="badge badge--kind">Pagination changed</span>
       <span class="severity severity--high">high</span>
     </div>
-    <h3>The change</h3>
+    <h3>The change &lt;endpoint&gt;</h3>
     <p>change detail &lt;endpoint&gt;</p>
-    <p class="endpoint"><code>ENDPOINT</code></p>
+    <p class="endpoint"><code>&lt;endpoint&gt;</code></p>
     <p class="change-id"><span>Change id</span> <code>change-1</code></p>
     <div class="call-sites">
       <h4>What it touches</h4>
@@ -98,8 +98,8 @@
     <div class="run-body">
       <h4>Checks</h4>
       <ul class="check-list"><li class="check is-pass">
-        <div class="check-head"><strong>endpoint</strong><span>passed</span></div>
-        <p>checked &lt;endpoint&gt;</p>
+        <div class="check-head"><strong>check &lt;endpoint&gt;</strong><span>passed</span></div>
+        <p>checked 100% of the records against &lt;endpoint&gt;</p>
       </li></ul>
       <h4>Logs</h4>
       <div class="log-list"><details class="logs"><summary>Standard output</summary><pre>get &lt;endpoint&gt;
@@ -107,9 +107,20 @@ post &lt;endpoint&gt;
 </pre></details>
     <details class="logs"><summary>Standard error</summary><pre>error &lt;endpoint&gt;
 </pre></details></div>
+      <h4>What Clef thought</h4><section class="opinion" data-opinion="clef" data-opinion-label="A model&#39;s opinion, not a measurement">
+    <div class="opinion-head">
+      <span class="badge badge--opinion">Model&#39;s opinion</span>
+      <h4>Is this an API change? &lt;endpoint&gt;</h4>
+    </div>
+    <p class="opinion-lede"><strong>This is a model's opinion, not a measurement and not a verdict.</strong> The hidden grader and the sandbox checks decide whether the upgrade works.</p>
+    <p class="opinion-choice">The model leaned toward <strong>an API change</strong>.</p>
+    <ul class="probabilities">
 
+    </ul>
+    <p class="opinion-meta">Clef, a decision model. The percentages are the model's own scores. They are not counts, not a grade, and not evidence that the code works.</p>
+  </section>
       <details class="more"><summary>Request</summary><div class="more-body">
-        <p><strong>Workspace</strong> <code>fixture</code></p>
+        <p><strong>Workspace</strong> <code>workspace &lt;endpoint&gt;</code></p>
         <p><strong>Command</strong></p>
         <pre>curl --url &lt;endpoint&gt;</pre>
         <p><strong>Caps</strong> time 120.0 s, output 65,536 bytes, memory 512 MiB</p>
@@ -165,6 +176,10 @@ post &lt;endpoint&gt;
         <td data-label="Change kinds">Pagination changed</td>
       </tr><tr>
         <td data-label="Kind"><code>benchmark</code></td>
+        <td data-label="Run"><a class="run-link" href="run.html?id=redaction-fixture-r1" data-run-link="redaction-fixture-r1" title="Open run redaction-fixture-r1"><code>redaction-fixture-r1</code></a></td>
+        <td data-label="Change kinds">Pagination changed</td>
+      </tr><tr>
+        <td data-label="Kind"><code>decision</code></td>
         <td data-label="Run"><a class="run-link" href="run.html?id=redaction-fixture-r1" data-run-link="redaction-fixture-r1" title="Open run redaction-fixture-r1"><code>redaction-fixture-r1</code></a></td>
         <td data-label="Change kinds">Pagination changed</td>
       </tr></tbody>

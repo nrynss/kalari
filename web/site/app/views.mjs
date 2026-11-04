@@ -1083,9 +1083,9 @@ function changeBlock(changeRecord, radii) {
       ${badge(changeKindLabel(change.kind), "kind")}
       ${change.severity ? `<span class="severity severity--${attr(change.severity)}">${h(change.severity)}</span>` : ""}
     </div>
-    <h3>${h(change.title || changeKindLabel(change.kind))}</h3>
+    <h3>${h(redactUrls(change.title || changeKindLabel(change.kind)))}</h3>
     <p>${h(redactUrls(change.summary || ""))}</p>
-    <p class="endpoint">${change.endpoint ? `<code>${h(change.endpoint)}</code>` : ""}</p>
+    <p class="endpoint">${change.endpoint ? `<code>${h(redactUrls(change.endpoint))}</code>` : ""}</p>
     <p class="change-id"><span>Change id</span> <code>${h(change.id || changeRecord.run_id)}</code></p>
     <div class="call-sites">
       <h4>What it touches</h4>
@@ -1115,7 +1115,7 @@ function checkList(record, checkRecords) {
   return `<ul class="check-list">${results
     .map(
       (result) => `<li class="check ${result.passed === true ? "is-pass" : "is-fail"}">
-        <div class="check-head"><strong>${h(result.check_id || "check")}</strong><span>${h(
+        <div class="check-head"><strong>${h(redactUrls(result.check_id || "check"))}</strong><span>${h(
           result.passed === true ? "passed" : "failed",
         )}</span></div>
         ${result.detail ? `<p>${h(redactUrls(result.detail))}</p>` : ""}
@@ -1135,7 +1135,7 @@ function opinionBlock(decision) {
   return `<section class="opinion" data-opinion="clef" data-opinion-label="${attr(CLEF_OPINION_LABEL)}">
     <div class="opinion-head">
       ${badge("Model's opinion", "opinion")}
-      <h4>${h(payload.question || "A Clef question")}</h4>
+      <h4>${h(redactUrls(payload.question || "A Clef question"))}</h4>
     </div>
     <p class="opinion-lede"><strong>This is a model's opinion, not a measurement and not a verdict.</strong> The hidden grader and the sandbox checks decide whether the upgrade works.</p>
     <p class="opinion-choice">The model leaned toward <strong>${h(chosen)}</strong>.</p>
@@ -1201,7 +1201,7 @@ function runCard(record, index, checks, decisions, runIds) {
       <div class="log-list">${logs}</div>
       ${decision ? `<h4>What Clef thought</h4>${opinionBlock(decision)}` : ""}
       <details class="more"><summary>Request</summary><div class="more-body">
-        <p><strong>Workspace</strong> <code>${h(payload.request?.workspace || "not recorded")}</code></p>
+        <p><strong>Workspace</strong> <code>${h(redactUrls(payload.request?.workspace || "not recorded"))}</code></p>
         <p><strong>Command</strong></p>
         <pre>${h(redactUrls((payload.request?.command || []).join(" ") || "not recorded"))}</pre>
         <p><strong>Caps</strong> time ${h(
@@ -1596,7 +1596,7 @@ function benchmarkRunDetail(payload, sessionId) {
         ? `<details class="more"><summary>First run against the new endpoint</summary><div class="more-body"><dl class="facts">${firstRows}</dl></div></details>`
         : ""
     }
-    <p class="source-line">Source: <code>${h(payload.source || "not recorded")}</code></p>
+    <p class="source-line">Source: <code>${h(redactUrls(payload.source || "not recorded"))}</code></p>
   </section>`;
 }
 
@@ -1636,7 +1636,7 @@ function sandboxRunDetail(record, records, runIds) {
       ${fact("Cgroup memory limit", Number.isFinite(verdict.cgroup_memory_limit) ? `${count(verdict.cgroup_memory_limit)} bytes` : h("unknown"))}
     </dl>
     <h3>Request</h3>
-    <p><strong>Workspace</strong> <code>${h(payload.request?.workspace || "not recorded")}</code></p>
+    <p><strong>Workspace</strong> <code>${h(redactUrls(payload.request?.workspace || "not recorded"))}</code></p>
     <pre class="log">${h(redactUrls((payload.request?.command || []).join(" ") || "not recorded"))}</pre>
     <dl class="facts">
       ${fact("Timeout", plain(payload.request?.caps?.timeout_ms, milliseconds))}
@@ -1659,7 +1659,7 @@ function sandboxRunDetail(record, records, runIds) {
         ? `<ul class="check-list">${results
             .map(
               (result) => `<li class="check ${result.passed ? "is-pass" : "is-fail"}">
-                <div class="check-head"><strong>${h(result.check_id || "check")}</strong><span>${h(
+                <div class="check-head"><strong>${h(redactUrls(result.check_id || "check"))}</strong><span>${h(
                   result.passed ? "passed" : "failed",
                 )}</span></div>
                 ${result.detail ? `<p>${h(redactUrls(result.detail))}</p>` : ""}

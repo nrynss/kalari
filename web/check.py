@@ -26,7 +26,12 @@ from collections import Counter
 from html.parser import HTMLParser
 from pathlib import Path
 
-from fixture.validate import envelope_errors, validate_benchmark_records
+from fixture.validate import (
+    envelope_errors,
+    looks_like_benchmark,
+    validate_benchmark_record,
+    validate_benchmark_records,
+)
 
 REPO = Path(__file__).resolve().parent.parent
 WEB = REPO / "web"
@@ -108,11 +113,16 @@ JAVASCRIPT_SINKS = (
         "script navigates with location",
     ),
     (re.compile(r"(?<![\w.])eval\s*\("), "script evaluates a string as code"),
+    (re.compile(r"\b(?:window|self|top|parent)\s*\.\s*eval\s*\("), "script evaluates a string as code"),
+    (re.compile(r"\bdocument\s*\.\s*(?:write|writeln)\s*\("), "script writes into the document"),
     (re.compile(r"\bnew\s+Function\s*\("), "script builds a function from a string"),
 )
 # Each display path that shows a store string carries one URL in the redaction
-# snapshots. The count proves the check covers every path.
-REDACTION_PAGES = {"run-redaction": 9, "session-redaction": 13, "run-endpoint": 1}
+# snapshots. The count proves the check covers every path. The paths are stdout,
+# stderr, command, check detail, check id, lesson, lesson check, grader log,
+# grade note, source, session note, session summary, change title, change
+# endpoint, call site, radius note, workspace and decision question.
+REDACTION_PAGES = {"run-redaction": 13, "session-redaction": 18, "run-endpoint": 1}
 
 
 
@@ -1083,6 +1093,9 @@ def assert_values_match_records(name: str, html: str, benchmark: list[dict], run
             check(not re.search(r"\d", text), f"an unlabelled table cell shows a number: {text!r}")
             check(not cell["anchors"], f"an unlabelled table cell shows a link: {text!r}")
             continue
+        if label not in ("Verdict", "Right first time", "Grade") and label not in CELL_FIELDS:
+            check(not re.search(r"\d", text), f"the table cell {label!r} is not a known measure")
+            continue
         if not run_id:
             check(not re.search(r"\d", text), f"the table cell {label!r} shows a number but has no run link")
             continue
@@ -1097,13 +1110,10 @@ def assert_values_match_records(name: str, html: str, benchmark: list[dict], run
         elif label == "Grade":
             expected = verdict_word((payload_of(record).get("grade") or {}).get("verdict"))
             check(not cell["anchors"], f"a grade cell links a value: {text!r}")
-        elif label in CELL_FIELDS:
+        else:
             source, key, formatter = CELL_FIELDS[label]
             expected = expected_value(record, source, key, formatter)
             assert_measure_links(cell, record, run_ids)
-        else:
-            check(not re.search(r"\d", text), f"the table cell {label!r} is not a known measure")
-            continue
         check(
             text == expected,
             f"the table value for {label!r} on {run_id!r} is {text!r}, expected {expected!r}",
@@ -1146,7 +1156,8 @@ def assert_values_match_records(name: str, html: str, benchmark: list[dict], run
             )
         elif title:
             raise Failure(f"an anchor with data-run-link has an unknown title: {title!r}")
-    say(f"{name}: {checked} table values and {measured_links} measure links match their records")
+    say(f"{name}: {checked} table values match their records")
+    return measured_links
 
 
 def assert_anchor_containers(name: str, html: str) -> None:
@@ -1167,6 +1178,10 @@ def assert_anchor_containers(name: str, html: str) -> None:
             continue
         if run_id is not None and title in TITLE_FIELDS:
             check(
+                anchor["attrs"].get("data-run-link") == run_id,
+                f"on {name}, the measure {title!r} has no data-run-link for {run_id!r}",
+            )
+            check(
                 anchor["cell"] or anchor["median"] or anchor["containment"],
                 f"on {name}, the measure {title!r} is outside a measure cell, a median line or the containment panel",
             )
@@ -1174,7 +1189,8 @@ def assert_anchor_containers(name: str, html: str) -> None:
         raise Failure(f"on {name}, the anchor {text!r} shows a number but is not a measure or a run id")
 
 
-def assert_containment(name: str, html: str, benchmark: list[dict], run_ids: set[str]) -> None:
+def containment_expected(benchmark: list[dict], run_ids: set[str]) -> list[tuple]:
+    """The containment links the judges view draws for these records."""
     capped = next(
         (
             record
@@ -1183,12 +1199,8 @@ def assert_containment(name: str, html: str, benchmark: list[dict], run_ids: set
         ),
         None,
     )
-    parser = JudgesParser()
-    parser.feed(html)
-    anchors = [anchor for anchor in parser.anchors if anchor["containment"]]
     if capped is None or capped.get("run_id") not in run_ids:
-        check(not anchors, f"on {name}, the containment panel links a capped run the index does not hold")
-        return
+        return []
     expected = []
     for title, source, key, formatter in (
         ("Wall time", "payload", "wall_time_s", format_seconds),
@@ -1197,10 +1209,109 @@ def assert_containment(name: str, html: str, benchmark: list[dict], run_ids: set
         value = measured(capped, source, key)
         if finite(value):
             expected.append((title, capped["run_id"], formatter(value)))
+    return expected
+
+
+def assert_containment(name: str, html: str, benchmark: list[dict], run_ids: set[str]) -> None:
+    parser = JudgesParser()
+    parser.feed(html)
+    anchors = [anchor for anchor in parser.anchors if anchor["containment"]]
+    expected = containment_expected(benchmark, run_ids)
     actual = [
         (anchor["attrs"].get("title"), anchor["attrs"].get("data-run-link"), anchor["text"]) for anchor in anchors
     ]
     check(actual == expected, f"on {name}, the containment links are {actual}, expected {expected}")
+
+
+def table_measure_links(html: str, benchmark: list[dict], run_ids: set[str]) -> int:
+    """Count measure links the table cells carry for these records."""
+    records = {
+        record["run_id"]: record
+        for record in benchmark
+        if isinstance(record, dict) and isinstance(record.get("run_id"), str)
+    }
+    parser = TableParser()
+    parser.feed(html)
+    links = 0
+    for cell in parser.cells:
+        label = cell["label"]
+        if label not in CELL_FIELDS:
+            continue
+        record = records.get(cell["run"])
+        if record is None or cell["run"] not in run_ids:
+            continue
+        source, key, _formatter = CELL_FIELDS[label]
+        if finite(measured(record, source, key)):
+            links += 1
+    return links
+
+
+def loss_measure_links(benchmark: list[dict], run_ids: set[str]) -> int:
+    """Count the worst-run links the frozen contrast draws from these records."""
+    frozen = [
+        record
+        for record in benchmark
+        if payload_of(record).get("provenance") == "frozen"
+        and payload_of(record).get("status") not in ("invalid", "diagnostic")
+    ]
+    links = 0
+    for upgrade in {payload_of(record).get("upgrade") for record in frozen}:
+        before = [
+            record
+            for record in frozen
+            if payload_of(record).get("condition") == 3 and payload_of(record).get("upgrade") == upgrade
+        ]
+        after = [
+            record
+            for record in frozen
+            if payload_of(record).get("condition") == 5 and payload_of(record).get("upgrade") == upgrade
+        ]
+        if not before or not after:
+            continue
+        for records in (before, after):
+            for key in ("records_lost", "records_duplicated"):
+                values = [
+                    record for record in records if finite(payload_of(record).get(key))
+                ]
+                if not values:
+                    continue
+                worst = max(values, key=lambda record: payload_of(record)[key])
+                if payload_of(worst)[key] > 0 and worst.get("run_id") in run_ids:
+                    links += 1
+    return links
+
+
+def measure_anchor_count(html: str) -> int:
+    parser = JudgesParser()
+    parser.feed(html)
+    return sum(
+        1
+        for anchor in parser.anchors
+        if anchor["attrs"].get("data-run-link") and anchor["attrs"].get("title") in TITLE_FIELDS
+    )
+
+
+def assert_measure_link_count(
+    name: str,
+    html: str,
+    benchmark: list[dict],
+    run_ids: set[str],
+    kind: str,
+) -> None:
+    """Every measure link the records require is present, and no other one is."""
+    table = table_measure_links(html, benchmark, run_ids)
+    expected = table
+    if kind == "judges":
+        expected += 2 * expected_contrast_columns(benchmark)
+        expected += loss_measure_links(benchmark, run_ids)
+        expected += len(containment_expected(benchmark, run_ids))
+    actual = measure_anchor_count(html)
+    check(
+        actual == expected,
+        f"the page {name} shows {actual} measure links, expected {expected} from its records "
+        f"({table} in table cells)",
+    )
+    say(f"{name}: {actual} measure links match the {expected} the records require")
 
 
 def assert_cell_counts(name: str, html: str, expected: dict) -> None:
@@ -1279,6 +1390,7 @@ class ContrastParser(HTMLParser):
         self.title: list[str] = []
         self.in_title = False
         self.median: dict[str, object] | None = None
+        self.median_anchor: dict[str, object] | None = None
         self.capture: str | None = None
         self.medians: list[dict[str, object]] = []
 
@@ -1299,9 +1411,14 @@ class ContrastParser(HTMLParser):
         elif self.column is not None and tag == "h4":
             self.in_title = True
         elif self.column is not None and tag == "p" and "median-line" in classes:
-            self.median = {"label": "", "value": "", "anchor": None}
+            self.median = {"label": "", "value": "", "anchors": []}
         elif self.median is not None and tag == "a":
-            self.median["anchor"] = {"attrs": attributes, "text": []}
+            self.median_anchor = {
+                "attrs": attributes,
+                "text": [],
+                "in_value": self.capture == "value",
+            }
+            self.median["anchors"].append(self.median_anchor)
             if attributes.get("data-run-link"):
                 self.column["runs"].append(attributes["data-run-link"])
         elif self.column is not None and tag == "a" and attributes.get("data-run-link"):
@@ -1317,6 +1434,8 @@ class ContrastParser(HTMLParser):
             self.in_title = False
             if self.column is not None:
                 self.column["title"] = "".join(self.title).strip()
+        if tag == "a":
+            self.median_anchor = None
         if tag == "span":
             self.capture = None
         if tag == "p" and self.median is not None:
@@ -1330,7 +1449,7 @@ class ContrastParser(HTMLParser):
                         "runs": list(self.column["runs"]),
                         "label": self.median["label"].strip(),
                         "value": self.median["value"].strip(),
-                        "anchor": self.median["anchor"],
+                        "anchors": self.median["anchors"],
                     }
                 )
             self.median = None
@@ -1346,8 +1465,8 @@ class ContrastParser(HTMLParser):
             self.title.append(data)
         if self.capture is not None and self.median is not None:
             self.median[self.capture] = str(self.median[self.capture]) + data
-        if self.median is not None and self.median.get("anchor") is not None:
-            self.median["anchor"]["text"].append(data)
+        if self.median_anchor is not None:
+            self.median_anchor["text"].append(data)
 
 
 def expected_contrast_columns(benchmark: list[dict]) -> int:
@@ -1428,8 +1547,16 @@ def assert_medians(name: str, html: str, benchmark: list[dict]) -> None:
             f"the median {label!r} in the {provenance} column for condition {condition} is "
             f"{median['value']!r}, expected {expected!r} from {len(values)} records",
         )
-        anchor = median["anchor"]
-        check(anchor is not None, f"the median {label!r} for condition {condition} has no run link")
+        anchors = median["anchors"]
+        check(
+            len(anchors) == 1,
+            f"the median {label!r} for condition {condition} has {len(anchors)} anchors, expected one",
+        )
+        anchor = anchors[0]
+        check(
+            anchor["in_value"],
+            f"the median link {label!r} for condition {condition} is outside the median value",
+        )
         check(
             anchor["attrs"].get("title") == label,
             f"the median link {label!r} has the title {anchor['attrs'].get('title')!r}",
@@ -1463,14 +1590,14 @@ def assert_tables_labelled() -> None:
 
 
 class PercentParser(HTMLParser):
-    """Find every percent in visible text and the nearest opinion label.
+    """Find percentages and probability-shaped decimals in visible text.
 
-    A percent in a table cell, a verdict or a heading is a probability in the
-    wrong place. A percent anywhere else must carry the `data-probability`
-    marker on an ancestor, unless it sits in a log, where a percentage is data.
-    Every number inside an opinion block must carry the marker, so a decimal
-    probability cannot hide there. A decimal probability outside a log is
-    rejected in any element.
+    A percentage in a table cell, a verdict or a heading is a probability in the
+    wrong place. A percentage inside the opinion block must carry the
+    `data-probability` marker. A percentage in prose outside the opinion block
+    is data, and a note, a summary or a check detail may show one. A decimal
+    follows the same scope, so it may also sit in prose outside the opinion
+    block.
     """
 
     def __init__(self) -> None:
@@ -1481,6 +1608,7 @@ class PercentParser(HTMLParser):
         self.decimals: list[dict[str, object]] = []
         self.markers: list[tuple[str, str]] = []
         self.marker_texts: list[dict[str, object]] = []
+        self.label_capture: dict[str, object] | None = None
         self.opinion_blocks = 0
 
     def _flags(self) -> dict[str, object]:
@@ -1512,17 +1640,21 @@ class PercentParser(HTMLParser):
                 for _, ancestor in self.stack
                 if "data-opinion-label" in ancestor
             ]
-            self.markers.append((attributes.get("data-probability", ""), " | ".join(labels)))
-            self.marker_texts.append(
-                {
-                    "label": attributes.get("data-probability", ""),
-                    "index": len(self.stack) - 1,
-                    "attrs": attributes,
-                    "text": [],
-                }
-            )
+            marker = {
+                "label": attributes.get("data-probability", ""),
+                "index": len(self.stack) - 1,
+                "attrs": attributes,
+                "text": [],
+                "visible_label": [],
+            }
+            self.markers.append((marker["label"], " | ".join(labels)))
+            self.marker_texts.append(marker)
+        if tag == "span" and "prob-label" in (attributes.get("class") or "").split():
+            self.label_capture = self.marker_texts[-1] if self.marker_texts else None
 
     def handle_endtag(self, tag: str) -> None:
+        if tag == "span":
+            self.label_capture = None
         for index in range(len(self.stack) - 1, -1, -1):
             if self.stack[index][0] == tag:
                 del self.stack[index:]
@@ -1536,6 +1668,8 @@ class PercentParser(HTMLParser):
             index = int(marker["index"])
             if len(self.stack) > index and self.stack[index][1] is marker["attrs"]:
                 marker["text"].append(data)
+        if self.label_capture is not None:
+            self.label_capture["visible_label"].append(data)
         flags = self._flags()
         for match in PERCENT_RE.finditer(data):
             self.matches.append({"value": match.group(0), **flags})
@@ -1544,6 +1678,8 @@ class PercentParser(HTMLParser):
                 self.opinion_numbers.append({"value": match.group(0), **flags})
         if flags["in_log"] or flags["in_probability"]:
             return
+        if not (flags["in_heading"] or flags["in_cell"] or flags["in_verdict"] or flags["in_opinion"]):
+            return
         for match in DECIMAL_RE.finditer(data):
             value = float(match.group(0))
             if not 0 < value < 1:
@@ -1551,6 +1687,14 @@ class PercentParser(HTMLParser):
             if re.match(r"\s*[A-Za-z%]", data[match.end() :]):
                 continue
             self.decimals.append({"value": match.group(0), **flags})
+
+
+def clef_label_map() -> dict[str, str]:
+    """Read the Clef labels from the app source, so the check and the page agree."""
+    text = (SITE / "app/labels.mjs").read_text(encoding="utf-8")
+    match = re.search(r"export const CLEF_LABELS\s*=\s*\{(.*?)\n\};", text, re.DOTALL)
+    check(match is not None, "the app source has no CLEF_LABELS map")
+    return dict(re.findall(r'^\s*([A-Za-z0-9_]+):\s*"([^"]*)"', match.group(1), re.MULTILINE))
 
 
 def assert_clef_labels(name: str, html: str, expect_probabilities: bool) -> None:
@@ -1571,11 +1715,10 @@ def assert_clef_labels(name: str, html: str, expect_probabilities: bool) -> None
                 "model's opinion" in label.lower(),
                 f"the probability {match['value']!r} is not inside a block labelled a model's opinion on {name}: {label!r}",
             )
-        else:
-            check(
-                match["in_log"],
-                f"the page {name} shows the percentage {match['value']!r} with no data-probability marker "
-                "and outside a log",
+        elif match["in_opinion"]:
+            raise Failure(
+                f"the opinion block on {name} shows the percentage {match['value']!r} "
+                "with no data-probability marker"
             )
     for number in parser.opinion_numbers:
         check(
@@ -1585,7 +1728,7 @@ def assert_clef_labels(name: str, html: str, expect_probabilities: bool) -> None
     for decimal in parser.decimals:
         raise Failure(
             f"the page {name} shows the probability-shaped decimal {decimal['value']!r} "
-            "outside a log and outside the data-probability marker"
+            "in a table, a verdict, a heading or an opinion block"
         )
     if not expect_probabilities:
         check(not parser.markers, f"the page {name} marks a probability outside the Clef block")
@@ -1598,6 +1741,7 @@ def assert_clef_labels(name: str, html: str, expect_probabilities: bool) -> None
             "model's opinion" in ancestor.lower(),
             f"the probability {label!r} is not labelled a model's opinion on {name}: {ancestor!r}",
         )
+    clef_labels = clef_label_map()
     for marker in parser.marker_texts:
         text = "".join(marker["text"]).strip()
         numbers = NUMBER_RE.findall(text)
@@ -1606,13 +1750,22 @@ def assert_clef_labels(name: str, html: str, expect_probabilities: bool) -> None
             f"the probability {marker['label']!r} on {name} shows {numbers!r} and {text!r}, "
             "expected one one-decimal percentage",
         )
-    check(parser.matches, f"the page {name} shows no Clef probability")
+        expected_label = clef_labels.get(str(marker["label"]))
+        check(expected_label is not None, f"the probability {marker['label']!r} on {name} has no Clef label")
+        visible_label = "".join(marker["visible_label"]).strip()
+        check(
+            visible_label == expected_label,
+            f"the probability {marker['label']!r} on {name} shows the label {visible_label!r}, "
+            f"expected {expected_label!r}",
+        )
+    probabilities = sum(1 for match in parser.matches if match["in_probability"])
+    check(probabilities, f"the page {name} shows no Clef probability")
     visible = text_of(html).lower()
     check("model's opinion" in visible, f"the page {name} does not show the model's opinion label")
     check("not a measurement" in visible, f"the page {name} does not say the opinion is not a measurement")
     check("not a verdict" in visible, f"the page {name} does not say the opinion is not a verdict")
     say(
-        f"{len(parser.matches)} probabilities inside {parser.opinion_blocks} "
+        f"{probabilities} probabilities inside {parser.opinion_blocks} "
         + ("labelled opinion block" if parser.opinion_blocks == 1 else "labelled opinion blocks")
         + f" on {name}"
     )
@@ -1819,7 +1972,11 @@ def assert_redaction() -> None:
             count == expected,
             f"the page {name} shows {count} redacted endpoints, expected {expected} display paths",
         )
-    say(f"every log, command, check, lesson, grader and note path is redacted on {len(REDACTION_PAGES)} pages")
+    say(
+        "every displayed store path is redacted on "
+        f"{len(REDACTION_PAGES)} pages, including the source, workspace, check id, "
+        "change title, change endpoint and decision question"
+    )
 
 
 def assert_served_pages_local(base: str) -> None:
@@ -1916,6 +2073,33 @@ def assert_inputs_match_api(base: str, inputs: dict) -> None:
     say("the snapshot inputs match the live store")
 
 
+def assert_inputs_valid(inputs: dict) -> None:
+    """Every record a snapshot was rendered from passes the evidence contract."""
+    for name in PAGES:
+        data = inputs[name]
+        if name in JUDGES_PAGES:
+            records = list(data["benchmark"]) + list(data.get("lessons") or [])
+        elif name in SESSION_PAGES:
+            records = list(data["records"]) + list(data.get("lessons") or [])
+        else:
+            records = data["records"]
+        run_ids = set(data.get("runs") or [])
+        for record in records:
+            if not isinstance(record, dict):
+                raise Failure(f"the snapshot input {name} holds a record that is not an object")
+            for message in envelope_errors(record):
+                raise Failure(f"the snapshot input {name} has a bad record: {message}")
+            if record.get("kind") == "benchmark":
+                errors = validate_benchmark_record(record, run_ids)
+            elif looks_like_benchmark(record):
+                errors = [f"a benchmark-shaped record has kind {record.get('kind')!r}"]
+            else:
+                errors = []
+            for message in errors:
+                raise Failure(f"the snapshot input {name} has a bad benchmark record: {message}")
+    say("every snapshot input record passes the envelope and benchmark contract")
+
+
 def assert_page_shapes(inputs: dict) -> None:
     for name in JUDGES_PAGES:
         data = inputs[name]
@@ -1923,8 +2107,8 @@ def assert_page_shapes(inputs: dict) -> None:
         run_ids = set(data["runs"])
         html = read_page(name)
         assert_cell_counts(name, html, judges_cell_counts(benchmark))
+        assert_values_match_records(name, html, benchmark, run_ids)
         if benchmark:
-            assert_values_match_records(name, html, benchmark, run_ids)
             assert_medians(name, html, benchmark)
             assert_containment(name, html, benchmark, run_ids)
             assert_comparison_copy(name, html, benchmark)
@@ -1932,6 +2116,7 @@ def assert_page_shapes(inputs: dict) -> None:
             assert_diagnostics_copy(name, html, benchmark)
         assert_not_run_rows(name, html, benchmark)
         assert_anchor_containers(name, html)
+        assert_measure_link_count(name, html, benchmark, run_ids, "judges")
     for name in SESSION_PAGES:
         data = inputs[name]
         records = data["records"]
@@ -1939,14 +2124,15 @@ def assert_page_shapes(inputs: dict) -> None:
         html = read_page(name)
         assert_cell_counts(name, html, session_cell_counts(records))
         benchmark = [record for record in records if isinstance(record, dict) and record.get("kind") == "benchmark"]
-        if benchmark:
-            assert_values_match_records(name, html, benchmark, run_ids)
+        assert_values_match_records(name, html, benchmark, run_ids)
         assert_anchor_containers(name, html)
+        assert_measure_link_count(name, html, benchmark, run_ids, "session")
     for name in RUN_PAGES:
         records = inputs[name]["records"]
         html = read_page(name)
         assert_cell_counts(name, html, Counter({None: 3 * len(records)}))
         assert_anchor_containers(name, html)
+        assert_measure_link_count(name, html, [], set(inputs[name]["runs"]), "run")
     say("every page carries the table cells and links its records require")
 
 
@@ -1960,6 +2146,7 @@ def main() -> int:
     assert_footer_landmark()
     assert_manifest()
     inputs = load_inputs()
+    assert_inputs_valid(inputs)
     with Server() as server:
         assert_live_entry_points(server.base)
         assert_csp_headers(server.base)

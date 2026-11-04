@@ -40,11 +40,11 @@
     </dl>
     <h3>The grade</h3>
     <dl class="facts"><div><dt>Records</dt><dd>2,431</dd></div><div><dt>Unique</dt><dd>2,431</dd></div><div><dt>Expected</dt><dd>2,431</dd></div><div><dt>Missing</dt><dd>0</dd></div><div><dt>Extra</dt><dd>0</dd></div><div><dt>Duplicates</dt><dd>0</dd></div><div><dt>Mismatched</dt><dd>0</dd></div><div><dt>Unreadable lines</dt><dd>0</dd></div></dl>
-    <p class="fine-print">grade note &lt;endpoint&gt;</p>
+    <p class="fine-print">grade note 100% complete &lt;endpoint&gt;</p>
     <h3>The grader log</h3><pre class="log">log &lt;endpoint&gt;
 </pre>
 
-    <p class="source-line">Source: <code>web/fixture/render.mjs</code></p>
+    <p class="source-line">Source: <code>web/fixture/sources/&lt;endpoint&gt;</code></p>
   </section>
     <section class="panel">
     <div class="panel-head">
@@ -62,7 +62,7 @@
       <div><dt>Cgroup memory limit</dt><dd>unknown</dd></div>
     </dl>
     <h3>Request</h3>
-    <p><strong>Workspace</strong> <code>fixture</code></p>
+    <p><strong>Workspace</strong> <code>workspace &lt;endpoint&gt;</code></p>
     <pre class="log">curl --url &lt;endpoint&gt;</pre>
     <dl class="facts">
       <div><dt>Timeout</dt><dd>120.0 s</dd></div>
@@ -71,8 +71,8 @@
     </dl>
     <h3>Checks</h3>
     <ul class="check-list"><li class="check is-pass">
-                <div class="check-head"><strong>endpoint</strong><span>passed</span></div>
-                <p>checked &lt;endpoint&gt;</p>
+                <div class="check-head"><strong>check &lt;endpoint&gt;</strong><span>passed</span></div>
+                <p>checked 100% of the records against &lt;endpoint&gt;</p>
               </li></ul>
     <h3>Logs</h3>
     <details class="logs" open><summary>Standard output</summary><pre>get &lt;endpoint&gt;
@@ -80,7 +80,18 @@ post &lt;endpoint&gt;
 </pre></details>
     <details class="logs"><summary>Standard error</summary><pre>error &lt;endpoint&gt;
 </pre></details>
+    <h3>What Clef thought</h3><section class="opinion" data-opinion="clef" data-opinion-label="A model&#39;s opinion, not a measurement">
+    <div class="opinion-head">
+      <span class="badge badge--opinion">Model&#39;s opinion</span>
+      <h4>Is this an API change? &lt;endpoint&gt;</h4>
+    </div>
+    <p class="opinion-lede"><strong>This is a model's opinion, not a measurement and not a verdict.</strong> The hidden grader and the sandbox checks decide whether the upgrade works.</p>
+    <p class="opinion-choice">The model leaned toward <strong>an API change</strong>.</p>
+    <ul class="probabilities">
 
+    </ul>
+    <p class="opinion-meta">Clef, a decision model. The percentages are the model's own scores. They are not counts, not a grade, and not evidence that the code works.</p>
+  </section>
     <h3>The lesson from this run</h3><p>lesson &lt;endpoint&gt;</p>
 
   </section>
@@ -88,6 +99,6 @@ post &lt;endpoint&gt;
     <section class="subsection"><h2>Every record in this run</h2><div class="table-wrap"><table class="measures-table">
     <caption class="visually-hidden">Every evidence record in this run.</caption>
     <thead><tr><th scope="col">Kind</th><th scope="col">Run</th><th scope="col">Change kinds</th></tr></thead>
-    <tbody><tr><td><code>run</code></td><td><code>redaction-fixture-r1</code></td><td>Pagination changed</td></tr><tr><td><code>lesson</code></td><td><code>redaction-fixture-r1</code></td><td>Pagination changed</td></tr><tr><td><code>benchmark</code></td><td><code>redaction-fixture-r1</code></td><td>Pagination changed</td></tr></tbody>
+    <tbody><tr><td><code>run</code></td><td><code>redaction-fixture-r1</code></td><td>Pagination changed</td></tr><tr><td><code>lesson</code></td><td><code>redaction-fixture-r1</code></td><td>Pagination changed</td></tr><tr><td><code>benchmark</code></td><td><code>redaction-fixture-r1</code></td><td>Pagination changed</td></tr><tr><td><code>decision</code></td><td><code>redaction-fixture-r1</code></td><td>Pagination changed</td></tr></tbody>
   </table></div></section>
   </article>

@@ -10778,18 +10778,19 @@
         {
           "kind": "benchmark",
           "session_id": "fixture-extra-settlements",
-          "run_id": "fixture-extra-settlements-r6",
+          "run_id": "fixture-extra-settlements-r5b",
           "change_kinds": [
             "pagination_changed"
           ],
           "payload": {
             "schema": "kalari.benchmark.v1",
+            "synthetic": true,
             "provenance": "pilot",
             "status": "valid",
             "arm": "reference",
             "condition": 3,
             "upgrade": "settlements",
-            "repeat": 6,
+            "repeat": 5,
             "behaviour": null,
             "session_id": "fixture-extra-settlements",
             "session_continued": false,
@@ -10843,8 +10844,8 @@
             },
             "opencode_exit": null,
             "process_elapsed_s": null,
-            "source": "web/fixture/render.mjs",
-            "notes": "Synthetic fixture for the view test. Not a measurement."
+            "source": "web/fixture/sources/synthetic.json",
+            "notes": "Synthetic view fixture. Not a measurement."
           }
         }
       ],
@@ -10923,7 +10924,7 @@
         "payouts-earlier-pass",
         "payouts-attempt-1",
         "payouts-attempt-2",
-        "fixture-extra-settlements-r6"
+        "fixture-extra-settlements-r5b"
       ],
       "sessions": [
         "pilot-c1-payouts",
@@ -11004,6 +11005,7 @@
           ],
           "payload": {
             "schema": "kalari.benchmark.v1",
+            "synthetic": true,
             "provenance": "frozen",
             "status": "valid",
             "arm": "kalari",
@@ -11063,8 +11065,8 @@
             },
             "opencode_exit": null,
             "process_elapsed_s": null,
-            "source": "web/fixture/render.mjs",
-            "notes": "Synthetic fixture for the view test. Not a measurement."
+            "source": "web/fixture/sources/synthetic.json",
+            "notes": "Synthetic view fixture. Not a measurement."
           }
         }
       ],
@@ -11088,6 +11090,7 @@
           ],
           "payload": {
             "schema": "kalari.benchmark.v1",
+            "synthetic": true,
             "provenance": "frozen",
             "status": "valid",
             "arm": "kalari",
@@ -11147,8 +11150,8 @@
             },
             "opencode_exit": null,
             "process_elapsed_s": null,
-            "source": "web/fixture/render.mjs",
-            "notes": "Synthetic fixture for the view test. Not a measurement."
+            "source": "web/fixture/sources/synthetic.json",
+            "notes": "Synthetic view fixture. Not a measurement."
           }
         },
         {
@@ -11160,6 +11163,7 @@
           ],
           "payload": {
             "schema": "kalari.benchmark.v1",
+            "synthetic": true,
             "provenance": "frozen",
             "status": "valid",
             "arm": "reference",
@@ -11193,7 +11197,7 @@
               "records": 2430,
               "unique": 2430,
               "expected": 2430,
-              "missing": 0,
+              "missing": 1,
               "extra": 0,
               "duplicates": 0,
               "mismatched": 0,
@@ -11205,7 +11209,7 @@
               "records": 2430,
               "unique": 2430,
               "expected": 2430,
-              "missing": 0,
+              "missing": 1,
               "extra": 0,
               "duplicates": 0,
               "mismatched": 0,
@@ -11219,8 +11223,8 @@
             },
             "opencode_exit": null,
             "process_elapsed_s": null,
-            "source": "web/fixture/render.mjs",
-            "notes": "Synthetic fixture for the view test. Not a measurement."
+            "source": "web/fixture/sources/synthetic.json",
+            "notes": "Synthetic view fixture. Not a measurement."
           }
         }
       ],
@@ -11244,6 +11248,7 @@
           ],
           "payload": {
             "schema": "kalari.benchmark.v1",
+            "synthetic": true,
             "provenance": "frozen",
             "status": "valid",
             "arm": "kalari",
@@ -11303,8 +11308,8 @@
             },
             "opencode_exit": null,
             "process_elapsed_s": null,
-            "source": "web/fixture/render.mjs",
-            "notes": "Synthetic fixture for the view test. Not a measurement."
+            "source": "web/fixture/sources/synthetic.json",
+            "notes": "Synthetic view fixture. Not a measurement."
           }
         },
         {
@@ -11316,6 +11321,7 @@
           ],
           "payload": {
             "schema": "kalari.benchmark.v1",
+            "synthetic": true,
             "provenance": "frozen",
             "status": "valid",
             "arm": "reference",
@@ -11348,8 +11354,8 @@
             "grader_runs": null,
             "opencode_exit": null,
             "process_elapsed_s": null,
-            "source": "web/fixture/render.mjs",
-            "notes": "Synthetic fixture for the view test. Not a measurement."
+            "source": "web/fixture/sources/synthetic.json",
+            "notes": "Synthetic view fixture. Not a measurement."
           }
         }
       ],
@@ -11974,6 +11980,7 @@
           ],
           "payload": {
             "schema": "kalari.benchmark.v1",
+            "synthetic": true,
             "provenance": "frozen",
             "status": "valid",
             "arm": "kalari",
@@ -12033,8 +12040,8 @@
             },
             "opencode_exit": null,
             "process_elapsed_s": null,
-            "source": "web/fixture/render.mjs",
-            "notes": "Synthetic fixture for the view test. Not a measurement."
+            "source": "web/fixture/sources/synthetic.json",
+            "notes": "Synthetic view fixture. Not a measurement."
           }
         }
       ],
@@ -12058,7 +12065,7 @@
           ],
           "payload": {
             "title": "Redaction fixture",
-            "summary": "summary https://api.example.invalid/summary",
+            "summary": "summary 0.75 complete, 100% of the rows, https://api.example.invalid/summary",
             "arm": "kalari",
             "illustrative": true,
             "notes": "session note //api.example.invalid/session-note"
@@ -12075,9 +12082,9 @@
             "id": "change-1",
             "kind": "pagination_changed",
             "severity": "high",
-            "title": "The change",
+            "title": "The change https://api.example.invalid/change-title",
             "summary": "change detail https://api.example.invalid/change",
-            "endpoint": "ENDPOINT",
+            "endpoint": "https://api.example.invalid/change-endpoint",
             "source": "fixture"
           }
         },
@@ -12108,7 +12115,7 @@
           ],
           "payload": {
             "request": {
-              "workspace": "fixture",
+              "workspace": "workspace https://api.example.invalid/workspace",
               "command": [
                 "curl",
                 "--url",
@@ -12131,9 +12138,9 @@
             "checks": [],
             "check_results": [
               {
-                "check_id": "endpoint",
+                "check_id": "check https://api.example.invalid/check-id",
                 "passed": true,
-                "detail": "checked https://api.example.invalid/check-detail"
+                "detail": "checked 100% of the records against https://api.example.invalid/check-detail"
               }
             ],
             "illustrative": true
@@ -12167,6 +12174,7 @@
           ],
           "payload": {
             "schema": "kalari.benchmark.v1",
+            "synthetic": true,
             "provenance": "pilot",
             "status": "valid",
             "arm": "reference",
@@ -12205,7 +12213,7 @@
               "duplicates": 0,
               "mismatched": 0,
               "unreadable_lines": 0,
-              "note": "grade note https://api.example.invalid/grade-note"
+              "note": "grade note 100% complete https://api.example.invalid/grade-note"
             },
             "first_v2_grade": null,
             "grader_runs": {
@@ -12216,8 +12224,27 @@
             },
             "opencode_exit": null,
             "process_elapsed_s": null,
-            "source": "web/fixture/render.mjs",
+            "source": "web/fixture/sources/https://api.example.invalid/redaction.json",
             "notes": "notes https://api.example.invalid/notes"
+          }
+        },
+        {
+          "kind": "decision",
+          "session_id": "redaction-fixture",
+          "run_id": "redaction-fixture-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "question": "Is this an API change? https://api.example.invalid/question",
+            "question_set": "fixture",
+            "model": "clef",
+            "answer": {
+              "type": "probability",
+              "choice": "api_change",
+              "probabilities": {},
+              "confidence": 0.8
+            }
           }
         }
       ],
@@ -12398,6 +12425,7 @@
           ],
           "payload": {
             "schema": "kalari.benchmark.v1",
+            "synthetic": true,
             "provenance": "frozen",
             "status": "valid",
             "arm": "kalari",
@@ -12457,8 +12485,8 @@
             },
             "opencode_exit": null,
             "process_elapsed_s": null,
-            "source": "web/fixture/render.mjs",
-            "notes": "Synthetic fixture for the view test. Not a measurement."
+            "source": "web/fixture/sources/synthetic.json",
+            "notes": "Synthetic view fixture. Not a measurement."
           }
         }
       ],
@@ -12838,7 +12866,7 @@
           ],
           "payload": {
             "request": {
-              "workspace": "fixture",
+              "workspace": "workspace https://api.example.invalid/workspace",
               "command": [
                 "curl",
                 "--url",
@@ -12861,9 +12889,9 @@
             "checks": [],
             "check_results": [
               {
-                "check_id": "endpoint",
+                "check_id": "check https://api.example.invalid/check-id",
                 "passed": true,
-                "detail": "checked https://api.example.invalid/check-detail"
+                "detail": "checked 100% of the records against https://api.example.invalid/check-detail"
               }
             ],
             "illustrative": true
@@ -12897,6 +12925,7 @@
           ],
           "payload": {
             "schema": "kalari.benchmark.v1",
+            "synthetic": true,
             "provenance": "pilot",
             "status": "valid",
             "arm": "reference",
@@ -12935,7 +12964,7 @@
               "duplicates": 0,
               "mismatched": 0,
               "unreadable_lines": 0,
-              "note": "grade note https://api.example.invalid/grade-note"
+              "note": "grade note 100% complete https://api.example.invalid/grade-note"
             },
             "first_v2_grade": null,
             "grader_runs": {
@@ -12946,8 +12975,27 @@
             },
             "opencode_exit": null,
             "process_elapsed_s": null,
-            "source": "web/fixture/render.mjs",
+            "source": "web/fixture/sources/https://api.example.invalid/redaction.json",
             "notes": "notes https://api.example.invalid/notes"
+          }
+        },
+        {
+          "kind": "decision",
+          "session_id": "redaction-fixture",
+          "run_id": "redaction-fixture-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "question": "Is this an API change? https://api.example.invalid/question",
+            "question_set": "fixture",
+            "model": "clef",
+            "answer": {
+              "type": "probability",
+              "choice": "api_change",
+              "probabilities": {},
+              "confidence": 0.8
+            }
           }
         }
       ],

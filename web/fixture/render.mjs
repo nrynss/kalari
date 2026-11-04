@@ -94,10 +94,20 @@ async function runDetailsFor(base, runs, benchmark) {
 
 /* Synthetic records for the view tests. They exercise states the committed
    pilot store cannot show: a frozen condition-five row on its own, a complete
-   frozen pair with measures, and one extra pilot run. A record without a
-   measure reads as unknown. The source path names this file, so nobody can
-   mistake one of these rows for a measurement. */
-function syntheticBenchmark({ runId, sessionId, condition, upgrade, repeat = 1, provenance = "frozen", measures = {} }) {
+   frozen pair with measures, a second pilot row for one condition, and a page
+   with a URL in each display path. Each record sets `synthetic: true`, so the
+   validator treats it as a view fixture and never as a measurement. The source
+   names a readable JSON fixture, so no record claims an unreadable source. */
+function syntheticBenchmark({
+  runId,
+  sessionId,
+  condition,
+  upgrade,
+  repeat = 1,
+  provenance = "frozen",
+  source = "web/fixture/sources/synthetic.json",
+  measures = {},
+}) {
   return {
     kind: "benchmark",
     session_id: sessionId,
@@ -105,6 +115,7 @@ function syntheticBenchmark({ runId, sessionId, condition, upgrade, repeat = 1, 
     change_kinds: ["pagination_changed"],
     payload: {
       schema: "kalari.benchmark.v1",
+      synthetic: true,
       provenance,
       status: "valid",
       arm: condition === 5 ? "kalari" : "reference",
@@ -137,8 +148,8 @@ function syntheticBenchmark({ runId, sessionId, condition, upgrade, repeat = 1, 
       grader_runs: null,
       opencode_exit: null,
       process_elapsed_s: null,
-      source: "web/fixture/render.mjs",
-      notes: "Synthetic fixture for the view test. Not a measurement.",
+      source,
+      notes: "Synthetic view fixture. Not a measurement.",
       ...measures,
     },
   };
@@ -206,21 +217,22 @@ const frozenBeforeSame = syntheticBenchmark({
     records_extra: 0,
     records_mismatched: 0,
     cost_usd: 0.0119,
-    grade: gradeFixture(2430),
-    first_v2_grade: gradeFixture(2430),
+    grade: { ...gradeFixture(2430), missing: 1 },
+    first_v2_grade: { ...gradeFixture(2430), missing: 1 },
     grader_runs: { final: { status: "EXIT 0", log_excerpt: "synced 2430 payouts\n" } },
   },
 });
 const frozenRuns = [frozenAfter.run_id, frozenBeforeOther.run_id, frozenBeforeSame.run_id];
 
-/* One extra pilot run on the notes-handoff upgrade. The fresh column then has
-   six repeats and the notes column five, so the copy must name both counts. */
+/* A second pilot row for the fresh settlements column, with the same repeat
+   number as one existing row. The contract allows repeats 1 to 5, and the copy
+   still comes from both contrast columns: five distinct repeats each. */
 const extraRun = syntheticBenchmark({
-  runId: "fixture-extra-settlements-r6",
+  runId: "fixture-extra-settlements-r5b",
   sessionId: "fixture-extra-settlements",
   condition: 3,
   upgrade: "settlements",
-  repeat: 6,
+  repeat: 5,
   provenance: "pilot",
   measures: {
     sandbox_runs: 1,
@@ -276,7 +288,7 @@ const redactionRun = {
   change_kinds: ["pagination_changed"],
   payload: {
     request: {
-      workspace: "fixture",
+      workspace: "workspace https://api.example.invalid/workspace",
       command: ["curl", "--url", "https://api.example.invalid/command"],
       caps: { timeout_ms: 120000, output_cap_bytes: 65536, memory_mib: 512 },
     },
@@ -290,7 +302,11 @@ const redactionRun = {
     },
     checks: [],
     check_results: [
-      { check_id: "endpoint", passed: true, detail: "checked https://api.example.invalid/check-detail" },
+      {
+        check_id: "check https://api.example.invalid/check-id",
+        passed: true,
+        detail: "checked 100% of the records against https://api.example.invalid/check-detail",
+      },
     ],
     illustrative: true,
   },
@@ -315,10 +331,13 @@ const redactionBenchmark = syntheticBenchmark({
   condition: 3,
   upgrade: "payouts",
   provenance: "pilot",
+  /* The source path itself carries a URL, so the run page must redact it. The
+     file at that path is readable JSON, so the record passes the contract. */
+  source: "web/fixture/sources/https://api.example.invalid/redaction.json",
   measures: {
     grade: {
       ...gradeFixture(2431),
-      note: "grade note https://api.example.invalid/grade-note",
+      note: "grade note 100% complete https://api.example.invalid/grade-note",
     },
     grader_runs: { final: { status: "EXIT 0", log_excerpt: "log //api.example.invalid/grader-log\n" } },
     notes: "notes https://api.example.invalid/notes",
@@ -332,7 +351,7 @@ const redactionSession = {
   change_kinds: ["pagination_changed"],
   payload: {
     title: "Redaction fixture",
-    summary: "summary https://api.example.invalid/summary",
+    summary: "summary 0.75 complete, 100% of the rows, https://api.example.invalid/summary",
     arm: "kalari",
     illustrative: true,
     notes: "session note //api.example.invalid/session-note",
@@ -347,9 +366,9 @@ const redactionChange = {
     id: "change-1",
     kind: "pagination_changed",
     severity: "high",
-    title: "The change",
+    title: "The change https://api.example.invalid/change-title",
     summary: "change detail https://api.example.invalid/change",
-    endpoint: "ENDPOINT",
+    endpoint: "https://api.example.invalid/change-endpoint",
     source: "fixture",
   },
 };
@@ -362,6 +381,18 @@ const redactionRadius = {
     change_id: "change-1",
     call_sites: [{ path: "payout_sync.py", detail: "call site //api.example.invalid/call-site" }],
     note: "radius note https://api.example.invalid/radius",
+  },
+};
+const redactionDecision = {
+  kind: "decision",
+  session_id: "redaction-fixture",
+  run_id: "redaction-fixture-r1",
+  change_kinds: ["pagination_changed"],
+  payload: {
+    question: "Is this an API change? https://api.example.invalid/question",
+    question_set: "fixture",
+    model: "clef",
+    answer: { type: "probability", choice: "api_change", probabilities: {}, confidence: 0.8 },
   },
 };
 
@@ -386,8 +417,16 @@ try {
 
   const benchmarkWithExtra = [...benchmark, extraRun];
   const runsWithExtra = [...runs, extraRun.run_id];
-  const redactionRecords = [redactionSession, redactionChange, redactionRadius, redactionRun, redactionLesson, redactionBenchmark];
-  const redactionRunRecords = [redactionRun, redactionLesson, redactionBenchmark];
+  const redactionRecords = [
+    redactionSession,
+    redactionChange,
+    redactionRadius,
+    redactionRun,
+    redactionLesson,
+    redactionBenchmark,
+    redactionDecision,
+  ];
+  const redactionRunRecords = [redactionRun, redactionLesson, redactionBenchmark, redactionDecision];
 
   const snapshots = {
     judges: {

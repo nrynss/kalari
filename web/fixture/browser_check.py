@@ -15,9 +15,11 @@ a second page target, so any page target outside that origin fails too. A top
 level navigation and a meta refresh change the page's own URL, so they fail as
 well.
 
-Every page that runs a module is loaded: the three shells, the walkthrough
-session, a benchmark session and the illustrative run page. The static scan in
-web/check.py is authoritative for every other file and snapshot.
+Every served page that runs a module is loaded: the three shells, the
+walkthrough session, a benchmark session and the illustrative run page. The
+rendered snapshots cannot be loaded here, because the fixture server does not
+serve them. The static scan and the snapshot checks in web/check.py cover every
+other state.
 """
 
 from __future__ import annotations
