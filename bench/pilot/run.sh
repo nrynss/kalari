@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Pilot matrix for the reference arm. Prints the plan. A behaviour row is never started:
-# the harness has no server switch, so --run on a behaviour exits non-zero and does not
-# call the harness or ssh. Condition rows for the full pair call bench/harness/run.sh
+# this legacy driver does not route them; use bench/pilot/run-missing.sh for the isolated
+# variant matrix. Condition rows for the full pair call bench/harness/run.sh
 # only with --run. This script does not deploy API servers.
 #
 #   bench/pilot/run.sh --list
@@ -11,7 +11,7 @@
 #
 # Without --run the selected plan is printed and the process exits 2, except --list,
 # which prints the same plan and exits 0. The whole matrix is the default selection.
-# --run on that matrix refuses too, because it includes behaviour rows.
+# --run on that matrix refuses too; run-missing.sh handles the isolated variants.
 #
 # Condition runs are the proposed pair (every behaviour on).
 # Condition 1 is one session across both upgrades: payouts, then settlements on it.
@@ -92,14 +92,14 @@ if [[ -z $BEHAVIOUR && -z $CONDITION ]]; then
 # 6 single-behaviour variants x 5 fresh sessions, then conditions 1, 2, 3 and 6
 # on the proposed pair, five times each. Condition 1 is one session across both
 # upgrades (payouts, then settlements on that session).
-# Behaviour rows are listed only. --run refuses them: the harness has no server switch yet.
+# Behaviour rows are listed only. Use bench/pilot/run-missing.sh for isolated variants.
 # Condition rows are not started unless --run is passed.
 EOF
 fi
 
-# Behaviour rows would hit the full-pair servers. The harness cannot select one behaviour.
+# This legacy driver has no variant routing. The isolated driver handles those rows.
 if [[ $MODE == run && -z $CONDITION ]]; then
-  echo "refusing behaviour run: the harness has no server switch yet" >&2
+  echo "refusing behaviour run in legacy driver: use bench/pilot/run-missing.sh" >&2
   exit 2
 fi
 
@@ -118,7 +118,7 @@ handle_behaviour() { # upgrade behaviour repeat
     printf '%s\n' "$line"
     return 0
   fi
-  echo "refusing behaviour $upgrade $behaviour: the harness has no server switch yet" >&2
+  echo "refusing behaviour $upgrade $behaviour in legacy driver: use bench/pilot/run-missing.sh" >&2
   exit 2
 }
 

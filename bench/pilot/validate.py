@@ -61,7 +61,9 @@ for name, path in sorted(files.items()):
         clean = row['cleanup']
         if clean['sandboxes_left'] or clean['processes_left']: raise ValueError('cleanup incomplete')
         if behaviour:
-            if type(clean.get('scope_verified')) is not bool: raise ValueError('missing process cleanup provenance')
+            repeat = int(re.search(r'-r([1-5])\.json$', name).group(1))
+            older = upgrade == 'payouts' and (behaviour == 'B1' or (behaviour == 'B2' and repeat <= 4))
+            if clean.get('scope_verified') is not (not older): raise ValueError('incorrect process cleanup provenance')
             guests = [n for n in clean.get('owned_names',[]) if re.fullmatch(r'kalari-pilot-[a-f0-9]{12}', n)]
             if len(guests) != 1 or guests[0] in owned_guests: raise ValueError('missing or repeated guest identity')
             owned_guests.add(guests[0])

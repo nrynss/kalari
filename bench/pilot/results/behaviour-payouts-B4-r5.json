@@ -1,0 +1,144 @@
+{
+  "condition": 3,
+  "behaviour": "B4",
+  "repeat": 5,
+  "sandbox_setup": "isolated pilot adapter; restricted tool surface and network",
+  "upgrade": "payouts",
+  "arm": "reference",
+  "setup": "OpenCode 2.2.5 with isolated pilot MCP adapter, no Kalari tools",
+  "api_base": "the VM's public address",
+  "live_port": 19121,
+  "grading_port": 19122,
+  "prompt": "upgrade.txt",
+  "opencode_version": "opencode v2.2.5",
+  "session_continued": false,
+  "notes_attached": false,
+  "session_cap_s": 1200,
+  "session_capped": false,
+  "measures": {
+    "verdict": "PASS",
+    "right_first_time": true,
+    "sandbox_runs": 1,
+    "wall_time_s": 26.788,
+    "time_stuck_s": 0,
+    "tokens_input": 189280,
+    "tokens_output": 4897,
+    "records_lost": 0,
+    "records_duplicated": 0
+  },
+  "sandbox_runs_against_v1": 0,
+  "sandbox_runs_against_v2": 1,
+  "records_extra": 0,
+  "records_mismatched": 0,
+  "grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "expected": 2431,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "first_v2_grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "expected": 2431,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "right_first_time_basis": "snapshot",
+  "cost_usd": 0.03133,
+  "cost_note": "DeepSeek V4.1 Flash list price, cached input counted as input, no cache discount",
+  "usage_delta": [
+    {
+      "model": "clef",
+      "input": 0,
+      "output": 0
+    },
+    {
+      "model": "deepseek-v4.1-flash-1017",
+      "input": 189280,
+      "output": 4897
+    },
+    {
+      "model": "qwen3-embedding-4b",
+      "input": 0,
+      "output": 0
+    }
+  ],
+  "opencode_tokens": {
+    "steps": 18,
+    "input": 10464,
+    "output": 2674,
+    "reasoning": 2223,
+    "cache_read": 178816
+  },
+  "consumer_runs": [
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 0.485,
+      "timed_out": false,
+      "basis": "snapshot"
+    }
+  ],
+  "event_summary": {
+    "lines": 59,
+    "unparsed_lines": 0,
+    "types": {
+      "step_start": 18,
+      "tool_use": 22,
+      "step_finish": 18,
+      "text": 1
+    },
+    "tools": {
+      "read": 8,
+      "glob": 2,
+      "execute": 11,
+      "edit": 1
+    },
+    "steps": 18,
+    "bash_denied": 0,
+    "sandbox_names": [
+      "payoutsync"
+    ],
+    "last_reason": "stop",
+    "final_answer": "Upgraded `payout_sync.py` to the v2 export API.\n\n### Changes\n- Switched from `GET /v1/payouts` to `GET /v2/payouts`.\n- Follows the response `cursor` until `drained: true`.\n- Deduplicates by payout `id`, since v2 windows overlap at their edges.\n- Does not treat a short page as the end; only `drained` ends the export.\n- Restarts the export from the beginning on an invalid/expired cursor (`400`), relying on deduplication to avoid duplicates.\n- Uses `limit=1000` to reduce the number of requests.\n\n### Verification\nRan the updated consumer against `http://the VM's public address:19121`:\n\n```text\nsynced 2431 payouts\nrows 2431\nunique ids 2431\nduplicates {}\nmissing vs v1 []\nextra vs v1 []\nsame order True\nsame objects True\n```\n\nThe v2 export produced exactly the same 2,431 payouts as the live v1 endpoint, with no missing or duplicate records.",
+    "stderr_excerpt": "",
+    "diff_stat": "payout_sync.py | 40 ++++++++++++++++++++++++++++++++++++++--\n 1 file changed, 38 insertions(+), 2 deletions(-)"
+  },
+  "grader_runs": {
+    "final": {
+      "status": "EXIT 0",
+      "log_excerpt": "synced 2431 payouts\n"
+    },
+    "first": {
+      "status": "EXIT 0",
+      "log_excerpt": "synced 2431 payouts\n"
+    }
+  },
+  "cleanup": {
+    "sandboxes_left": [],
+    "processes_left": [],
+    "owned_names": [
+      "kalari-grade-final-c3b119e6c167",
+      "kalari-grade-first-c3b119e6c167",
+      "kalari-pilot-c3b119e6c167",
+      "kalari-pilot-gradec3b119e6c167",
+      "kalari-pilot-livec3b119e6c167",
+      "kalari-preflight-c3b119e6c167"
+    ],
+    "scope_verified": true
+  },
+  "process_elapsed_s": 28.0,
+  "opencode_exit": 0
+}
