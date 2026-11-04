@@ -38,7 +38,7 @@ private def candidateTruthCheckId := "candidate-v1-truth-v1"
 private def candidateTruthCheckAssertion :=
   "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison."
 private def candidateTruthCheckProgram := "kalari_candidate_truth_check.py"
-def trustedTruthArtifactName : String := "kalari-v1-truth.jsonl"
+def trustedTruthArtifactName : String := Kalari.Tools.Run.trustedTruthArtifactName
 
 structure PolicyProvenance where
   version : String

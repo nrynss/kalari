@@ -14,6 +14,9 @@ open Kalari.Sandbox
 private def guestWorkspace := "/workspace"
 private def supervisor := "/usr/local/bin/kalari-aashaan"
 private def artifactCap := 4 * 1024 * 1024
+/-- Reserved check-guest filename for the exact v1 output collected by the
+same run's differential comparison. -/
+def trustedTruthArtifactName : String := "kalari-v1-truth.jsonl"
 
 /-- The endpoint is the candidate's sole permitted destination. The source
 address is an exclusive guest address provisioned by the trusted host. -/
@@ -203,6 +206,8 @@ private def admit (ctx : Context) (request : RunRequest) : Except String Unit :=
   unless Gate.segmentOk ctx.artifact && ctx.artifact.toList.all
       (fun c => c.isAlphanum || c == '.' || c == '-' || c == '_') do
     throw "setup: invalid JSONL artifact name"
+  if ctx.artifact == trustedTruthArtifactName then
+    throw "setup: candidate artifact name is reserved for trusted v1 truth"
   if let some observer := ctx.observer then
     unless request.allowlist == [observer.endpoint] do throw "setup: observer endpoint must be the sole candidate allowlist entry"
   for check in ctx.checks do
@@ -329,6 +334,7 @@ private def readArtifact (backend : Kalari.Backend.SandboxBackend) (name path : 
 
 private def execute (runtime : Runtime) (ctx : Context) (name : String) (request : RunRequest)
     (allow : List AllowHost) (artifactHost : Option String := none)
+    (truthArtifactHost : Option String := none)
     (collectArtifact : Bool := true) : ExceptT String IO Execution := do
   -- The host deadline lets aashaan kill, collect pipes, and emit its verdict.
   -- JSON can escape each byte of both logs as six bytes.
@@ -346,6 +352,9 @@ private def execute (runtime : Runtime) (ctx : Context) (name : String) (request
       discard <| execOk backend name "clear stale artifact" ["rm", "-f", "--", path]
       if let some source := artifactHost then
         requireStep "check artifact copy" (← liftM (backend.copyIn name source path))
+      if let some source := truthArtifactHost then
+        requireStep "trusted truth copy" (← liftM (backend.copyIn name source
+          (guestWorkspace ++ "/" ++ trustedTruthArtifactName)))
       let verdict ← supervise backend name request ctx.secrets
       let artifact : Except String String ← if !collectArtifact then pure (.error "artifact collection disabled")
         else if successful verdict then liftM (readArtifact artifactBackend name path).run
@@ -381,11 +390,13 @@ private def checkResult (id : String) (passed : Bool) (detail : Option String) :
 host-owned check workspace and the candidate's bounded output artifact. -/
 private def runOneCheck (runtime : Runtime) (ctx : Context) (name : String)
     (request : RunRequest) (allow : List AllowHost) (source : System.FilePath)
+    (truthSource : Option System.FilePath)
     (check : Check) : IO CheckResult := do
   let checkRequest : RunRequest := { request with
     workspace := ctx.checkWorkspace, command := check.command }
   let execution ← try
-    (execute runtime ctx name checkRequest allow (some source.toString) false).run
+    (execute runtime ctx name checkRequest allow (some source.toString)
+      (truthSource.map System.FilePath.toString) false).run
   catch _ => pure (.error "sandbox check failed")
   return match execution with
     | .error reason => checkResult check.id false (some reason)
@@ -394,7 +405,7 @@ private def runOneCheck (runtime : Runtime) (ctx : Context) (name : String)
 
 private def runChecks (runtime : Runtime) (ctx : Context) (name : String)
     (request : RunRequest) (allow : List AllowHost) (dir : System.FilePath)
-    (artifact : Except String String) : IO (List CheckResult) := do
+    (artifact : Except String String) (truth : Option String) : IO (List CheckResult) := do
   let mut results := []
   for (check, index) in ctx.checks.zipIdx do
     let result ← match artifact with
@@ -403,23 +414,37 @@ private def runChecks (runtime : Runtime) (ctx : Context) (name : String)
       | .ok contents => do
         let source := dir / s!"check-{index}-artifact.jsonl"
         IO.FS.writeFile source contents
-        runOneCheck runtime ctx (name ++ s!"-check-{index}") request allow source check
+        let truthSource ← match truth with
+          | none => pure none
+          | some data => do
+            let path := dir / "trusted-v1-truth.jsonl"
+            IO.FS.writeFile path data
+            pure (some path)
+        runOneCheck runtime ctx (name ++ s!"-check-{index}") request allow source truthSource check
     results := results ++ [result]
   return results
 
 private def compareRun (runtime : Runtime) (ctx : Context) (name : String)
-    (allow : List AllowHost) (candidate : Execution) : IO CheckResult := do
-  let diff : Except String Difference ← match candidate.artifact with
-    | .error e => pure (.error e)
+    (allow : List AllowHost) (candidate : Execution) : IO (CheckResult × Option String) := do
+  let (diff, baselineArtifact) ← match candidate.artifact with
+    | .error e => pure (.error e, none)
     | .ok actual => do
-      let baseline ← (execute runtime ctx (name ++ "-v1") ctx.baseline allow).run
-      pure <| do
-        let baseline ← baseline
-        let old ← baseline.artifact.mapError fun e => "v1: " ++ e
-        compareRecords old actual
-  return match diff with
-  | .ok d => { check_id := differentialId, passed := d.passed, detail := some d.summary }
-  | .error e => { check_id := differentialId, passed := false, detail := some e }
+      match ← (execute runtime ctx (name ++ "-v1") ctx.baseline allow).run with
+      | .error e => pure (.error e, none)
+      | .ok baseline =>
+        let diff := do
+          let old ← baseline.artifact.mapError fun e => "v1: " ++ e
+          compareRecords old actual
+        pure (diff, some baseline.artifact)
+  let truth := match candidate.artifact with
+    | .error _ => none
+    | .ok _ => match baselineArtifact with
+      | some (.ok data) => some data
+      | _ => none
+  let check := match diff with
+    | .ok d => { check_id := differentialId, passed := d.passed, detail := some d.summary }
+    | .error e => { check_id := differentialId, passed := false, detail := some e }
+  return (check, truth)
 
 /-- The exact MCP argument shape is `RunRequest`. Refusals happen before any
 runner, resolver, evidence append, or sandbox action. -/
@@ -449,8 +474,8 @@ def run (runtime : Runtime) (ctx : Context) (request : RunRequest) : IO (Except 
     let candidate ← match candidateResult with
       | .error e => throw e
       | .ok c => pure c
-    let lessonResults ← runChecks runtime ctx name request allow dir candidate.artifact
-    let diff ← compareRun runtime ctx name baselineAllow candidate
+    let (diff, truth) ← compareRun runtime ctx name baselineAllow candidate
+    let lessonResults ← runChecks runtime ctx name request allow dir candidate.artifact truth
     let checks := lessonResults ++ [diff]
     let observations ← if successful candidate.verdict && checks.all (·.passed) then
       match traceResult with
@@ -543,6 +568,10 @@ private def fixtureRuntime (calls : IO.Ref (List String)) (variant : String)
         else if checking && guest.endsWith ":/workspace/payouts.jsonl" then do
           verify (host.startsWith "/tmp/") "check artifact was not staged as controlled material"
           pure ("copy-artifact", fixtureResult "")
+        else if checking && guest.endsWith (":/workspace/" ++ trustedTruthArtifactName) then do
+          verify (host.startsWith "/tmp/") "trusted truth was not staged as controlled material"
+          verify ((← IO.FS.readFile host) == truth) "trusted check did not receive the exact v1 artifact"
+          pure ("copy-truth", fixtureResult "")
         else do
           let expected := if checking then "/checks" else if baseline then "/baseline" else "/candidate"
           verify (host == expected && guest.endsWith ":/workspace") "wrong workspace copy"
@@ -626,7 +655,7 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
     let passed ← expectOk (payload.getObjValAs? Bool "passed")
     let current ← calls.get
     let setup := ["copy-candidate", "copy-supervisor", "overcommit", "chmod", "clear", "consumer"]
-    let checkSetup := ["create-check", "copy-check-workspace", "copy-supervisor", "overcommit", "chmod", "clear", "copy-artifact", "lesson", "remove-check"]
+    let checkSetup := ["create-check", "copy-check-workspace", "copy-supervisor", "overcommit", "chmod", "clear", "copy-artifact", "copy-truth", "lesson", "remove-check"]
     let first := ["resolve", "resolve", "pull", "create-v2"] ++ setup ++ ["artifact", "remove-v2"]
     let [lesson, diff] := checks | throw (.userError "expected both checks")
     verify (lesson.check_id == "exactly-once" && diff.check_id == differentialId) "wrong check IDs"
@@ -649,8 +678,8 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
       let duplicateCount := if variant == "no_dedupe" then 24 else 0
       verify (diff.detail == some s!"{missingCount} missing, 0 extra, {duplicateCount} duplicates, 0 changed")
         s!"wrong differential counts for {variant}: {diff.detail.getD "none"}"
-      verify (current == first ++ checkSetup ++ ["create-v1", "copy-baseline", "copy-supervisor",
-        "overcommit", "chmod", "clear", "baseline-consumer", "artifact", "remove-v1"])
+      verify (current == first ++ ["create-v1", "copy-baseline", "copy-supervisor",
+        "overcommit", "chmod", "clear", "baseline-consumer", "artifact", "remove-v1"] ++ checkSetup)
         "incorrect isolated-check/baseline lifecycle"
       if variant == "tamper" then do
         verify (← tampered.get) "tamper candidate did not run"
@@ -666,6 +695,11 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
     { req with command := ["python3", "correct.py"] }
   verify ((badCheckRoot matches .error "setup: checks require a separate trusted workspace") &&
     (← calls.get).isEmpty) "check workspace alias reached runtime"
+  let badTruthName := { ctx with artifact := trustedTruthArtifactName }
+  let collision ← run (fixtureRuntime calls "correct" caps truth truth tampered existsRef) badTruthName
+    { req with command := ["python3", "correct.py"] }
+  verify ((collision matches .error "setup: candidate artifact name is reserved for trusted v1 truth") &&
+    (← calls.get).isEmpty) "reserved truth artifact collision reached runtime"
   let denied := { req with command := ["python3", "correct.py"], allowlist := [{ host := "other.test", port := 18080 }] }
   let rejected ← run (fixtureRuntime calls "correct" caps truth truth tampered existsRef) ctx denied
   verify ((rejected matches .error "refused: allowlist") && (← calls.get).isEmpty) "refusal reached runtime"
