@@ -43,6 +43,8 @@ private def validate (cfg : Kalari.Config.Config) (s : Setup) : IO Unit := do
   unless cfg.sandbox.caps.timeout_ms > 0 && cfg.sandbox.caps.output_cap_bytes > 0 && cfg.sandbox.caps.memory_mib > 0 &&
       Kalari.Gate.capsOk s.baseline.caps cfg.sandbox.caps && Kalari.Gate.netOk s.baseline.allowlist cfg.sandbox.allowlist &&
       !s.baseline.command.isEmpty && !(s.baseline.command.headD "").isEmpty &&
+      s.baseline.caps.timeout_ms > 0 && s.baseline.caps.output_cap_bytes > 0 && s.baseline.caps.memory_mib > 0 &&
+      Kalari.Gate.commandInside s.baseline.workspace s.baseline.command &&
       !(s.baseline.workspace :: s.baseline.command).any (·.contains '\x00') do
     throw <| .userError "invalid baseline or caps"
   for path in [s.workspace, s.baseline.workspace, s.check_workspace, s.evidence_workspace, s.aashaan, s.old_spec, s.new_spec] do
@@ -126,6 +128,14 @@ def dispatcher (cfg : Kalari.Config.Config) (setup : Setup) (deps : Dependencies
       return (← Kalari.Tools.Lesson.record evidence setup.session_id runId classify writer).map fun x => (toJson x).compress
     | _ => return .error "unknown tool"
 
+def withLamboCleanup (client : Kalari.Lambo.Client) (action : IO α) : IO α := do
+  try action
+  finally Kalari.Lambo.shutdown client
+
+def serveWithLamboCleanup (client : Kalari.Lambo.Client) (handler : Kalari.Mcp.Handler)
+    (input output : IO.FS.Stream) : IO Unit :=
+  withLamboCleanup client (Kalari.Mcp.serve handler input output)
+
 /-- Serve one session sequentially, with a single Lambo child and writer. -/
 def serve (configPath setupPath : System.FilePath) : IO Unit := do
   let cfg ← Kalari.Config.load configPath
@@ -157,10 +167,7 @@ def serve (configPath setupPath : System.FilePath) : IO Unit := do
     writer, evidence, secrets
   }
   let handler ← dispatcher cfg setup deps
-  try
-    Kalari.Mcp.serve handler (← IO.getStdin) (← IO.getStdout)
-  finally
-    Kalari.Lambo.shutdown client
+  serveWithLamboCleanup client handler (← IO.getStdin) (← IO.getStdout)
 
 /-- Offline executable fixture. All external effects are replaced by local data. -/
 def fixture : IO Unit := IO.FS.withTempDir fun dir => do
@@ -172,10 +179,17 @@ def fixture : IO Unit := IO.FS.withTempDir fun dir => do
   let cfg : Kalari.Config.Config := { models := endpoint, decisions := decisionEndpoint, sandbox := { backend := "microsandbox", image := Kalari.Sandbox.Microsandbox.imageName, caps, allowlist := allow }, lambo := { command := ["fixture"], config_path := "fixture" } }
   let setup : Setup := { session_id := "fixture", repo_scope := "fixture", workspace := "/candidate", old_spec := "old", new_spec := "new", baseline := { request with workspace := "/baseline", command := ["python3", "/baseline/v1_unchanged.py"] }, check_workspace := (dir / "checks").toString, evidence_workspace := dir.toString, artifact := "payouts.jsonl", aashaan := "/trusted/aashaan" }
   let evidence ← Kalari.Evidence.openStore dir
-  let writerCalls ← IO.mkRef ([] : List String)
-  let writer ← Kalari.Tools.Lesson.makeWriter fun kind _ _ => do
-    writerCalls.modify (· ++ [kind])
-    pure (.ok (if kind == "resource" then "fixture-anchor" else if kind == "constraint" then "fixture-lesson" else "fixture-observation"))
+  let pidPath := dir / "fake-lambo.pid"
+  let logPath := dir / "fake-lambo.log"
+  let fakeLambo := "import json,os,sys; open(sys.argv[1],'w').write(str(os.getpid()));\n" ++
+    "for line in sys.stdin:\n" ++
+    " m=json.loads(line); method=m.get('params',{}).get('name',m.get('method')); open(sys.argv[2],'a').write(method+'\\n');\n" ++
+    " if 'id' not in m: continue\n" ++
+    " result={'structuredContent':{'receipt':'fixture-receipt'}} if method=='lambo_derive' else ({'structuredContent':{'receipt':{'id':'fixture-receipt','state':'applied','created':['12345678-1234-1234-1234-123456789abc'],'matched':[]}}} if method=='lambo_stats' else {})\n" ++
+    " print(json.dumps({'jsonrpc':'2.0','id':m['id'],'result':result}),flush=True)\n"
+  let lamboConfig : Kalari.Config.Lambo := { command := ["python3", "-c", fakeLambo, pidPath.toString, logPath.toString], config_path := "fixture.toml" }
+  let lamboChild ← Kalari.Lambo.create lamboConfig
+  let writer ← Kalari.Tools.Lesson.writer lamboChild
   let source : Kalari.Tools.Recall.Sources := { linked := fun _ => pure [], semantic := fun _ => pure [], resolve := fun _ => pure (.error "missing"), applies := fun _ _ => pure (.error "missing") }
   let truth := String.join ((List.range 2431).map fun i => (Json.mkObj [("id", toJson s!"P{i}"), ("amount", toJson (100 + i))]).compress ++ "\n")
   let calls ← IO.mkRef ([] : List String)
@@ -226,6 +240,9 @@ def fixture : IO Unit := IO.FS.withTempDir fun dir => do
   unless ← rejects { validSetup with artifact := ".hidden" } do throw <| .userError "dot artifact accepted"
   unless ← rejects { validSetup with baseline := { validSetup.baseline with command := [""] } } do throw <| .userError "empty baseline executable accepted"
   unless ← rejects { validSetup with baseline := { validSetup.baseline with command := ["true\x00bad"] } } do throw <| .userError "NUL baseline argument accepted"
+  unless ← rejects { validSetup with baseline := { validSetup.baseline with caps := { validSetup.baseline.caps with timeout_ms := 0 } } } do throw <| .userError "zero baseline timeout accepted"
+  unless ← rejects { validSetup with baseline := { validSetup.baseline with caps := { validSetup.baseline.caps with memory_mib := caps.memory_mib + 1 } } } do throw <| .userError "baseline memory cap above trusted maximum accepted"
+  unless ← rejects { validSetup with baseline := { validSetup.baseline with command := ["python3", "/etc/passwd"] } } do throw <| .userError "absolute baseline command outside its workspace accepted"
   unless ← rejects { validSetup with workspace := oldSpec.toString } do throw <| .userError "file accepted as workspace"
   unless ← rejects { validSetup with old_spec := (dir / "candidate").toString } do throw <| .userError "directory accepted as spec"
   unless ← rejects { validSetup with evidence_workspace := validSetup.workspace } do throw <| .userError "overlapping roots accepted"
@@ -249,30 +266,6 @@ def fixture : IO Unit := IO.FS.withTempDir fun dir => do
   unless records.records.any (fun r => r.kind == "run" && r.run_id == runId) &&
       records.records.any (fun r => r.kind == "lesson" && r.run_id == runId) do
     throw <| .userError "Run and Lesson did not share the evidence store"
-  unless (← writerCalls.get) == ["resource", "constraint", "observation"] do
-    throw <| .userError "Run and Lesson did not use the shared lesson writer"
-
-  -- Start a real local MCP child for the Lambo client, complete a receipt
-  -- round trip, then prove shutdown closed stdin and reaped that process.
-  let pidPath := dir / "fake-lambo.pid"
-  let fakeLambo := "import json,os,sys; open(sys.argv[1],'w').write(str(os.getpid()));\n" ++
-    "for line in sys.stdin:\n" ++
-    " m=json.loads(line); method=m.get('params',{}).get('name',m.get('method'));\n" ++
-    " if 'id' not in m: continue\n" ++
-    " result={'structuredContent':{'receipt':'fixture-receipt'}} if method=='lambo_derive' else ({'structuredContent':{'receipt':{'id':'fixture-receipt','state':'applied','created':[],'matched':[]}}} if method=='lambo_stats' else {})\n" ++
-    " print(json.dumps({'jsonrpc':'2.0','id':m['id'],'result':result}),flush=True)\n"
-  let lamboConfig : Kalari.Config.Lambo := { command := ["python3", "-c", fakeLambo, pidPath.toString], config_path := "fixture.toml" }
-  let lamboChild ← Kalari.Lambo.create lamboConfig
-  let receipt ← try Kalari.Lambo.derive lamboChild "observation" "fake child fixture" catch e =>
-    throw <| .userError s!"fake Lambo derive failed: {e}"
-  unless receipt == "fixture-receipt" do throw <| .userError "fake Lambo receipt mismatch"
-  let _ ← try Kalari.Lambo.awaitReceipt lamboChild receipt catch e =>
-    throw <| .userError s!"fake Lambo receipt wait failed: {e}"
-  Kalari.Lambo.shutdown lamboChild
-  let pid ← IO.FS.readFile pidPath
-  let alive ← IO.Process.output { cmd := "/bin/kill", args := #["-0", pid.trimAscii.toString] }
-  unless alive.exitCode != 0 do throw <| .userError "fake Lambo child survived shutdown"
-
   let latestRun ← IO.mkRef (none : Option String)
   let stdioHandler : Kalari.Mcp.Handler := fun name args => do
     if name == "record_lesson" && (args.getObjValAs? String "run_id").toOption == some "latest" then
@@ -291,6 +284,23 @@ def fixture : IO Unit := IO.FS.withTempDir fun dir => do
       return result
     else handler name args
 
-  Kalari.Mcp.serve stdioHandler (← IO.getStdin) (← IO.getStdout)
+  serveWithLamboCleanup lamboChild stdioHandler (← IO.getStdin) (← IO.getStdout)
+  let pid ← IO.FS.readFile pidPath
+  let alive ← IO.Process.output { cmd := "/bin/kill", args := #["-0", pid.trimAscii.toString] }
+  unless alive.exitCode != 0 do throw <| .userError "service EOF did not reap its fake Lambo child"
+  let childLog ← IO.FS.readFile logPath
+  unless childLog.contains "lambo_derive" && childLog.contains "lambo_stats" do
+    throw <| .userError "service lifecycle fixture did not exercise its shared Lambo child"
+  let errorChild ← Kalari.Lambo.create lamboConfig
+  let errorReceipt ← Kalari.Lambo.derive errorChild "observation" "cleanup on service error"
+  let _ ← Kalari.Lambo.awaitReceipt errorChild errorReceipt
+  let failedService ← try
+      withLamboCleanup errorChild (throw <| IO.userError "fixture service error")
+      pure false
+    catch _ => pure true
+  unless failedService do throw <| .userError "fixture service error was swallowed"
+  let errorPid ← IO.FS.readFile pidPath
+  let errorChildAlive ← IO.Process.output { cmd := "/bin/kill", args := #["-0", errorPid.trimAscii.toString] }
+  unless errorChildAlive.exitCode != 0 do throw <| .userError "service error did not reap its fake Lambo child"
 
 end Kalari.Service
