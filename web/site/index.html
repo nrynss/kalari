@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>For judges · Kalari</title>
+    <meta
+      name="description"
+      content="The evidence index for Kalari: the pilot baseline, every condition in the fixture, the containment moment, and every run."
+    />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <link rel="stylesheet" href="app.css" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <script type="module" src="app/judges.mjs"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#app">Skip to content</a>
+    <header class="site-head">
+      <a class="wordmark" href="index.html" aria-label="Kalari, for judges">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5" />
+          <path
+            d="M7 16 L12 7 L17 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linejoin="round"
+          />
+        </svg>
+        <span>Kalari</span>
+      </a>
+      <p class="site-subtitle">Chaaya, the evidence front end</p>
+      <nav class="site-nav" aria-label="Main">
+        <a href="index.html" aria-current="page">For judges</a>
+      </nav>
+    </header>
+    <main id="app" class="app" aria-busy="true">
+      <p class="loading" role="status">Loading the evidence…</p>
+    </main>
+    <footer class="site-foot" role="contentinfo">
+      <p><strong>Chaaya</strong> is the Kalari front end. The evidence store is append-only. It keeps the run, the checks, the Clef answers and the lessons.</p>
+      <p class="fine-print">Clef answers are a model's opinion, never a measurement and never a verdict. The hidden grader and the sandbox checks decide the result.</p>
+    </footer>
+    <noscript>
+      <p class="noscript">
+        Chaaya reads the evidence API with JavaScript. Enable it to see the records.
+      </p>
+    </noscript>
+  </body>
+</html>

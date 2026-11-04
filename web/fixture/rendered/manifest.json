@@ -1,0 +1,90 @@
+{
+  "schema": "kalari.web.rendered.v1",
+  "generator": "web/fixture/render.mjs",
+  "root": "web/site",
+  "pages": {
+    "judges": {
+      "path": "web/fixture/rendered/judges.html",
+      "sha256": "f2c0a06e1141a28383142726e93bb59eed52854f233c9516a08657e6f8f77dff"
+    },
+    "judges-empty": {
+      "path": "web/fixture/rendered/judges-empty.html",
+      "sha256": "cc005b2a7b5bb6d4e96b614da8ee7b4a7697705c16a2913043f5e9ee2b3694d3"
+    },
+    "judges-no-store": {
+      "path": "web/fixture/rendered/judges-no-store.html",
+      "sha256": "e514899bcc63c42f4c5b3f6dc49c669779fa4e0d531dcce696f59982d6479828"
+    },
+    "judges-extra-run": {
+      "path": "web/fixture/rendered/judges-extra-run.html",
+      "sha256": "f128af65fa272365b3866a45af24ffe49068e131c76660d03e408e56b8e2cb4c"
+    },
+    "judges-frozen-after": {
+      "path": "web/fixture/rendered/judges-frozen-after.html",
+      "sha256": "7bc1a9199a69824ac0ffe34582cd917dbf5a7a5566a8cc583936c418989d2b5b"
+    },
+    "judges-frozen-pair": {
+      "path": "web/fixture/rendered/judges-frozen-pair.html",
+      "sha256": "22795262ee8a145e444fe2a1119c084a6c55ed7d1dd1778e7fd88c3de2ddf838"
+    },
+    "judges-frozen-split": {
+      "path": "web/fixture/rendered/judges-frozen-split.html",
+      "sha256": "a1375b45a264d5e67d05726a41b838e47a110e652b36bbe4eecfe5dd11ca5241"
+    },
+    "session": {
+      "path": "web/fixture/rendered/session.html",
+      "sha256": "5800396c3a983cbe4aa3cb8c128ae565e6bded7e35db1155396a633fe2d27623"
+    },
+    "session-frozen": {
+      "path": "web/fixture/rendered/session-frozen.html",
+      "sha256": "8d90e03fb102f81b5074af68e662180425cc0e14be2d8055fdb30affb85f1616"
+    },
+    "session-redaction": {
+      "path": "web/fixture/rendered/session-redaction.html",
+      "sha256": "b44e83d89e86990ae8dc3ecb3c71366021fa011c6bc01a3c0914e7049c150841"
+    },
+    "run": {
+      "path": "web/fixture/rendered/run.html",
+      "sha256": "1c35499404f163fadee5bade8c71c64d91da809bce4ad8fb13166f171c0929ab"
+    },
+    "run-frozen": {
+      "path": "web/fixture/rendered/run-frozen.html",
+      "sha256": "9031ededb7a6a1794cf8987e75e55bde73c93c023ed948dfb3c6e2836b31a866"
+    },
+    "run-illustrative": {
+      "path": "web/fixture/rendered/run-illustrative.html",
+      "sha256": "40269b4f197e8a47a9f8aad2813d992896b9d417da33cc379eb2c6d07f43c5d2"
+    },
+    "run-endpoint": {
+      "path": "web/fixture/rendered/run-endpoint.html",
+      "sha256": "8df8fcce9bb90da89730e7c52b1bec76f7fc9102a9605cb37e91f3fd323ad1c1"
+    },
+    "run-redaction": {
+      "path": "web/fixture/rendered/run-redaction.html",
+      "sha256": "366b773cf214a0650326304fd7a8f856d89f665b483cd09f5cf02d26665bb766"
+    }
+  },
+  "sha256": {
+    "app.css": "17e23d5d048f7eb123026e5b10c09600f8997c8d0fa4a982345b766325d16e37",
+    "app/api.mjs": "1537f7279829b14192541dada9fe456cdc1d92243e69469b43fc174eb9617cd9",
+    "app/boot.mjs": "52ed3a653d7826d3d9080c9d50aedee1570a3bce7fba91bd69bb627d9253ce81",
+    "app/format.mjs": "d6b60b8861907518dd39cae928b9e13250f61d311f111845d8524b6ca8710975",
+    "app/judges.mjs": "a130bc07c443a17e3532ad82a40f553e9d9944774b5ac96ddc13deb4d1d9e744",
+    "app/labels.mjs": "4352e35e17bc43ef5247269d0b600ac330c97f8955eb49dbae9e462ae6291f4a",
+    "app/run.mjs": "714aa943c55dc4244ef1fc1fe8730256cf84e220d3ef3a23226e4a040688c4b1",
+    "app/session.mjs": "1ed6aec3c10f3b7fb641c8de9efb3a35b1639d477d09e99e0bb612402dcecc4f",
+    "app/views.mjs": "38e2f300163e026a1b56893c0240bcae672a26a68b9744c9a3f139b85c85541c",
+    "favicon.svg": "7a69c115330c1927f6667c41ad4f0bd403e1162d221c7581db98a491fb522b0a",
+    "index.html": "d10fd5ceae2bd6b07fb5fcf7d83218445e47a04b3f2bd282bd46f8c248665aa0",
+    "run.html": "9311bd451a6cfb574a0a5260878a1a5871fe9fbb117f79d454ed61f3dfd4b2a4",
+    "session.html": "d772f9cbc09f0512114df4ad4501e1641c1041291f69b6a20191d07226489e8f"
+  },
+  "inputs": {
+    "path": "web/fixture/rendered/inputs.json",
+    "sha256": "824f7eedeeee6479c57b97875c8979ccc6a0bdea1dcdfea245f3d37971c9815e"
+  },
+  "evidence": {
+    "path": "web/fixture/evidence.jsonl",
+    "sha256": "d0847b63d95e1637360623c9170e958bef168af01cb507212edf0db6ca5fd59d"
+  }
+}
