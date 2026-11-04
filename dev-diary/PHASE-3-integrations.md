@@ -63,7 +63,7 @@ status:     not-started
 ```
 `MemoryClient` over a child `lambo serve` (MCP over stdio): start it with Kalari's config, `initialize`, then `lambo_derive`, `lambo_inspect`, `lambo_recall`, `lambo_stats` (with a receipt and `wait_ms` when the next read needs the write). Kalari is the single writer under one stable agent ID. The change kind is a `resource`; a lesson a `constraint` `depends_on` it; a run an `observation` `depends_on` the lesson (research/lambo.md, How Kalari uses it). Lessons are found by `lambo_inspect` on the change kind, never by recall rank alone.
 
-Can start against the 0.8.0 transcripts if T0.4 is still blocked; the orchestrator decides.
+Replays `testdata/lambo/` (Lambo 0.9.0; its README lists what the client must handle). Read a write's outcome from the next response's `write receipts` block or from `lambo_stats` with the receipt. A contradicted lesson carries no warning on `lambo_inspect`, only an incoming `Contradicts` edge: the client checks each lesson it inspects for one.
 
 **Done when:** against the recorded transcripts: a lesson written and then found by inspecting its change kind; a contradicting outcome written `against` it shows as stale; the child is stopped cleanly on shutdown and restarted if it dies.
 

@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0: everything but T0.4 (Lambo) done; Vimanam 2.1.0 landed (T0.6). P1 done; P2 4/6; P3 3/7. T2.2 claimed. Ready: T3.1a, T5.1. The pilot (T5.2) needs the harness (T5.1) and the user's spend approval. Config format (T1.2) is JSON.
+**Current status:** P0 done: Vimanam 2.1.0 (T0.6) and Lambo 0.9.0 (T0.4) landed. P1 done; P2 4/6; P3 3/7. T2.2 claimed. Ready: T3.1a, T3.2, T5.1. The pilot (T5.2) needs the harness (T5.1) and the user's spend approval. Config format (T1.2) is JSON.
 
 ---
 
@@ -61,7 +61,7 @@ P1 is the serial bottleneck. **The pilot runs beside the whole build**: it needs
 | **A: Pilot** | P5 | Yes (VM, Vultr Inference) | T5.1 | The harness starts now; the pilot runs once Vimanam's release lands (T0.6). Spend approved by the user before T5.2 |
 | **B: Contracts** | P1 | No | T1.1 (after T0.3) | Serial; small and exact |
 | **C: Containment** | P2 | `b` tasks only | T2.1 | The proved gate and the aashaan. The product's safety claims live here |
-| **D: Integrations** | P3 | `b` tasks only | T3.1, T3.3, T3.4 | T3.2 (Lambo) waits for T0.4, or starts on the 0.8.0 transcripts if the orchestrator says so |
+| **D: Integrations** | P3 | `b` tasks only | T3.1, T3.3, T3.4 | T3.2 (Lambo) is ready on the 0.9.0 transcripts |
 | **E: Surfaces** | P6 | T6.3 only | T6.1 | Starts when the evidence store (T4.2) lands |
 
 If capacity is short, run A and C first: A decides what the comparison can show, and C is what every run's safety rests on.
@@ -139,7 +139,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 
 | Phase | Tasks complete | Status |
 |---|---|---|
-| P0 | 5 / 6 | T0.1, T0.2, T0.3, T0.5, T0.6 done. T0.4 (Lambo) blocked on its next release |
+| P0 | 6 / 6 | All done |
 | P1 | 5 / 5 | T1.1 through T1.5 done |
 | P2 | 4 / 6 | T2.1, T2.3, T2.4 and T2.5 done. T2.2 claimed (its microVM step runs on the laptop) |
 | P3 | 3 / 7 | T3.1, T3.3 and T3.4 done. T3.1a ready |
@@ -154,6 +154,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 
 Newest first. One entry per closed task, finding, or split.
 
+- **T0.4 closed: Lambo 0.9.0 re-measured; T3.2 is ready.** #222 is fixed: a new store's refusal says to run `lambo provision`. Embeddings, GC survival and Solo promotion pass as on 0.8.0 (Candidate about two minutes after the third citing run). Newly recorded: `lambo_stats` with a receipt, and a contradiction (`against`) with recall's flag and `lambo_stale`. **#221 is closed but the reworded-query ranking is unchanged:** the lesson is 2nd behind an unrelated observation at 2560, at 1024, and with the calibration off, since the keyword leg decides it. Lessons are found by inspecting the change kind, so nothing is blocked. **`lambo_inspect` shows a contradicted lesson without a warning**, only a `Contradicts` edge: T3.2 checks for it. Transcripts and the driver in `testdata/lambo/`.
 - **T2.5 closed: image pulls.** `ensureImage` runs `msb pull debian`. Three attempts: the first at once, then a wait of 1000 ms, then 2000 ms. Any cap other than `none`, or any exit other than 0, retries. The stderr text is not special-cased. Three failures are `setup: pull debian: …`, and `run` returns that before create, copy, exec, or remove. Every create argv ends `--pull never debian`. `getLast?` is still `some "debian"`. No `--force`, no registry URL, no `--net-default`. The pull is not a `SandboxBackend` method. There is no pull recording. `replayRunner` treats `["msb", "pull", "debian"]` as a synthetic success and does not consume a `testdata/msb` case. Exit 3 is 8 calls and is still removed. A failed create is the pull and the create, and is not removed. The checks record the waits and do not sleep, and they do not call `live`. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
 - **CI: the runner image does not ship `rg`.** Ubuntu 26.04's image has no ripgrep, so `Kalari.Search`'s check exits 255 with `could not execute external process 'rg'`. The workflow installs the `ripgrep` package before the gate. `tools/check.sh` does not.
 - **CI: the process timeout check no longer renames `sleep`.** Ubuntu 26.04's uutils rejects an argv0 that does not match the executable, so `env -a <marker> /bin/sleep 30` exits at once and the 400 ms cap never fires. The check is now an inner `sh -c` builtin loop, backgrounded with `wait`, with the marker on that grandchild's command line. A failure prints `cap`, the exit code, `wallMs`, and stderr.

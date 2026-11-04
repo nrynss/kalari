@@ -1,0 +1,2 @@
+lambo serve: capability not supported: sqlite store has no schema yet (a fresh or empty database: none of the required tables exists). Run `lambo provision` (idempotent) against this store, then retry
+(exit 1)

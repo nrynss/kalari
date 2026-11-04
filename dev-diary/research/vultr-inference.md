@@ -46,7 +46,7 @@ Base URL `https://api.vultrinference.com/v1`, `Authorization: Bearer <key>`. Req
 
 `choice` questions take `instructions` and `criteria` (option → description); `noul` is yes/no and returns the probability of yes, with no confidence.
 
-**A4, embeddings.** `qwen3-embedding-4b` returns 2560 dimensions; with `"dimensions": 1024`, 1024 (unit norm). Lambo 0.8.0's adapter sends only `model` and `input`, so Lambo runs at 2560.
+**A4, embeddings.** `qwen3-embedding-4b` returns 2560 dimensions; with `"dimensions": 1024`, 1024 (unit norm). Lambo 0.8.0's adapter sent only `model` and `input`; 0.9.0 sends `dimensions` when set. Lambo runs at 2560: 1024 ranked no better (`lambo.md`).
 
 **A5, spend.** `/v1/usage` reports token counts per model only, **no dollar amounts**, and counts cached tokens as input (4 × 348 = 1,392). Whether cached input is discounted can't be seen there: check the console's billing page. Part A cost under $0.01.
 

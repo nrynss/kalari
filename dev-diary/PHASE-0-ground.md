@@ -78,11 +78,11 @@ requires:   [T0.1]
 fixture-ok: no
 size:       S · mid
 owns:       testdata/lambo/, dev-diary/research/lambo.md
-status:     blocked
+status:     done
 ```
 Blocked on the Lambo release with fixes for lambo#221 and lambo#222. Re-run B4 (`research/commands.md`) on it: provisioning a new store, embeddings on Qwen3 Embedding 4B, GC survival, Solo promotion, and the reworded-query recall ranking. Record the MCP transcripts Kalari's Lambo client (T3.2) will replay: `initialize`, `tools/list`, `lambo_derive`, `lambo_inspect`, `lambo_recall`, `lambo_stats` with a receipt.
 
-**Done when:** the B4 table in `research/lambo.md` has the new release's results, including whether the lesson ranks first; transcripts are in `testdata/lambo/` with no key.
+**Done when:** the B4 table in `research/lambo.md` has the new release's results, including whether the lesson ranks first; transcripts are in `testdata/lambo/` with no key (done on 0.9.0: every check passes except the ranking, still 2nd; a contradiction and its stale flags are recorded too).
 
 ---
 

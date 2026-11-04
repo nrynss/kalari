@@ -1,0 +1,13 @@
+promotion_policy = "Solo"
+
+[store]
+kind = "sqlite"
+path = "./kalari.db"
+
+[embedder]
+kind = "openai"
+url = "https://api.vultrinference.com"
+model = "qwen3-embedding-4b"
+dim = 2560
+api_key_env = "VULTR_INFERENCE_API_KEY"
+

@@ -219,7 +219,7 @@ msb stop aashaan && msb remove aashaan
 
 ```bash
 curl -fsSL https://github.com/nrynss/lambo/releases/latest/download/install.sh | sh
-lambo --version          # expect 0.8.0
+lambo --version          # 0.9.0 (B4 first ran on 0.8.0)
 ```
 
 `~/kalari-lambo/lambo.toml`:
@@ -235,14 +235,14 @@ path = "./kalari.db"
 kind = "openai"                    # same adapter as bge_m3; appends /v1/embeddings to url
 url = "https://api.vultrinference.com"
 model = "qwen3-embedding-4b"       # BGE M3 isn't served on Vultr (A4)
-dim = 2560                         # Qwen's full width: Lambo 0.8.0 sends no `dimensions`, so 1024 isn't reachable
+dim = 2560                         # Qwen's full width; 0.9.0 also takes `dimensions = 1024` with `dim = 1024`
 api_key_env = "VULTR_INFERENCE_API_KEY"
 
 [daemon]
 gc_interval = 1                    # TEST ONLY: sweep after every mutation
 ```
 
-**Provision the store first:** `lambo provision --config ~/kalari-lambo/lambo.toml`. Without it, `lambo serve` refuses a brand-new store with a misleading "provisioned by an older lambo" error ([lambo#222](https://github.com/nrynss/lambo/issues/222)).
+**Provision the store first:** `lambo provision --config ~/kalari-lambo/lambo.toml`. Without it, `lambo serve` refuses a brand-new store: since 0.9.0 with "no schema yet … Run `lambo provision`", on 0.8.0 with a misleading "provisioned by an older lambo" ([lambo#222](https://github.com/nrynss/lambo/issues/222)).
 
 Connect an MCP client to `lambo serve` over stdio (the local Claude Code session works: add Lambo as an MCP server; see [Lambo's MCP docs](https://nrynss.github.io/lambo/mcp/)), then:
 
@@ -315,7 +315,7 @@ curl -s $V/models -H "$AUTH" | jq -r '.data[] | [.id, (.context_length // "")] |
 curl -s $V/embeddings/models -H "$AUTH" | jq -c '.data[] | {id, context_length, pricing}'
 ```
 
-Qwen at 1024 dims (Qwen truncates when asked; Lambo 0.8.0 can't ask):
+Qwen at 1024 dims (Qwen truncates when asked; Lambo asks from 0.9.0, `[embedder] dimensions`):
 
 ```bash
 curl -s $V/embeddings -H "$AUTH" -H 'Content-Type: application/json' \
@@ -408,6 +408,13 @@ Sequence run (four `steps.json` files, one `serve` process each):
 2. Evidence r-002 and r-003, each `depends_on: ["0bd9ef07"]` (the lesson's short id), with `lambo_inspect` after each.
 3. After 60 s: `lambo_inspect` again (now eligible).
 4. A `serve` kept up for 75 s so a canonization cycle runs, then `lambo_stats`, `lambo_inspect` (Candidate), `lambo_recall`.
+
+**The 0.9.0 re-run (T0.4)** used `testdata/lambo/driver.py`: the same client, plus a transcript of every JSON-RPC line and a `"receipt": true` step that passes the last ack's receipt to `lambo_stats`. The steps are in `testdata/lambo/steps/`: the whole sequence in one `serve` (`b4-full.json`, with the promotion waits), a receipt read, a contradiction on a restarted `serve`, and recall at 1024 and with `calibration = "off"`. The 0.9.0 binary was downloaded beside the installed one and checked against its `.sha256`:
+
+```bash
+gh release download v0.9.0 -R nrynss/lambo -p 'lambo-0.9.0-linux-x86_64*'
+sha256sum -c lambo-0.9.0-linux-x86_64.sha256
+```
 
 ### B0: the VM (laptop)
 

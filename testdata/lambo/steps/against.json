@@ -1,0 +1,50 @@
+[
+ {
+  "tool": "lambo_derive",
+  "label": "contradicting outcome",
+  "args": {
+   "concepts": [
+    {
+     "content": "run r-004: Tallyline v2 windows overlap by one payout; following the cursor until absent imported 2,431 rows with 9 duplicates. The rule needs dedupe by payout id",
+     "concept_type": "observation",
+     "depends_on": [
+      "pagination_changed"
+     ],
+     "against": [
+      "36b116fe"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "tool": "lambo_stats",
+  "label": "with receipt",
+  "receipt": true,
+  "args": {}
+ },
+ {
+  "tool": "lambo_inspect",
+  "label": "lesson after against",
+  "args": {
+   "focus": "36b116fe",
+   "depth": 1
+  },
+  "max": 3000
+ },
+ {
+  "tool": "lambo_recall",
+  "label": "recall after against",
+  "args": {
+   "query": "follow the page token until it is absent",
+   "top_k": 3
+  },
+  "max": 3000
+ },
+ {
+  "tool": "lambo_stale",
+  "label": "stale",
+  "args": {},
+  "max": 3000
+ }
+]

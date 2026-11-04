@@ -1,0 +1,192 @@
+===== initialize {"protocolVersion": "2025-06-18", "capabilities": {"tools": {}}, "serverInfo": {"name": "lambo", "version": "0.9.0"}, "instructions": "Lambo agentic graph memory for session 'kalari-b4'. Call lambo_recall before acting on a task to load relevant prior memory, lambo_derive and lambo_record_action to 
+===== tools/list ['lambo_derive', 'lambo_inspect', 'lambo_recall', 'lambo_record_action', 'lambo_reserve', 'lambo_saints', 'lambo_stale', 'lambo_stats']
+===== lambo_derive change kind
+accepted 1 concept(s) for background write; validated and ordered, not yet applied
+receipt lwr1.9421ac39d7fdcdba.1a1a4833fe2.1: pending — admitted, not yet applied; ask again
+The outcome arrives on your next tool response. To wait for it, call lambo_stats with receipt=lwr1.9421ac39d7fdcdba.1a1a4833fe2.1 (add wait_ms to block).
+Recorded under agent_id "kalari"; send this same id on every call.
+[structured] {"agent_id": "kalari", "receipt": "lwr1.9421ac39d7fdcdba.1a1a4833fe2.1", "receipt_state": "pending", "summary": "accepted 1 concept(s) for background write; validated and ordered, not yet applied", "warnings": []}
+===== lambo_derive lesson
+accepted 1 concept(s) for background write; validated and ordered, not yet applied
+receipt lwr1.9421ac39d7fdcdba.1a1a4834b9a.2: pending — admitted, not yet applied; ask again
+The outcome arrives on your next tool response. To wait for it, call lambo_stats with receipt=lwr1.9421ac39d7fdcdba.1a1a4834b9a.2 (add wait_ms to block).
+Recorded under agent_id "kalari"; send this same id on every call.
+write receipts (your earlier writes, now settled):
+- lwr1.9421ac39d7fdcdba.1a1a4833fe2.1: applied — derived 1 concept(s): 1 created (1 embedded), 0 matched existing
+[structured] {"agent_id": "kalari", "receipt": "lwr1.9421ac39d7fdcdba.1a1a4834b9a.2", "receipt_state": "pending", "summary": "accepted 1 concept(s) for background write; validated and ordered, not yet applied", "warnings": []}
+===== lambo_derive evidence 1
+accepted 1 concept(s) for background write; validated and ordered, not yet applied
+receipt lwr1.9421ac39d7fdcdba.1a1a4835753.3: pending — admitted, not yet applied; ask again
+The outcome arrives on your next tool response. To wait for it, call lambo_stats with receipt=lwr1.9421ac39d7fdcdba.1a1a4835753.3 (add wait_ms to block).
+Recorded under agent_id "kalari"; send this same id on every call.
+write receipts (your earlier writes, now settled):
+- lwr1.9421ac39d7fdcdba.1a1a4834b9a.2: applied — derived 1 concept(s): 1 created (1 embedded), 0 matched existing; 1 citation(s) recorded
+[structured] {"agent_id": "kalari", "receipt": "lwr1.9421ac39d7fdcdba.1a1a4835753.3", "receipt_state": "pending", "summary": "accepted 1 concept(s) for background write; validated and ordered, not yet applied", "warnings": []}
+===== lambo_stats with receipt
+receipt must be a receipt id from a lambo_derive or lambo_record_action ack
+===== lambo_derive filler 0
+accepted 1 concept(s) for background write; validated and ordered, not yet applied
+receipt lwr1.9421ac39d7fdcdba.1a1a4835754.4: pending — admitted, not yet applied; ask again
+The outcome arrives on your next tool response. To wait for it, call lambo_stats with receipt=lwr1.9421ac39d7fdcdba.1a1a4835754.4 (add wait_ms to block).
+Recorded under agent_id "kalari"; send this same id on every call.
+[structured] {"agent_id": "kalari", "receipt": "lwr1.9421ac39d7fdcdba.1a1a4835754.4", "receipt_state": "pending", "summary": "accepted 1 concept(s) for background write; validated and ordered, not yet applied", "warnings": []}
+===== lambo_derive filler 1
+accepted 1 concept(s) for background write; validated and ordered, not yet applied
+receipt lwr1.9421ac39d7fdcdba.1a1a4835754.5: pending — admitted, not yet applied; ask again
+The outcome arrives on your next tool response. To wait for it, call lambo_stats with receipt=lwr1.9421ac39d7fdcdba.1a1a4835754.5 (add wait_ms to block).
+Recorded under agent_id "kalari"; send this same id on every call.
+[structured] {"agent_id": "kalari", "receipt": "lwr1.9421ac39d7fdcdba.1a1a4835754.5", "receipt_state": "pending", "summary": "accepted 1 concept(s) for background write; validated and ordered, not yet applied", "warnings": []}
+===== lambo_derive filler 2
+accepted 1 concept(s) for background write; validated and ordered, not yet applied
+receipt lwr1.9421ac39d7fdcdba.1a1a4835754.6: pending — admitted, not yet applied; ask again
+The outcome arrives on your next tool response. To wait for it, call lambo_stats with receipt=lwr1.9421ac39d7fdcdba.1a1a4835754.6 (add wait_ms to block).
+Recorded under agent_id "kalari"; send this same id on every call.
+[structured] {"agent_id": "kalari", "receipt": "lwr1.9421ac39d7fdcdba.1a1a4835754.6", "receipt_state": "pending", "summary": "accepted 1 concept(s) for background write; validated and ordered, not yet applied", "warnings": []}
+===== lambo_derive filler 3
+accepted 1 concept(s) for background write; validated and ordered, not yet applied
+receipt lwr1.9421ac39d7fdcdba.1a1a4835754.7: pending — admitted, not yet applied; ask again
+The outcome arrives on your next tool response. To wait for it, call lambo_stats with receipt=lwr1.9421ac39d7fdcdba.1a1a4835754.7 (add wait_ms to block).
+Recorded under agent_id "kalari"; send this same id on every call.
+[structured] {"agent_id": "kalari", "receipt": "lwr1.9421ac39d7fdcdba.1a1a4835754.7", "receipt_state": "pending", "summary": "accepted 1 concept(s) for background write; validated and ordered, not yet applied", "warnings": []}
+===== lambo_derive filler 4
+accepted 1 concept(s) for background write; validated and ordered, not yet applied
+receipt lwr1.9421ac39d7fdcdba.1a1a4835754.8: pending — admitted, not yet applied; ask again
+The outcome arrives on your next tool response. To wait for it, call lambo_stats with receipt=lwr1.9421ac39d7fdcdba.1a1a4835754.8 (add wait_ms to block).
+Recorded under agent_id "kalari"; send this same id on every call.
+[structured] {"agent_id": "kalari", "receipt": "lwr1.9421ac39d7fdcdba.1a1a4835754.8", "receipt_state": "pending", "summary": "accepted 1 concept(s) for background write; validated and ordered, not yet applied", "warnings": []}
+===== lambo_stats 
+session 'kalari-b4' (owner agent 'kalari')
+nodes=15 edges=16 concepts=7 canonical=0
+embedded=7/7
+flush_lag=2.748996ms log_depth=0 flush_depth=0 dead_lettered=0 degraded=false
+epoch=60 daemon_cycles=19 canonization_cycles=0 canonization_failures=0
+promotion_policy=Solo
+gc: last_gc_at=2026-11-04T03:03:56.694526541+00:00 last_gc_epoch=60 last_sweep trigger=mutations collected=0 deferred=0 cap=32 cap_bound=false
+embedding: kind=bge_m3 model=qwen3-embedding-4b dim=2560 modalities=text
+write receipts (your earlier writes, now settled):
+- lwr1.9421ac39d7fdcdba.1a1a4835753.3: applied — derived 1 concept(s): 1 created (1 embedded), 0 matched existing; 1 citation(s) recorded
+- lwr1.9421ac39d7fdcdba.1a1a4835754.4: applied — derived 1 concept(s): 1 created (1 embedded), 0 matched existing
+- lwr1.9421ac39d7fdcdba.1a1a4835754.5: applied — derived 1 concept(s): 1 created (1 embedded), 0 matched existing
+- lwr1.9421ac39d7fdcdba.1a1a4835754.6: applied — derived 1 concept(s): 1 created (1 embedded), 0 matched existing
+- lwr1.9421ac39d7fdcdba.1a1a4835754.7: applied — derived 1 concept(s): 1 created (1 embedded), 0 matched existing
+[structured] {"agent": "kalari", "canonical_count": 0, "canonization_cycles": 0, "canonization_failures": 0, "concept_count": 7, "daemon_cycles": 19, "dead_lettered": 0, "degraded": false, "edge_count": 16, "embedded_concepts": 7, "embedding_contract": {"dim": 2560, "kind": "bge_m3", "model": "qwen3-embedding-4b"}, "embedding_modalities": ["text"], "epoch": 60, "flush_depth": 0, "flush_lag_ms": 2, "gc": {"last_gc_at": "2026-11-04T03:03:56.694526541+00:00", "last_gc_epoch": 60, "last_sweep": {"cap_bound": false, "collected": 0, "collection_cap": 32, "deferred": 0, "resources_spared_by_dependents": 0, "survivors_deferred": 0, "trigger": "mutations"}}, "log_depth": 0, "node_count": 15, "promotion_policy": "Solo", "receipts_retained": 8, "session": "kalari-b4", "summary": "session 'kalari-b4' (owner agent 'kalari')\nnodes=15 edges=16 concepts=7 canonical=0\nembedded=7/7\nflush_lag=2.748996ms log_depth=0 flush_depth=0 dead_lettered=0 degraded=false\nepoch=60 daemon_cycles=19 canonization_cycles=0 canonization_failures=0\npromotion_policy=Solo\ngc: last_gc_at=2026-11-04T03:03:56.694526541+00:00 last_gc_epoch=60 last_sweep trigger=mutations collected=0 deferred=0 cap=32 cap_bound=false\nembedding: kind=bge_m3 model=qwen3-embedding-4b dim=2560 modalities=text", "total_concepts": 7, "warnings": [], "write_queue_abandoned": 0, "write_queue_accepted": 8, "write_queue_applied": 7, "write_queue_apply_ms_max": 3265, "write_queue_apply_ms_p50": 1498, "write_queue_apply_ms_p90": 3265, "write_queue_apply_samples": 7, "write_queue_bound": 1024, "write_queue_bound_source": "observed", "write_queue_deferred": 0, "write_queue_dropped": 0, "write_queue_dropped_closed": 0, "write_queue_failed": 0, "write_queue_items_per_sec": 1.7364590209258854, "write_queue_lane_bound": 64, "write_queue_measured": true, "write_queue_outstanding": 1, "write_queue_probe_optimism": 0.5317765144754979, "write_queue_probe_serial_items_per_sec": 0.6575009171513169, "write_queue_replay_blocked": null, "write_queue_replay_owed": 0, "write_queue_replayed": 0, "write_queue_serial_items_per_sec": 1.2364233832323783}
+===== lambo_inspect change kind
+focus: pagination_changed [Resource]
+blast radius: 1
+⚑ Load-bearing pillar — 1 nodes depend on this. Modify with caution.
+dependents (1):
+  When a list endpoint starts paging, follow next_page_token until absent; every record imported exactly once. check: chk-paging-001 [Constraint] (Dependency)
+canonization (Solo): None -> Candidate refused
+  - solo score 1.00, needs at least 3.00
+
+hop 1:
+  Dependency
+    <- When a list endpoint starts paging, follow next_page_token until absent; every record imported exactly once. check: chk-paging-001 [Constraint]
+  Derives
+    <- <interaction 744ea3e1-ac26-4d6c-a584-60ff3d3f9279>
+
+hop 2:
+  Dependency
+    <- run r-001: naive migration imported 100 of 2,431 records; fixed version passed [Observation]
+  Temporal
+    <- <interaction a0e92244-ee18-4baa-a469-5c02c9e08573>
+
+[structured] {"admission": {"checks": [{"bar": 3.0, "comparison": "at_least", "current": 1.0, "gate": "solo_score", "met": false, "stage": 1}], "eligible": false, "next": "Candidate", "policy": "Solo", "reasons": ["solo score 1.00, needs at least 3.00"], "solo": {"band": "None", "dependent_interactions": 0, "human_confirmed": 0, "resistance": 1.0, "reverts": 0, "score": 1.0, "sessions": 1}, "status": "None"}, "focus": {"blast_radius": 1, "dependents": [{"edge_type": "Dependency", "label": "When a list endpoint starts paging, follow next_page_token until absent; every record imported exactly once. check: chk-paging-001 [Constraint]", "node_id": "7c55ec3d-900d-4f98-b71e-f2c269bbcb84"}], "dependents_truncated": false, "label": "pagination_changed [Resource]", "levels": [{"hop": 1, "neighbours": [{"direction": "<-", "edge_type": "Derives", "label": "<interaction 744ea3e1-ac26-4d6c-a584-60ff3d3f9279>", "node_id": "744ea3e1-ac26-4d6c-a584-60ff3d3f9279", "weight": 0.9}, {"direction": "<-", "edge_type": "Dependency", "label": "When a list endpoint starts paging, follow next_page_token until absent; every record imported exactly once. check: chk-paging-001 [Constraint]", "node_id": "7c55ec3d-900d-4f98-b71e-f2c269bbcb84", "weight": 0.5}]}, {"hop": 2, "neighbours": [{"direction": "<-", "edge_type": "Temporal", "label": "<interaction a0e92244-ee18-4baa-a469-5c02c9e08573>", "node_id": "a0e92244-ee18-4baa-a469-5c02c9e08573", "weight": 1.0}, {"direction": "<-", "edge_type": "Dependency", "label": "run r-001: naive migration imported 100 of 2,431 records; fixed version passed [Observation]", "node_id": "c87293e6-0d1c-4d77-9744-cbd5e763bcb0", "weight": 0.5}]}], "node_id": "af8a5493-4f15-4ab7-ac95-66e23cf88cdf"}, "resolution": null, "view": "focus: pagination_changed [Resource]\nblast radius: 1\n\u2691 Load-bearing pillar \u2014 1 nodes depend on this. Modify with caution.\ndependents (1):\n  When a list endpoint starts paging, follow next_page_token until absent; every record imported exactly once. check: chk-paging-001 [Constraint] (Dependency)\ncanonization (Solo): None -> Candidate refused\n  - solo score 1.00, needs at least 3.00\n\nhop 1:\n  Dependency\n    <- When a list endpoint starts paging, follow next_page_token until absent; every record imported exactly once. check: chk-paging-001 [Constraint]\n  Derives\n    <- <interaction 744ea3e1-ac26-4d6c-a584-60ff3d3f9279>\n\nhop 2:\n  Dependency\n    <- run r-001: naive migration imported 100 of 2,431 records; fixed version passed [Observation]\n  Temporal\n    <- <interaction a0e92244-ee18-4baa-a469-5c02c9e08573>\n", "warnings": []}
+===== lambo_inspect lesson
+focus: When a list endpoint starts paging, follow next_page_token until absent; every record imported exactly once. check: chk-paging-001 [Constraint]
+blast radius: 1
+⚑ Load-bearing pillar — 1 nodes depend on this. Modify with caution.
+dependents (1):
+  run r-001: naive migration imported 100 of 2,431 records; fixed version passed [Observation] (Dependency)
+canonization (Solo): None -> Candidate refused
+  - solo score 1.50, needs at least 3.00
+
+hop 1:
+  Dependency
+    -> pagination_changed [Resource]
+    <- run r-001: naive migration imported 100 of 2,431 records; fixed version passed [Observation]
+  Derives
+    <- <interaction a0e92244-ee18-4baa-a469-5c02c9e08573>
+
+[structured] {"admission": {"checks": [{"bar": 3.0, "comparison": "at_least", "current": 1.5, "gate": "solo_score", "met": false, "stage": 1}], "eligible": false, "next": "Candidate", "policy": "Solo", "reasons": ["solo score 1.50, needs at least 3.00"], "solo": {"band": "None", "dependent_interactions": 0, "human_confirmed": 0, "resistance": 1.5, "reverts": 0, "score": 1.5, "sessions": 1}, "status": "None"}, "focus": {"blast_radius": 1, "dependents": [{"edge_type": "Dependency", "label": "run r-001: naive migration imported 100 of 2,431 records; fixed version passed [Observation]", "node_id": "c87293e6-0d1c-4d77-9744-cbd5e763bcb0"}], "dependents_truncated": false, "label": "When a list endpoint starts paging, follow next_page_token until absent; every record imported exactly once. check: chk-paging-001 [Constraint]", "levels": [{"hop": 1, "neighbours": [{"direction": "<-", "edge_type": "Dependency", "label": "run r-001: naive migration imported 100 of 2,431 records; fixed version passed [Observation]", "node_id": "c87293e6-0d1c-4d77-9744-cbd5e763bcb0", "weight": 0.5}, {"direction": "->", "edge_type": "Dependency", "label": "pagination_changed [Resource]", "node_id": "af8a5493-4f15-4ab7-ac95-66e23cf88cdf", "weight": 0.5}, {"direction": "<-", "edge_type": "Derives", "label": "<interaction a0e92244-ee18-4baa-a469-5c02c9e08573>", "node_id": "a0e92244-ee18-4baa-a469-5c02c9e08573", "weight": 0.9}]}], "node_id": "7c55ec3d-900d-4f98-b71e-f2c269bbcb84"}, "resolution": null, "view": "focus: When a list endpoint starts paging, follow next_page_token until absent; every record imported exactly once. check: chk-paging-001 [Constraint]\nblast radius: 1\n\u2691 Load-bearing pillar \u2014 1 nodes depend on this. Modify with caution.\ndependents (1):\n  run r-001: naive migration imported 100 of 2,431 records; fixed version passed [Observation] (Dependency)\ncanonization (Solo): None -> Candidate refused\n  - solo score 1.50, needs at least 3.00\n\nhop 1:\n  Dependency\n    -> pagination_changed [Resource]\n    <- run r-001: naive migration imported 100 of 2,431 records; fixed version passed [Observation]\n  Derives\n    <- <interaction a0e92244-ee18-4baa-a469-5c02c9e08573>\n", "warnings": []}
+===== lambo_recall reworded query
+The demo API v1 returns all items in one response. [Observation] (score 2.92, id 44ba1060)
+
+When a list endpoint starts paging, follow next_page_token until absent; every record imported exactly once. check: chk-paging-001 [Constraint] (score 1.77, id 7c55ec3d)
+
+The web app front end is built with Chaaya. [Observation] (score 1.18, id 1703c3e9)
+
+run r-001: naive migration imported 100 of 2,431 records; fixed version passed [Observation] (score 0.83, id c87293e6)
+write receipts (your earlier writes, now settled):
+- lwr1.9421ac39d7fdcdba.1a1a4835754.8: applied — derived 1 concept(s): 1 created (1 embedded), 0 matched existing
+[structured] {"context": "The demo API v1 returns all items in one response. [Observation] (score 2.92, id 44ba1060)\n\nWhen a list endpoint starts paging, follow next_page_token until absent; every record imported exactly once. check: chk-paging-001 [Constraint] (score 1.77, id 7c55ec3d)\n\nThe web app front end is built with Chaaya. [Observation] (score 1.18, id 1703c3e9)\n\nrun r-001: naive migration imported 100 of 2,431 records; fixed version passed [Observation] (score 0.83, id c87293e6)", "hits": [{"blast_radius": null, "concept_type": "Observation", "content": "The demo API v1 returns all items in one response.", "is_canonical": false, "node_id": "44ba1060-72eb-44a7-ad04-a5303deed329", "score": 2.920972537175416}, {"blast_radius": null, "concept_type": "Constraint", "content": "When a list endpoint starts paging, follow next_page_token until absent; every record imported exactly once. check: chk-paging-001", "is_canonical": false, "node_id": "7c55ec3d-900d-4f98-b71e-f2c269bbcb84", "score": 1.7682543167440792}, {"blast_radius": null, "concept_type": "Observation", "content": "The web app front end is built with Chaaya.", "is_canonical": false, "node_id": "1703c3e9-c416-4910-96bf-3d05c3a1e883", "score": 1.1774940117289552}, {"blast_radius": null, "concept_type": "Observation", "content": "run r-001: naive migration imported 100 of 2,431 records; fixed version passed", "is_canonical": false, "node_id": "c87293e6-0d1c-4d77-9744-cbd5e763bcb0", "score": 0.8333748470156996}], "warnings": []}
+===== lambo_derive upgrade 2
+accepted 1 concept(s) for background write; validated and ordered, not yet applied
+receipt lwr1.9421ac39d7fdcdba.1a1a4836d5a.9: pending — admitted, not yet applied; ask again
+The outcome arrives on your next tool response. To wait for it, call lambo_stats with receipt=lwr1.9421ac39d7fdcdba.1a1a4836d5a.9 (add wait_ms to block).
+Recorded under agent_id "kalari"; send this same id on every call.
+[structured] {"agent_id": "kalari", "receipt": "lwr1.9421ac39d7fdcdba.1a1a4836d5a.9", "receipt_state": "pending", "summary": "accepted 1 concept(s) for background write; validated and ordered, not yet applied", "warnings": []}
+===== lambo_derive upgrade 3
+accepted 1 concept(s) for background write; validated and ordered, not yet applied
+receipt lwr1.9421ac39d7fdcdba.1a1a4836d5a.a: pending — admitted, not yet applied; ask again
+The outcome arrives on your next tool response. To wait for it, call lambo_stats with receipt=lwr1.9421ac39d7fdcdba.1a1a4836d5a.a (add wait_ms to block).
+Recorded under agent_id "kalari"; send this same id on every call.
+[structured] {"agent_id": "kalari", "receipt": "lwr1.9421ac39d7fdcdba.1a1a4836d5a.a", "receipt_state": "pending", "summary": "accepted 1 concept(s) for background write; validated and ordered, not yet applied", "warnings": []}
+===== lambo_inspect lesson after 3 runs
+focus: When a list endpoint starts paging, follow next_page_token until absent; every record imported exactly once. check: chk-paging-001 [Constraint]
+blast radius: 3
+⚑ Load-bearing pillar — 3 nodes depend on this. Modify with caution.
+dependents (3):
+  run r-001: naive migration imported 100 of 2,431 records; fixed version passed [Observation] (Dependency)
+  run r-002: GraphQL orders connection started paging; recalled lesson applied, passed first attempt [Observation] (Dependency)
+  run r-003: gRPC ListInvoices added next_page_token; recalled lesson applied, passed first attempt [Observation] (Dependency)
+canonization (Solo): None -> Candidate refused
+  - solo score 1.50, needs at least 3.00
+
+write receipts (your earlier writes, now settled):
+- lwr1.9421ac39d7fdcdba.1a1a4836d5a.9: applied — derived 1 concept(s): 1 created (1 embedded), 0 matched existing; 1 citation(s) recorded
+- lwr1.9421ac39d7fdcdba.1a1a4836d5a.a: applied — derived 1 concept(s): 1 created (1 embedded), 0 matched existing; 1 citation(s) recorded
+[structured] {"admission": {"checks": [{"bar": 3.0, "comparison": "at_least", "current": 1.5, "gate": "solo_score", "met": false, "stage": 1}], "eligible": false, "next": "Candidate", "policy": "Solo", "reasons": ["solo score 1.50, needs at least 3.00"], "solo": {"band": "None", "dependent_interactions": 0, "human_confirmed": 0, "resistance": 1.5, "reverts": 0, "score": 1.5, "sessions": 1}, "status": "None"}, "focus": {"blast_radius": 3, "dependents": [{"edge_type": "Dependency", "label": "run r-001: naive migration imported 100 of 2,431 records; fixed version passed [Observation]", "node_id": "c87293e6-0d1c-4d77-9744-cbd5e763bcb0"}, {"edge_type": "Dependency", "label": "run r-002: GraphQL orders connection started paging; recalled lesson applied, passed first attempt [Observation]", "node_id": "74c3b148-66f0-4916-85b0-f6b5cab9574b"}, {"edge_type": "Dependency", "label": "run r-003: gRPC ListInvoices added next_page_token; recalled lesson applied, passed 
+===== lambo_inspect lesson +74s
+focus: When a list endpoint starts paging, follow next_page_token until absent; every record imported exactly once. check: chk-paging-001 [Constraint]
+blast radius: 3
+⚑ Load-bearing pillar — 3 nodes depend on this. Modify with caution.
+dependents (3):
+  run r-001: naive migration imported 100 of 2,431 records; fixed version passed [Observation] (Dependency)
+  run r-002: GraphQL orders connection started paging; recalled lesson applied, passed first attempt [Observation] (Dependency)
+  run r-003: gRPC ListInvoices added next_page_token; recalled lesson applied, passed first attempt [Observation] (Dependency)
+canonization (Solo): None -> Candidate eligible
+  - every gate holds; the cycle's batch and ring order decide when
+
+[structured] {"admission": {"checks": [{"bar": 3.0, "comparison": "at_least", "current": 10.5, "gate": "solo_score", "met": true, "stage": 1}], "eligible": true, "next": "Candidate", "policy": "Solo", "reasons": ["every gate holds; the cycle's batch and ring order decide when"], "solo": {"band": "Canonical", "dependent_interactions": 3, "human_confirmed": 0, "resistance": 1.5, "reverts": 0, "score": 10.5, "sessions": 1}, "status": "None"}, "focus": {"blast_radius": 3, "dependents": [{"edge_type": "Dependency", "label": "run r-001: naive migration imported 100 of 2,431 records; fixed version passed [Observation]", "node_id": "c87293e6-0d1c-4d77-9744-cbd5e763bcb0"}, {"edge_type": "Dependency", "label": "run r-002: GraphQL orders connection started paging; recalled lesson applied, passed first attempt [Observation]", "node_id": "74c3b148-66f0-4916-85b0-f6b5cab9574b"}, {"edge_type": "Dependency", "label": "run r-003: gRPC ListInvoices added next_page_token; recalled lesson applied, passed first attempt [Observation]", "node_id": "45fa6559-a694-4f45-84dc-b5fca109483f"}], "dependents_truncated": false, "label": "When a list endpoint starts paging, follow next_page_token until absent; every record imported exactly once. check: chk-paging-001 [Constraint]",
+===== lambo_stats 
+session 'kalari-b4' (owner agent 'kalari')
+nodes=20 edges=23 concepts=10 canonical=0
+embedded=10/10
+flush_lag=36.095097ms log_depth=0 flush_depth=0 dead_lettered=0 degraded=false
+epoch=119 daemon_cycles=161 canonization_cycles=2 canonization_failures=0
+promotion_policy=Solo
+gc: last_gc_at=2026-11-04T03:05:48.426007920+00:00 last_gc_epoch=119 last_sweep trigger=mutations collected=0 deferred=0 cap=32 cap_bound=false
+embedding: kind=bge_m3 model=qwen3-embedding-4b dim=2560 modalities=text
+[structured] {"agent": "kalari", "canonical_count": 0, "canonization_cycles": 2, "canonization_failures": 0, "concept_count": 10, "daemon_cycles": 161, "dead_lettered": 0, "degraded": false, "edge_count": 23, "embedded_concepts": 10, "embedding_contract": {"dim": 2560, "kind": "bge_m3", "model": "qwen3-embedding-4b"}, "embedding_modalities": ["text"], "epoch": 119, "flush_depth": 0, "flush_lag_ms": 36, "gc": {"last_gc_at": "2026-11-04T03:05:48.426007920+00:00", "last_gc_epoch": 119, "last_sweep": {"cap_bound": false, "collected": 0, "collection_cap": 32, "deferred": 0, "resources_spared_by_dependents": 0, "survivors_deferred": 0, "trigger": "mutations"}}, "log_depth": 0, "node_count": 20, "promotion_policy": "Solo", "receipts_retained": 10, "session": "kalari-b4", "summary": "session 'kalari-b4' (owner agent 'kalari')\nnodes=20 edges=23 concepts=10 canonical=0\nembedded=10/10\nflush_lag=36.095097ms log_depth=0 flush_depth=0 dead_lettered=0 degraded=false\nepoch=119 daemon_cycles=161 canonization_cycles=2 canonization_failures=0\npromotion_policy=Solo\ngc: last_gc_at=2026-11-04T03:05:48.426007920+00:00 last_gc_epoch=119 last_sweep trigger=mutations collected=0 deferred=0 cap=32 cap_bound=false\nembedding: kind=bge_m3 model=qwen3-embedding-4b dim=2560 modalities=text", "total_concepts": 10, "warnings": [], "write_queue_abandoned": 0, "write_queue_accepted": 10, "write_queue_applied": 10, "write_queue_apply_ms_max": 5551, "write_queue_apply_ms_p50": 1349, "write_queue_apply_ms_p90": 3265, "write_queue_apply_samples": 10, "write_queue_bound": 1024, "write_queue_bound_source": "observed", "write_queue_deferred": 0, "write_queue_dropped": 0, "write_queue_dropped_closed": 0, "write_queue_failed": 0, "write_queue_items_per_sec": 1.7364590209258854, "write_queue_lane_bound": 64, "write_queue_measured": true, "write_queue_outstanding": 0, "write_queue_probe_optimism": 0.6313493375103167, "write_queue_probe_serial_items_per_sec": 0.6575009171513169, "write_queue_replay_blocked": null, "write_queue_replay_owed": 0, "write_queue_replayed": 0, "write_queue_serial_items_per_sec": 1.0414217265897943}
+===== lambo_inspect lesson +139s
+focus: When a list endpoint starts paging, follow next_page_token until absent; every record imported exactly once. check: chk-paging-001 [Constraint, candidate]
+blast radius: 3
+⚑ Load-bearing pillar — 3 nodes depend on this. Modify with caution.
+dependents (3):
+  run r-001: naive migration imported 100 of 2,431 records; fixed version passed [Observation] (Dependency)
+  run r-002: GraphQL orders connection started paging; recalled lesson applied, passed first attempt [Observation] (Dependency)
+  run r-003: gRPC ListInvoices added next_page_token; recalled lesson applied, passed first attempt [Observation] (Dependency)
+canonization (Solo): Candidate -> Venerable eligible
+  - every gate holds; the cycle's batch and ring order decide when
+
+[structured] {"admission": {"checks": [{"bar": 6.0, "comparison": "at_least", "current": 10.5, "gate": "solo_score", "met": true, "stage": 2}, {"bar": 3.0, "comparison": "at_least", "current": 3.0, "gate": "distinct_interactions", "met": true, "stage": 2}, {"bar": 0.3, "comparison": "at_least", "current": 0.48445017182130584, "gate": "coverage", "met": true, "stage": 2}], "eligible": true, "next": "Venerable", "policy": "Solo", "reasons": ["every gate holds; the cycle's batch and ring order decide when"], "solo": {"band": "Canonical", "dependent_interactions": 3, "human_confirmed": 0, "resistance": 1.5, "reverts": 0, "score": 10.5, "sessions": 1}, "status": "Candidate"}, "focus": {"blast_radius": 3, "dependents": [{"edge_type": "Dependency", "label": "run r-001: naive migration imported 100 of 2,431 records; fixed version passed [Observation]", "node_id": "c87293e6-0d1c-4d77-9744-cbd5e763bcb0"}, {"edge_type": "Dependency", "label": "run r-002: GraphQL orders connection started paging; recalled lesson applied, passed first attempt [Observation]", "node_id": "74c3b148-66f0-4916-85b0-f6b5cab9574b"}, {"edge_type": "Dependency", "label": "run r-003: gRPC ListInvoices added next_page_token; recalled lesson applied, passed first attempt [Ob
+===== lambo_recall reworded query, after promotion
+The demo API v1 returns all items in one response. [Observation] (score 3.43, id 44ba1060)
+
+When a list endpoint starts paging, follow next_page_token until absent; every record imported exactly once. check: chk-paging-001 [Constraint] (score 1.85, id 7c55ec3d)
+
+The web app front end is built with Chaaya. [Observation] (score 1.34, id 1703c3e9)
+
+run r-002: GraphQL orders connection started paging; recalled lesson applied, passed first attempt [Observation] (score 1.06, id 74c3b148)
+[structured] {"context": "The demo API v1 returns all items in one response. [Observation] (score 3.43, id 44ba1060)\n\nWhen a list endpoint starts paging, follow next_page_token until absent; every record imported exactly once. check: chk-paging-001 [Constraint] (score 1.85, id 7c55ec3d)\n\nThe web app front end is built with Chaaya. [Observation] (score 1.34, id 1703c3e9)\n\nrun r-002: GraphQL orders connection started paging; recalled lesson applied, passed first attempt [Observation] (score 1.06, id 74c3b148)", "hits": [{"blast_radius": null, "concept_type": "Observation", "content": "The demo API v1 returns all items in one response.", "is_canonical": false, "node_id": "44ba1060-72eb-44a7-ad04-a5303deed329", "score": 3.427326606574479}, {"blast_radius": null, "concept_type": "Constraint", "content": "When a list endpoint starts paging, follow next_page_token until absent; every record imported exactly once. check: chk-paging-001", "is_canonical": false, "node_id": "7c55ec3d-900d-4f98-b71e-f2c269bbcb84", "score": 1.8490375555698133}, {"blast_radius": null, "concept_type": "Observation", "content": "The web app front end is built with Chaaya.", "is_canonical": false, "node_id": "1703c3e9-c416-4910-96bf-3d05c3a1e883", "score": 1.340344118164461}, {"blast_radius": null, "concept_type": "Observation", "content": "run r-002: GraphQL orders connection started paging; recalled lesson applied, passed first attempt", "is_canonical": false, "node_id": "74c3b148-66f0-4916-85b0-f6b5cab9574b", "score": 1.0648561408440562}], "warnings": []}
