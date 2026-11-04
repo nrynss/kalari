@@ -152,11 +152,14 @@ requires:   [T4.3, T4.4, T4.5, T4.6]
 fixture-ok: yes
 size:       M · frontier
 owns:       Kalari/Main.lean, Kalari/Service.lean
-status:     claimed:gpt-6.1-terra
+status:     in-review
 ```
 Wire the five MCP tools through a shared trusted session, evidence store, and lesson writer. Keep model-controlled inputs separate from trusted runtime setup.
 
 **Done when:** the service dispatches all five tools through the executable stdio path against offline fixtures, validates trusted configuration and cleans up child resources on shutdown.
+
+
+The executable serves a single trusted session with shared evidence and writer; model arguments cannot override trusted paths and limits. Observer configuration is rejected until exclusive guest source isolation can be verified. The offline executable self-test reaches all five routes over stdio and verifies EOF shutdown; sandbox and lesson checks cover refusals, not successful end-to-end runs. The fixture uses the same dispatcher with injected backends.
 
 ---
 
