@@ -6,7 +6,12 @@ fixed sequence of assistant messages. The sequence is chosen from the phase
 marker in the latest user message:
 
   PHASE=payouts      write a canary by relative path, then stop
-  PHASE=settlements  write a canary, write the correct consumer, run it, then stop
+  PHASE=settlements  write a canary, write an incomplete first consumer,
+                     run it, write the correct consumer, run it again, then stop
+
+The first settlements consumer runs and writes output but does not meet the
+output contract. That makes the first v2 source differ from the final one, so
+the rehearsal can prove the first-attempt source is what it graded.
 
 Title requests (no tools) get a title. The server writes its bound port to
 --port-file so the shell can point OpenCode at it.
@@ -25,6 +30,7 @@ class State:
         self.requests = 0
         self.actions = []
         self.consumer = open(args.consumer_source).read()
+        self.first_consumer = open(args.first_consumer_source).read()
         self.trace = open(args.trace, "a")
 
     def choose(self, body):
@@ -73,7 +79,7 @@ class State:
                 "name": "write",
                 "arguments": {
                     "path": "settlement_reconcile.py",
-                    "content": self.consumer,
+                    "content": self.first_consumer,
                 },
             }
         if steps == 2:
@@ -85,7 +91,28 @@ class State:
                         "python3 settlement_reconcile.py "
                         f"--base-url {self.args.api_base_url} --out settlements.jsonl"
                     ),
-                    "description": "run the upgraded settlements consumer",
+                    "description": "run the first settlements attempt",
+                },
+            }
+        if steps == 3:
+            return {
+                "kind": "call",
+                "name": "write",
+                "arguments": {
+                    "path": "settlement_reconcile.py",
+                    "content": self.consumer,
+                },
+            }
+        if steps == 4:
+            return {
+                "kind": "call",
+                "name": "shell",
+                "arguments": {
+                    "command": (
+                        "python3 settlement_reconcile.py "
+                        f"--base-url {self.args.api_base_url} --out settlements.jsonl"
+                    ),
+                    "description": "run the corrected settlements consumer",
                 },
             }
         return {"kind": "text", "text": "settlements phase complete"}
@@ -207,6 +234,7 @@ def main():
     ap.add_argument("--port-file", required=True)
     ap.add_argument("--trace", required=True)
     ap.add_argument("--consumer-source", required=True)
+    ap.add_argument("--first-consumer-source", required=True)
     ap.add_argument("--api-base-url", required=True)
     args = ap.parse_args()
     state = State(args)

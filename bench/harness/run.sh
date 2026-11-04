@@ -52,8 +52,8 @@ echo "status=usage_before" >&2
 
 ssh -o BatchMode=yes kalari 'rm -rf ~/kalari-harness/stage && mkdir -p ~/kalari-harness/stage ~/kalari-harness/runs'
 rsync -a bench/harness/remote.sh bench/harness/measures.py bench/harness/grade_runner.py \
-  bench/harness/continuation.py bench/harness/continuation.sh \
-  bench/harness/tree_digest.py bench/harness/grade_status.py \
+  bench/harness/continuation.py bench/harness/continuation.sh bench/harness/condition1.sh \
+  bench/harness/grade_one.sh bench/harness/tree_digest.py bench/harness/grade_status.py \
   kalari:kalari-harness/stage/
 rsync -a bench/prompts bench/workspaces kalari:kalari-harness/stage/
 rsync -a bench/reference-paging/repo/opencode.jsonc kalari:kalari-harness/stage/opencode.jsonc
@@ -100,10 +100,16 @@ scp -o BatchMode=yes "kalari:kalari-harness/runs/$run_id/first.jsonl" "$tmp/firs
 fetch_usage > "$tmp/usage-after.json"
 
 python3 - "$tmp" "$COND" "$UPGRADE" "bench/harness/results/c${COND}-${UPGRADE}.json" << 'PY'
-import json, os, re, subprocess, sys
+import json, os, re, sys
 tmp, cond, upgrade, dest = sys.argv[1:5]
 key = os.environ.get("VULTR_INFERENCE_API_KEY", "")
+sys.path.insert(0, os.path.join(os.getcwd(), "bench", "harness"))
+import result_grade
 analysis = json.load(open(os.path.join(tmp, "analysis.json")))
+
+# Condition 1 settlements is only evidence if the session really continued.
+# A remote.sh regression that drops the expected id must not write a row.
+result_grade.require_condition1_identity(cond, upgrade, analysis)
 
 def rows(path):
     doc = json.load(open(path))
@@ -125,48 +131,17 @@ deep = next((d for d in deltas if d["model"] == "deepseek-v4.1-flash-1017"), {"i
 # dev-diary/research/vultr-inference.md: DeepSeek V4.1 Flash $0.15 / $0.60 per 1M.
 cost = deep["input"] * 0.15 / 1_000_000 + deep["output"] * 0.60 / 1_000_000
 
-def grade(path):
-    if not os.path.exists(path) or os.path.getsize(path) == 0:
-        return {
-            "verdict": "FAIL",
-            "output_present": False,
-            "records": 0,
-            "unique": 0,
-            "expected": None,
-            "missing": None,
-            "extra": None,
-            "duplicates": None,
-            "mismatched": None,
-            "unreadable_lines": 0,
-            "note": "no consumer output",
-        }
-    proc = subprocess.run(
-        [sys.executable, "bench/graders/grade.py", upgrade, path],
-        capture_output=True, text=True,
-    )
-    try:
-        return json.loads(proc.stdout)
-    except ValueError:
-        return {"verdict": "FAIL", "note": "grader did not print JSON", "stdout": proc.stdout[-300:], "stderr": proc.stderr[-300:]}
-
-def apply_meta(value, meta):
-    if not meta:
-        return value
-    for field in ("consumer_exit", "output_present", "grade_status", "output_bytes",
-                  "stale_output_ignored"):
-        if field in meta:
-            value[field] = meta[field]
-    if meta.get("note"):
-        value["note"] = meta["note"]
-    if value.get("output_present") is False:
-        value["verdict"] = "FAIL"
-    return value
-
 grading = analysis.get("grading") or {}
-final = apply_meta(grade(os.path.join(tmp, "final.jsonl")), grading.get("final"))
+final = result_grade.apply_meta(
+    result_grade.grade(upgrade, os.path.join(tmp, "final.jsonl")), grading.get("final")
+)
 first_path = os.path.join(tmp, "first.jsonl")
 first_meta = grading.get("first")
-first = apply_meta(grade(first_path), first_meta) if (os.path.exists(first_path) or first_meta) else None
+first = (
+    result_grade.apply_meta(result_grade.grade(upgrade, first_path), first_meta)
+    if (os.path.exists(first_path) or first_meta)
+    else None
+)
 found = bool((analysis.get("first_v2") or {}).get("found"))
 if not found:
     right = False
@@ -191,6 +166,7 @@ result = {
     "prompt": analysis.get("prompt"),
     "opencode_version": analysis.get("opencode_version"),
     "session_continued": analysis.get("session_continued"),
+    "session_id": analysis.get("session_id"),
     "resumed_session_id": analysis.get("resumed_session_id"),
     "session_id_expected": analysis.get("session_id_expected"),
     "session_identity_ok": analysis.get("session_identity_ok"),

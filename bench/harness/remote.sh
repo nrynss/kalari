@@ -157,26 +157,24 @@ sys.exit(1 if bad else 0)
 PY
 
 # Condition 1 reuses one OpenCode session, one data directory and one absolute
-# workspace. The settlements run replaces that directory's contents; it never
-# gets a fresh directory of its own.
-. "$STAGE/continuation.sh"
-STATE=$ROOT/state/condition-1.json
+# workspace. The workspace and XDG decisions live in condition1.sh so the
+# no-inference rehearsal calls the same function this script calls.
+. "$STAGE/condition1.sh"
+. "$STAGE/grade_one.sh"
+STATE=$(condition1_state_path "$ROOT")
 SESSION_ID=""
 SESSION_CONTINUED=0
 WORKSPACE_DIGEST=""
 STAGE_DIGEST=""
+STATE_CONSUMED=0
+NOTES_ATTACHED=0
 STAGE_WS=$STAGE/workspaces/$WS_NAME
-if [[ "$COND" == 1 && "$UPGRADE" == payouts ]]; then
-  rm -rf "$ROOT/state/condition-1-xdg" "$STATE"
-  XDG_BASE=$ROOT/state/condition-1-xdg
-  WS=$RUN/workspace
-elif [[ "$COND" == 1 && "$UPGRADE" == settlements ]]; then
-  echo "status=continuation" >&2
-  load_condition1_state "$STATE"
-  XDG_BASE=$STATE_XDG
-  WS=$STATE_WORKSPACE
-  SESSION_ID=$STATE_SESSION_ID
-  SESSION_CONTINUED=1
+if [[ "$COND" == 1 ]]; then
+  echo "status=condition1:$UPGRADE" >&2
+  # prepare_condition1 sets WS, XDG_BASE, SESSION_ID, SESSION_CONTINUED,
+  # STAGE_DIGEST and WORKSPACE_DIGEST; there is no separate condition-1
+  # workspace decision here.
+  prepare_condition1 "$ROOT" "$STAGE" "$STAGE_WS" "$UPGRADE"
 else
   XDG_BASE=$RUN/xdg
   WS=$RUN/workspace
@@ -185,45 +183,35 @@ export XDG_DATA_HOME=$XDG_BASE/data
 export XDG_STATE_HOME=$XDG_BASE/state
 export XDG_CACHE_HOME=$XDG_BASE/cache
 export XDG_CONFIG_HOME=$XDG_BASE/config
-if [[ "$SESSION_CONTINUED" == 1 ]]; then
-  for dir in "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME"; do
-    [[ -d "$dir" ]] || { echo "continuation: missing XDG directory $dir" >&2; exit 1; }
-  done
-else
+
+if [[ "$COND" != 1 ]]; then
   mkdir -p "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME"
-fi
-
-if [[ "$SESSION_CONTINUED" == 1 ]]; then
-  # Keep the absolute path the session is attached to; replace what is inside it.
-  find "$WS" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
-else
   rm -rf "$WS"
-fi
-mkdir -p "$WS"
-cp -a "$STAGE_WS/." "$WS/"
-cp "$STAGE/opencode.jsonc" "$WS/opencode.jsonc"
-NOTES_ATTACHED=0
-if [[ "$COND" == 2 && "$UPGRADE" == settlements && -d "$ROOT/state/condition-2-notes" ]]; then
-  if find "$ROOT/state/condition-2-notes" -type f | grep -q .; then
-    mkdir -p "$WS/notes-from-upgrade-one"
-    cp -a "$ROOT/state/condition-2-notes/." "$WS/notes-from-upgrade-one/"
-    NOTES_ATTACHED=1
+  mkdir -p "$WS"
+  cp -a "$STAGE_WS/." "$WS/"
+  cp "$STAGE/opencode.jsonc" "$WS/opencode.jsonc"
+  if [[ "$COND" == 2 && "$UPGRADE" == settlements && -d "$ROOT/state/condition-2-notes" ]]; then
+    if find "$ROOT/state/condition-2-notes" -type f | grep -q .; then
+      mkdir -p "$WS/notes-from-upgrade-one"
+      cp -a "$ROOT/state/condition-2-notes/." "$WS/notes-from-upgrade-one/"
+      NOTES_ATTACHED=1
+    fi
   fi
-fi
-git -C "$WS" init -q
-git -C "$WS" config user.email kalari-bench@localhost
-git -C "$WS" config user.name kalari-bench
-git -C "$WS" add -A
-git -C "$WS" commit -qm "v1 consumer"
+  git -C "$WS" init -q
+  git -C "$WS" config user.email kalari-bench@localhost
+  git -C "$WS" config user.name kalari-bench
+  git -C "$WS" add -A
+  git -C "$WS" commit -qm "v1 consumer"
 
-# The reused workspace must be exactly the staged tree: `.git`, the OpenCode
-# configuration and attached notes are added by the harness and excluded.
-STAGE_DIGEST=$(python3 "$STAGE/tree_digest.py" "$STAGE_WS")
-WORKSPACE_DIGEST=$(python3 "$STAGE/tree_digest.py" "$WS")
-if [[ "$STAGE_DIGEST" != "$WORKSPACE_DIGEST" ]]; then
-  echo "status=workspace_identity_failed" >&2
-  echo "staged workspace digest $STAGE_DIGEST != workspace digest $WORKSPACE_DIGEST" >&2
-  exit 1
+  # The fresh workspace must be exactly the staged tree: `.git`, the OpenCode
+  # configuration and attached notes are added by the harness and excluded.
+  STAGE_DIGEST=$(python3 "$STAGE/tree_digest.py" "$STAGE_WS")
+  WORKSPACE_DIGEST=$(python3 "$STAGE/tree_digest.py" "$WS")
+  if [[ "$STAGE_DIGEST" != "$WORKSPACE_DIGEST" ]]; then
+    echo "status=workspace_identity_failed" >&2
+    echo "staged workspace digest $STAGE_DIGEST != workspace digest $WORKSPACE_DIGEST" >&2
+    exit 1
+  fi
 fi
 
 PROMPT_NAME=upgrade.txt
@@ -304,6 +292,14 @@ end=$(date +%s)
 elapsed=$((end - start))
 echo "status=session_exit:$rc elapsed:$elapsed" >&2
 
+# The settlements attempt is in this session's history now. Consume the state
+# so a retry cannot silently resume a history that already contains it.
+if [[ "$COND" == 1 && "$UPGRADE" == settlements ]]; then
+  consume_condition1_state "$ROOT"
+  STATE_CONSUMED=1
+  echo "status=condition1_state_consumed" >&2
+fi
+
 # Drop the key from the environment before grading. measures still redacts with the copy.
 export KALARI_REDACT_KEY
 unset VULTR_INFERENCE_API_KEY
@@ -327,7 +323,7 @@ measure_args=(
   --stage-digest "$STAGE_DIGEST"
 )
 if [[ "$SESSION_CONTINUED" == 1 ]]; then
-  measure_args+=(--session-id-expected "$STATE_SESSION_ID")
+  measure_args+=(--session-id-expected "$SESSION_ID")
 fi
 if [[ -n "$NOTES_DIR" ]]; then
   measure_args+=(--notes-dir "$NOTES_DIR")
@@ -346,69 +342,11 @@ if [[ "$COND" == 1 && "$UPGRADE" == payouts ]]; then
     --workspace "$WS" \
     --xdg "$XDG_BASE" \
     --session-id "$sid" \
-    --digest "$WORKSPACE_DIGEST"
+    --start-digest "$WORKSPACE_DIGEST"
+  # `payouts_start_digest` records the payouts tree at the start of the
+  # session. The agent then edits the workspace, so it is informational and is
+  # never compared with anything.
 fi
-
-grade_one() { # $1 source dir, $2 basename. Failures are recorded; they must not drop the session.
-  local src=$1 base=$2
-  local name="kalari-grade-${base}-${RUN_ID}"
-  local failed="" exec_rc=0
-  echo "status=grade:$base" >&2
-  umask 022
-  rm -f "$RUN/${base}.status" "$RUN/${base}.jsonl" "$RUN/${base}.consumer.log" "$RUN/${base}.grade.json"
-  if ! msb create --name "$name" --cpus 1 --memory 512M --pull never --no-net \
-    --net-rule "allow@${IP}/32:tcp:${GRADE_PORT}" python >/dev/null; then
-    failed=create
-  elif ! msb exec "$name" -- mkdir -p /w/src; then
-    failed=mkdir
-  elif ! tar -C "$src" --exclude .git -czf "$RUN/${base}.tgz" .; then
-    failed=tar
-  elif ! msb copy -q "$RUN/${base}.tgz" "$name:/w/src.tgz"; then
-    failed=copy
-  elif ! msb copy -q "$STAGE/grade_runner.py" "$name:/w/grade_runner.py"; then
-    failed=copy-runner
-  elif ! msb exec "$name" -- tar -C /w/src -xzf /w/src.tgz; then
-    failed=untar
-  fi
-  if [[ -n "$failed" ]]; then
-    echo "EXIT $failed" > "$RUN/${base}.status"
-  else
-    set +e
-    timeout 150 msb exec "$name" -- python3 /w/grade_runner.py "/w/src/${CONSUMER}" "http://${IP}:${GRADE_PORT}" "/w/out.jsonl" \
-      > "$RUN/${base}.status" 2> "$RUN/${base}.err"
-    exec_rc=$?
-    set -e
-    # Only the fresh guest output is graded. There is deliberately no copy from
-    # /w/src/${OUT_NAME}: a file left in the workspace cannot stand in for it.
-    msb copy -q "$name:/w/out.jsonl" "$RUN/${base}.jsonl" 2>/dev/null || true
-    msb copy -q "$name:/w/consumer.log" "$RUN/${base}.consumer.log" 2>/dev/null || true
-  fi
-  msb remove -f "$name" >/dev/null 2>&1 || true
-  python3 "$STAGE/grade_status.py" \
-    --status "$RUN/${base}.status" \
-    --fresh-output "$RUN/${base}.jsonl" \
-    --workspace "$WS" \
-    --output-name "$OUT_NAME" \
-    --exec-rc "$exec_rc" \
-    --pass "$base" \
-    --out "$RUN/${base}.grade.json"
-  python3 - "$RUN/${base}.consumer.log" "$RUN/${base}.log-excerpt" << 'PY'
-import os, re, sys
-src, dest = sys.argv[1], sys.argv[2]
-key = os.environ.get("KALARI_REDACT_KEY", "")
-ip = os.environ.get("KALARI_PUBLIC_IP", "")
-text = ""
-if os.path.exists(src):
-    text = open(src, errors="replace").read()[-1500:]
-if key:
-    text = text.replace(key, "[redacted]")
-if ip:
-    text = text.replace(ip, "the VM's public address")
-text = re.sub(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", "the VM's public address", text)
-text = re.sub(r"/home/[^/\s]+", "~", text)
-open(dest, "w").write(text)
-PY
-}
 
 grade_one "$WS" final
 if [[ -f "$RUN/first-v2-src/$CONSUMER" ]]; then
@@ -456,9 +394,9 @@ json.dump({
 }, open(os.path.join(run, "cleanup.json"), "w"))
 PY
 
-python3 - "$RUN/analysis.json" "$COND" "$UPGRADE" "$SESSION_CONTINUED" "$NOTES_ATTACHED" "$PROMPT_NAME" "$ver" "$LIVE_PORT" "$GRADE_PORT" << 'PY'
+python3 - "$RUN/analysis.json" "$COND" "$UPGRADE" "$SESSION_CONTINUED" "$NOTES_ATTACHED" "$PROMPT_NAME" "$ver" "$LIVE_PORT" "$GRADE_PORT" "$STATE_CONSUMED" << 'PY'
 import json, os, sys
-analysis, cond, upgrade, continued, notes, prompt, ver, live, grade = sys.argv[1:10]
+analysis, cond, upgrade, continued, notes, prompt, ver, live, grade, consumed = sys.argv[1:11]
 doc = json.load(open(analysis))
 doc["condition"] = int(cond)
 doc["upgrade"] = upgrade
@@ -469,6 +407,9 @@ doc["opencode_version"] = ver.strip()
 doc["live_port"] = int(live)
 doc["grading_port"] = int(grade)
 doc["api_base"] = "the VM's public address"
+if int(cond) == 1:
+    doc["condition1_workspace"] = doc.get("workspace")
+    doc["continuation_state_consumed"] = consumed == "1"
 run = os.path.dirname(analysis)
 clean = json.load(open(os.path.join(run, "cleanup.json")))
 doc["cleanup"] = clean
@@ -482,7 +423,8 @@ for base in ("final", "first"):
             "log_excerpt": open(excerpt, errors="replace").read() if os.path.exists(excerpt) else "",
         }
 doc["grader_runs"] = excerpts
-doc["resumed_session_id"] = (doc.get("session_id_expected") or "") if doc["session_continued"] else ""
+# The observed id from the event log, never the expected one.
+doc["resumed_session_id"] = (doc.get("session_id") or "") if doc["session_continued"] else ""
 grading = {}
 for base in ("final", "first"):
     path = os.path.join(run, base + ".grade.json")

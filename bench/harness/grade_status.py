@@ -2,9 +2,11 @@
 """Classify one hidden-grader pass from its status line and fresh output.
 
 `grade_runner.py` prints `EXIT <rc>`, `EXIT timeout` or `EXIT launch`; the
-harness prints `EXIT create` and friends when the sandbox or copy fails. Only
-`/w/out.jsonl` copied out of the fresh guest is graded. A file that happens to
-sit in the agent's workspace is never a fallback for a missing or crashed run.
+harness prints `EXIT create` and friends when the sandbox or copy fails.
+`timeout` is a consumer crash; `launch` means the consumer could not be started
+at all, which is a grader failure. Only `/w/out.jsonl` copied out of the fresh
+guest is graded. A file that happens to sit in the agent's workspace is never a
+fallback for a missing or crashed run.
 """
 import argparse
 import json
@@ -18,6 +20,9 @@ GRADER_FAILURES = {
     "copy",
     "copy-runner",
     "untar",
+    # `grade_runner.py` prints this when it cannot start the consumer at all.
+    # That is a grading/harness failure, not agent behaviour.
+    "launch",
 }
 STATUS = re.compile(r"^EXIT\s+(\S+)\s*$")
 
@@ -62,22 +67,17 @@ def classify(status_text, fresh_output, workspace, output_name, exec_rc, pass_na
             "note": f"grader failed: EXIT {value}{suffix}",
         }
 
-    if value in ("timeout", "launch"):
+    if value == "timeout":
         return {
             "pass": pass_name,
-            "consumer_exit": value,
+            "consumer_exit": "timeout",
             "grader_exit": None,
             "output_present": output_present,
             "output_bytes": size,
             "grade_status": "consumer_crashed",
             "stale_output_ignored": stale_ignored,
             "exec_rc": exec_rc,
-            "note": (
-                "consumer timed out (EXIT timeout)"
-                if value == "timeout"
-                else "consumer failed to launch (EXIT launch)"
-            )
-            + suffix,
+            "note": "consumer timed out (EXIT timeout)" + suffix,
         }
 
     try:
@@ -151,6 +151,10 @@ def main():
     doc = classify(
         text, args.fresh_output, args.workspace, args.output_name, args.exec_rc, args.pass_name
     )
+    # The directory this pass checked for a stale output. remote.sh passes the
+    # agent workspace for the final pass and the first-source tree for the
+    # first pass, because that is the only place the first pass could be stale.
+    doc["workspace_checked"] = args.workspace
     with open(args.out, "w") as f:
         json.dump(doc, f, indent=2)
         f.write("\n")

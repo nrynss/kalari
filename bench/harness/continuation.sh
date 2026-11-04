@@ -12,5 +12,5 @@ load_condition1_state() {
   local state=$1 assignments
   assignments=$(python3 "$HARNESS_DIR/continuation.py" check --state "$state") || return $?
   eval "$assignments"
-  export STATE_SESSION_ID STATE_XDG STATE_WORKSPACE STATE_WORKSPACE_DIGEST
+  export STATE_SESSION_ID STATE_XDG STATE_WORKSPACE STATE_PAYOUTS_START_DIGEST
 }

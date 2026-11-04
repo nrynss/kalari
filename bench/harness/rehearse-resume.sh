@@ -1,27 +1,43 @@
 #!/usr/bin/env bash
 # No-inference rehearsal for condition 1's continuous session.
 #
-# It drives the real `opencode run --standalone` against a loopback scripted
-# provider. Run one creates the session in workspace A. Run two resumes that
-# session after A's contents are replaced with the settlements tree. The
-# rehearsal then runs the real measures code and the real grader on the output
-# produced from A. Nothing leaves loopback and no key is used.
+# It drives real `opencode run --standalone` against a loopback scripted
+# provider. Run one creates the session in the stable condition-1 workspace.
+# Run two resumes that session after the workspace's contents are replaced with
+# the settlements tree. The scripted agent's first settlements consumer is
+# deliberately incomplete: it runs, fails the output contract, and is replaced
+# by the reference consumer, which runs again. The rehearsal then checks the
+# real condition-1 preparation (condition1.sh), the real grading path
+# (grade_one.sh with a stub `msb`), the real measures and the real grader.
+# Nothing leaves loopback and no key is used.
+#
+# This is a resume test, not the reference arm's sandbox test. It uses the host
+# `shell` tool, while the reference opencode.jsonc denies `shell` and runs the
+# consumer through the microsandbox MCP `execute`. Do not read `sandbox_runs`
+# from this rehearsal as a reference-arm number.
 set -euo pipefail
 umask 022
 
 HERE=$(cd "$(dirname "$0")" && pwd)
 REPO=$(cd "$HERE/../.." && pwd)
-OPENCODE=${KALARI_OPENCODE:-$(command -v opencode)}
+
+ok() { echo "ok   $*"; }
+fail() { echo "FAIL $*" >&2; exit 1; }
+
+# `set -e` must not swallow the friendly error when opencode is missing.
+OPENCODE=${KALARI_OPENCODE:-}
+[[ -n "$OPENCODE" ]] || OPENCODE=$(command -v opencode || true)
+[[ -n "$OPENCODE" ]] || fail "opencode not found and KALARI_OPENCODE is not set"
+[[ -x "$OPENCODE" ]] || fail "opencode is not executable: $OPENCODE"
+
 parent=${TMPDIR:-/tmp/opencode}
 mkdir -p "$parent"
 TMP=$(mktemp -d "$parent/kalari-rehearse.XXXXXX")
 ROOT=$TMP/root
 STAGE=$TMP/stage
-A=$ROOT/runs/payouts/workspace
 XDG=$ROOT/state/condition-1-xdg
 STATE=$ROOT/state/condition-1.json
-SETTLE_STAGE=$STAGE/settlement-reconcile
-mkdir -p "$ROOT/state" "$ROOT/runs/payouts" "$STAGE" "$XDG/data" "$XDG/state" "$XDG/cache" "$XDG/config"
+A=$ROOT/workspaces/condition-1
 
 api_pid=""
 provider_pid=""
@@ -30,16 +46,25 @@ cleanup() {
   [[ -n "$provider_pid" ]] && kill "$provider_pid" 2>/dev/null || true
   [[ -n "$api_pid" ]] && kill "$api_pid" 2>/dev/null || true
   wait 2>/dev/null || true
+  # Keep the logs only when debugging the rehearsal itself; the default removes
+  # the temp directory.
+  if [[ "${KALARI_REHEARSAL_KEEP:-0}" == 1 ]]; then
+    echo "rehearsal logs kept in $TMP" >&2
+  else
+    rm -rf "$TMP"
+  fi
   exit "$rc"
 }
 trap cleanup EXIT
 
-ok() { echo "ok   $*"; }
-fail() { echo "FAIL $*" >&2; exit 1; }
 pycheck() {
   local desc=$1
   shift
   if python3 "$@"; then ok "$desc"; else fail "$desc"; fi
+}
+
+sha() {
+  python3 -c 'import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest())' "$1"
 }
 
 pick_port() {
@@ -52,11 +77,33 @@ ver=$("$OPENCODE" --version 2>/dev/null || true)
 [[ "$ver" == *2.2.5* ]] || fail "need OpenCode 2.2.5, got: ${ver:-none}"
 ok "OpenCode 2.2.5: $ver"
 [[ -f "$REPO/bench/apis/settlements/reference/correct.py" ]] || fail "missing settlements reference consumer"
-ok "using the real settlements reference consumer"
+[[ -f "$HERE/rehearsal_first_attempt.py" ]] || fail "missing the first-attempt consumer"
+ok "using the real settlements reference consumer and a first-attempt fixture"
+
+# The production call sites must exist; the behavioural tests below exercise
+# the shared modules themselves.
+[[ -f "$HERE/remote.sh" ]] || fail "remote.sh is missing"
+[[ -f "$HERE/run.sh" ]] || fail "run.sh is missing"
+[[ -f "$HERE/condition1.sh" ]] || fail "condition1.sh is missing"
+[[ -f "$HERE/grade_one.sh" ]] || fail "grade_one.sh is missing"
+grep -q 'condition1.sh' "$HERE/remote.sh" || fail "remote.sh does not source condition1.sh"
+grep -q 'grade_one.sh' "$HERE/remote.sh" || fail "remote.sh does not source grade_one.sh"
+grep -q 'require_condition1_identity' "$HERE/run.sh" || fail "run.sh does not require the condition-1 session identity"
+ok "remote.sh and run.sh call the shared condition-1 and grading modules"
+
+echo "== stage"
+mkdir -p "$ROOT/state" "$STAGE/workspaces"
+for name in condition1.sh continuation.sh continuation.py tree_digest.py \
+  grade_status.py grade_runner.py grade_one.sh result_grade.py; do
+  cp "$HERE/$name" "$STAGE/$name"
+done
+cp -a "$REPO/bench/workspaces/payout-sync" "$STAGE/workspaces/payout-sync"
+cp -a "$REPO/bench/workspaces/settlement-reconcile" "$STAGE/workspaces/settlement-reconcile"
+ok "staged the harness and both workspaces under $STAGE"
 
 echo "== local settlements API (v1 retired, as the hidden grader runs it)"
 api_port=$(pick_port)
-timeout 300 python3 -I "$REPO/bench/apis/settlements/server.py" --port "$api_port" --v1 off \
+python3 -I "$REPO/bench/apis/settlements/server.py" --port "$api_port" --v1 off \
   > "$TMP/api.out" 2> "$TMP/api.err" &
 api_pid=$!
 for _ in $(seq 1 100); do
@@ -73,10 +120,11 @@ ok "settlements API on loopback, v1 retired"
 
 echo "== scripted provider"
 provider_port_file=$TMP/provider.port
-timeout 300 python3 "$HERE/scripted_provider.py" \
+python3 "$HERE/scripted_provider.py" \
   --port-file "$provider_port_file" \
   --trace "$TMP/provider.jsonl" \
   --consumer-source "$REPO/bench/apis/settlements/reference/correct.py" \
+  --first-consumer-source "$HERE/rehearsal_first_attempt.py" \
   --api-base-url "http://127.0.0.1:$api_port" > "$TMP/provider.out" 2> "$TMP/provider.err" &
 provider_pid=$!
 for _ in $(seq 1 100); do
@@ -123,17 +171,22 @@ run_session() { # $1 workspace, $2 prompt, $3 events, $4 stderr, $5 session id (
       timeout 120 "$OPENCODE" "${args[@]}" > "$events" 2> "$stderr" )
 }
 
-echo "== run one: payouts session in workspace A"
-cp -a "$REPO/bench/workspaces/payout-sync/." "$A/"
-write_config "$A"
-git -C "$A" init -q
-git -C "$A" config user.email rehearsal@localhost
-git -C "$A" config user.name rehearsal
-git -C "$A" add -A
-git -C "$A" commit -qm "v1 consumer"
-payout_stage_digest=$(python3 "$HERE/tree_digest.py" "$A")
+write_config "$STAGE"
+
+# The production module, sourced from the working tree. remote.sh sources the
+# same file from the staged harness on the VM.
+. "$HERE/condition1.sh"
+
+echo "== run one: payouts session in the stable condition-1 workspace"
+prepare_condition1 "$ROOT" "$STAGE" "$STAGE/workspaces/payout-sync" payouts
+[[ "$WS" == "$A" ]] || fail "condition-1 payouts chose workspace $WS, not the stable workspace $A"
+[[ "$XDG_BASE" == "$XDG" ]] || fail "condition-1 payouts chose XDG $XDG_BASE, not $XDG"
+[[ "$SESSION_CONTINUED" == 0 ]] || fail "condition-1 payouts started as a continuation"
+payout_stage_digest=$STAGE_DIGEST
+ok "the shared preparation chose the stable workspace $A (digest $payout_stage_digest)"
+
 run_session "$A" "PHASE=payouts: start the payout upgrade" "$TMP/events-1.jsonl" "$TMP/opencode-1.err"
-[[ -f "$A/payouts-canary.txt" ]] || fail "run one did not write its canary in A"
+[[ -f "$A/payouts-canary.txt" ]] || fail "run one did not write its canary in $A"
 grep -qx "payouts" "$A/payouts-canary.txt" || fail "run one canary has the wrong content"
 sid=$(python3 - "$TMP/events-1.jsonl" <<'PY'
 import json, sys
@@ -152,53 +205,61 @@ if len(set(seen)) != 1:
 print(seen[0])
 PY
 )
-ok "run one created session $sid in A"
-ok "run one canary is in A"
+ok "run one created session $sid in the stable workspace"
 
 python3 "$HERE/continuation.py" save \
   --state "$STATE" \
   --workspace "$A" \
   --xdg "$XDG" \
   --session-id "$sid" \
-  --digest "$payout_stage_digest"
+  --start-digest "$payout_stage_digest"
 [[ -s "$STATE" ]] || fail "continuation state was not written"
-ok "continuation state records workspace, XDG and session"
+pycheck "continuation state records the workspace, XDG, session and start digest" - \
+  "$STATE" "$A" "$XDG" "$sid" "$payout_stage_digest" <<'PY'
+import json, sys
+doc = json.load(open(sys.argv[1]))
+if doc.get("workspace") != sys.argv[2]:
+    raise SystemExit(f"workspace: {doc.get('workspace')}")
+if doc.get("xdg") != sys.argv[3]:
+    raise SystemExit(f"xdg: {doc.get('xdg')}")
+if doc.get("session_id") != sys.argv[4]:
+    raise SystemExit(f"session: {doc.get('session_id')}")
+if doc.get("payouts_start_digest") != sys.argv[5]:
+    raise SystemExit(f"start digest: {doc.get('payouts_start_digest')}")
+if "workspace_digest" in doc:
+    raise SystemExit("the old workspace_digest field is still present")
+PY
 
-echo "== run two: replace A's contents, resume the same session"
-cp -a "$REPO/bench/workspaces/settlement-reconcile/." "$SETTLE_STAGE/"
-settle_stage_digest=$(python3 "$HERE/tree_digest.py" "$SETTLE_STAGE")
-# This is the shared continuation helper remote.sh sources.
-. "$HERE/continuation.sh"
-load_condition1_state "$STATE"
-[[ "$STATE_WORKSPACE" == "$A" ]] || fail "state workspace is not A"
-[[ "$STATE_XDG" == "$XDG" ]] || fail "state XDG is not the payouts XDG"
-[[ "$STATE_SESSION_ID" == "$sid" ]] || fail "state session is not run one's session"
-find "$STATE_WORKSPACE" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
-cp -a "$SETTLE_STAGE/." "$STATE_WORKSPACE/"
-write_config "$STATE_WORKSPACE"
-git -C "$STATE_WORKSPACE" init -q
-git -C "$STATE_WORKSPACE" config user.email rehearsal@localhost
-git -C "$STATE_WORKSPACE" config user.name rehearsal
-git -C "$STATE_WORKSPACE" add -A
-git -C "$STATE_WORKSPACE" commit -qm "v1 settlements consumer"
-workspace_digest=$(python3 "$HERE/tree_digest.py" "$STATE_WORKSPACE")
-[[ "$workspace_digest" == "$settle_stage_digest" ]] || fail "A's contents do not match the settlements stage"
-ok "A's contents were replaced with the settlements tree (digest $workspace_digest)"
+echo "== run two: replace the workspace's contents, resume the same session"
+prepare_condition1 "$ROOT" "$STAGE" "$STAGE/workspaces/settlement-reconcile" settlements
+[[ "$WS" == "$A" ]] || fail "condition-1 settlements chose workspace $WS; the saved workspace condition requires $A"
+[[ "$XDG_BASE" == "$XDG" ]] || fail "condition-1 settlements chose XDG $XDG_BASE, not $XDG"
+[[ "$SESSION_ID" == "$sid" ]] || fail "condition-1 settlements chose session $SESSION_ID, not $sid"
+[[ "$SESSION_CONTINUED" == 1 ]] || fail "condition-1 settlements did not continue the saved session"
+settle_stage_digest=$STAGE_DIGEST
+workspace_digest=$WORKSPACE_DIGEST
+[[ "$workspace_digest" == "$settle_stage_digest" ]] || fail "the reused workspace does not match the settlements stage"
+ok "the shared preparation reused $A and replaced its contents (digest $workspace_digest)"
 [[ ! -e "$A/payouts-canary.txt" ]] || fail "the payouts canary survived the replacement"
 ok "the payouts canary is gone"
 
+first_attempt_sha=$(sha "$HERE/rehearsal_first_attempt.py")
+final_sha=$(sha "$REPO/bench/apis/settlements/reference/correct.py")
+[[ "$first_attempt_sha" != "$final_sha" ]] || fail "the first attempt and the final consumer are identical"
+ok "the first attempt ($first_attempt_sha) differs from the final consumer ($final_sha)"
+
 run_session "$A" "PHASE=settlements: continue with the settlement upgrade" \
   "$TMP/events-2.jsonl" "$TMP/opencode-2.err" "$sid"
-[[ -f "$A/settlements-canary.txt" ]] || fail "the resumed session did not write its canary in A"
+[[ -f "$A/settlements-canary.txt" ]] || fail "the resumed session did not write its canary in $A"
 grep -qx "settlements" "$A/settlements-canary.txt" || fail "the settlements canary has the wrong content"
-ok "the resumed session wrote its canary by relative path in A"
+ok "the resumed session wrote its canary by relative path in $A"
 outside=$(find "$TMP" -name settlements-canary.txt ! -path "$A/settlements-canary.txt" -print -quit)
-[[ -z "$outside" ]] || fail "the resumed canary also appeared outside A: $outside"
-ok "the canary appears only in A"
-[[ -f "$A/settlement_reconcile.py" ]] || fail "the resumed session did not write the consumer in A"
-ok "the resumed session wrote the consumer in A"
-[[ -s "$A/settlements.jsonl" ]] || fail "the consumer wrote no settlements output in A"
-ok "the consumer wrote settlements.jsonl in A"
+[[ -z "$outside" ]] || fail "the resumed canary also appeared outside $A: $outside"
+ok "the canary appears only in $A"
+[[ -f "$A/settlement_reconcile.py" ]] || fail "the resumed session did not write the consumer in $A"
+ok "the resumed session wrote the consumer in $A"
+[[ -s "$A/settlements.jsonl" ]] || fail "the consumer wrote no settlements output in $A"
+ok "the consumer wrote settlements.jsonl in $A"
 
 pycheck "the event log resumed the saved session id" - "$TMP/events-2.jsonl" "$sid" <<'PY'
 import json, sys
@@ -213,7 +274,7 @@ for line in open(sys.argv[1]):
 if seen != {sys.argv[2]}:
     raise SystemExit(f"session ids in event log: {sorted(seen)}")
 PY
-pycheck "the scripted provider offered and used write and shell" - "$TMP/provider.jsonl" <<'PY'
+pycheck "the scripted provider wrote two different consumers and ran each once" - "$TMP/provider.jsonl" <<'PY'
 import json, sys
 offered = set()
 actions = []
@@ -223,19 +284,47 @@ for line in open(sys.argv[1]):
     offered.update(row.get("tools") or [])
     action = row.get("action") or {}
     if action.get("kind") == "call":
-        actions.append(action.get("name"))
+        actions.append(action)
     if row.get("settlements_context") and row.get("payouts_context"):
         resumed = True
 if not {"write", "shell"}.issubset(offered):
     raise SystemExit(f"tools offered: {sorted(offered)}")
-if not {"write", "shell"}.issubset(actions):
-    raise SystemExit(f"tool calls made: {actions}")
+shells = [a for a in actions if a.get("name") == "shell"]
+consumer_writes = [
+    a for a in actions
+    if a.get("name") == "write"
+    and str((a.get("arguments") or {}).get("path") or "").endswith("settlement_reconcile.py")
+]
+if len(shells) != 2:
+    raise SystemExit(f"shell calls: {len(shells)}")
+if len(consumer_writes) != 2:
+    raise SystemExit(f"consumer writes: {len(consumer_writes)}")
+first = consumer_writes[0]["arguments"]["content"]
+final = consumer_writes[1]["arguments"]["content"]
+if first == final:
+    raise SystemExit("the provider wrote the same consumer twice")
 if not resumed:
     raise SystemExit("run two did not carry the payouts conversation")
 PY
 ok "run two carried the payouts conversation into the settlements phase"
 
-echo "== measures and grading from A"
+echo "== consume the continuation state"
+consume_condition1_state "$ROOT"
+[[ ! -e "$STATE" ]] || fail "the settlements run did not consume the continuation state"
+if load_condition1_state "$STATE" > /dev/null 2>&1; then
+  fail "a consumed continuation state still loads"
+fi
+ok "the settlements run consumed the continuation state; a retry cannot resume it"
+# The rejection cases below need a valid base state. The production path never
+# re-saves one; the session database and workspace still exist.
+python3 "$HERE/continuation.py" save \
+  --state "$STATE" \
+  --workspace "$A" \
+  --xdg "$XDG" \
+  --session-id "$sid" \
+  --start-digest "$payout_stage_digest"
+
+echo "== measures and grading from the stable workspace"
 python3 "$HERE/measures.py" \
   --events "$TMP/events-2.jsonl" \
   --upgrade settlements \
@@ -248,13 +337,16 @@ python3 "$HERE/measures.py" \
   --workspace-digest "$workspace_digest" \
   --stage-digest "$settle_stage_digest" \
   --session-id-expected "$sid" > "$TMP/measures.out" 2> "$TMP/measures.err"
-pycheck "measures recorded workspace A, its digest and the resumed session" - "$TMP/analysis.json" "$A" "$workspace_digest" "$sid" <<'PY'
+pycheck "measures recorded the stable workspace, both attempts and the resumed session" - \
+  "$TMP/analysis.json" "$A" "$workspace_digest" "$sid" <<'PY'
 import json, sys
 doc = json.load(open(sys.argv[1]))
 if doc.get("workspace") != sys.argv[2]:
     raise SystemExit(f"workspace: {doc.get('workspace')}")
 if doc.get("workspace_digest") != sys.argv[3]:
     raise SystemExit("workspace digest missing")
+if doc.get("session_id") != sys.argv[4]:
+    raise SystemExit(f"observed session id: {doc.get('session_id')}")
 if doc.get("session_id_expected") != sys.argv[4] or doc.get("session_identity_ok") is not True:
     raise SystemExit("resumed session identity not recorded")
 if doc.get("workspace_identity_ok") is not True:
@@ -263,41 +355,102 @@ if not (doc.get("first_v2") or {}).get("found"):
     raise SystemExit("measures did not find the first v2 consumer run")
 if (doc.get("first_v2") or {}).get("basis") != "snapshot":
     raise SystemExit(f"first v2 basis: {(doc.get('first_v2') or {}).get('basis')}")
+runs = doc.get("consumer_runs") or []
+if len(runs) != 2:
+    raise SystemExit(f"consumer runs: {len(runs)}")
+if [r.get("status") for r in runs] != ["completed", "completed"]:
+    raise SystemExit(f"consumer statuses: {[r.get('status') for r in runs]}")
+if doc.get("sandbox_runs") != 2:
+    raise SystemExit(f"sandbox runs: {doc.get('sandbox_runs')}")
 PY
 [[ -f "$TMP/first-v2-src/settlement_reconcile.py" ]] || fail "measures did not materialize first-v2-src"
 ok "measures materialized the first v2 source"
 
-pycheck "first-attempt and final consumer source are identical" - \
-  "$TMP/first-v2-src/settlement_reconcile.py" "$A/settlement_reconcile.py" <<'PY'
-import hashlib, sys
-def digest(path):
-    return hashlib.sha256(open(path, "rb").read()).hexdigest()
-a, b = digest(sys.argv[1]), digest(sys.argv[2])
-if a != b:
-    raise SystemExit(f"first {a} != final {b}")
-PY
+materialized_sha=$(sha "$TMP/first-v2-src/settlement_reconcile.py")
+[[ "$materialized_sha" == "$first_attempt_sha" ]] || fail \
+  "first-v2-src is $materialized_sha, not the first attempt $first_attempt_sha; the workspace condition requires the first source, not the final one"
+final_source_sha=$(sha "$A/settlement_reconcile.py")
+[[ "$final_source_sha" == "$final_sha" ]] || fail \
+  "the final consumer is $final_source_sha, not the reference consumer $final_sha"
+ok "first-v2-src is the first attempt, not the final source"
 
-# Grade the output the resumed session produced in A.
-grade_json=$(python3 -I "$REPO/bench/graders/grade.py" settlements "$A/settlements.jsonl" || true)
-pycheck "the newly produced output from A passes the hidden grader" - "$grade_json" <<'PY'
+# Grade the output the resumed session produced in A with the final consumer.
+final_grade=$(python3 -I "$REPO/bench/graders/grade.py" settlements "$A/settlements.jsonl" || true)
+pycheck "the final attempt passes the hidden grader" - "$final_grade" <<'PY'
 import json, sys
 doc = json.loads(sys.argv[1])
 if doc.get("verdict") != "PASS":
     raise SystemExit(json.dumps(doc))
+if doc.get("missing") != 0 or doc.get("duplicates") != 0:
+    raise SystemExit(json.dumps(doc))
 PY
 
-# The first grading pass uses first-v2-src, as remote.sh does.
+# The first pass runs the materialized first-attempt source, as remote.sh does.
 mkdir -p "$TMP/first-grade"
 cp -a "$TMP/first-v2-src/." "$TMP/first-grade/"
 python3 -I "$TMP/first-grade/settlement_reconcile.py" \
   --base-url "http://127.0.0.1:$api_port" --out "$TMP/first-grade/out.jsonl" > /dev/null
 first_grade=$(python3 -I "$REPO/bench/graders/grade.py" settlements "$TMP/first-grade/out.jsonl" || true)
-pycheck "the first-attempt source grades PASS against the same output contract" - "$first_grade" <<'PY'
+pycheck "the first attempt runs, produces output and fails the output contract" - "$first_grade" <<'PY'
 import json, sys
 doc = json.loads(sys.argv[1])
-if doc.get("verdict") != "PASS":
+if doc.get("verdict") != "FAIL":
     raise SystemExit(json.dumps(doc))
+if doc.get("records", 0) <= 0:
+    raise SystemExit("the first attempt produced no output")
+if (doc.get("missing") or 0) <= 0:
+    raise SystemExit("the first attempt has no missing records")
 PY
+pycheck "the first grade reflects the first attempt, not the final one" - \
+  "$first_grade" "$final_grade" <<'PY'
+import json, sys
+first, final = json.loads(sys.argv[1]), json.loads(sys.argv[2])
+if first.get("verdict") != "FAIL" or final.get("verdict") != "PASS":
+    raise SystemExit(f"verdicts: first {first.get('verdict')}, final {final.get('verdict')}")
+if first.get("records") == final.get("records"):
+    raise SystemExit("the first and final outputs have the same record count")
+# run.sh's right-first-time is false when the first pass is not PASS.
+if first.get("verdict") == "PASS":
+    raise SystemExit("right first time would be true")
+PY
+ok "the first grade is FAIL and the final grade is PASS"
+
+echo "== measures failures"
+mismatch_rc=0
+python3 "$HERE/measures.py" \
+  --events "$TMP/events-2.jsonl" \
+  --upgrade settlements \
+  --workspace "$A" \
+  --xdg "$XDG/data" \
+  --elapsed 1 \
+  --exit-code 0 \
+  --out "$TMP/analysis-digest-mismatch.json" \
+  --workspace-digest aaa \
+  --stage-digest bbb > /dev/null 2> "$TMP/measures-digest-mismatch.err" || mismatch_rc=$?
+[[ "$mismatch_rc" != 0 ]] || fail "measures accepted a workspace digest mismatch"
+pycheck "a workspace digest mismatch is recorded and fails" - "$TMP/analysis-digest-mismatch.json" <<'PY'
+import json, sys
+doc = json.load(open(sys.argv[1]))
+if doc.get("workspace_identity_ok") is not False:
+    raise SystemExit(f"workspace_identity_ok: {doc.get('workspace_identity_ok')}")
+PY
+ok "measures fails on a workspace identity mismatch"
+
+python3 "$HERE/measures.py" \
+  --events "$TMP/events-2.jsonl" \
+  --upgrade settlements \
+  --workspace "$A" \
+  --xdg "$XDG/data" \
+  --elapsed 1 \
+  --exit-code 0 \
+  --out "$TMP/analysis-no-digest.json" > /dev/null 2>&1
+pycheck "measures without digest arguments is a no-op" - "$TMP/analysis-no-digest.json" <<'PY'
+import json, sys
+doc = json.load(open(sys.argv[1]))
+if doc.get("workspace_identity_ok") is not None:
+    raise SystemExit(f"workspace_identity_ok: {doc.get('workspace_identity_ok')}")
+PY
+ok "measures without digest arguments does not fail"
 
 mismatch_rc=0
 python3 "$HERE/measures.py" \
@@ -318,7 +471,83 @@ if doc.get("session_identity_ok") is not False:
 PY
 ok "measures fails on a session identity mismatch"
 
+pycheck "run.sh refuses a condition-1 settlements row without session identity" - "$HERE" <<'PY'
+import sys
+sys.path.insert(0, sys.argv[1])
+import result_grade
+bad = [
+    {"session_continued": False, "session_identity_ok": True},
+    {"session_continued": True, "session_identity_ok": None},
+    {"session_continued": True, "session_identity_ok": False},
+]
+for doc in bad:
+    try:
+        result_grade.require_condition1_identity(1, "settlements", doc)
+    except SystemExit:
+        continue
+    raise SystemExit(f"accepted: {doc}")
+result_grade.require_condition1_identity(
+    1, "settlements", {"session_continued": True, "session_identity_ok": True}
+)
+result_grade.require_condition1_identity(2, "settlements", {})
+PY
+ok "run.sh's result guard requires a continued, identity-checked condition-1 session"
+
+echo "== denied consumer commands are not sandbox runs"
+cat > "$TMP/denied-events.jsonl" <<'JSON'
+{"type":"tool_use","sessionID":"ses_test","timestamp":1000,"part":{"tool":"shell","state":{"status":"error","input":{"command":"python3 settlement_reconcile.py --base-url http://127.0.0.1:1 --out settlements.jsonl"},"time":{"start":1000,"end":2000}}}}
+{"type":"tool_use","sessionID":"ses_test","timestamp":2000,"part":{"tool":"bash","state":{"status":"error","input":{"command":"python3 settlement_reconcile.py --base-url http://127.0.0.1:1 --out settlements.jsonl"},"time":{"start":2000,"end":3000}}}}
+JSON
+cat > "$TMP/completed-events.jsonl" <<'JSON'
+{"type":"tool_use","sessionID":"ses_test","timestamp":1000,"part":{"tool":"shell","state":{"status":"error","input":{"command":"python3 settlement_reconcile.py --base-url http://127.0.0.1:1 --out settlements.jsonl"},"time":{"start":1000,"end":2000}}}}
+{"type":"tool_use","sessionID":"ses_test","timestamp":2000,"part":{"tool":"bash","state":{"status":"error","input":{"command":"python3 settlement_reconcile.py --base-url http://127.0.0.1:1 --out settlements.jsonl"},"time":{"start":2000,"end":3000}}}}
+{"type":"tool_use","sessionID":"ses_test","timestamp":3000,"part":{"tool":"shell","state":{"status":"completed","input":{"command":"python3 settlement_reconcile.py --base-url http://127.0.0.1:1 --out settlements.jsonl"},"time":{"start":3000,"end":4000}}}}
+JSON
+mkdir -p "$TMP/empty-ws" "$TMP/empty-xdg"
+python3 "$HERE/measures.py" \
+  --events "$TMP/denied-events.jsonl" \
+  --upgrade settlements \
+  --workspace "$TMP/empty-ws" \
+  --xdg "$TMP/empty-xdg" \
+  --elapsed 1 \
+  --exit-code 0 \
+  --out "$TMP/denied.json"
+pycheck "a denied shell consumer attempt gives sandbox_runs 0 and one denial" - "$TMP/denied.json" <<'PY'
+import json, sys
+doc = json.load(open(sys.argv[1]))
+if doc.get("sandbox_runs") != 0:
+    raise SystemExit(f"sandbox_runs: {doc.get('sandbox_runs')}")
+if doc.get("consumer_runs"):
+    raise SystemExit(f"consumer_runs: {doc.get('consumer_runs')}")
+ev = doc.get("event_summary") or {}
+if ev.get("shell_denied") != 1:
+    raise SystemExit(f"shell_denied: {ev.get('shell_denied')}")
+if ev.get("bash_denied") != 1:
+    raise SystemExit(f"bash_denied: {ev.get('bash_denied')}")
+if ev.get("consumer_denied") != 2:
+    raise SystemExit(f"consumer_denied: {ev.get('consumer_denied')}")
+PY
+python3 "$HERE/measures.py" \
+  --events "$TMP/completed-events.jsonl" \
+  --upgrade settlements \
+  --workspace "$TMP/empty-ws" \
+  --xdg "$TMP/empty-xdg" \
+  --elapsed 1 \
+  --exit-code 0 \
+  --out "$TMP/completed.json"
+pycheck "a completed consumer run still counts once" - "$TMP/completed.json" <<'PY'
+import json, sys
+doc = json.load(open(sys.argv[1]))
+if doc.get("sandbox_runs") != 1:
+    raise SystemExit(f"sandbox_runs: {doc.get('sandbox_runs')}")
+runs = doc.get("consumer_runs") or []
+if len(runs) != 1 or runs[0].get("status") != "completed":
+    raise SystemExit(f"consumer runs: {runs}")
+PY
+ok "denied shell and bash attempts are not sandbox runs"
+
 echo "== grading status cases"
+mkdir -p "$TMP/none"
 echo "EXIT 0" > "$TMP/ok.status"
 python3 "$HERE/grade_status.py" \
   --status "$TMP/ok.status" \
@@ -335,7 +564,7 @@ if doc.get("grade_status") != "ok" or doc.get("output_present") is not True:
     raise SystemExit(json.dumps(doc))
 PY
 
-mkdir -p "$TMP/no-output-ws" "$TMP/none"
+mkdir -p "$TMP/no-output-ws"
 printf '{"id":"stale"}\n' > "$TMP/no-output-ws/settlements.jsonl"
 echo "EXIT 0" > "$TMP/no-output.status"
 python3 "$HERE/grade_status.py" \
@@ -357,25 +586,84 @@ if "consumer exited 0" not in (doc.get("note") or ""):
     raise SystemExit(f"note: {doc.get('note')}")
 PY
 
-echo "EXIT create" > "$TMP/grader-failed.status"
+for status in create launch usage; do
+  printf 'EXIT %s\n' "$status" > "$TMP/grader-$status.status"
+  python3 "$HERE/grade_status.py" \
+    --status "$TMP/grader-$status.status" \
+    --fresh-output "$TMP/none/out.jsonl" \
+    --workspace "$TMP/no-output-ws" \
+    --output-name settlements.jsonl \
+    --exec-rc 0 \
+    --pass final \
+    --out "$TMP/grader-$status.grade.json"
+done
+pycheck "sandbox create, launch and usage failures are grader_failed" - \
+  "$TMP/grader-create.grade.json" "$TMP/grader-launch.grade.json" "$TMP/grader-usage.grade.json" <<'PY'
+import json, sys
+for path in sys.argv[1:]:
+    doc = json.load(open(path))
+    if doc.get("grade_status") != "grader_failed":
+        raise SystemExit(f"{path}: {doc.get('grade_status')}")
+    if doc.get("consumer_exit") is not None:
+        raise SystemExit(f"{path}: consumer_exit {doc.get('consumer_exit')}")
+    if doc.get("output_present") is not False:
+        raise SystemExit(f"{path}: output_present {doc.get('output_present')}")
+PY
+pycheck "a launch failure leaves lost and duplicated unmeasurable" - \
+  "$HERE" "$TMP/grader-launch.grade.json" <<'PY'
+import json, sys
+sys.path.insert(0, sys.argv[1])
+import result_grade
+doc = json.load(open(sys.argv[2]))
+if doc.get("stale_output_ignored") is not True:
+    raise SystemExit("the stale workspace output was not recorded as ignored")
+missing = result_grade.grade_missing()
+if missing.get("missing") is not None or missing.get("duplicates") is not None:
+    raise SystemExit(f"missing output policy: {missing}")
+PY
+ok "EXIT launch is grader_failed with null consumer exit and unmeasurable counts"
+
+echo "EXIT timeout" > "$TMP/timeout.status"
 python3 "$HERE/grade_status.py" \
-  --status "$TMP/grader-failed.status" \
+  --status "$TMP/timeout.status" \
   --fresh-output "$TMP/none/out.jsonl" \
   --workspace "$TMP/no-output-ws" \
   --output-name settlements.jsonl \
   --exec-rc 0 \
   --pass final \
-  --out "$TMP/grader-failed.grade.json"
-pycheck "a sandbox create failure is grader_failed" - "$TMP/grader-failed.grade.json" <<'PY'
+  --out "$TMP/timeout.grade.json"
+pycheck "EXIT timeout is still a consumer crash" - "$TMP/timeout.grade.json" <<'PY'
 import json, sys
 doc = json.load(open(sys.argv[1]))
-if doc.get("grade_status") != "grader_failed" or doc.get("consumer_exit") is not None:
+if doc.get("grade_status") != "consumer_crashed" or doc.get("consumer_exit") != "timeout":
     raise SystemExit(json.dumps(doc))
-if "EXIT create" not in (doc.get("note") or ""):
-    raise SystemExit(f"note: {doc.get('note')}")
+if doc.get("output_present") is not False:
+    raise SystemExit("timeout output_present was not false")
 PY
 
-echo "== stale output cannot rescue a crashed consumer"
+printf '{"id":"partial"}\n' > "$TMP/partial.jsonl"
+echo "EXIT 3" > "$TMP/partial.status"
+python3 "$HERE/grade_status.py" \
+  --status "$TMP/partial.status" \
+  --fresh-output "$TMP/partial.jsonl" \
+  --workspace "$TMP/no-output-ws" \
+  --output-name settlements.jsonl \
+  --exec-rc 0 \
+  --pass final \
+  --out "$TMP/partial.grade.json"
+pycheck "a crash with partial fresh output is a crash with partial output graded" - "$TMP/partial.grade.json" <<'PY'
+import json, sys
+doc = json.load(open(sys.argv[1]))
+if doc.get("grade_status") != "consumer_crashed" or doc.get("consumer_exit") != 3:
+    raise SystemExit(json.dumps(doc))
+if doc.get("output_present") is not True:
+    raise SystemExit("partial output was not present")
+if "partial output graded" not in (doc.get("note") or ""):
+    raise SystemExit(f"note: {doc.get('note')}")
+PY
+ok "timeout, usage and partial-output crash cases classify correctly"
+
+echo "== stale output cannot rescue a run that wrote nothing"
 printf '{"id":"stale","amountCents":1}\n' > "$A/settlements.jsonl"
 mkdir -p "$TMP/crash"
 cat > "$TMP/crash/settlement_reconcile.py" <<'PY'
@@ -414,10 +702,112 @@ doc = json.loads(sys.argv[1])
 if doc.get("verdict") != "FAIL" or doc.get("output_present") is not False:
     raise SystemExit(json.dumps(doc))
 PY
-if grep -q 'msb copy -q "$name:/w/src/' "$HERE/remote.sh"; then
-  fail "remote.sh still has the stale-output fallback"
-fi
-ok "remote.sh has no workspace-output fallback"
+
+# The real grade_one: the guest runs, exits 0 and writes no /w/out.jsonl, while
+# the workspace holds a stale settlements.jsonl. This is the production "which
+# file is graded" decision. A workspace fallback of any spelling would put the
+# stale file in $RUN/final.jsonl and turn no_output into ok.
+echo "== the grading path never falls back to the workspace"
+GRADE_RUN=$TMP/grade-run
+mkdir -p "$GRADE_RUN" "$TMP/stub-bin" "$TMP/grade-ws"
+printf '{"id":"stale","amountCents":1}\n' > "$TMP/grade-ws/settlements.jsonl"
+cat > "$TMP/stub-bin/msb" <<'SH'
+#!/usr/bin/env bash
+# Stub msb. The grading guest exists, runs and reports EXIT 0, but /w/out.jsonl
+# is never created. A copy of /w/src/settlements.jsonl or of the workspace
+# output materializes the stale file, exactly as the old fallback would.
+set -eu
+cmd=${1:-}
+shift || true
+case "$cmd" in
+  create|remove) exit 0 ;;
+  exec)
+    while [[ $# -gt 0 && "$1" != "--" ]]; do shift; done
+    [[ $# -gt 0 ]] && shift
+    case "${1:-}" in
+      python3) echo "EXIT 0" ;;
+      *) exit 0 ;;
+    esac
+    ;;
+  copy)
+    [[ "${1:-}" == "-q" ]] && shift
+    src=${1:-}; dst=${2:-}
+    case "$src" in
+      */w/out.jsonl) exit 1 ;;
+      */w/src/settlements.jsonl) cp "$STALE_WORKSPACE_FILE" "$dst" ;;
+      */w/consumer.log) : > "$dst" ;;
+    esac
+    ;;
+esac
+exit 0
+SH
+chmod +x "$TMP/stub-bin/msb"
+export STALE_WORKSPACE_FILE=$TMP/grade-ws/settlements.jsonl
+(
+  set -euo pipefail
+  RUN=$GRADE_RUN
+  RUN_ID=rehearsal
+  STAGE=$STAGE
+  CONSUMER=settlement_reconcile.py
+  OUT_NAME=settlements.jsonl
+  IP=127.0.0.1
+  GRADE_PORT=1
+  WS=$TMP/grade-ws
+  export PATH="$TMP/stub-bin:$PATH"
+  . "$HERE/grade_one.sh"
+  grade_one "$WS" final
+)
+[[ ! -e "$GRADE_RUN/final.jsonl" ]] || fail "grade_one copied a workspace file as the fresh output"
+pycheck "a grader run with no fresh output is no_output, not the workspace file" - \
+  "$GRADE_RUN/final.grade.json" "$TMP/grade-ws" "$HERE" <<'PY'
+import json, sys
+sys.path.insert(0, sys.argv[3])
+import result_grade
+doc = json.load(open(sys.argv[1]))
+if doc.get("grade_status") != "no_output":
+    raise SystemExit(json.dumps(doc))
+if doc.get("output_present") is not False:
+    raise SystemExit("workspace output was treated as fresh")
+if doc.get("stale_output_ignored") is not True:
+    raise SystemExit("stale workspace output was not recorded as ignored")
+if doc.get("workspace_checked") != sys.argv[2]:
+    raise SystemExit(f"workspace_checked: {doc.get('workspace_checked')}")
+missing = result_grade.grade_missing()
+if missing.get("missing") is not None or missing.get("duplicates") is not None:
+    raise SystemExit(f"missing output policy: {missing}")
+PY
+ok "grade_one grades only the guest's fresh output"
+
+# The first pass checks its own source tree for stale output, not the agent
+# workspace the final pass used.
+mkdir -p "$TMP/grade-first-src"
+printf '{"id":"stale-first"}\n' > "$TMP/grade-first-src/settlements.jsonl"
+(
+  set -euo pipefail
+  RUN=$GRADE_RUN
+  RUN_ID=rehearsal
+  STAGE=$STAGE
+  CONSUMER=settlement_reconcile.py
+  OUT_NAME=settlements.jsonl
+  IP=127.0.0.1
+  GRADE_PORT=1
+  WS=$TMP/grade-ws
+  export PATH="$TMP/stub-bin:$PATH"
+  . "$HERE/grade_one.sh"
+  grade_one "$TMP/grade-first-src" first
+)
+pycheck "the first grading pass checks its own source tree for stale output" - \
+  "$GRADE_RUN/first.grade.json" "$TMP/grade-first-src" <<'PY'
+import json, sys
+doc = json.load(open(sys.argv[1]))
+if doc.get("grade_status") != "no_output":
+    raise SystemExit(json.dumps(doc))
+if doc.get("workspace_checked") != sys.argv[2]:
+    raise SystemExit(f"workspace_checked: {doc.get('workspace_checked')}")
+if doc.get("stale_output_ignored") is not True:
+    raise SystemExit("stale first-source output was not recorded as ignored")
+PY
+ok "the first pass checks the first source tree, not the final workspace"
 
 echo "== missing continuation state fails before opencode starts"
 mkdir -p "$TMP/fakebin"
@@ -469,4 +859,4 @@ load_condition1_state "$STATE" > /dev/null
 ok "the saved state still loads"
 
 echo
-echo "rehearsal passed: 1 session, 2 workspace states, real resume, real measures, real grade"
+echo "rehearsal passed: 1 session, 2 workspace states, first attempt then final, real resume, real preparation, real grade path, real measures, real grade"

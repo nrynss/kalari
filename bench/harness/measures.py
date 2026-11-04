@@ -9,6 +9,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 
 IPV4 = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 HOME = re.compile(r"/home/[^/\s\"']+")
@@ -61,7 +62,8 @@ def find_gitdirs(xdg):
 
     A resumed session can leave the payouts snapshot repository beside a new
     settlements one: replacing the workspace's `.git` changes the project id.
-    A tree hash belongs to exactly one of them, so callers try each.
+    The same tree hash yields the same content wherever it is stored, so
+    callers try each repository.
     """
     root = os.path.join(xdg, "opencode", "snapshot")
     found = []
@@ -120,12 +122,26 @@ def timed_out(state, capped_tool):
     return False
 
 
-def is_consumer_run(tool, inp, consumer):
+USABLE_STATUSES = frozenset({"completed", "ok"})
+
+
+def consumer_command(tool, inp, consumer):
+    """A shell/bash command that invokes the consumer with Python."""
+    if tool not in {"bash", "shell"} or not isinstance(inp, dict):
+        return False
+    cmd = str(inp.get("command") or "")
+    return consumer in cmd and PYTHON.search(cmd) is not None
+
+
+def is_consumer_run(tool, inp, state, consumer):
+    """A consumer invocation that actually ran, not a denied tool call."""
     if not isinstance(inp, dict):
         return False
+    status = str((state or {}).get("status") or "").lower()
+    if status not in USABLE_STATUSES:
+        return False
     if tool in {"bash", "shell"}:
-        cmd = str(inp.get("command") or "")
-        return consumer in cmd and PYTHON.search(cmd) is not None
+        return consumer_command(tool, inp, consumer)
     if tool != "execute":
         return False
     code = str(inp.get("code") or "")
@@ -260,6 +276,8 @@ def main():
     tool_counts = {}
     type_counts = {}
     bash_denied = 0
+    shell_denied = 0
+    consumer_denied = 0
     sandbox_names = []
     texts = []
     stop_ts = None
@@ -297,8 +315,13 @@ def main():
             tool_counts[tool] = tool_counts.get(tool, 0) + 1
             state = part.get("state") or {}
             inp = state.get("input") if isinstance(state.get("input"), dict) else {}
-            if tool == "bash" and state.get("status") == "error":
-                bash_denied += 1
+            if tool in {"bash", "shell"} and state.get("status") == "error":
+                if tool == "bash":
+                    bash_denied += 1
+                else:
+                    shell_denied += 1
+                if consumer_command(tool, inp, consumer):
+                    consumer_denied += 1
             code = str(inp.get("code") or "")
             for name in re.findall(r"name\s*:\s*[\"']([^\"']+)[\"']", code):
                 if name not in sandbox_names:
@@ -312,7 +335,7 @@ def main():
                     latest_embedded = content
             dur = duration_s(state)
             hung = timed_out(state, False)
-            consumer_run = is_consumer_run(tool, inp, consumer)
+            consumer_run = is_consumer_run(tool, inp, state, consumer)
             if hung and is_sandbox_command(tool, inp) and not consumer_run:
                 stuck.append({"tool": tool, "duration_s": dur or 0.0, "consumer": False})
             if not consumer_run:
@@ -430,6 +453,8 @@ def main():
             "tools": tool_counts,
             "steps": token_sum["steps"],
             "bash_denied": bash_denied,
+            "shell_denied": shell_denied,
+            "consumer_denied": consumer_denied,
             "sandbox_names": sandbox_names,
             "last_reason": last_reason,
             "final_answer": final_answer,
@@ -443,6 +468,14 @@ def main():
     with open(args.out, "w") as f:
         f.write(text)
         f.write("\n")
+    if args.workspace_digest and args.stage_digest:
+        if args.workspace_digest != args.stage_digest:
+            print(
+                "measures: workspace digest mismatch: "
+                f"staged {args.stage_digest}, workspace {args.workspace_digest}",
+                file=sys.stderr,
+            )
+            raise SystemExit(4)
     if args.session_id_expected and session_id != args.session_id_expected:
         print(
             "measures: resumed session id mismatch: "

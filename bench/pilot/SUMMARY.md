@@ -6,9 +6,7 @@ The 30 single-behaviour sessions use the isolated adapter described in [ISOLATED
 
 The first session was `condition-3-payouts-r1.json`, `cost_usd` 0.086144. Forty times that cost is 3.44576. The rows below are the sessions that followed that check.
 
-**Invalid pilot/debug evidence, excluded from the frozen reference arm.** The five condition-1 settlements rows and the five condition-1 pairs they belong to are not reference results. The resumed settlements session stayed attached to the payouts workspace while the harness measured and graded a separate, untouched settlements copy; every settlements row has grade note `no consumer output`. The numbers stay visible below for debugging, but none of these pairs may count in the frozen reference arm.
-
-Condition 1 settlements resumed the payouts session. `session_continued` is true in `condition-1-settlements-r1.json`, `condition-1-settlements-r2.json`, `condition-1-settlements-r3.json`, `condition-1-settlements-r4.json`, and `condition-1-settlements-r5.json`. Repeats 2 through 5 ran. These rows are the invalid debug evidence described above.
+Condition 1 settlements resumed the payouts session. `session_continued` is true in `condition-1-settlements-r1.json`, `condition-1-settlements-r2.json`, `condition-1-settlements-r3.json`, `condition-1-settlements-r4.json`, and `condition-1-settlements-r5.json`. Repeats 2 through 5 ran. These rows are the invalid debug evidence described below.
 
 <!-- behaviour-counts:start -->
 ## Single-behaviour counts

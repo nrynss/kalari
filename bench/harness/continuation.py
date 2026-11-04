@@ -14,7 +14,7 @@ import sqlite3
 import sys
 import tempfile
 
-FIELDS = ("session_id", "xdg", "workspace", "workspace_digest")
+FIELDS = ("session_id", "xdg", "workspace", "payouts_start_digest")
 
 
 def fail(message):
@@ -83,7 +83,7 @@ def cmd_check(args):
         ("STATE_SESSION_ID", doc["session_id"]),
         ("STATE_XDG", doc["xdg"]),
         ("STATE_WORKSPACE", doc["workspace"]),
-        ("STATE_WORKSPACE_DIGEST", doc["workspace_digest"]),
+        ("STATE_PAYOUTS_START_DIGEST", doc["payouts_start_digest"]),
     ):
         print(f"{name}={shlex.quote(value)}")
 
@@ -97,13 +97,15 @@ def cmd_save(args):
             fail(f"{name} must be an existing absolute directory: {value}")
     if not args.session_id:
         fail("session id is empty")
-    if not args.digest:
-        fail("workspace digest is empty")
+    if not args.start_digest:
+        fail("payouts start digest is empty")
     doc = {
         "session_id": args.session_id,
         "xdg": args.xdg,
         "workspace": args.workspace,
-        "workspace_digest": args.digest,
+        # Informational only: the payouts tree before the agent edits it.
+        # Nothing compares this with the settlements workspace.
+        "payouts_start_digest": args.start_digest,
     }
     os.makedirs(os.path.dirname(os.path.abspath(args.state)), exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=os.path.dirname(os.path.abspath(args.state)), prefix=".condition-1.")
@@ -128,7 +130,7 @@ def main():
     save.add_argument("--workspace", required=True)
     save.add_argument("--xdg", required=True)
     save.add_argument("--session-id", required=True)
-    save.add_argument("--digest", required=True)
+    save.add_argument("--start-digest", required=True)
     save.set_defaults(func=cmd_save)
     args = ap.parse_args()
     args.func(args)
