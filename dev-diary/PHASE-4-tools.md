@@ -130,7 +130,7 @@ requires:   [T4.5, T3.2, T3.3, T4.6a]
 fixture-ok: yes
 size:       M · frontier
 owns:       Kalari/Tools/Lesson.lean, Kalari/Tools/Run.lean (trusted truth artifact only)
-status:     in-review
+status:     done
 ```
 Lessons from **what verified runs showed**, not only from failures (bench/README.md, Where lessons come from). Three sources: a failure Clef attributes to `api_change`, and the fix that passed; a behaviour the differential check observed on a pass (boundary duplicates, a token on the final page); a behaviour the passing code had to handle (a short page mid-stream). Each written to Lambo with its change kind, observation, run and check. A failure Clef calls `flaky`, `test_setup` or `unrelated_bug` is never a lesson. Kalari decides what is recorded; the agent can propose, never write directly.
 
