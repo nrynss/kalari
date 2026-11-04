@@ -167,6 +167,8 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
         spent_units = 0
         cutoff_reason = None
         steps = 0
+        failures = {}
+        seen_failed_calls = set()
         offset = 0
         partial = b''
         try:
@@ -195,6 +197,24 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
                         continue
                     try:
                         event = json.loads(line)
+                        if event.get('type') == 'tool_use':
+                            part = event.get('part') or {}
+                            name = part.get('tool')
+                            state = part.get('state') or {}
+                            status = state.get('status')
+                            if isinstance(name, str) and name.startswith('kalari_'):
+                                if status == 'error':
+                                    call_id = part.get('callID') or part.get('id')
+                                    identity = (name, call_id) if isinstance(call_id, str) and call_id else None
+                                    if identity is None or identity not in seen_failed_calls:
+                                        failures[name] = failures.get(name, 0) + 1
+                                        if identity is not None: seen_failed_calls.add(identity)
+                                    if failures.get(name, 0) >= 2:
+                                        cutoff_reason = 'repeated_tool_failure'
+                                        break
+                                elif status == 'completed':
+                                    failures.pop(name, None)
+                            continue
                         if event.get('type') != 'step_finish': continue
                         tokens = event['part']['tokens']
                         cache = tokens.get('cache') or {}
@@ -246,7 +266,7 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
             out.write(json.dumps(sanitize(doc), ensure_ascii=True) + '\n')
     summary = execute([sys.executable, HERE/'summarize.py', result/'transcript.jsonl'], capture_output=True, text=True)
     measures = json.loads(summary.stdout)
-    measures.update({'elapsed_seconds': round(elapsed, 3), 'exit_code': rc, 'timed_out': timed_out, 'invalid_event_lines': bad, 'fixture': not a.live, 'cutoff_reason': cutoff_reason, 'completed_steps': steps, 'estimated_step_cost_usd': spent_units / 100_000_000})
+    measures.update({'elapsed_seconds': round(elapsed, 3), 'exit_code': rc, 'timed_out': timed_out, 'invalid_event_lines': bad, 'fixture': not a.live, 'cutoff_reason': cutoff_reason, 'completed_steps': steps, 'estimated_step_cost_usd': spent_units / 100_000_000, 'tool_failures': failures})
     grade = temp/'grade'; grade.mkdir()
     execute([HERE/'grade.sh', workspace, ROOT/'bench/harness/grade_runner.py', a.api_host, str(a.grade_port), grade])
     grade_file = grade/'result.jsonl'

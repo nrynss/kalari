@@ -14,6 +14,24 @@ cat > "$tmp/bin/opencode" <<'SH'
 #!/bin/sh
 if [ "$1" = --version ]; then echo '2.2.5'; exit; fi
 [ "$1" = run ] && [ "$2" = --standalone ] || exit 1
+if [ -e "$(dirname "$0")/RESETFAIL" ]; then
+ python3 - <<'PYCODE'
+import json
+for status,call in [('error','1'),('error','1'),('completed','2'),('error','3'),('completed','4')]:
+ print(json.dumps({'type':'tool_use','part':{'tool':'kalari_blast_radius','callID':call,'state':{'status':status}}}))
+PYCODE
+ exit
+fi
+if [ -e "$(dirname "$0")/TOOLFAIL" ]; then
+  python3 -u - "$(dirname "$0")/toolfail-child.pid" <<'PYCODE'
+import json,subprocess,sys,time
+child=subprocess.Popen(['sleep','300']); open(sys.argv[1],'w').write(str(child.pid))
+for name,status,call in [('kalari_blast_radius','error','1'),('kalari_recall_lessons','completed','2'),('kalari_blast_radius','error','3')]:
+ print(json.dumps({'type':'tool_use','part':{'tool':name,'callID':call,'state':{'status':status}}}),flush=True); time.sleep(.2)
+time.sleep(300)
+PYCODE
+  exit
+fi
 if [ -e "$(dirname "$0")/UNTERMINATED" ]; then
   python3 -u - <<'PYCODE'
 import json,time
@@ -133,4 +151,24 @@ python3 "$root/bench/kalari-arm/runner.py" --offline-fixture --tools "$tmp/bin" 
 python3 - "$tmp/unterminated/measures.json" <<'PYCODE'
 import json,sys
 m=json.load(open(sys.argv[1])); assert m['cutoff_reason']=='spend_cutoff' and m['completed_steps']==1 and m['estimated_step_cost_usd'] >= .20
+PYCODE
+
+rm "$tmp/bin/UNTERMINATED"
+touch "$tmp/bin/TOOLFAIL"
+python3 "$root/bench/kalari-arm/runner.py" --offline-fixture --tools "$tmp/bin" --opencode "$tmp/bin/opencode" --api-host 127.0.0.1 --result "$tmp/toolfail" >/dev/null
+python3 - "$tmp/toolfail/measures.json" <<'PYCODE'
+import json,sys
+m=json.load(open(sys.argv[1])); assert m['cutoff_reason']=='repeated_tool_failure' and m['tool_failures']['kalari_blast_radius']==2
+PYCODE
+child=$(cat "$tmp/bin/toolfail-child.pid")
+if kill -0 "$child" 2>/dev/null && [ "$(ps -o stat= -p "$child" | tr -d ' ')" != Z ]; then
+ echo 'tool failure cutoff left a descendant alive' >&2; exit 1
+fi
+
+rm "$tmp/bin/TOOLFAIL"
+touch "$tmp/bin/RESETFAIL"
+python3 "$root/bench/kalari-arm/runner.py" --offline-fixture --tools "$tmp/bin" --opencode "$tmp/bin/opencode" --api-host 127.0.0.1 --result "$tmp/resetfail" >/dev/null
+python3 - "$tmp/resetfail/measures.json" <<'PYCODE'
+import json,sys
+m=json.load(open(sys.argv[1])); assert m['cutoff_reason'] is None and not m['tool_failures']
 PYCODE

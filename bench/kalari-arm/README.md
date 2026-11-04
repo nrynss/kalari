@@ -67,3 +67,8 @@ not a verified provider-enforced spending cap. An in-flight request, delayed
 telemetry, Clef, price changes, and concurrent activity can put actual spending
 above the estimate. The runner terminates the process group and then removes
 its journaled sandboxes before grading.
+
+The runner also stops after two failed calls to the same Kalari tool, even if
+other tools run between them. A successful call to that tool resets its count;
+repeated events with the same call ID count once. This early stop is separate
+from, and does not strengthen, the soft spending cutoff.
