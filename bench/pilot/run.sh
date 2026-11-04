@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Pilot matrix for the reference arm. Prints the plan, and starts nothing unless --run
-# is present. --run calls bench/harness/run.sh. It does not deploy API servers.
+# Pilot matrix for the reference arm. Prints the plan. A behaviour row is never started:
+# the harness has no server switch, so --run on a behaviour exits non-zero and does not
+# call the harness or ssh. Condition rows for the full pair call bench/harness/run.sh
+# only with --run. This script does not deploy API servers.
 #
 #   bench/pilot/run.sh --list
 #   bench/pilot/run.sh --behaviour B1 --upgrade payouts --repeat 1
@@ -9,11 +11,9 @@
 #
 # Without --run the selected plan is printed and the process exits 2, except --list,
 # which prints the same plan and exits 0. The whole matrix is the default selection.
+# --run on that matrix refuses too, because it includes behaviour rows.
 #
-# Single-behaviour runs are fresh sessions: harness condition 3. They assume that
-# upgrade's live and grading servers were already started with --behaviours set to
-# that one id. This script cannot switch the servers; the harness has no such flag.
-# Condition runs assume the proposed pair (every behaviour on).
+# Condition runs are the proposed pair (every behaviour on).
 # Condition 1 is one session across both upgrades: payouts, then settlements on it.
 # Condition 2 is the same order, because the second upgrade reads the first's notes.
 set -euo pipefail
@@ -27,7 +27,7 @@ UPGRADE=""
 REPEAT=""
 
 usage() {
-  sed -n '2,18p' "$0" >&2
+  sed -n '2,19p' "$0" >&2
   exit 2
 }
 
@@ -91,10 +91,16 @@ if [[ -z $BEHAVIOUR && -z $CONDITION ]]; then
   cat <<'EOF'
 # 6 single-behaviour variants x 5 fresh sessions, then conditions 1, 2, 3 and 6
 # on the proposed pair, five times each. Condition 1 is one session across both
-# upgrades (payouts, then settlements on that session). 70 harness calls.
-# Behaviour calls need the servers started with that one --behaviours id.
-# Nothing here is started unless --run is passed.
+# upgrades (payouts, then settlements on that session).
+# Behaviour rows are listed only. --run refuses them: the harness has no server switch yet.
+# Condition rows are not started unless --run is passed.
 EOF
+fi
+
+# Behaviour rows would hit the full-pair servers. The harness cannot select one behaviour.
+if [[ $MODE == run && -z $CONDITION ]]; then
+  echo "refusing behaviour run: the harness has no server switch yet" >&2
+  exit 2
 fi
 
 run_harness() { # condition upgrade dest
@@ -112,9 +118,8 @@ handle_behaviour() { # upgrade behaviour repeat
     printf '%s\n' "$line"
     return 0
   fi
-  echo "$line" >&2
-  echo "servers for $upgrade must already be --behaviours $behaviour" >&2
-  run_harness 3 "$upgrade" "bench/pilot/results/behaviour-${upgrade}-${behaviour}-r${rep}.json"
+  echo "refusing behaviour $upgrade $behaviour: the harness has no server switch yet" >&2
+  exit 2
 }
 
 handle_condition() { # condition upgrade repeat
