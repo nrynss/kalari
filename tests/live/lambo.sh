@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Live Lambo check: fresh store, payouts lesson, three citing runs, Solo promotion.
-# Not part of the gate. Needs lambo on PATH and VULTR_INFERENCE_API_KEY,
-# or the vultr-inference keyring entry. Run after `lake build`.
-# The key is never printed. The temp Lean file and the store are deleted on exit.
+# Not part of the gate. Needs VULTR_INFERENCE_API_KEY, or the vultr-inference
+# keyring entry, and network to fetch the Lambo 0.9.0 release. Run after `lake build`.
+# The key is never printed. The temp Lean file, the release binary, and the store
+# are deleted on exit.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -17,11 +18,6 @@ fi
 
 if [[ ! -f .lake/build/lib/lean/Kalari/Lambo.olean ]]; then
   echo "missing Kalari.Lambo olean; run lake build before this live test" >&2
-  exit 1
-fi
-
-if ! command -v lambo >/dev/null; then
-  echo "lambo is not on PATH" >&2
   exit 1
 fi
 
@@ -106,7 +102,31 @@ usage_snapshot() {
   fi
 }
 
-say "lambo_version=$(lambo --version)"
+# Published with the v0.9.0 release asset lambo-0.9.0-linux-x86_64.sha256.
+# A mismatch stops the run. PATH's lambo is not used.
+lambo_sha256=21f334dc4752625970ba1a4cf9760c7b901b7975ddf19f5ee024747678e7b0bd
+lambo_url=https://github.com/nrynss/lambo/releases/download/v0.9.0/lambo-0.9.0-linux-x86_64
+lambo_bin="${work}/lambo-0.9.0-linux-x86_64"
+if ! curl -fsSL --retry 3 --retry-delay 2 -o "$lambo_bin" "$lambo_url"; then
+  echo "lambo 0.9.0 download failed" >&2
+  exit 1
+fi
+got_sha=$(sha256sum "$lambo_bin" | awk '{print $1}')
+if [[ "$got_sha" != "$lambo_sha256" ]]; then
+  echo "lambo 0.9.0 checksum did not match" >&2
+  exit 1
+fi
+chmod 755 "$lambo_bin"
+mkdir -p "${work}/bin"
+ln -s "$lambo_bin" "${work}/bin/lambo"
+export PATH="${work}/bin:${PATH}"
+lambo_version=$(lambo --version)
+if [[ "$lambo_version" != "lambo 0.9.0" ]]; then
+  echo "lambo --version is ${lambo_version}, want lambo 0.9.0" >&2
+  exit 1
+fi
+say "lambo_version=${lambo_version}"
+say "lambo_sha256=ok"
 
 cat >"$toml" <<EOF
 promotion_policy = "Solo"
