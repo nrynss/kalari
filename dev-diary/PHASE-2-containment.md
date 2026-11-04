@@ -130,6 +130,20 @@ Surprises:
 
 ---
 
+### T2.5: Image pulls that don't depend on Docker Hub
+```yaml
+requires:   [T2.3]
+fixture-ok: yes
+size:       XS · mid
+owns:       Kalari/Sandbox/Microsandbox.lean
+status:     not-started
+```
+Found after T2.3 closed (research/sandbox.md, On the laptop too): Docker Hub pulls through msb fail intermittently on the laptop ("Not authorized" on the first tries of a new image). Add a setup step that pulls each configured image with retries and backoff, and pass `--pull never` on every `create`, so a run never depends on Docker Hub. A missing image is a setup error naming the image, never a run failure.
+
+**Done when:** tests against recordings cover a pull that fails twice then succeeds, a pull that never succeeds (a clear error), and `--pull never` on every create argv.
+
+---
+
 ## Exit Criteria
 
 - [x] The gate's four properties proved.
