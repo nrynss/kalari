@@ -126,6 +126,16 @@ def awaitReceipt (c : Client) (receipt : String) (waitMs : Nat := 10000) : IO Js
   unless state == "applied" do throw <| .userError s!"write receipt {receipt}: {state}"
   return result
 
+/-- A settled write's first created concept ID; refuses writes that matched nothing. -/
+def awaitConceptId (c : Client) (receipt : String) (waitMs : Nat := 10000) : IO String := do
+  let outcome ← awaitReceipt c receipt waitMs
+  let created ← IO.ofExcept (arr outcome "created")
+  let matched ← IO.ofExcept (arr outcome "matched")
+  let id := (created ++ matched)[0]?.getD Json.null
+  let id ← IO.ofExcept (Json.getStr? id)
+  if id.isEmpty then throw <| .userError "Lambo applied write returned an empty concept ID"
+  return id
+
 /-- Write and wait before a dependent write or read. -/
 def write (c : Client) (kind content : String) (dependsOn against : List String := []) : IO Json := do
   let receipt ← derive c kind content dependsOn against
@@ -218,21 +228,43 @@ private def fixtureChecks : IO Unit := do
 and `recall` as IDs found among recall hits. Product flows that need typed
 resources, constraints, citations, or stale status use `Client` directly. -/
 
+private def validNodeId (id : String) : Bool :=
+  let chunks := id.splitOn "-"
+  chunks.length == 5 &&
+    (chunks.map String.length) == [8, 4, 4, 4, 12] &&
+    id.toList.all fun c => c == '-' || c.isDigit || ('a' ≤ c && c ≤ 'f') || ('A' ≤ c && c ≤ 'F')
+
 private def dependentIds (g : Json) : IO (List String) := do
   let focus ← IO.ofExcept (field g "focus")
+  if (field focus "dependents_truncated").toOption == some (Json.bool true) then
+    throw <| .userError "Lambo truncated dependent IDs"
   let deps ← IO.ofExcept (arr focus "dependents")
-  return deps.toList.filterMap fun d => (str d "node_id").toOption
+  let mut ids := []
+  for d in deps do
+    let id ← IO.ofExcept (str d "node_id")
+    unless validNodeId id do throw <| .userError s!"malformed Lambo dependent node ID: {id}"
+    ids := ids ++ [id]
+  return ids
 
 private def recallIds (g : Json) : IO (List String) := do
   let hits ← IO.ofExcept (arr g "hits")
   return hits.toList.filterMap fun h => (str h "node_id").toOption
 
-/-- Lossy frozen-interface adapter. Each string write is an observation. -/
-def memoryClient (config : Kalari.Config.Lambo) : IO Kalari.Backend.MemoryClient := do
+/-- The frozen backend plus its owning typed client and lifecycle operation. -/
+structure MemoryAdapter where
+  client : Client
+  backend : Kalari.Backend.MemoryClient
+  shutdown : IO Unit
+
+/-- Lossy frozen-interface adapter. String writes become observations and
+return the applied concept ID. Each adapter owns one child lifecycle. -/
+def memoryClient (config : Kalari.Config.Lambo) : IO MemoryAdapter := do
   let c ← create config
-  return {
+  let backend : Kalari.Backend.MemoryClient := {
     derive := fun content => do
-      try return .ok (← derive c "observation" content)
+      try
+        let receipt ← derive c "observation" content
+        return .ok (← awaitConceptId c receipt)
       catch e => return .error e.toString
     inspect := fun focus => do
       try return .ok (← dependentIds (← inspect c focus))
@@ -241,9 +273,12 @@ def memoryClient (config : Kalari.Config.Lambo) : IO Kalari.Backend.MemoryClient
       try return .ok (← recallIds (← «recall» c query))
       catch e => return .error e.toString
     against := fun focus => do
-      try return .ok (← derive c "observation" s!"against: {focus}" [] [focus])
+      try
+        let receipt ← derive c "observation" s!"against: {focus}" [] [focus]
+        return .ok (← awaitConceptId c receipt)
       catch e => return .error e.toString
   }
+  return { client := c, backend, shutdown := shutdown c }
 
 private def transcriptServer : String := String.intercalate "\n" [
   "import json, sys",
@@ -257,20 +292,46 @@ private def transcriptServer : String := String.intercalate "\n" [
   "        elif method == 'tools/call': responses.setdefault(pending.get('params', {}).get('name'), []).append(row['msg'])",
   "        pending = None",
   "positions = {}",
+  "last_receipt = None",
+  "death_marker = sys.argv[2] if len(sys.argv) > 2 else None",
   "for line in sys.stdin:",
   "    request = json.loads(line); method = request.get('method')",
   "    if method == 'notifications/initialized': continue",
   "    key = 'initialize' if method == 'initialize' else request.get('params', {}).get('name') if method == 'tools/call' else None",
   "    choices = responses.get(key, [])",
   "    if not choices: continue",
+  "    args = request.get('params', {}).get('arguments', {})",
+  "    assert args.get('agent_id') == 'kalari' if method == 'tools/call' else True",
+  "    if key == 'lambo_derive':",
+  "        c = args['concepts'][0]; assert set(c) >= {'concept_type','content','depends_on','against'}",
+  "        expected = [('resource','pagination_changed'), ('constraint','When a list endpoint starts paging, follow next_page_token until absent; every record imported exactly once. check: chk-paging-001'), ('observation','run after clean child restart')]",
+  "        if 'against.jsonl' in sys.argv[1]: expected = [('observation','run r-004: contradictory outcome')]",
+  "        if len(sys.argv) > 2 and sys.argv[2] == 'adapter': expected = [('observation','simple observation'), ('observation','against: 36b116fe')]",
+  "        i = positions.get(key, 0); assert (c['concept_type'], c['content']) == expected[min(i, len(expected)-1)]",
+  "        if 'against.jsonl' in sys.argv[1]: assert c.get('against') == ['36b116fe']",
+  "        elif len(sys.argv) > 2 and sys.argv[2] == 'adapter' and c['content'].startswith('against:'): assert c.get('against') == ['36b116fe']",
+  "        elif len(sys.argv) > 2 and sys.argv[2] == 'adapter': assert c.get('against') == [] and c.get('depends_on') == []",
+  "        elif c['concept_type'] == 'constraint': assert c.get('depends_on') == ['pagination_changed'] and c.get('against') == []",
+  "        elif c['concept_type'] == 'resource': assert c.get('depends_on') == [] and c.get('against') == []",
+  "    elif key == 'lambo_stats': assert args.get('receipt') == last_receipt and args.get('wait_ms') == 10000",
+  "    elif key == 'lambo_inspect':",
+  "        assert args.get('depth') == 1",
+  "        if 'against.jsonl' in sys.argv[1]: assert args.get('focus') == '36b116fe'",
+  "        elif args.get('focus') == 'pagination_changed': pass",
+  "        else: assert len(args.get('focus', '')) == 36",
   "    i = 0 if key == 'lambo_stats' else positions.get(key, 0); source = dict(choices[min(i, len(choices)-1)])",
   "    positions[key] = i + 1; source['id'] = request.get('id')",
-  "    print(json.dumps(source, separators=(',', ':')), flush=True)" ]
+  "    print(json.dumps(source, separators=(',', ':')), flush=True)",
+  "    if key == 'lambo_derive': last_receipt = source.get('result', {}).get('structuredContent', {}).get('receipt')",
+  "    if death_marker and death_marker.endswith('.death') and not __import__('os').path.exists(death_marker) and key == 'lambo_derive': open(death_marker, 'w').close(); __import__('os')._exit(0)" ]
 
-private def replayConfig (transcript : String) : Kalari.Config.Lambo :=
-  { command := ["python3", "-c", transcriptServer, transcript], config_path := "testdata/lambo/lambo.toml" }
+private def replayConfig (transcript : String) (mode : Option String := none) : Kalari.Config.Lambo :=
+  { command := ["python3", "-c", transcriptServer, transcript] ++ mode.toList,
+    config_path := "testdata/lambo/lambo.toml" }
 
 private def childReplayChecks : IO Unit := do
+  let deathMarker := "/tmp/kalari-lambo-child-death-once.death"
+  try IO.FS.removeFile deathMarker catch _ => pure ()
   let c ← create (replayConfig "testdata/lambo/receipt.jsonl")
   let receipt ← derive c "resource" "pagination_changed"
   let _ ← awaitReceipt c receipt
@@ -281,7 +342,7 @@ private def childReplayChecks : IO Unit := do
   unless found.any (·.label.contains "chk-paging-001") do
     throw <| .userError "Lambo child transcript did not return the written lesson"
   shutdown c
-  let restartedReceipt ← derive c "observation" "run after clean child restart"
+  let restartedReceipt ← derive c "resource" "pagination_changed"
   let _ ← awaitReceipt c restartedReceipt
   shutdown c
   let c2 ← create (replayConfig "testdata/lambo/against.jsonl")
@@ -291,6 +352,30 @@ private def childReplayChecks : IO Unit := do
   let stale ← IO.ofExcept (hasContradiction (← inspect c2 "36b116fe"))
   unless stale do throw <| .userError "Lambo child transcript omitted contradiction edge"
   shutdown c2
+  let adapter ← memoryClient (replayConfig "testdata/lambo/receipt.jsonl" (some "adapter"))
+  let derived ← adapter.backend.derive "simple observation"
+  let derivedId ← match derived with
+    | .ok id => pure id
+    | .error e => throw <| .userError e
+  unless validNodeId derivedId do throw <| .userError "MemoryClient derive did not return a concept ID"
+  let contradicted ← adapter.backend.against "36b116fe"
+  match contradicted with
+  | .ok id => unless validNodeId id do throw <| .userError "MemoryClient against did not return a concept ID"
+  | .error e => throw <| .userError e
+  adapter.shutdown
+  let c3 ← create (replayConfig "testdata/lambo/receipt.jsonl" (some deathMarker))
+  let first ← derive c3 "resource" "pagination_changed"
+  IO.sleep 50
+  let second ← derive c3 "resource" "pagination_changed"
+  let _ ← awaitReceipt c3 second
+  if first.isEmpty then throw <| .userError "Lambo child-death fixture did not acknowledge first write"
+  shutdown c3
+  try IO.FS.removeFile deathMarker catch _ => pure ()
+  let malformed := obj [("focus", obj [("dependents", Json.arr #[obj [("node_id", "bad")]])])]
+  let truncated := obj [("focus", obj [("dependents_truncated", Json.bool true), ("dependents", Json.arr #[])])]
+  let malformedRejected ← try let _ ← dependentIds malformed; pure false catch _ => pure true
+  let truncatedRejected ← try let _ ← dependentIds truncated; pure false catch _ => pure true
+  unless malformedRejected && truncatedRejected do throw <| .userError "MemoryClient accepted malformed or truncated dependent IDs"
 
 #eval childReplayChecks
 
