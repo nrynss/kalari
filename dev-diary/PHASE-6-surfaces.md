@@ -12,11 +12,13 @@ requires:   [T4.2]
 fixture-ok: yes
 size:       M · mid
 owns:       Kalari/Http.lean
-status:     claimed:gpt-6.1-terra
+status:     in-review
 ```
 `Std.Http`, bound to 127.0.0.1 behind Caddy, read-only over the evidence store: sessions, runs (with verdict, checks, logs, timings, tokens), lessons, and the benchmark results. Body caps and 400/404/413 as in `Examples/HttpServer.lean`. No write endpoint: the web app shows; agents act through MCP.
 
 **Done when:** each endpoint tested against a fixture evidence store; oversized and malformed requests answered correctly.
+
+Implementation: `Kalari.Http.serve` binds loopback and reads a shared evidence store. GET `/api/sessions`, `/api/runs`, `/api/lessons`, `/api/benchmark`, `/api/sessions/<id>` and `/api/runs/<id>` return JSON; details retain all associated records. Benchmark results are records of kind `benchmark`; no benchmark producer currently writes that kind. Empty request bodies are required; methods other than GET have no route. Fixture checks cover all routes and missing and malformed paths. A local HTTP probe observed 200 for `/api/runs`, 400 for an empty run ID, 404 for POST, and 413 for a 4097-byte body. The executable integration is outside this task's ownership: `kalari serve` does not yet start this server.
 
 ---
 
