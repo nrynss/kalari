@@ -50,7 +50,7 @@ check settlements correct          "$sp" PASS
 # Dedicated observed instance: no page requests are used for readiness, so the
 # trace contains only this one real reference-consumer run.
 op=$((sp + 1))
-python3 -I apis/payouts/server.py --port "$op" --v1 off --trace "$tmp/observed.jsonl" >"$tmp/observed.log" 2>&1 &
+python3 -I apis/payouts/server.py --port "$op" --v1 off --trace "$tmp/observed.jsonl" --trace-client 127.0.0.1 >"$tmp/observed.log" 2>&1 &
 observer_pid=$!
 for _ in $(seq 1 50); do
   curl -s "http://127.0.0.1:$op/health" >/dev/null 2>&1 && break

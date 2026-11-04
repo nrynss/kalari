@@ -58,6 +58,7 @@ def read(token: str):
 
 class Handler(BaseHTTPRequestHandler):
     v1_enabled = True
+    trace_client = None
 
     def reply(self, status, obj):
         data = json.dumps(obj).encode()
@@ -68,6 +69,8 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self):
+        if self.trace_client and self.client_address[0] != self.trace_client:
+            return self.reply(403, {"error": "forbidden"})
         url = urlparse(self.path)
         q = {k: v[-1] for k, v in parse_qs(url.query).items()}
         if url.path == "/v1/payouts":
@@ -126,14 +129,19 @@ def main():
     ap.add_argument("--port", type=int, default=18080)
     ap.add_argument("--v1", choices=["on", "off"], default="on")
     ap.add_argument("--trace", help="exclusive host-owned page trace file")
+    ap.add_argument("--trace-client", help="only this client IPv4 may access an observed instance")
     a = ap.parse_args()
     global TRACE
     if a.trace:
         fd = os.open(a.trace, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         TRACE = os.fdopen(fd, "w", encoding="utf-8")
+    if bool(a.trace) != bool(a.trace_client):
+        ap.error("--trace and --trace-client must be used together")
     Handler.v1_enabled = a.v1 == "on"
+    Handler.trace_client = a.trace_client
+    server = ThreadingHTTPServer((a.bind, a.port), Handler)
     print(f"payouts listening on {a.bind}:{a.port} (v1 {a.v1})", flush=True)
-    ThreadingHTTPServer((a.bind, a.port), Handler).serve_forever()
+    server.serve_forever()
 
 
 if __name__ == "__main__":

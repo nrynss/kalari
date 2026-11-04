@@ -15,10 +15,54 @@ private def guestWorkspace := "/workspace"
 private def supervisor := "/usr/local/bin/kalari-aashaan"
 private def artifactCap := 4 * 1024 * 1024
 
-/-- A trusted host starts a dedicated observed API for this run and returns a
-closure that stops it and reads its bounded trace. The service must ensure the
-candidate actually targets that instance; this is never supplied by an agent. -/
-abbrev Observer := String → IO (Except String (IO (Except String String)))
+/-- The endpoint is the candidate's sole permitted destination. The source
+address is an exclusive guest address provisioned by the trusted host. -/
+structure Observer where
+  endpoint : AllowHost
+  start : String → System.FilePath → IO (Except String (IO (Except String String)))
+
+/-- Start a dedicated observed payouts server on the trusted host. The caller
+must reserve the IP/port and supply the candidate guest's exclusive IPv4 address. -/
+def payoutsObserver (serverPath : String) (endpoint : AllowHost) (guestIp : String) : Observer := {
+  endpoint
+  start := fun _ dir => do
+    if (Std.Net.IPv4Addr.ofString endpoint.host).isNone ||
+        (Std.Net.IPv4Addr.ofString guestIp).isNone || endpoint.port == 0 || endpoint.port > 65535 then
+      return .error "observer requires IPv4 addresses and a valid port"
+    let trace := dir / "payouts-pages.jsonl"
+    try
+      let child ← IO.Process.spawn { cmd := "python3", args := #["-I", serverPath, "--bind", endpoint.host, "--port", toString endpoint.port, "--v1", "off", "--trace", trace.toString, "--trace-client", guestIp], stdin := .null, stdout := .piped, stderr := .inherit }
+      let ready ← IO.asTask child.stdout.getLine Task.Priority.dedicated
+      let started ← IO.monoMsNow
+      repeat
+        if ← IO.hasFinished ready then break
+        if (← IO.monoMsNow) - started >= 5000 then
+          child.kill
+          discard child.wait
+          return .error "observer startup timeout"
+        IO.sleep 10
+      match ready.get with
+      | .error _ =>
+        child.kill
+        discard child.wait
+        return .error "observer startup failed"
+      | .ok line =>
+        unless line.startsWith "payouts listening on " do
+          child.kill
+          discard child.wait
+          return .error "observer startup failed"
+      return .ok (do
+        try
+          child.kill
+          discard child.wait
+          let data ← IO.FS.readBinFile trace
+          if data.size > 262144 then return .error "oversized page trace"
+          match String.fromUTF8? data with
+          | none => return .error "invalid page trace encoding"
+          | some text => return .ok text
+        catch _ => return .error "observer cleanup or trace read failed")
+    catch _ => return .error "observer launch failed"
+}
 
 private structure PageEvent where
   request : String
@@ -159,6 +203,8 @@ private def admit (ctx : Context) (request : RunRequest) : Except String Unit :=
   unless Gate.segmentOk ctx.artifact && ctx.artifact.toList.all
       (fun c => c.isAlphanum || c == '.' || c == '-' || c == '_') do
     throw "setup: invalid JSONL artifact name"
+  if let some observer := ctx.observer then
+    unless request.allowlist == [observer.endpoint] do throw "setup: observer endpoint must be the sole candidate allowlist entry"
   for check in ctx.checks do
     permit ctx { request with workspace := ctx.checkWorkspace, command := check.command }
 
@@ -388,8 +434,8 @@ def run (runtime : Runtime) (ctx : Context) (request : RunRequest) : IO (Except 
     requireStep "image pull" (← liftM (Microsandbox.ensureImage runtime.runner ctx.image 4096 runtime.wait))
     let finish ← match ctx.observer with
       | none => pure none
-      | some start =>
-        match ← liftM (start runId) with
+      | some observer =>
+        match ← liftM (observer.start runId dir) with
         | .error e => throw s!"observer start: {e}"
         | .ok stop => pure (some stop)
     let candidateResult ← liftM <| try (execute runtime ctx name request allow).run
@@ -650,8 +696,10 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
   verify ((pageObservations (trace.toSlice.dropEnd 1).toString).isOk == false) "truncated trace accepted"
   verify ((pageObservations (trace.replace "\"request\":\"a\"" "\"request\":\"x\"")).isOk == false) "ambiguous trace accepted"
   let stopped ← IO.mkRef false
-  let observer : Observer := fun _ => pure (.ok (do stopped.set true; pure (.ok trace)))
+  let observer : Observer := { endpoint := allow.headD {host := "", port := 0}, start := fun _ _ => pure (.ok (do stopped.set true; pure (.ok trace))) }
   let observed := { ctx with observer := some observer }
+  let mismatch ← run (fixtureRuntime calls "correct" caps truth duplicateRows tampered existsRef) observed { req with command := ["python3", "/candidate/correct.py"], allowlist := [] }
+  verify (mismatch matches .error "setup: observer endpoint must be the sole candidate allowlist entry") "unrelated endpoint was accepted"
   let obsCalls ← IO.mkRef []
   let obsTamper ← IO.mkRef false
   let obsExists ← IO.mkRef false
@@ -662,7 +710,7 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
   let failedRun ← expectOk (← run (fixtureRuntime obsCalls "no_dedupe" caps truth duplicateRows obsTamper obsExists) observed { req with command := ["python3", "/candidate/no_dedupe.py"] })
   let failedRecords := Kalari.Evidence.byRun (← Kalari.Evidence.load store) failedRun.run_id
   verify (!failedRun.passed && (← stopped.get) && !(failedRecords.any (fun r => r.kind == "page-observation"))) "failed run emitted observations or observer leaked"
-  let invalid : Observer := fun _ => pure (.ok (pure (.ok "bad")))
+  let invalid : Observer := { endpoint := allow.headD {host := "", port := 0}, start := fun _ _ => pure (.ok (pure (.ok "bad"))) }
   let rejectedTrace ← run (fixtureRuntime obsCalls "correct" caps truth duplicateRows obsTamper obsExists) { ctx with observer := some invalid } { req with command := ["python3", "/candidate/correct.py"] }
   verify (rejectedTrace.isOk == false) "invalid observed run accepted"
   IO.println "run observer: complete linked trace accepted; malformed trace rejected"
@@ -676,6 +724,25 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
   some ⟨0, 0, 0, 0⟩
 
 #eval exercise
+private def realObserver : IO Unit := IO.FS.withTempDir fun dir => do
+  let portResult ← IO.Process.output { cmd := "python3", args := #["-c", "import socket; s=socket.socket(); s.bind(('127.0.0.1',0)); print(s.getsockname()[1]); s.close()"] }
+  let some port := portResult.stdout.trimAscii.toString.toNat? | throw <| .userError "no test port"
+  let observer := payoutsObserver "bench/apis/payouts/server.py" { host := "127.0.0.1", port } "127.0.0.1"
+  let stop ← expectOk (← observer.start "real-payouts" dir)
+  let denied ← IO.Process.output { cmd := "python3", args := #["-c", "import socket,sys; s=socket.create_connection(('127.0.0.1',int(sys.argv[1])), source_address=('127.0.0.2',0)); s.sendall(b'GET /v2/payouts HTTP/1.0\\r\\n\\r\\n'); assert b' 403 ' in s.recv(128)", toString port] }
+  unless denied.exitCode == 0 do
+    discard stop
+    throw <| .userError "observer accepted another source address"
+  let run ← IO.Process.output { cmd := "python3", args := #["-I", "bench/apis/payouts/reference/correct.py", "--base-url", s!"http://127.0.0.1:{port}", "--out", (dir / "payouts.jsonl").toString] }
+  let result ← stop
+  let trace ← expectOk result
+  unless run.exitCode == 0 && (pageObservations trace).toOption == some ["boundary_overlap_one", "final_page_token"] do
+    throw <| .userError "real observer did not capture reference run"
+  let grade ← IO.Process.output { cmd := "python3", args := #["-I", "bench/graders/grade.py", "payouts", (dir / "payouts.jsonl").toString] }
+  unless grade.exitCode == 0 && grade.stdout.contains "\"verdict\": \"PASS\"" do throw <| .userError "observed reference did not pass grader"
+  IO.println "observer actual server, reference consumer and grader: PASS"
+
+#eval realObserver
 
 end Kalari.Tools.Run
 
