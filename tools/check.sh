@@ -14,4 +14,6 @@ echo "-- examples"
 tests/examples.sh
 echo "-- benchmark quirks"
 bench/tests/quirks.sh
+echo "-- web evidence"
+web/check.sh
 echo "gate passed"
