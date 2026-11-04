@@ -1,0 +1,149 @@
+{
+  "condition": 3,
+  "upgrade": "payouts",
+  "arm": "reference",
+  "setup": "OpenCode 2.2.5 with microsandbox-mcp, no Kalari tools",
+  "api_base": "the VM's public address",
+  "live_port": 18080,
+  "grading_port": 18090,
+  "prompt": "upgrade.txt",
+  "opencode_version": "opencode v2.2.5",
+  "session_continued": false,
+  "notes_attached": false,
+  "session_cap_s": 1200,
+  "session_capped": false,
+  "measures": {
+    "verdict": "PASS",
+    "right_first_time": true,
+    "sandbox_runs": 3,
+    "wall_time_s": 25.337,
+    "time_stuck_s": 0,
+    "tokens_input": 365885,
+    "tokens_output": 7378,
+    "records_lost": 0,
+    "records_duplicated": 0
+  },
+  "sandbox_runs_against_v1": 0,
+  "sandbox_runs_against_v2": 3,
+  "records_extra": 0,
+  "records_mismatched": 0,
+  "grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "expected": 2431,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "first_v2_grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "expected": 2431,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "right_first_time_basis": "snapshot",
+  "cost_usd": 0.05931,
+  "cost_note": "DeepSeek V4.1 Flash list price, cached input counted as input, no cache discount",
+  "usage_delta": [
+    {
+      "model": "clef",
+      "input": 0,
+      "output": 0
+    },
+    {
+      "model": "deepseek-v4.1-flash-1017",
+      "input": 365885,
+      "output": 7378
+    },
+    {
+      "model": "qwen3-embedding-4b",
+      "input": 0,
+      "output": 0
+    }
+  ],
+  "opencode_tokens": {
+    "steps": 16,
+    "input": 28605,
+    "output": 3804,
+    "reasoning": 3574,
+    "cache_read": 337280
+  },
+  "consumer_runs": [
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 1.544,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 1.561,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 1.519,
+      "timed_out": false,
+      "basis": "snapshot"
+    }
+  ],
+  "event_summary": {
+    "lines": 55,
+    "unparsed_lines": 0,
+    "types": {
+      "step_start": 16,
+      "tool_use": 22,
+      "step_finish": 16,
+      "text": 1
+    },
+    "tools": {
+      "read": 10,
+      "execute": 9,
+      "write": 1,
+      "edit": 2
+    },
+    "steps": 16,
+    "bash_denied": 0,
+    "sandbox_names": [
+      "payout-sync-work"
+    ],
+    "last_reason": "stop",
+    "final_answer": "Upgraded `payout_sync.py` from the v1 single-response endpoint to the v2 export API.\n\nChanges:\n- Uses `GET /v2/payouts` instead of `/v1/payouts`.\n- Follows opaque `cursor` values until `drained` is true, rather than assuming one response contains everything.\n- Deduplicates on payout `id`, since v2 windows overlap at their edges.\n- Does not treat a short window as completion.\n- Restarts once without a cursor if the server returns `400 invalid_cursor`, while preserving deduplication.\n\nVerified against `http://the VM's public address:18080`:\n- Synced **2431** payouts.\n- **0 duplicate IDs**.\n- Exact same payout set and creation order as v1.\n- Trailing-slash base URL also works.\n\nNo output file was left in the workspace; verification wrote to `/tmp` inside an isolated sandbox.",
+    "stderr_excerpt": "",
+    "diff_stat": "payout_sync.py | 50 ++++++++++++++++++++++++++++++++++++++++++++++++--\n 1 file changed, 48 insertions(+), 2 deletions(-)"
+  },
+  "grader_runs": {
+    "final": {
+      "status": "EXIT 0",
+      "log_excerpt": "synced 2431 payouts\n"
+    },
+    "first": {
+      "status": "EXIT 0",
+      "log_excerpt": "synced 2431 payouts\n"
+    }
+  },
+  "cleanup": {
+    "sandboxes_removed": [],
+    "sandboxes_left": [],
+    "processes_left": []
+  },
+  "process_elapsed_s": 27.0,
+  "opencode_exit": 0
+}
