@@ -47,8 +47,8 @@ if a.offline_fixture and not (tools / '.kalari-offline-fixture').is_file():
     p.error('offline fake tools marker missing')
 if not opencode.is_file() or not os.access(opencode, os.X_OK):
     p.error('OpenCode must be executable')
-if not 1 <= a.timeout <= 60:
-    p.error('timeout must be 1..60 seconds')
+if not 1 <= a.timeout <= 120:
+    p.error('timeout must be 1..120 seconds')
 a.result.mkdir(mode=0o700, parents=True, exist_ok=False)
 result = a.result.resolve(strict=True)
 # Fixture subprocesses receive a small, explicit environment. This is not a
@@ -120,18 +120,27 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
             if not ledger.exists(): return None
             errors = []
             names = set(ledger.read_text().splitlines()) - existing
+            try:
+                rows = execute([real_msb, 'list', '--format', 'json'], capture_output=True, text=True)
+                present = {x['name'] for x in json.loads(rows.stdout)}
+            except Exception:
+                present = names
+                errors.append('sandbox cleanup initial listing failed')
+            failed = set()
             for name in names:
                 if not re.fullmatch(r'kalari-[A-Za-z0-9._-]+', name):
                     errors.append('invalid sandbox name in private ledger')
                     continue
-                removed = subprocess.run([str(real_msb), 'remove', '-f', name], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                if removed.returncode: errors.append('sandbox removal command failed')
+                if name in present:
+                    removed = subprocess.run([str(real_msb), 'remove', '-f', name], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    if removed.returncode: failed.add(name)
             try:
                 rows = execute([real_msb, 'list', '--format', 'json'], capture_output=True, text=True)
                 left = names & {x['name'] for x in json.loads(rows.stdout)}
             except Exception:
                 left = sorted(names)
                 errors.append('sandbox cleanup verification failed')
+            if failed.intersection(left): errors.append('sandbox removal command failed')
             (result/'cleanup.json').write_text(json.dumps({'left': sorted(left), 'tracked': len(names), 'errors': errors}) + '\n')
             if left: errors.append('session sandboxes remain')
             return '; '.join(errors) if errors else None
@@ -157,6 +166,16 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
     if '2.2.5' not in ver:
         raise SystemExit('OpenCode version must be 2.2.5')
     workspace = Path(setup['workspace'])
+    proxy = None
+    proxy_state = None
+    if a.live:
+        import bootstrap_proxy
+        proxy, proxy_state = bootstrap_proxy.start('https://api.vultrinference.com/v1', workspace/'README.md')
+        provider_config = xdg/'opencode.json'
+        provider_doc = json.loads(provider_config.read_text())
+        provider_doc['providers']['vultr']['settings']['baseURL'] = f'http://127.0.0.1:{proxy.server_port}/v1'
+        provider_config.write_text(json.dumps(provider_doc))
+        atexit.register(proxy.shutdown)
     prompt = (ROOT/'bench/prompts/upgrade.txt').read_text().replace('{BASE_URL}', f'http://{a.api_host}:{a.api_port}')
     prompt += ('\nCall kalari_what_changed first, then pass its returned change IDs (not change-kind names) to kalari_blast_radius. Call kalari_recall_lessons with the returned change kinds. After editing, call kalari_run_in_sandbox and then kalari_record_lesson with the returned run_id. '
                f'The trusted specs are {setup["old_spec"]} and {setup["new_spec"]}; workspace is {workspace}. '
@@ -269,6 +288,9 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
             except ProcessLookupError: pass
             for sig, handler in old_handlers.items(): signal.signal(sig, handler)
     elapsed = time.monotonic() - start
+    if proxy is not None:
+        proxy.shutdown()
+        atexit.unregister(proxy.shutdown)
     # Persist the sanitized session transcript before cleanup can fail. This
     # lets the caller diagnose a cleanup exception without losing telemetry.
     bad = 0
@@ -288,7 +310,7 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
         cleanup_error = None
     summary = execute([sys.executable, HERE/'summarize.py', result/'transcript.jsonl'], capture_output=True, text=True)
     measures = json.loads(summary.stdout)
-    measures.update({'elapsed_seconds': round(elapsed, 3), 'exit_code': rc, 'timed_out': timed_out, 'invalid_event_lines': bad, 'fixture': not a.live, 'cutoff_reason': cutoff_reason, 'completed_steps': steps, 'estimated_step_cost_usd': spent_units / 100_000_000, 'tool_failures': failures, 'interrupted_signal': interrupted['signal']})
+    measures.update({'elapsed_seconds': round(elapsed, 3), 'exit_code': rc, 'timed_out': timed_out, 'invalid_event_lines': bad, 'fixture': not a.live, 'cutoff_reason': cutoff_reason, 'completed_steps': steps, 'estimated_step_cost_usd': spent_units / 100_000_000, 'tool_failures': failures, 'interrupted_signal': interrupted['signal'], 'bootstrap': proxy_state})
     if interrupted['signal'] is None:
         grade = temp/'grade'; grade.mkdir()
         execute([HERE/'grade.sh', workspace, ROOT/'bench/harness/grade_runner.py', a.api_host, str(a.grade_port), grade])

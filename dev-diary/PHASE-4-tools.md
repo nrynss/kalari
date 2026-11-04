@@ -197,6 +197,8 @@ Use one bounded live session with a stated budget, check the first case cost, an
 
 A subsequent bounded retry was interrupted by an unknown SIGTERM source before evidence or usage deltas were written; inference may have started and its cost is unknown. No session process or sandbox remained. See `bench/kalari-arm/results/interrupted-retry.md`. The runner now saves usage-before counts and preserves sanitized partial events and measures on a handled signal; the offline fixture exercises this path. The five-tool transcript, hidden grade and complete measures remain unmet.
 
+Under a fresh $5 allowance, four further attempts produced no Kalari tool calls or candidate output. The first exposed a startup race; the second found a noncanonical staged aashaan path; after both were fixed, the third hit its 60-second watchdog and the fourth received a truncated provider stream. The guarded setup now passes a zero-spend standalone OpenCode fake-provider check with all five tools, and a timed streaming test. The four account-wide deltas sum to about $0.3573 at recorded rates, including concurrent benchmark activity; no session sandbox remained. Details and sanitized tool transcripts are in `bench/kalari-arm/results/fresh-budget-attempts.md`. The task remains incomplete.
+
 **Cleanup evidence fix:** Cleanup command failures and failed post-cleanup verification are now captured in `cleanup.json` and `measures.json`. The runner writes and announces the sanitized transcript and measures before exiting nonzero on cleanup failure. An offline fixture injects a cleanup failure and checks that the five-tool transcript and measures survive while the run fails closed. `bench/kalari-arm/test-offline.sh` passes. No inference was run.
 
 

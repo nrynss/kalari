@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
+python3 "$root/bench/kalari-arm/test-bootstrap.py"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 mkdir "$tmp/bin"
@@ -85,6 +86,11 @@ case "$1" in
 esac
 SH
 chmod +x "$tmp/bin/"{vimanam,opencode,msb}
+python3 "$root/bench/kalari-arm/session.py" --directory "$tmp/session-check" --workspace-source "$root/bench/workspaces/payout-sync" --tools "$tmp/bin" --api-host 127.0.0.1 >/dev/null
+python3 - "$tmp/session-check/session.json" <<'PY'
+import json, os, sys
+s=json.load(open(sys.argv[1])); assert s['aashaan'] == os.path.realpath(s['aashaan'])
+PY
 export KALARI_TEST_SECRET='must-not-leak-to-child'
 python3 "$root/bench/kalari-arm/runner.py" --offline-fixture --tools "$tmp/bin" --opencode "$tmp/bin/opencode" --api-host 127.0.0.1 --result "$tmp/result" >/dev/null
 python3 - "$tmp" <<'PY'

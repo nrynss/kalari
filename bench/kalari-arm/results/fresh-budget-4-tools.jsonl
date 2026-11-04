@@ -1,0 +1,2 @@
+{"tool": "read", "status": "completed"}
+{"event": "error", "type": "provider.invalid-output", "message": "OpenAI Chat stream ended without finish_reason"}

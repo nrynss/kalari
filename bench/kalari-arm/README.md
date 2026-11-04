@@ -58,7 +58,8 @@ sandbox names and removes them after the session. First-v2 grading is still
 unimplemented. The first live attempt and its sanitized tool transcript are in
 `results/upgrade-one.md` and `results/upgrade-one-tools.jsonl`.
 
-The runner stops OpenCode after 60 seconds or when completed-step telemetry
+By default the runner stops OpenCode after 60 seconds (configurable up to 120)
+or when completed-step telemetry
 reaches an estimated $0.20, whichever happens first. The estimate counts
 uncached input, cache reads and writes at $0.15 per million and counts output
 plus reasoning at $0.60 per million; reasoning may be counted twice. Malformed
@@ -79,3 +80,12 @@ process group, preserves a sanitized partial transcript and measures, skips the
 grader, attempts a usage delta, and exits with the signal status. A missing
 usage delta means actual usage is unknown. SIGKILL or an earlier interruption
 cannot be handled this way.
+
+OpenCode can assemble its first model request before the Kalari MCP connection
+finishes. Live mode uses a loopback bootstrap proxy: it supplies a synthetic
+read of the workspace README, then forwards an inference request only when its
+tool list includes all five Kalari tools. This makes the synthetic tool call
+part of the transcript and fails closed if discovery did not complete. A local
+fake-provider probe with the real standalone OpenCode process confirmed the
+first forwarded request includes all five tools; no provider inference was
+used for that probe.
