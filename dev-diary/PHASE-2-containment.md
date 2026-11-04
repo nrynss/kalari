@@ -42,7 +42,7 @@ requires:   [T1.5]
 fixture-ok: yes
 size:       S · frontier
 owns:       Aashaan/, tests/aashaan-cases.sh, tests/live/microvm-cases.sh
-status:     in-review
+status:     done
 ```
 From the day-one probe to the shipped supervisor: the cap logic as pure functions with theorems (a verdict is `killed_timeout` exactly when the wall-clock cap passed first; `killed_output_cap` exactly when the output cap was crossed first; output returned is never longer than the cap); a stderr cap as well as stdout; a JSON string escaper tested on control characters and non-ASCII. Stays `Std`-only.
 
@@ -104,7 +104,7 @@ requires:   [T2.3]
 fixture-ok: no
 size:       S · mid
 owns:       tests/live/sandbox.sh
-status:     not-started
+status:     claimed:grok-impl
 ```
 On the VM: a run of `bench/apis/payouts/reference/correct.py` through the backend against the grading API (allowlisted), a run of `cursor_loop.py` killed by the time cap, and a run that tries the VM's SSH, the metadata service and the internet, all refused. `msb list` empty afterwards.
 
@@ -179,5 +179,5 @@ Surprises:
 ## Exit Criteria
 
 - [x] The gate's four properties proved.
-- [ ] The aashaan's cap logic proved, eight cases passing in a microVM.
+- [x] The aashaan's cap logic proved, eight cases passing in a microVM.
 - [ ] Untrusted code runs only through the Microsandbox backend, always `--no-net`, always removed.

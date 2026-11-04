@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0 done: Vimanam 2.1.0 (T0.6) and Lambo 0.9.0 (T0.4) landed. P1 done; P2 4/6; P3 3/7. T2.2 claimed. After P2, the run continues through P3, then P4, then P5. Ready once P2 closes: T3.1a, T3.2, T4.1, T4.2, T5.1. Live spend is approved, including the pilot (T5.2, about $16) and T3.2b and T3.3b (each under $0.01). Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON.
+**Current status:** P0 done: Vimanam 2.1.0 (T0.6) and Lambo 0.9.0 (T0.4) landed. P1 done; P2 5/6; P3 3/7. T2.3b claimed. After P2, the run continues through P3, then P4, then P5. Ready once P2 closes: T3.1a, T3.2, T4.1, T4.2, T5.1. Live spend is approved, including the pilot (T5.2, about $16) and T3.2b and T3.3b (each under $0.01). Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON.
 
 ---
 
@@ -141,7 +141,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 |---|---|---|
 | P0 | 6 / 6 | All done |
 | P1 | 5 / 5 | T1.1 through T1.5 done |
-| P2 | 4 / 6 | T2.1, T2.3, T2.4 and T2.5 done. T2.2 claimed (its microVM step runs on the laptop) |
+| P2 | 5 / 6 | T2.1, T2.2, T2.3, T2.4 and T2.5 done. T2.3b claimed |
 | P3 | 3 / 7 | T3.1, T3.3 and T3.4 done. T3.1a ready |
 | P4 | 0 / 8 | Waits for P2, P3 |
 | P5 | 0 / 6 | T5.1 ready. T5.2 (pilot) waits for T5.1. The spend is approved |
@@ -154,6 +154,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 
 Newest first. One entry per closed task, finding, or split.
 
+- **T2.2 closed: the aashaan caps.** `classify` and `firstVerdict` decide one wake. An exit is taken first. When the wall-clock cap and an output cap are both visible, the wall-clock cap wins. Stdout and stderr are one output cap. `clampBytes` keeps both streams at most the cap. `jstr` escapes every code point below U+0020 and keeps non-ASCII. The stripped binary is 3351672 bytes. The seven host cases pass. The eight microVM cases match, including escape with `pipe_held_open` true. The live create is `msb create --no-net --pull never debian`. A missing image is pulled at most three times, then created once. Escape is not a host case.
 - **Live spend is approved.** The pilot (T5.2, about $16) and the other live tasks (T3.2b, T3.3b, each under $0.01, and the later sandbox lives) may run when their `requires` are met. Each one runs one case first and stops if that case would exceed its budget.
 - **After P2, continue through P3, P4, and P5.** One task at a time, in `requires` order. T2.3b is the last P2 task after T2.2.
 - **T0.4 closed: Lambo 0.9.0 re-measured; T3.2 is ready.** #222 is fixed: a new store's refusal says to run `lambo provision`. Embeddings, GC survival and Solo promotion pass as on 0.8.0 (Candidate about two minutes after the third citing run). Newly recorded: `lambo_stats` with a receipt, and a contradiction (`against`) with recall's flag and `lambo_stale`. **#221 is closed but the reworded-query ranking is unchanged:** the lesson is 2nd behind an unrelated observation at 2560, at 1024, and with the calibration off, since the keyword leg decides it. Lessons are found by inspecting the change kind, so nothing is blocked. **`lambo_inspect` shows a contradicted lesson without a warning**, only a `Contradicts` edge: T3.2 checks for it. Transcripts and the driver in `testdata/lambo/`.
