@@ -147,6 +147,8 @@ Notes:
 
 `rg --json -F` runs through `Proc.run`. `live` passes an explicit `PATH` and `inheritEnv := false`. Exit 0 and exit 1 (no matches) are parsed. Exit 2, a cap, or empty stdout is an error, not an empty radius. The checks run `rg`. They do not replay a recording, and they do not spawn `vimanam`, `msb`, or `curl`.
 
+The search checks run the `rg` on PATH, and the CI workflow installs the `ripgrep` package because the Ubuntu 26.04 runner image does not ship it.
+
 Source globs are code (`*.py`, `*.go`, and the other source suffixes). Specs and guides are not searched. A GraphQL schema line `settlements(` and the guide's query sample would look like calls.
 
 A line is certain when a match is the call. REST: the path is a whole path, inside a string, on a line that performs a request (`urlopen` on the payouts consumer). GraphQL: the field is a whole name inside a string and the next token is `{` or `(`. gRPC: the RPC name is a whole name in code and the next token is `(`. A line is uncertain when the match is in a comment, or it is only a substring of a longer name, or the line is not the call. Uncertain lines are not in `BlastRadius`.
