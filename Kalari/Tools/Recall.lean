@@ -277,13 +277,19 @@ private def test : IO Unit := IO.FS.withTempDir fun dir => do
   unless missingFailed do throw <| .userError "recognized linked lesson with missing evidence did not fail closed"
   let duplicateItem : Kalari.Lambo.Lesson := {
     id := "duplicate-linked", label := "duplicate | kalari-lesson/v1 run_id=r-ambiguous check_id=chk-paging-001", stale := false }
-  let duplicateSource := { src with linked := fun _ => pure [duplicateItem], semantic := fun _ => pure [] }
-  let mut duplicateFailed := false
+  let duplicateSource : Sources := {
+    linked := fun _ => pure [duplicateItem]
+    semantic := fun _ => pure []
+    resolve := evidenceResolver ambiguousStore
+    applies := src.applies
+  }
+  let mut duplicateError := ""
   try
     let _ ← call duplicateSource ["pagination_changed"]
     pure ()
-  catch _ => duplicateFailed := true
-  unless duplicateFailed do throw <| .userError "recognized linked lesson with duplicate evidence did not fail closed"
+  catch error => duplicateError := error.toString
+  unless duplicateError.contains "ambiguous lesson evidence" do
+    throw <| .userError "recognized linked lesson did not report ambiguous evidence"
   unless parseReference "ordinary prose [Constraint]" == none do
     throw <| .userError "ordinary Constraint text misidentified as a lesson"
   unless (parseReference "rule text | kalari-lesson/v1 run_id=r-001 check_id=chk-paging-001").isSome do
