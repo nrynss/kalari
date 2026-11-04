@@ -44,7 +44,7 @@ requires:   [T4.1, T3.1, T3.4, T3.2]
 fixture-ok: yes
 size:       S · mid
 owns:       Kalari/Tools/Changes.lean
-status:     not-started
+status:     claimed:gpt-6.1-terra
 ```
 `what_changed`: two spec versions in, change facts and Vimanam's focused context out. `blast_radius`: change IDs in, call sites out (confirmed and uncertain apart), with the links written to Lambo as `resource`s with `repo_scope`.
 
