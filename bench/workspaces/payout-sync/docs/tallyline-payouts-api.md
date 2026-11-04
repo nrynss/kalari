@@ -34,6 +34,12 @@ Windows overlap at their edges. Each window begins with the payout that ended th
 
 A malformed or expired cursor returns `400` with `{"error": "invalid_cursor"}`. Start the export again without a cursor. A `limit` outside 1 to 1000 returns `400` with `{"error": "invalid_limit"}`.
 
+### Rate limits and retries
+
+Under load a request can return `429 Too Many Requests` with a `Retry-After` header. The header holds the number of seconds to wait before you try again.
+
+Treat a 429 as a transient transport failure. Wait for the delay and send the identical request again. A request is identical when the method, the path and every query parameter are the same. Keep the same `cursor`, and do not move to the next window until the request succeeds.
+
 ## Migrating from v1
 
 | v1 | v2 |

@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Pilot matrix for the reference arm. Prints the plan. A behaviour row is never started:
-# this legacy driver does not route them; use bench/pilot/run-missing.sh for the isolated
-# variant matrix. Condition rows for the full pair call bench/harness/run.sh
-# only with --run. This script does not deploy API servers.
+# Pilot matrix for the reference arm. Prints the plan. A behaviour row is never started
+# by this legacy driver, except B5: those rows go to bench/pilot/run-one.sh and are
+# written under bench/pilot/harder/results/. B1 to B4 use bench/pilot/run-missing.sh
+# for the isolated variant matrix. Condition rows for the full pair call
+# bench/harness/run.sh only with --run. This script does not deploy API servers.
 #
 #   bench/pilot/run.sh --list
 #   bench/pilot/run.sh --behaviour B1 --upgrade payouts --repeat 1
+#   bench/pilot/run.sh --behaviour B5 --upgrade payouts --repeat 1
 #   bench/pilot/run.sh --condition 3 --upgrade settlements
 #   bench/pilot/run.sh --run
 #
@@ -27,7 +29,7 @@ UPGRADE=""
 REPEAT=""
 
 usage() {
-  sed -n '2,19p' "$0" >&2
+  sed -n '2,20p' "$0" >&2
   exit 2
 }
 
@@ -74,7 +76,7 @@ case "$CONDITION" in
 esac
 if [[ -n $BEHAVIOUR ]]; then
   case "$UPGRADE:$BEHAVIOUR" in
-    payouts:B1|payouts:B2|payouts:B4|settlements:B1|settlements:B2|settlements:B3) ;;
+    payouts:B1|payouts:B2|payouts:B4|payouts:B5|settlements:B1|settlements:B2|settlements:B3|settlements:B5) ;;
     *) echo "unknown behaviour: $BEHAVIOUR" >&2; exit 2 ;;
   esac
 fi
@@ -97,8 +99,10 @@ if [[ -z $BEHAVIOUR && -z $CONDITION ]]; then
 EOF
 fi
 
-# This legacy driver has no variant routing. The isolated driver handles those rows.
-if [[ $MODE == run && -z $CONDITION ]]; then
+# This legacy driver has no variant routing for the old single behaviours. The isolated
+# driver handles those rows. B5 rows are routed to bench/pilot/run-one.sh, which keeps
+# them under bench/pilot/harder/results/.
+if [[ $MODE == run && -z $CONDITION && $BEHAVIOUR != B5 ]]; then
   echo "refusing behaviour run in legacy driver: use bench/pilot/run-missing.sh" >&2
   exit 2
 fi
@@ -113,9 +117,17 @@ run_harness() { # condition upgrade dest
 
 handle_behaviour() { # upgrade behaviour repeat
   local upgrade=$1 behaviour=$2 rep=$3
-  local line="behaviour $upgrade $behaviour repeat $rep: bench/harness/run.sh --condition 3 --upgrade $upgrade"
+  local dest="bench/pilot/harder/results/behaviour-${upgrade}-${behaviour}-r${rep}.json"
+  local line="behaviour $upgrade $behaviour repeat $rep: bench/pilot/run-one.sh --behaviour $behaviour --upgrade $upgrade --dest $dest"
+  if [[ $behaviour != B5 ]]; then
+    line="behaviour $upgrade $behaviour repeat $rep: bench/pilot/run-missing.sh (isolated variant)"
+  fi
   if [[ $MODE == list ]]; then
     printf '%s\n' "$line"
+    return 0
+  fi
+  if [[ $behaviour == B5 ]]; then
+    bench/pilot/run-one.sh --behaviour "$behaviour" --upgrade "$upgrade" --dest "$dest"
     return 0
   fi
   echo "refusing behaviour $upgrade $behaviour in legacy driver: use bench/pilot/run-missing.sh" >&2
@@ -151,9 +163,11 @@ if [[ -z $CONDITION ]]; then
 payouts B1
 payouts B2
 payouts B4
+payouts B5
 settlements B1
 settlements B2
 settlements B3
+settlements B5
 EOF
 fi
 

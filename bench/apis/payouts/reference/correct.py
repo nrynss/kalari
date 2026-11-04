@@ -1,9 +1,15 @@
-"""Stops on drained, dedupes on id, ignores window size."""
-import argparse, json, urllib.request
+"""Stops on drained, dedupes on id, ignores window size, retries a 429 once."""
+import argparse, json, time, urllib.error, urllib.request
 
 def get(url):
-    with urllib.request.urlopen(url, timeout=30) as r:
-        return json.load(r)
+    for attempt in range(2):
+        try:
+            with urllib.request.urlopen(url, timeout=30) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            if e.code != 429 or attempt:
+                raise
+            time.sleep(float(e.headers.get("Retry-After") or 1))
 
 def write(out, rows):
     with open(out, "w") as f:

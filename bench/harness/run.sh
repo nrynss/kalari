@@ -54,6 +54,7 @@ ssh -o BatchMode=yes kalari 'rm -rf ~/kalari-harness/stage && mkdir -p ~/kalari-
 rsync -a bench/harness/remote.sh bench/harness/measures.py bench/harness/grade_runner.py \
   bench/harness/continuation.py bench/harness/continuation.sh bench/harness/condition1.sh \
   bench/harness/grade_one.sh bench/harness/tree_digest.py bench/harness/grade_status.py \
+  bench/harness/retry_journal.py \
   kalari:kalari-harness/stage/
 rsync -a bench/prompts bench/workspaces kalari:kalari-harness/stage/
 rsync -a bench/reference-paging/repo/opencode.jsonc kalari:kalari-harness/stage/opencode.jsonc
@@ -155,6 +156,26 @@ else:
 
 lost = final.get("missing")
 duplicated = final.get("duplicates")
+
+
+def retry_counts(measure):
+    """Agent and grading HTTP retry counts, apart from sandbox runs."""
+    phases = (measure or {}).get("phases") or {}
+    counts = {}
+    for phase in ("agent", "grading"):
+        doc = phases.get(phase) or {}
+        counts[phase] = {
+            "status": doc.get("status") or "unknown",
+            "b5_429_responses": doc.get("b5_429_responses"),
+            "matching_retry_attempts": doc.get("matching_retry_attempts"),
+            "successful_matching_retries": doc.get("successful_matching_retries"),
+        }
+    counts["note"] = "an HTTP retry inside one consumer process is not a sandbox run"
+    counts["null_means"] = "unknown, not zero"
+    return counts
+
+
+http_retries = retry_counts(analysis.get("retry_measure"))
 result = {
     "condition": int(cond),
     "upgrade": upgrade,
@@ -193,6 +214,8 @@ result = {
     },
     "sandbox_runs_against_v1": analysis.get("sandbox_runs_against_v1"),
     "sandbox_runs_against_v2": analysis.get("sandbox_runs_against_v2"),
+    "http_retries": http_retries,
+    "retry_measure": analysis.get("retry_measure"),
     "records_extra": final.get("extra"),
     "records_mismatched": final.get("mismatched"),
     "grade": final,
@@ -226,6 +249,8 @@ print(json.dumps({
     "verdict": result["measures"]["verdict"],
     "right_first_time": right,
     "sandbox_runs": result["measures"]["sandbox_runs"],
+    "http_retries_agent": http_retries["agent"],
+    "http_retries_grading": http_retries["grading"],
     "wall_time_s": result["measures"]["wall_time_s"],
     "time_stuck_s": result["measures"]["time_stuck_s"],
     "tokens_input": deep["input"],

@@ -161,6 +161,24 @@ PY
 # no-inference rehearsal calls the same function this script calls.
 . "$STAGE/condition1.sh"
 . "$STAGE/grade_one.sh"
+# Trusted retry measurement: the API servers' host-owned journals, truncated at
+# each phase start and read at each phase end. Agent activity and grading
+# activity never share a window. A missing journal stays unknown.
+RETRY_JOURNAL=/srv/retry-journal.jsonl
+retry_api() { printf 'api-%s-%s\n' "$UPGRADE" "$1"; }
+retry_truncate() { # $1 phase
+  python3 "$STAGE/retry_journal.py" truncate \
+    --remote "$(retry_api live)=$RETRY_JOURNAL" \
+    --remote "$(retry_api grading)=$RETRY_JOURNAL" \
+    --out "$RUN/retry-$1-start.json" >/dev/null || true
+}
+retry_read() { # $1 phase
+  python3 "$STAGE/retry_journal.py" read --phase "$1" \
+    --truncated "$RUN/retry-$1-start.json" \
+    --remote "$(retry_api live)=$RETRY_JOURNAL" \
+    --remote "$(retry_api grading)=$RETRY_JOURNAL" \
+    --out "$RUN/retry-$1.json" >/dev/null || true
+}
 STATE=$(condition1_state_path "$ROOT")
 SESSION_ID=""
 SESSION_CONTINUED=0
@@ -272,6 +290,7 @@ fi
 echo "status=preflight_ok" >&2
 
 echo "status=session" >&2
+retry_truncate agent
 cd "$WS"
 args=(opencode run --standalone --format json --auto --title "bench-c${COND}-${UPGRADE}")
 if [[ -n "$SESSION_ID" ]]; then
@@ -295,6 +314,7 @@ echo "status=session_exit:$rc elapsed:$elapsed" >&2
 # Drop the key from the environment before grading. measures still redacts with the copy.
 export KALARI_REDACT_KEY
 unset VULTR_INFERENCE_API_KEY
+retry_read agent
 
 NOTES_DIR=""
 if [[ "$COND" == 2 && "$UPGRADE" == payouts ]]; then
@@ -340,10 +360,12 @@ if [[ "$COND" == 1 && "$UPGRADE" == payouts ]]; then
   # never compared with anything.
 fi
 
+retry_truncate grading
 grade_one "$WS" final
 if [[ -f "$RUN/first-v2-src/$CONSUMER" ]]; then
   grade_one "$RUN/first-v2-src" first
 fi
+retry_read grading
 
 echo "status=cleanup" >&2
 remove_ours
@@ -430,6 +452,25 @@ final = grading.get("final") or {}
 doc["consumer_exit"] = final.get("consumer_exit")
 doc["output_present"] = final.get("output_present")
 doc["grade_status"] = final.get("grade_status")
+retry = {}
+for phase in ("agent", "grading"):
+    path = os.path.join(run, "retry-%s.json" % phase)
+    if os.path.exists(path):
+        try:
+            retry[phase] = json.load(open(path))
+        except ValueError:
+            retry[phase] = {"phase": phase, "status": "unknown", "reason": "unreadable retry summary",
+                            "b5_429_responses": None, "matching_retry_attempts": None,
+                            "successful_matching_retries": None}
+    else:
+        retry[phase] = {"phase": phase, "status": "unknown", "reason": "no retry summary",
+                        "b5_429_responses": None, "matching_retry_attempts": None,
+                        "successful_matching_retries": None}
+doc["retry_measure"] = {
+    "source": "API retry journals, truncated at each phase start and read at each phase end",
+    "note": "an HTTP retry inside one consumer process is not a sandbox run",
+    "phases": retry,
+}
 json.dump(doc, open(analysis, "w"), indent=2)
 open(analysis, "a").write("\n")
 PY

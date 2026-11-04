@@ -10,14 +10,24 @@ v2: GET /v2/payouts is a resumable export, modelled on a real time-windowed expo
   B2  each window starts at the last payout of the previous one, inclusive, so that payout
       appears in both responses.
   B4  `limit` is accepted up to 1000 (as the spec says) but each response holds at most 100.
+  B5  the first request of a traversal at or past offset 1500 gets HTTP 429 with
+      `Retry-After: 1`. The identical request then succeeds. Each traversal gets one 429.
+      A traversal identity is minted with the first response and rides inside the opaque
+      cursor, so replaying a saved cursor continues that lineage.
 
-Usage: server.py [--bind ADDR] [--port N] [--v1 on|off] [--behaviours B1,B2,B4]
+Usage: server.py [--bind ADDR] [--port N] [--v1 on|off] [--behaviours B1,B2,B4,B5]
+                  [--retry-journal PATH]
 
-Omit --behaviours and B1, B2, and B4 are all on. A comma-separated list enables only
-those ids. Any other token, including B5, is an error that names the token. A behaviour
-that is off does the plain thing: B1 off, a drained response has `cursor` null; B2 off,
-the next window starts after the previous window's last payout; B4 off, the response
-holds up to `limit` (still at most 1000).
+Omit --behaviours and B1, B2, B4, and B5 are all on. A comma-separated list enables only
+those ids. Any other token is an error that names the token. A behaviour that is off does
+the plain thing: B1 off, a drained response has `cursor` null; B2 off, the next window
+starts after the previous window's last payout; B4 off, the response holds up to `limit`
+(still at most 1000); B5 off, no request is throttled.
+
+The retry journal is a host-owned JSON-lines file with one event per request. It carries
+a timestamp, a client digest, the HTTP status, the request fingerprint digest, the
+traversal digest and whether the request was the matching retry. It never carries a raw
+cursor, a raw request or a token.
 """
 import argparse
 import base64
@@ -37,29 +47,84 @@ from data import COUNT, PAYOUTS  # noqa: E402
 PAGE_CAP = 100
 SPEC_MAX_LIMIT = 1000
 SECRET = os.urandom(16)
+CLIENT_KEY = os.urandom(16)
 TRACE_LIMIT = 256
 TRACE = None
 TRACE_LOCK = threading.Lock()
 TRACE_COUNT = 0
 
+# B5: one throttled request per traversal, at a fixed mid-stream offset.
+B5_OFFSET = 1500
+B5_LOCK = threading.Lock()
+B5_PENDING = {}   # traversal -> {"cursor": incoming cursor digest, "request": fingerprint}
+B5_CLEARED = set()  # traversals that already retried successfully
+
+JOURNAL = None
+JOURNAL_LOCK = threading.Lock()
+JOURNAL_LIMIT = 100000
+JOURNAL_COUNT = 0
+
+
 def digest(value):
-    return hashlib.sha256(value.encode()).hexdigest() if value else ""
+    return hashlib.sha256(value.encode()).hexdigest()[:32] if value else ""
 
 
-def mint(offset: int) -> str:
-    body = base64.urlsafe_b64encode(json.dumps({"w": offset, "t": time.time_ns()}).encode()).decode().rstrip("=")
+def mint(offset: int, traversal: str) -> str:
+    body = base64.urlsafe_b64encode(
+        json.dumps({"w": offset, "t": time.time_ns(), "v": traversal}).encode()
+    ).decode().rstrip("=")
     sig = hmac.new(SECRET, body.encode(), hashlib.sha256).hexdigest()[:16]
     return f"{body}.{sig}"
 
 
 def read(token: str):
+    """Return (offset, traversal) for a cursor this server minted, else None."""
     try:
         body, sig = token.rsplit(".", 1)
         if not hmac.compare_digest(sig, hmac.new(SECRET, body.encode(), hashlib.sha256).hexdigest()[:16]):
             return None
-        return int(json.loads(base64.urlsafe_b64decode(body + "=" * (-len(body) % 4)))["w"])
+        doc = json.loads(base64.urlsafe_b64decode(body + "=" * (-len(body) % 4)))
+        return int(doc["w"]), str(doc["v"])
     except Exception:
         return None
+
+
+def request_fingerprint(method: str, path: str, pairs) -> str:
+    """Digest of the complete canonical request: method, path and every query value."""
+    canon = method + "\n" + path + "\n" + "&".join(f"{k}={v}" for k, v in sorted(pairs))
+    return hashlib.sha256(canon.encode()).hexdigest()[:32]
+
+
+def b5_decide(traversal: str, cursor_key: str, offset: int, fingerprint: str):
+    """One-shot throttle for this traversal.
+
+    Returns (action, candidate). `candidate` says the request presented the
+    throttled cursor, so it is an attempt to retry the failed request. The
+    action is `serve`, `retry` (a matching candidate) or `throttle`.
+    """
+    if traversal in B5_CLEARED:
+        return "serve", False
+    with B5_LOCK:
+        if traversal in B5_CLEARED:
+            return "serve", False
+        pending = B5_PENDING.get(traversal)
+        if pending is not None:
+            candidate = pending["cursor"] == cursor_key
+            if candidate and pending["request"] == fingerprint:
+                del B5_PENDING[traversal]
+                B5_CLEARED.add(traversal)
+                return "retry", True
+            # A changed request does not count as the identical retry.
+            return "throttle", candidate
+        if offset >= B5_OFFSET:
+            B5_PENDING[traversal] = {"cursor": cursor_key, "request": fingerprint}
+            return "throttle", False
+        return "serve", False
+
+
+def client_tag(address: str) -> str:
+    # Phase-safe: a keyed digest, never an address, and not reversible without the key.
+    return hmac.new(CLIENT_KEY, address.encode(), hashlib.sha256).hexdigest()[:16]
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -68,49 +133,95 @@ class Handler(BaseHTTPRequestHandler):
     b1 = True
     b2 = True
     b4 = True
+    b5 = True
 
-    def reply(self, status, obj):
+    def journal(self, status, fingerprint, traversal, throttled=False, matching_retry=False,
+                retry_candidate=False, api="v2"):
+        if JOURNAL is None:
+            return
+        global JOURNAL_COUNT
+        event = {
+            "t": round(time.time(), 3),
+            "client": client_tag(self.client_address[0]),
+            "api": api,
+            "status": status,
+            "request": fingerprint,
+            "traversal": digest(traversal),
+            "throttled": bool(throttled),
+            "matching_retry": bool(matching_retry),
+            "retry_candidate": bool(retry_candidate),
+        }
+        with JOURNAL_LOCK:
+            if JOURNAL_COUNT < JOURNAL_LIMIT:
+                JOURNAL.write(json.dumps(event, separators=(",", ":"), sort_keys=True) + "\n")
+                JOURNAL.flush()
+            elif JOURNAL_COUNT == JOURNAL_LIMIT:
+                # The reader treats an overflow marker as ambiguous, so it never
+                # reports a partial count as complete.
+                JOURNAL.write('{"overflow":true}\n')
+                JOURNAL.flush()
+            JOURNAL_COUNT += 1
+
+    def reply(self, status, obj, retry_after=None):
         data = json.dumps(obj).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
+        if retry_after is not None:
+            self.send_header("Retry-After", retry_after)
         self.end_headers()
         self.wfile.write(data)
 
     def do_GET(self):
-        if self.trace_client and self.client_address[0] != self.trace_client:
-            return self.reply(403, {"error": "forbidden"})
         url = urlparse(self.path)
+        pairs = [(k, v) for k, vs in parse_qs(url.query, keep_blank_values=True).items() for v in vs]
+        fingerprint = request_fingerprint("GET", url.path, pairs)
+        if self.trace_client and self.client_address[0] != self.trace_client:
+            self.reply(403, {"error": "forbidden"})
+            return self.journal(403, fingerprint, "", api="other")
         q = {k: v[-1] for k, v in parse_qs(url.query).items()}
         if url.path == "/v1/payouts":
             if not self.v1_enabled:
-                return self.reply(410, {"error": "gone", "message": "API v1 has been retired. Use /v2/payouts."})
-            return self.reply(200, {"payouts": PAYOUTS})
+                self.reply(410, {"error": "gone", "message": "API v1 has been retired. Use /v2/payouts."})
+                return self.journal(410, fingerprint, "", api="v1")
+            self.reply(200, {"payouts": PAYOUTS})
+            return self.journal(200, fingerprint, "", api="v1")
         if url.path == "/v2/payouts":
-            return self.v2(q)
-        return self.reply(404, {"error": "not_found"})
+            return self.v2(q, fingerprint)
+        self.reply(404, {"error": "not_found"})
+        return self.journal(404, fingerprint, "", api="other")
 
-    def v2(self, q):
+    def v2(self, q, fingerprint):
         try:
             limit = int(q.get("limit", "100"))
         except ValueError:
-            return self.reply(400, {"error": "invalid_limit", "message": "limit must be an integer"})
+            self.reply(400, {"error": "invalid_limit", "message": "limit must be an integer"})
+            return self.journal(400, fingerprint, "")
         if not 1 <= limit <= SPEC_MAX_LIMIT:
-            return self.reply(400, {"error": "invalid_limit", "message": f"limit must be between 1 and {SPEC_MAX_LIMIT}"})
+            self.reply(400, {"error": "invalid_limit", "message": f"limit must be between 1 and {SPEC_MAX_LIMIT}"})
+            return self.journal(400, fingerprint, "")
         if "cursor" in q:
-            start = read(q["cursor"])
-            if start is None:
-                return self.reply(400, {"error": "invalid_cursor", "message": "cursor is malformed or was not issued by this server"})
+            decoded = read(q["cursor"])
+            if decoded is None:
+                self.reply(400, {"error": "invalid_cursor", "message": "cursor is malformed or was not issued by this server"})
+                return self.journal(400, fingerprint, "")
+            start, traversal = decoded
+            cursor_key = digest(q["cursor"])
         else:
-            start = 0
+            start, traversal = 0, os.urandom(8).hex()
+            cursor_key = ""
+        action, candidate = b5_decide(traversal, cursor_key, start, fingerprint) if self.b5 else ("serve", False)
+        if action == "throttle":
+            self.reply(429, {"error": "rate_limited", "message": "too many requests, retry after 1 second"}, retry_after="1")
+            return self.journal(429, fingerprint, traversal, throttled=True, retry_candidate=candidate)
         if self.b1 and self.b2 and self.b4:
-            # All three behaviours: the original paging, unchanged.
+            # All three paging behaviours: the original paging, unchanged.
             size = min(limit, PAGE_CAP)                     # B4
             page = PAYOUTS[start:start + size]
             end = start + len(page)
             drained = end >= COUNT
             nxt = max(end - 1, 0)                           # B2: the next window starts at this page's last payout
-            cursor = mint(nxt)
+            cursor = mint(nxt, traversal)
         else:
             size = min(limit, PAGE_CAP) if self.b4 else limit
             page = PAYOUTS[start:start + size]
@@ -119,10 +230,12 @@ class Handler(BaseHTTPRequestHandler):
             # B2 on: the next window starts at this page's last payout. Off: just after it.
             nxt = max(end - 1, 0) if self.b2 else end
             # B1 on: a fresh cursor on every response, the last included. Off: null once drained.
-            cursor = mint(nxt) if self.b1 or not drained else None
+            cursor = mint(nxt, traversal) if self.b1 or not drained else None
         response = {"payouts": page, "cursor": cursor, "drained": drained}
         if TRACE is None:
-            return self.reply(200, response)
+            self.reply(200, response)
+            return self.journal(200, fingerprint, traversal, matching_retry=action == "retry",
+                                retry_candidate=candidate)
         # Serialize response completion and trace appends so the host can reject
         # branching or interleaving instead of guessing an order.
         global TRACE_COUNT
@@ -138,13 +251,15 @@ class Handler(BaseHTTPRequestHandler):
                 TRACE.write('{"overflow":true}\n')
                 TRACE.flush()
             TRACE_COUNT += 1
+        return self.journal(200, fingerprint, traversal, matching_retry=action == "retry",
+                            retry_candidate=candidate)
 
     def log_message(self, *args):
         pass
 
 
 def behaviours_arg(raw):
-    known = ("B1", "B2", "B4")
+    known = ("B1", "B2", "B4", "B5")
     tokens = [part.strip() for part in raw.split(",") if part.strip()]
     for token in tokens:
         if token not in known:
@@ -157,26 +272,33 @@ def main():
     ap.add_argument("--bind", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=18080)
     ap.add_argument("--v1", choices=["on", "off"], default="on")
-    ap.add_argument("--behaviours", type=behaviours_arg, help="comma-separated subset of B1,B2,B4; omit for all")
+    ap.add_argument("--behaviours", type=behaviours_arg, help="comma-separated subset of B1,B2,B4,B5; omit for all")
     ap.add_argument("--trace", help="exclusive host-owned page trace file")
     ap.add_argument("--trace-client", help="only this client IPv4 may access an observed instance")
+    ap.add_argument("--retry-journal", help="host-owned retry journal file, one JSON event per request")
     a = ap.parse_args()
-    global TRACE
+    global TRACE, JOURNAL
     if a.trace:
         fd = os.open(a.trace, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         TRACE = os.fdopen(fd, "w", encoding="utf-8")
     if bool(a.trace) != bool(a.trace_client):
         ap.error("--trace and --trace-client must be used together")
+    if a.retry_journal:
+        # Append mode: the harness truncates the file between phases and the held
+        # descriptor must keep appending at the new end.
+        fd = os.open(a.retry_journal, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+        JOURNAL = os.fdopen(fd, "a", encoding="utf-8")
     Handler.v1_enabled = a.v1 == "on"
     Handler.trace_client = a.trace_client
     if a.behaviours is None:
-        Handler.b1 = Handler.b2 = Handler.b4 = True
+        Handler.b1 = Handler.b2 = Handler.b4 = Handler.b5 = True
         behaviours = ""
     else:
         Handler.b1 = "B1" in a.behaviours
         Handler.b2 = "B2" in a.behaviours
         Handler.b4 = "B4" in a.behaviours
-        names = ",".join(name for name in ("B1", "B2", "B4") if name in a.behaviours)
+        Handler.b5 = "B5" in a.behaviours
+        names = ",".join(name for name in ("B1", "B2", "B4", "B5") if name in a.behaviours)
         behaviours = f" behaviours {names or 'none'}"
     server = ThreadingHTTPServer((a.bind, a.port), Handler)
     print(f"payouts listening on {a.bind}:{a.port} (v1 {a.v1}){behaviours}", flush=True)

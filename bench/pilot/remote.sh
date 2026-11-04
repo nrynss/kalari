@@ -28,7 +28,7 @@ case "$UPGRADE" in
 esac
 
 case "$UPGRADE:$BEHAVIOUR" in
-  payouts:B1|payouts:B2|payouts:B4|settlements:B1|settlements:B2|settlements:B3) ;;
+  payouts:B1|payouts:B2|payouts:B4|payouts:B5|settlements:B1|settlements:B2|settlements:B3|settlements:B5) ;;
   *) echo "invalid variant" >&2; exit 2 ;;
 esac
 [[ "$COND" == 3 ]] || { echo "variants require condition 3" >&2; exit 2; }
@@ -128,7 +128,7 @@ start_api() {
   if [[ "$UPGRADE" == settlements ]]; then
     msb copy -q "$STAGE/apis/vendor/graphql_core-3.3.1-py3-none-any.whl" "$name:/srv/graphql_core-3.3.1-py3-none-any.whl"
   fi
-  msb exec "$name" -- sh -c "nohup python3 -I /srv/server.py --bind 0.0.0.0 --port 8080 --v1 $v1 --behaviours $BEHAVIOUR >/srv/server.log 2>&1 </dev/null &"
+  msb exec "$name" -- sh -c "nohup python3 -I /srv/server.py --bind 0.0.0.0 --port 8080 --v1 $v1 --behaviours $BEHAVIOUR --retry-journal /srv/retry-journal.jsonl >/srv/server.log 2>&1 </dev/null &"
 }
 start_api "$API_LIVE" "$LIVE_PORT" on
 start_api "$API_GRADE" "$GRADE_PORT" off
@@ -285,6 +285,7 @@ if [[ "$PREFLIGHT_ONLY" == 1 ]]; then
     payouts:B2|settlements:B2) ref=no_dedupe; expected=FAIL ;;
     payouts:B4) ref=short_page_stop; expected=FAIL ;;
     settlements:B3) ref=empty_page_stop; expected=FAIL ;;
+    payouts:B5|settlements:B5) ref=partial_output; expected=FAIL ;;
   esac
   for port in "$LIVE_PORT" "$GRADE_PORT"; do
     rc=0
@@ -298,7 +299,7 @@ import json, subprocess, sys
 grader, upgrade, output, behaviour = sys.argv[1:]
 p = subprocess.run([sys.executable, '-I', grader, upgrade, output], capture_output=True, text=True)
 d = json.loads(p.stdout)
-expected = {('payouts','B2'):(0,24,0), ('payouts','B4'):(2331,0,0), ('settlements','B2'):(0,19,19), ('settlements','B3'):(1473,0,0)}
+expected = {('payouts','B2'):(0,24,0), ('payouts','B4'):(2331,0,0), ('payouts','B5'):(431,0,0), ('settlements','B2'):(0,19,19), ('settlements','B3'):(1473,0,0), ('settlements','B5'):(873,0,0)}
 assert d['verdict'] == 'FAIL' and tuple(d[k] for k in ('missing','duplicates','mismatched')) == expected[(upgrade,behaviour)]
 PYVAR
     fi
@@ -354,6 +355,23 @@ fi
 rm -rf -- "$STAGE/apis" "$STAGE/graders"
 [[ ! -e "$STAGE/apis" && ! -e "$STAGE/graders" ]] || { echo "server staging cleanup failed" >&2; exit 1; }
 echo "status=source_staging_removed" >&2
+# Trusted retry measurement from the API guests' host-owned journals. Truncate at
+# each phase start, read at each phase end. A missing journal stays unknown.
+RETRY_JOURNAL=/srv/retry-journal.jsonl
+retry_truncate() { # $1 phase
+  python3 "$STAGE/retry_journal.py" truncate \
+    --remote "$API_LIVE=$RETRY_JOURNAL" \
+    --remote "$API_GRADE=$RETRY_JOURNAL" \
+    --out "$RUN/retry-$1-start.json" >/dev/null || true
+}
+retry_read() { # $1 phase
+  python3 "$STAGE/retry_journal.py" read --phase "$1" \
+    --truncated "$RUN/retry-$1-start.json" \
+    --remote "$API_LIVE=$RETRY_JOURNAL" \
+    --remote "$API_GRADE=$RETRY_JOURNAL" \
+    --out "$RUN/retry-$1.json" >/dev/null || true
+}
+retry_truncate agent
 echo "status=session" >&2
 cd "$WS"
 args=(opencode run --standalone --format json --auto --title "bench-c${COND}-${UPGRADE}")
@@ -392,6 +410,7 @@ echo "status=session_exit:$rc elapsed:$elapsed" >&2
 # Drop the key from the environment before grading. measures still redacts with the copy.
 export KALARI_REDACT_KEY
 unset VULTR_INFERENCE_API_KEY
+retry_read agent
 
 NOTES_DIR=""
 if [[ "$COND" == 2 && "$UPGRADE" == payouts ]]; then
@@ -466,10 +485,12 @@ open(dest, "w").write(text)
 PY
 }
 
+retry_truncate grading
 grade_one "$WS" final
 if [[ -f "$RUN/first-v2-src/$CONSUMER" ]]; then
   grade_one "$RUN/first-v2-src" first
 fi
+retry_read grading
 
 echo "status=cleanup" >&2
 stop_scope
@@ -511,6 +532,25 @@ for base in ("final", "first"):
             "log_excerpt": open(excerpt, errors="replace").read() if os.path.exists(excerpt) else "",
         }
 doc["grader_runs"] = excerpts
+retry = {}
+for phase in ("agent", "grading"):
+    path = os.path.join(run, "retry-%s.json" % phase)
+    if os.path.exists(path):
+        try:
+            retry[phase] = json.load(open(path))
+        except ValueError:
+            retry[phase] = {"phase": phase, "status": "unknown", "reason": "unreadable retry summary",
+                            "b5_429_responses": None, "matching_retry_attempts": None,
+                            "successful_matching_retries": None}
+    else:
+        retry[phase] = {"phase": phase, "status": "unknown", "reason": "no retry summary",
+                        "b5_429_responses": None, "matching_retry_attempts": None,
+                        "successful_matching_retries": None}
+doc["retry_measure"] = {
+    "source": "API retry journals, truncated at each phase start and read at each phase end",
+    "note": "an HTTP retry inside one consumer process is not a sandbox run",
+    "phases": retry,
+}
 json.dump(doc, open(analysis, "w"), indent=2)
 open(analysis, "a").write("\n")
 PY

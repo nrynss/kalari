@@ -28,10 +28,18 @@ esac
 
 case "$UPGRADE:$BEHAVIOUR" in
   payouts:B1|payouts:B2|payouts:B4|settlements:B1|settlements:B2|settlements:B3) ;;
+  payouts:B5|settlements:B5) ;;
   *) echo "invalid variant" >&2; exit 2 ;;
 esac
-[[ "$DEST" =~ ^bench/pilot/results/behaviour-(payouts|settlements)-B[1234]-r[1-5]\.json$ ]] || { echo "invalid result path" >&2; exit 2; }
-[[ "$DEST" == "bench/pilot/results/behaviour-${UPGRADE}-${BEHAVIOUR}-r"[1-5].json ]] || { echo "result does not match variant" >&2; exit 2; }
+if [[ "$BEHAVIOUR" == B5 ]]; then
+  # B5-only rows belong to the harder-pair pilot, apart from the frozen baseline rows.
+  [[ "$DEST" =~ ^bench/pilot/harder/results/behaviour-(payouts|settlements)-B5-r[1-5]\.json$ ]] ||
+    { echo "invalid B5 result path" >&2; exit 2; }
+else
+  [[ "$DEST" =~ ^bench/pilot/results/behaviour-(payouts|settlements)-B[1234]-r[1-5]\.json$ ]] ||
+    { echo "invalid result path" >&2; exit 2; }
+fi
+[[ "$DEST" == *"/behaviour-${UPGRADE}-${BEHAVIOUR}-r"[1-5].json ]] || { echo "result does not match variant" >&2; exit 2; }
 [[ ! -e "$DEST" ]] || { echo "result already exists" >&2; exit 2; }
 
 if [[ -z ${VULTR_INFERENCE_API_KEY:-} || ${#VULTR_INFERENCE_API_KEY} -lt 8 ]]; then
@@ -62,7 +70,7 @@ fetch_usage > "$tmp/usage-before.json"
 echo "status=usage_before" >&2
 
 ssh -F /dev/null -o BatchMode=yes kalari 'mkdir -p ~/kalari-pilot-isolated/stage ~/kalari-pilot-isolated/runs'
-rsync -a -e 'ssh -F /dev/null' bench/pilot/remote.sh bench/pilot/mcp_shim.py bench/harness/measures.py bench/harness/grade_runner.py kalari:kalari-pilot-isolated/stage/
+rsync -a -e 'ssh -F /dev/null' bench/pilot/remote.sh bench/pilot/mcp_shim.py bench/harness/measures.py bench/harness/grade_runner.py bench/harness/retry_journal.py kalari:kalari-pilot-isolated/stage/
 rsync -a -e 'ssh -F /dev/null' bench/apis bench/graders bench/prompts bench/workspaces kalari:kalari-pilot-isolated/stage/
 rsync -a -e 'ssh -F /dev/null' bench/reference-paging/repo/opencode.jsonc kalari:kalari-pilot-isolated/stage/opencode.jsonc
 
@@ -172,6 +180,26 @@ else:
 
 lost = final.get("missing")
 duplicated = final.get("duplicates")
+
+
+def retry_counts(measure):
+    """Agent and grading HTTP retry counts, apart from sandbox runs."""
+    phases = (measure or {}).get("phases") or {}
+    counts = {}
+    for phase in ("agent", "grading"):
+        doc = phases.get(phase) or {}
+        counts[phase] = {
+            "status": doc.get("status") or "unknown",
+            "b5_429_responses": doc.get("b5_429_responses"),
+            "matching_retry_attempts": doc.get("matching_retry_attempts"),
+            "successful_matching_retries": doc.get("successful_matching_retries"),
+        }
+    counts["note"] = "an HTTP retry inside one consumer process is not a sandbox run"
+    counts["null_means"] = "unknown, not zero"
+    return counts
+
+
+http_retries = retry_counts(analysis.get("retry_measure"))
 result = {
     "condition": int(cond),
     "behaviour": behaviour,
@@ -202,6 +230,8 @@ result = {
     },
     "sandbox_runs_against_v1": analysis.get("sandbox_runs_against_v1"),
     "sandbox_runs_against_v2": analysis.get("sandbox_runs_against_v2"),
+    "http_retries": http_retries,
+    "retry_measure": analysis.get("retry_measure"),
     "records_extra": final.get("extra"),
     "records_mismatched": final.get("mismatched"),
     "grade": final,
@@ -234,6 +264,8 @@ print(json.dumps({
     "verdict": result["measures"]["verdict"],
     "right_first_time": right,
     "sandbox_runs": result["measures"]["sandbox_runs"],
+    "http_retries_agent": http_retries["agent"],
+    "http_retries_grading": http_retries["grading"],
     "wall_time_s": result["measures"]["wall_time_s"],
     "time_stuck_s": result["measures"]["time_stuck_s"],
     "tokens_input": deep["input"],

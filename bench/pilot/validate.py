@@ -9,14 +9,25 @@ import sys
 
 p = argparse.ArgumentParser()
 p.add_argument('--partial', action='store_true')
+p.add_argument('--root', default=None, help='result directory to validate')
+p.add_argument('--b5', action='store_true', help='expect the B5-only rows of the harder-pair pilot')
 args = p.parse_args()
-root = Path('bench/pilot/results')
+if args.root:
+    root = Path(args.root)
+elif args.b5:
+    root = Path('bench/pilot/harder/results')
+else:
+    root = Path('bench/pilot/results')
 expected = {}
 for cond in (1, 2, 3, 6):
     for upgrade in ('payouts', 'settlements'):
         for repeat in range(1, 6):
             expected[f'condition-{cond}-{upgrade}-r{repeat}.json'] = (cond, upgrade, None)
-for upgrade, behaviours in (('payouts', ('B1','B2','B4')), ('settlements', ('B1','B2','B3'))):
+behaviour_rows = (('payouts', ('B1','B2','B4')), ('settlements', ('B1','B2','B3')))
+if args.b5:
+    # The harder pair keeps B5-only rows apart from the frozen baseline rows.
+    behaviour_rows = (('payouts', ('B5',)), ('settlements', ('B5',)))
+for upgrade, behaviours in behaviour_rows:
     for behaviour in behaviours:
         for repeat in range(1, 6):
             expected[f'behaviour-{upgrade}-{behaviour}-r{repeat}.json'] = (3, upgrade, behaviour)
@@ -56,6 +67,15 @@ for name, path in sorted(files.items()):
         if behaviour:
             tokens = row['opencode_tokens']
             if (m['tokens_input'], m['tokens_output']) != (tokens['input'] + tokens['cache_read'], tokens['output'] + tokens['reasoning']): raise ValueError('usage delta disagrees with OpenCode token totals')
+        if behaviour == 'B5':
+            retry = row.get('http_retries') or {}
+            for phase in ('agent', 'grading'):
+                counts = retry.get(phase) or {}
+                if counts.get('status') != 'ok': raise ValueError(f'missing {phase} retry measure')
+                for field in ('b5_429_responses','matching_retry_attempts','successful_matching_retries'):
+                    value = counts.get(field)
+                    if type(value) is not int or value < 0: raise ValueError(f'invalid retry count {field}')
+                if counts['successful_matching_retries'] > counts['matching_retry_attempts']: raise ValueError('retry counts disagree')
         calculated = round(m['tokens_input'] * 0.15 / 1_000_000 + m['tokens_output'] * 0.60 / 1_000_000, 6)
         if abs(row['cost_usd'] - calculated) > 0.000001: raise ValueError('cost and token counts disagree')
         clean = row['cleanup']
