@@ -1,4 +1,5 @@
 import Std.Http
+import Std.Http.Test.Helpers
 import Lean.Data.Json
 import Kalari.Evidence
 
@@ -95,6 +96,14 @@ private def checks : IO Unit := IO.FS.withTempDir fun dir => do
   verify ((route loaded "POST" "/api/runs" "").1 == 404) "write route"
   verify ((route loaded "GET" "/api/runs/" "").1 == 400) "malformed id"
   verify ((route loaded "GET" "/api/runs" "body").1 == 400) "unexpected body"
+  let handler : Std.Http.Internal.Test.TestHandler := fun req => do
+    (@Handler.onRequest App (inferInstance) { store } req)
+  let exactLimitBody := String.ofList (List.replicate 4096 'x')
+  let overLimitBody := String.ofList (List.replicate 4097 'x')
+  Std.Http.Internal.Test.check "body at cap" (Std.Http.Internal.Test.mkPost "/api/runs" exactLimitBody)
+    handler (fun response => Std.Http.Internal.Test.assertStatus response "HTTP/1.1 400")
+  Std.Http.Internal.Test.check "body above cap" (Std.Http.Internal.Test.mkPost "/api/runs" overLimitBody)
+    handler (fun response => Std.Http.Internal.Test.assertStatus response "HTTP/1.1 413")
 
 #eval checks
 end Kalari.Http
