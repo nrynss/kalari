@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0 done. P1 done. P2 7/7. P3 7/7. P4 10/11. P5 1/6. T3.2b done. T5.1 done. T5.2 claimed. T4.6 done. T4.5b done. T4.7a done. T4.7b done. T4.7 claimed by Terra. T6.1 ready. Live spend is approved, including the pilot (T5.2, about $16) and T3.2b (under $0.01). Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
+**Current status:** P0 done. P1 done. P2 7/7. P3 7/7. P4 11/11. P5 1/6. T3.2b done. T5.1 done. T5.2 in review: 40 condition sessions committed, behaviour sessions not run. T4.6 done. T4.5b done. T4.7a done. T4.7b done. T4.7 done. T6.1 ready. Live spend is approved, including the pilot (T5.2, about $16) and T3.2b (under $0.01). Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
 
 ---
 
@@ -143,8 +143,8 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P1 | 5 / 5 | T1.1 through T1.5 done |
 | P2 | 7 / 7 | T2.1 through T2.6 done. The Microsandbox-only exit line stays open because the Docker fallback exists |
 | P3 | 7 / 7 | T3.1 through T3.4 done, including T3.1a, T3.2b and T3.3b |
-| P4 | 10 / 11 | T4.1 through T4.5 and T4.6a done. T4.6 done. T4.5b done. T4.7a done. T4.7b done. T4.7 claimed by Terra |
-| P5 | 1 / 6 | T5.1 done. T5.2 claimed. The spend is approved. The paid runs wait until the code review is clean |
+| P4 | 11 / 11 | T4.1 through T4.5 and T4.6a done. T4.6 done. T4.5b done. T4.7a done. T4.7b done. T4.7 done |
+| P5 | 1 / 6 | T5.1 done. T5.2 in review. The 40 condition sessions are in. The 30 behaviour sessions were not run. The spend is approved |
 | P6 | 0 / 3 | T6.1 ready. T6.2 waits for T6.1 |
 | P7 | 0 / 4 | Waits for P5, P6 |
 
@@ -152,6 +152,9 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 
 ## Handoff Log
 
+- **T4.7 closed.** Standalone OpenCode called all five Kalari tools and the hidden grader passed all 2,431 records. Two consumer runs, zero time stuck, and cleanup verified. The first-v2 result was inferred from the transcript and final grade.
+
+- **T5.2 condition sessions committed, task still open.** Forty reference sessions, conditions 1, 2, 3, and 6, five repeats each. Cost $3.55. Conditions 2, 3, and 6 passed 10 of 10. Condition 1 payouts passed 5 of 5. Condition 1 settlements resumed that session and failed 5 of 5 with `no consumer output`. One session, condition 3 payouts repeat 5, hit the 20-minute cap and still graded PASS. The 30 single-behaviour sessions did not run. A behaviour `--run` still exits 2, because the harness has no server switch. Not marked done.
 - **T5.2 claimed.** The code comes first: `--behaviours` on both servers and the quirk cases. No paid session until that review is clean.
 - **T4.5b closed.** All 13 live reference cases matched their asserted outcomes and each sandbox was removed. Candidates reached only v2 grading endpoints. Baselines reached the v1-capable endpoints. The test used a private fixture Lambo store and no inference.
 
