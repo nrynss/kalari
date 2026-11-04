@@ -72,7 +72,7 @@ requires:   [T4.1, T4.2, T2.1, T2.3, T2.6]
 fixture-ok: yes
 size:       L · frontier
 owns:       Kalari/Tools/Run.lean
-status:     in-review
+status:     done
 ```
 The agent's code, run safely and checked: the gate; the Microsandbox backend with caps and an allowlist of the API hosts; the aashaan's verdict; then **the checks**: every recalled lesson's check, and the **differential check against v1** (bench/README.md): run the consumer's v1 version against the v1 API and its new version against v2 on the same data, compare the record sets (none missing, none extra, each exactly once, **each equal to v1's version**: an ID check alone passes a consumer that keeps the first, stale copy of an amended settlement), and report the difference in plain numbers. The result back to the agent: the verdict, each check's result, and logs, capped.
 
