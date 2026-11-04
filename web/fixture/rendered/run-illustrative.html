@@ -1,0 +1,77 @@
+<article class="run-page">
+    <header class="page-head">
+      <p class="breadcrumb"><a href="index.html">For judges</a> <span aria-hidden="true">/</span> Run</p>
+      <div class="page-title"><h1>Sandbox run</h1><span class="badge badge--draft">Illustrative</span></div>
+      <p class="run-id"><code>payouts-attempt-1</code></p>
+      <p class="quiet-line">From <a href="session.html?id=payouts-upgrade">payouts-upgrade</a></p>
+      <p class="quiet-line"><a href="index.html">Back to the evidence index</a></p>
+    </header>
+
+    <section class="panel">
+    <div class="panel-head">
+      <div><h2>Sandbox run</h2><p class="run-id"><code>payouts-attempt-1</code></p></div>
+      <div class="badge-row"><span class="badge badge--neutral">Completed</span> <span class="badge badge--fail">Checks failed</span><span class="badge badge--draft">Illustrative</span></div>
+    </div>
+    <p class="caveat">Illustrative. This run shows the shape of the evidence. Its timing and log lines are not benchmark measurements.</p>
+    <dl class="facts facts--wide">
+      <div><dt>Verdict</dt><dd>Completed</dd></div>
+      <div><dt>Exit code</dt><dd>0</dd></div>
+      <div><dt>Wall time</dt><dd>1.5 s</dd></div>
+      <div><dt>Stdout truncated</dt><dd>No</dd></div>
+      <div><dt>Pipe held open</dt><dd>No</dd></div>
+      <div><dt>Supervisor peak RSS</dt><dd>5,488 kB</dd></div>
+      <div><dt>Cgroup memory limit</dt><dd>536,870,912 bytes</dd></div>
+    </dl>
+    <h3>Request</h3>
+    <p><strong>Workspace</strong> <code>bench/workspaces/payout-sync</code></p>
+    <pre class="log">python3 payout_sync.py --base-url ENDPOINT --out payouts.jsonl</pre>
+    <dl class="facts">
+      <div><dt>Timeout</dt><dd>120.0 s</dd></div>
+      <div><dt>Output cap</dt><dd>65,536 bytes</dd></div>
+      <div><dt>Memory cap</dt><dd>512 MiB</dd></div>
+    </dl>
+    <h3>Checks</h3>
+    <ul class="check-list"><li class="check is-fail">
+                <div class="check-head"><strong>exact-once</strong><span>failed</span></div>
+                <p>100 of 2431 records. 2331 missing. 0 duplicated.</p>
+              </li></ul>
+    <h3>Logs</h3>
+    <details class="logs" open><summary>Standard output</summary><pre>synced 100 payouts
+</pre></details>
+    <details class="logs"><summary>Standard error</summary><pre></pre></details>
+    <h3>What Clef thought</h3><section class="opinion" data-opinion="clef" data-opinion-label="A model&#39;s opinion, not a measurement">
+    <div class="opinion-head">
+      <span class="badge badge--opinion">Model&#39;s opinion</span>
+      <h4>Why did the first run fail?</h4>
+    </div>
+    <p class="opinion-lede"><strong>This is a model's opinion, not a measurement and not a verdict.</strong> The hidden grader and the sandbox checks decide whether the upgrade works.</p>
+    <p class="opinion-choice">The model leaned toward <strong>an API change</strong>.</p>
+    <ul class="probabilities">
+      <li data-probability="api_change">
+            <span class="prob-label">an API change</span>
+            <span class="prob-bar" aria-hidden="true"><span style="width: 97.85093665122986%"></span></span>
+            <span class="prob-value">97.9%</span>
+          </li><li data-probability="unrelated_bug">
+            <span class="prob-label">an unrelated bug</span>
+            <span class="prob-bar" aria-hidden="true"><span style="width: 1.2414224445819855%"></span></span>
+            <span class="prob-value">1.2%</span>
+          </li><li data-probability="flaky">
+            <span class="prob-label">a flaky run</span>
+            <span class="prob-bar" aria-hidden="true"><span style="width: 0.47861095517873764%"></span></span>
+            <span class="prob-value">0.5%</span>
+          </li><li data-probability="test_setup">
+            <span class="prob-label">a test setup problem</span>
+            <span class="prob-bar" aria-hidden="true"><span style="width: 0.4290240351110697%"></span></span>
+            <span class="prob-value">0.4%</span>
+          </li>
+    </ul>
+    <p class="opinion-meta">Clef, a decision model. The percentages are the model's own scores. They are not counts, not a grade, and not evidence that the code works.</p>
+  </section>
+
+  </section>
+
+    <section class="subsection"><h2>Every record in this run</h2><div class="table-wrap"><table class="measures-table">
+    <thead><tr><th scope="col">Kind</th><th scope="col">Run</th><th scope="col">Change kinds</th></tr></thead>
+    <tbody><tr><td><code>change</code></td><td><code>payouts-attempt-1</code></td><td>Pagination changed</td></tr><tr><td><code>change</code></td><td><code>payouts-attempt-1</code></td><td>Operation moved</td></tr><tr><td><code>change</code></td><td><code>payouts-attempt-1</code></td><td>Operation renamed</td></tr><tr><td><code>change</code></td><td><code>payouts-attempt-1</code></td><td>Argument added</td></tr><tr><td><code>blast-radius</code></td><td><code>payouts-attempt-1</code></td><td>Operation moved</td></tr><tr><td><code>blast-radius</code></td><td><code>payouts-attempt-1</code></td><td>Pagination changed</td></tr><tr><td><code>blast-radius</code></td><td><code>payouts-attempt-1</code></td><td>Operation renamed</td></tr><tr><td><code>blast-radius</code></td><td><code>payouts-attempt-1</code></td><td>Argument added</td></tr><tr><td><code>run</code></td><td><code>payouts-attempt-1</code></td><td>Pagination changed</td></tr><tr><td><code>check</code></td><td><code>payouts-attempt-1</code></td><td>Pagination changed</td></tr><tr><td><code>decision</code></td><td><code>payouts-attempt-1</code></td><td>Pagination changed</td></tr></tbody>
+  </table></div></section>
+  </article>

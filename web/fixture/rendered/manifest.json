@@ -1,0 +1,30 @@
+{
+  "schema": "kalari.web.rendered.v1",
+  "generator": "web/fixture/render.mjs",
+  "pages": {
+    "judges": "web/fixture/rendered/judges.html",
+    "judges-empty": "web/fixture/rendered/judges-empty.html",
+    "judges-no-store": "web/fixture/rendered/judges-no-store.html",
+    "session": "web/fixture/rendered/session.html",
+    "run": "web/fixture/rendered/run.html",
+    "run-illustrative": "web/fixture/rendered/run-illustrative.html"
+  },
+  "sha256": {
+    "views": {
+      "path": "web/app/views.mjs",
+      "sha256": "57ca1d2f81932ab661c069a565a00b18a6d180f9d6b17af995042b793ded1107"
+    },
+    "format": {
+      "path": "web/app/format.mjs",
+      "sha256": "cce3cbda74961797b576103282f39c945e6bf6e1bd148de7575788361bd1d066"
+    },
+    "labels": {
+      "path": "web/app/labels.mjs",
+      "sha256": "4352e35e17bc43ef5247269d0b600ac330c97f8955eb49dbae9e462ae6291f4a"
+    },
+    "evidence": {
+      "path": "web/fixture/evidence.jsonl",
+      "sha256": "d0847b63d95e1637360623c9170e958bef168af01cb507212edf0db6ca5fd59d"
+    }
+  }
+}
