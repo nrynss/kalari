@@ -1,0 +1,141 @@
+{
+  "condition": 1,
+  "upgrade": "payouts",
+  "arm": "reference",
+  "setup": "OpenCode 2.2.5 with microsandbox-mcp, no Kalari tools",
+  "api_base": "the VM's public address",
+  "live_port": 18080,
+  "grading_port": 18090,
+  "prompt": "upgrade.txt",
+  "opencode_version": "opencode v2.2.5",
+  "session_continued": false,
+  "notes_attached": false,
+  "session_cap_s": 1200,
+  "session_capped": false,
+  "measures": {
+    "verdict": "PASS",
+    "right_first_time": true,
+    "sandbox_runs": 2,
+    "wall_time_s": 72.069,
+    "time_stuck_s": 30.588,
+    "tokens_input": 394125,
+    "tokens_output": 8516,
+    "records_lost": 0,
+    "records_duplicated": 0
+  },
+  "sandbox_runs_against_v1": 0,
+  "sandbox_runs_against_v2": 2,
+  "records_extra": 0,
+  "records_mismatched": 0,
+  "grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "expected": 2431,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "first_v2_grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "expected": 2431,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "right_first_time_basis": "snapshot",
+  "cost_usd": 0.064228,
+  "cost_note": "DeepSeek V4.1 Flash list price, cached input counted as input, no cache discount",
+  "usage_delta": [
+    {
+      "model": "clef",
+      "input": 0,
+      "output": 0
+    },
+    {
+      "model": "deepseek-v4.1-flash-1017",
+      "input": 394125,
+      "output": 8516
+    },
+    {
+      "model": "qwen3-embedding-4b",
+      "input": 0,
+      "output": 0
+    }
+  ],
+  "opencode_tokens": {
+    "steps": 17,
+    "input": 25997,
+    "output": 3989,
+    "reasoning": 4527,
+    "cache_read": 368128
+  },
+  "consumer_runs": [
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 13.636,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 1.215,
+      "timed_out": false,
+      "basis": "snapshot"
+    }
+  ],
+  "event_summary": {
+    "lines": 56,
+    "unparsed_lines": 0,
+    "types": {
+      "step_start": 17,
+      "tool_use": 21,
+      "step_finish": 17,
+      "text": 1
+    },
+    "tools": {
+      "read": 7,
+      "glob": 1,
+      "execute": 12,
+      "write": 1
+    },
+    "steps": 17,
+    "bash_denied": 0,
+    "sandbox_names": [
+      "payout-sync-verify"
+    ],
+    "last_reason": "stop",
+    "final_answer": "Upgraded `payout_sync.py` from v1 to v2 and verified it against the live v2 server.\n\n**Changes in `payout_sync.py`**\n- Switched from `GET /v1/payouts` to `GET /v2/payouts`.\n- Follows the opaque `cursor` through every window until `drained` is true \u2014 does not stop on short or empty pages.\n- Deduplicates by payout `id`, since v2 windows overlap at their edges.\n- Restarts from the beginning on `400 invalid_cursor`, relying on ID deduplication to keep results exactly-once.\n- Uses `limit=1000` by default, with a validated `--limit` option.\n- Writes the output atomically so a crash cannot leave a partial `payouts.jsonl`.\n\n**Verification against `http://the VM's public address:18080`**\n- Ran with `--limit 3` to force many overlapping windows: **2431** payouts, **2431** unique IDs, **0** duplicates.\n- Ran with the default limit: same **2431** payouts, **0** duplicates.\n- Compared both outputs against the live v1 endpoint as ground truth: **0 missing**, **0 extra**, **0 field mismatches**, and creation order preserved.\n- Exercised the invalid-cursor restart path with a simulated server: correctly resumed and still produced exactly one copy of each payout.",
+    "stderr_excerpt": "",
+    "diff_stat": "payout_sync.py | 71 ++++++++++++++++++++++++++++++++++++++++++++++++++++------\n 1 file changed, 64 insertions(+), 7 deletions(-)"
+  },
+  "grader_runs": {
+    "final": {
+      "status": "EXIT 0",
+      "log_excerpt": "synced 2431 payouts\n"
+    },
+    "first": {
+      "status": "EXIT 0",
+      "log_excerpt": "synced 2431 payouts\n"
+    }
+  },
+  "cleanup": {
+    "sandboxes_removed": [],
+    "sandboxes_left": [],
+    "processes_left": []
+  },
+  "process_elapsed_s": 74.0,
+  "opencode_exit": 0
+}
