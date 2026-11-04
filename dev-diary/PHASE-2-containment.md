@@ -199,6 +199,22 @@ Surprises:
 
 ---
 
+### T2.6: A sandbox image that can run the benchmark's code
+```yaml
+requires:   [T2.5]
+fixture-ok: yes
+size:       S · mid
+owns:       Kalari/Sandbox/Microsandbox.lean, Kalari/Config.lean (the image setting only), testdata/msb/, tests/live/microvm-cases.sh, tests/live/sandbox.sh
+status:     not-started
+```
+Found in T2.3b's report: the backend creates `debian` (`imageName`), which has no `python3`, and `--no-net` can't install it. The benchmark's consumers are Python, so `run_in_sandbox` (T4.5) would hand the agent's code a guest that can't run it. `tests/live/sandbox.sh` worked around this by switching to `python` inside the script; the backend was unchanged.
+
+Make the image a setting in Kalari's config with `python` as the default, and use it everywhere the backend names an image: `ensureImage`'s pull (T2.5) and every `create`, still `--no-net` and `--pull never`. Pin a tag if msb 0.7.13 accepts one (`python:3.13-slim` or similar: the consumers use only the standard library); otherwise `python`, with the reason in Notes. The aashaan is a glibc binary, so it runs on a Debian-based Python image; confirm that in the live run. Re-record the `create` rows in `testdata/msb/` with the new image, and point the two live scripts at the configured image instead of their own names.
+
+**Done when:** no `debian` is left in the backend or its checks; the recordings replay with the new image; live, the aashaan's eight cases pass in it and `correct.py` reaches the payouts API and passes the grader through the backend itself, not a script-side image switch; the image and its size are in `research/sandbox.md`.
+
+---
+
 ## Exit Criteria
 
 - [x] The gate's four properties proved.

@@ -64,7 +64,7 @@ Change kinds in, the lessons for them out **as checks that must pass**, not as a
 
 ### T4.5: `run_in_sandbox` ★
 ```yaml
-requires:   [T4.1, T4.2, T2.1, T2.3]
+requires:   [T4.1, T4.2, T2.1, T2.3, T2.6]
 fixture-ok: yes
 size:       L · frontier
 owns:       Kalari/Tools/Run.lean
