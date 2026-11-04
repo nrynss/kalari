@@ -67,3 +67,8 @@ if python3 "$root/bench/kalari-arm/runner.py" --tools "$tmp/bin" --opencode "$tm
   echo 'live execution unexpectedly enabled' >&2; exit 1
 fi
 echo 'offline Kalari arm fixture passed'
+# Preflight refuses to start a live session without the required search tool.
+if python3 "$root/bench/kalari-arm/runner.py" --live --tools "$tmp/bin" --opencode "$tmp/bin/opencode" --api-host 127.0.0.1 --result "$tmp/missing-rg" </dev/null 2>"$tmp/preflight.err"; then
+  echo 'live preflight accepted missing rg' >&2; exit 1
+fi
+grep -q 'needs executable rg' "$tmp/preflight.err"

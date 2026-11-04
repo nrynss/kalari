@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
-"""Orchestrate one payout session. Only a local fake fixture may run for now."""
+"""Orchestrate one bounded payout session or its offline fixture."""
 import argparse
+import atexit
+import shlex
+import urllib.request
 import ipaddress
 import json
 import os
@@ -16,6 +19,7 @@ import time
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 p = argparse.ArgumentParser()
+p.add_argument('--live', action='store_true', help='one approved live payout case; key on stdin')
 p.add_argument('--offline-fixture', action='store_true', help='require local fake executables and loopback API')
 p.add_argument('--tools', type=Path, required=True)
 p.add_argument('--workspace-source', type=Path, default=ROOT / 'bench/workspaces/payout-sync')
@@ -26,18 +30,23 @@ p.add_argument('--grade-port', type=int, default=18090)
 p.add_argument('--result', type=Path, required=True, help='new private result directory')
 p.add_argument('--timeout', type=int, default=1200)
 a = p.parse_args()
-# There is deliberately no bypass until the request-time budget guard covers
-# both OpenCode and Clef. Fake mode only admits loopback and a fixture marker.
-if not a.offline_fixture:
-    p.error('live execution disabled: shared OpenCode and Clef budget guard required')
-if not ipaddress.IPv4Address(a.api_host).is_loopback:
+# Fake mode only admits loopback and a fixture marker.
+if a.live == a.offline_fixture:
+    p.error('choose exactly one of --live or --offline-fixture')
+if a.offline_fixture and not ipaddress.IPv4Address(a.api_host).is_loopback:
     p.error('offline fixture requires a loopback API address')
 tools = a.tools.resolve(strict=True)
+if a.live:
+    for item in ('rg',):
+        if not (tools/item).is_file() or not os.access(tools/item, os.X_OK):
+            p.error('live tools directory needs executable ' + item)
+    if not (ROOT/'bench/apis/payouts/data.py').is_file():
+        p.error('hidden grader requires bench/apis/payouts/data.py')
 opencode = a.opencode.resolve(strict=True)
-if not (tools / '.kalari-offline-fixture').is_file():
+if a.offline_fixture and not (tools / '.kalari-offline-fixture').is_file():
     p.error('offline fake tools marker missing')
 if not opencode.is_file() or not os.access(opencode, os.X_OK):
-    p.error('fake OpenCode must be executable')
+    p.error('OpenCode must be executable')
 if not 1 <= a.timeout <= 1200:
     p.error('timeout must be 1..1200 seconds')
 a.result.mkdir(mode=0o700, parents=True, exist_ok=False)
@@ -53,6 +62,23 @@ env = {
     'VULTR_INFERENCE_API_KEY': 'offline-fixture-invalid-key',
     'MSB_LOG': str(a.result.parent / 'msb.log'),
 }
+if a.live:
+    key = sys.stdin.readline().rstrip('\r\n')
+    if len(key) < 8:
+        p.error('live inference key required on stdin')
+    env['VULTR_INFERENCE_API_KEY'] = key
+    env.pop('KALARI_OFFLINE_FIXTURE')
+    env.pop('MSB_LOG')
+
+def usage():
+    req = urllib.request.Request('https://api.vultrinference.com/v1/usage', headers={'Authorization': 'Bearer ' + env['VULTR_INFERENCE_API_KEY']})
+    with urllib.request.urlopen(req, timeout=30) as response:
+        return json.load(response)
+
+def usage_rows(doc):
+    return {row['model']: row for row in doc['usage']['current_month']['chat_usage']}
+
+usage_before = usage() if a.live else None
 # A separate temporary workspace prevents raw event and credential material
 # from being published. Only redacted, structured events reach result/.
 
@@ -73,6 +99,33 @@ def sanitize(value):
 with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
     temp = Path(td)
     session = temp / 'session'
+    if a.live:
+        # The service invokes msb with a scrubbed environment, so the wrapper
+        # embeds private absolute paths and journals every attempted create.
+        real_msb = tools / 'msb'
+        guarded = temp / 'tools'; guarded.mkdir()
+        for item in tools.iterdir():
+            if item.name != 'msb': (guarded / item.name).symlink_to(item)
+        ledger = result / 'sandbox-names'
+        msb_wrapper = guarded / 'msb'
+        msb_wrapper.write_text('#!/bin/sh\nif [ "$1" = create ] && [ "$2" = --name ]; then printf "%s\\n" "$3" >> ' + shlex.quote(str(ledger)) + '; fi\nexec ' + shlex.quote(str(real_msb)) + ' "$@"\n')
+        msb_wrapper.chmod(0o700)
+        before = execute([real_msb, 'list', '--format', 'json'], capture_output=True, text=True)
+        existing = {x['name'] for x in json.loads(before.stdout)}
+        def cleanup_sandboxes():
+            if not ledger.exists(): return
+            names = set(ledger.read_text().splitlines()) - existing
+            for name in names:
+                if not re.fullmatch(r'kalari-[A-Za-z0-9._-]+', name):
+                    raise RuntimeError('unexpected sandbox name in private ledger')
+                subprocess.run([str(real_msb), 'remove', '-f', name], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            rows = execute([real_msb, 'list', '--format', 'json'], capture_output=True, text=True)
+            left = names & {x['name'] for x in json.loads(rows.stdout)}
+            (result/'cleanup.json').write_text(json.dumps({'left': sorted(left), 'tracked': len(names)}) + '\n')
+            if left: raise RuntimeError('session sandboxes remain')
+        atexit.register(cleanup_sandboxes)
+        tools = guarded
+        env['PATH'] = str(tools) + ':/usr/local/bin:/usr/bin:/bin'
     execute([sys.executable, HERE/'session.py', '--directory', session, '--workspace-source', a.workspace_source, '--tools', tools, '--api-host', a.api_host, '--api-port', str(a.api_port)], stdout=subprocess.DEVNULL)
     execute([tools/'lambo', 'provision', '--config', session/'lambo.toml'], stdout=subprocess.DEVNULL)
     setup = json.loads((session/'session.json').read_text())
@@ -88,7 +141,7 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
         raise SystemExit('OpenCode version must be 2.2.5')
     workspace = Path(setup['workspace'])
     prompt = (ROOT/'bench/prompts/upgrade.txt').read_text().replace('{BASE_URL}', f'http://{a.api_host}:{a.api_port}')
-    prompt += ('\nUse the Kalari tools to inspect the change and affected code, recall lessons, run the candidate, and propose a lesson. '
+    prompt += ('\nCall kalari_what_changed first, then pass its returned change IDs (not change-kind names) to kalari_blast_radius. Call kalari_recall_lessons with the returned change kinds. After editing, call kalari_run_in_sandbox and then kalari_record_lesson with the returned run_id. '
                f'The trusted specs are {setup["old_spec"]} and {setup["new_spec"]}; workspace is {workspace}. '
                f'The allowed endpoint is {a.api_host}:{a.api_port}; maximum caps are 30000 ms, 65536 bytes, 512 MiB.\n')
     start = time.monotonic()
@@ -136,16 +189,26 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
             out.write(json.dumps(sanitize(doc), ensure_ascii=True) + '\n')
     summary = execute([sys.executable, HERE/'summarize.py', result/'transcript.jsonl'], capture_output=True, text=True)
     measures = json.loads(summary.stdout)
-    measures.update({'elapsed_seconds': round(elapsed, 3), 'exit_code': rc, 'timed_out': timed_out, 'invalid_event_lines': bad, 'fixture': True})
+    measures.update({'elapsed_seconds': round(elapsed, 3), 'exit_code': rc, 'timed_out': timed_out, 'invalid_event_lines': bad, 'fixture': not a.live})
+    if a.live:
+        cleanup_sandboxes()
     grade = temp/'grade'; grade.mkdir()
     execute([HERE/'grade.sh', workspace, ROOT/'bench/harness/grade_runner.py', a.api_host, str(a.grade_port), grade])
     grade_file = grade/'result.jsonl'
     if grade_file.exists():
+        shutil.copyfile(grade_file, result/'grader-output.jsonl')
+        (result/'grader-output.jsonl').chmod(0o600)
         graded = subprocess.run([sys.executable, str(ROOT/'bench/graders/grade.py'), 'payouts', str(grade_file)], env=env, capture_output=True, text=True)
         try: measures['grade'] = json.loads(graded.stdout)
         except ValueError: measures['grade'] = {'verdict': 'ERROR'}
     else:
         measures['grade'] = {'verdict': 'FAIL', 'reason': 'no output'}
     measures['grader_status'] = (grade/'status').read_text().strip() if (grade/'status').exists() else 'missing'
+    if a.live:
+        cleanup_sandboxes()
+        before = usage_rows(usage_before); after = usage_rows(usage())
+        deltas = {model: {'input': int(after.get(model, {}).get('input_tokens') or 0) - int(before.get(model, {}).get('input_tokens') or 0), 'output': int(after.get(model, {}).get('output_tokens') or 0) - int(before.get(model, {}).get('output_tokens') or 0)} for model in set(before) | set(after)}
+        measures['usage_delta'] = deltas
+        measures['cost_note'] = 'Account-wide token deltas may include concurrent sessions; calculate using current model-specific prices.'
     (result/'measures.json').write_text(json.dumps(sanitize(measures), indent=2) + '\n')
     print(json.dumps({'transcript': str(result/'transcript.jsonl'), 'measures': str(result/'measures.json')}))

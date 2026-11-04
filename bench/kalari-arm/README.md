@@ -19,10 +19,7 @@ Lambo store and pinned tools must be prepared separately. The inference key
 belongs in the environment, never in these files. See `tests/live/run.sh` for
 trusted-session construction and private dependency staging.
 
-This is preparation only, not a benchmark harness: it does not enforce a spend
-limit, collect measures, run the hidden grader, or clean up sandboxes. Do not
-use it for a live session until those controls are implemented. In particular,
-the service currently rejects observer configuration and does not wire the
+The service currently rejects observer configuration and does not wire the
 observer into its run context; an IP probe alone cannot make a page observation
 trusted. `record_lesson` may still be called, but a call is not evidence that a
 lesson was published.
@@ -37,11 +34,8 @@ extracts tool names and token counts from OpenCode events without printing tool
 contents. Raw events may contain private data and must be reviewed and redacted
 before a transcript is published.
 
-A hard session budget must include both OpenCode's model requests and Clef
-requests from Kalari's subprocess. The existing service sends Clef directly to
-its fixed HTTPS endpoint. Counting only OpenCode events or polling the
-account-wide usage endpoint after requests cannot enforce the budget. These
-helpers do not supply a request-time guard for both paths.
+A session budget must include both OpenCode and Clef. Usage is checked after
+the first case; it is not a request-time spending cap.
 
 `runner.py --offline-fixture` exercises preparation, fixture Lambo seeding,
 standalone OpenCode, redacted structured event capture, grading, and process
@@ -51,7 +45,15 @@ The fixture marker and loopback check are test guards only; they do not provide
 a network sandbox. Run only trusted fixture binaries and trusted fixture data.
 `test-offline.sh` supplies those fakes and checks all five named tool events,
 redaction, grader invocation and removal.
-The runner deliberately rejects live execution until the shared budget guard is
-implemented. Its offline transcript and grade are fixture evidence only. The
-runner does not yet collect the first-v2 snapshot, account-wide usage delta, or
-prove cleanup of Kalari-created sandboxes after an interrupted run.
+The offline transcript and grade are fixture evidence only. The live runner
+records account-wide usage deltas and journals sandbox names for cleanup; it
+does not yet collect the first-v2 snapshot.
+
+The live runner's preflight requires a staged `rg` and the grader's payout
+data, in addition to pinned Kalari, aashaan, msb, Vimanam and Lambo binaries.
+The key is read from stdin. Use only one bounded session, inspect its spend,
+and stop if it exceeds the task budget. Usage deltas are account-wide and are
+not necessarily attributable to this session. The runner journals its own
+sandbox names and removes them after the session. First-v2 grading is still
+unimplemented. The first live attempt and its sanitized tool transcript are in
+`results/upgrade-one.md` and `results/upgrade-one-tools.jsonl`.

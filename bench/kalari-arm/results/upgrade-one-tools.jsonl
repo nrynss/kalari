@@ -1,0 +1,6 @@
+{"error": null, "status": "completed", "tool": "kalari_what_changed"}
+{"error": "unknown change ID: pagination_changed", "status": "error", "tool": "kalari_blast_radius"}
+{"error": null, "status": "completed", "tool": "kalari_recall_lessons"}
+{"error": "search: rg exited 255: could not execute external process 'rg'", "status": "error", "tool": "kalari_blast_radius"}
+{"error": null, "status": "completed", "tool": "kalari_recall_lessons"}
+{"error": "search: rg exited 255: could not execute external process 'rg'", "status": "error", "tool": "kalari_blast_radius"}
