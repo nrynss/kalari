@@ -136,7 +136,7 @@ requires:   [T3.3]
 fixture-ok: no
 size:       XS · mid
 owns:       tests/live/clef.sh
-status:     in-review
+status:     done
 ```
 The three questions on one real failure from the benchmark (the `no_dedupe` payouts run's grader output and its code).
 

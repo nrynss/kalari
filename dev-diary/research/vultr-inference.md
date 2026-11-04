@@ -50,6 +50,8 @@ Base URL `https://api.vultrinference.com/v1`, `Authorization: Bearer <key>`. Req
 
 **A5, spend.** `/v1/usage` reports token counts per model only, **no dollar amounts**, and counts cached tokens as input (4 × 348 = 1,392). Whether cached input is discounted can't be seen there: check the console's billing page. Part A cost under $0.01.
 
+**T3.3b, one live `no_dedupe` judgement.** `/v1/usage` `current_month.chat_usage` for `clef` moved 533 input tokens on `failureCause` and 956 across the three questions. Output tokens stayed 0. At $0.10 per 1M input tokens that is $0.000053 and $0.000096. On the B2 overlap sentence alone, `failureCause` chose `api_change` at confidence 0.486, with `unrelated_bug` at 0.356. Do not send that question again to raise the confidence.
+
 ## Prices (console, per 1M tokens, input / output)
 
 | Model | In | Out |

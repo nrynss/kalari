@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0 done: Vimanam 2.1.0 (T0.6) and Lambo 0.9.0 (T0.4) landed. P1 done; P2 7/7; P3 4/7. T2.6 done. T3.1a done. T3.3b claimed. T3.2, T4.1 and T4.2 are claimed by another orchestrator. The run continues through P3, then P4, then P5. Ready: T5.1. Live spend is approved, including the pilot (T5.2, about $16) and T3.2b and T3.3b (each under $0.01). Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
+**Current status:** P0 done: Vimanam 2.1.0 (T0.6) and Lambo 0.9.0 (T0.4) landed. P1 done; P2 7/7; P3 5/7. T2.6 done. T3.1a done. T3.3b done. T3.2, T4.1 and T4.2 are claimed by another orchestrator. The run continues through P3, then P4, then P5. Ready: T5.1. Live spend is approved, including the pilot (T5.2, about $16) and T3.2b and T3.3b (each under $0.01). Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
 
 ---
 
@@ -142,7 +142,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P0 | 6 / 6 | All done |
 | P1 | 5 / 5 | T1.1 through T1.5 done |
 | P2 | 7 / 7 | T2.1 through T2.6 done. The Microsandbox-only exit line stays open because the Docker fallback exists |
-| P3 | 4 / 7 | T3.1, T3.1a, T3.3 and T3.4 done. T3.2 claimed by another orchestrator. T3.3b claimed |
+| P3 | 5 / 7 | T3.1, T3.1a, T3.3, T3.3b and T3.4 done. T3.2 claimed by another orchestrator. T3.2b waits for T3.2 |
 | P4 | 0 / 8 | T4.1 and T4.2 claimed by another orchestrator. T4.5 waits for those |
 | P5 | 0 / 6 | T5.1 ready. T5.2 (pilot) waits for T5.1. The spend is approved |
 | P6 | 0 / 3 | Waits for T4.2 |
@@ -154,6 +154,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 
 Newest first. One entry per closed task, finding, or split.
 
+- **T3.3b closed: Clef on the payouts `no_dedupe` failure.** `tests/live/clef.sh` is not part of the gate. It grades the local run (`duplicates` 24) and asks `failureCause`, `callsChangedOperation`, and `lessonApplies` through `Kalari.Clef.live`. The key is `VULTR_INFERENCE_API_KEY`, on curl's stdin config. `failureCause` is `api_change` at confidence 0.486, with `unrelated_bug` at 0.356. The call-site noul is 0.868. The dedupe-on-id lesson is 0.981. `/v1/usage` has no dollars. At $0.10 per 1M input tokens the three calls were 956 input tokens, $0.000096, and 0 output tokens. Do not send `failureCause` again to raise the confidence.
 - **T3.3b claimed.** One live Clef call on the payouts `no_dedupe` failure. The budget is under $0.01. The first question stops the run if the rest would pass that.
 - **T2.6 closed: the Microsandbox image is `python:3.13-slim`.** `sandbox.image` defaults to that tag when the key is absent. An explicit string is kept. An empty string is `sandbox.image: empty`. Every create is `--no-net`, one allow rule per entry, `--pull never`, then the image. `ensureImage` still tries three times. The waits are 1000 ms then 2000 ms, recorded and not slept. The image is 43069135 bytes. The first pull failed with Docker Hub `Not authorized`. The second pull cached it. The eight aashaan cases matched, and `correct.py` graded PASS through that image. `cursor_loop.py` was `killed_timeout` at 804 ms. The live scripts do not switch images. `list-json.stdout`, `list-text.stdout`, and `msb run debian -- true` still say debian because they are old recordings. The Docker backend stays `debian:stable-slim`. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
 - **T3.1a closed: Vimanam runner on 2.1.0.** The checks replay `testdata/vimanam/2.1.0/` and do not spawn `vimanam`. `ChangeFact` stays `id` and `kind`. Payouts is 11 facts. `pagination_changed` is `vc2_ff47bb628a187fbe4f28e53ef03a6231e2b22188bc0e84446306104ba37029d8`. `operation_moved` is `vc2_a604d335c9ac1b47b192a9f46eca61773f4ccd1db93a772f71808fbdb36b933c`, old path `/v1/payouts`, new path `/v2/payouts`. Every change with a string path names `/v2/payouts`. `type_added` has a null path. Settlements is 6 facts. Its `pagination_changed` is `vc2_25e58920a86bef7532571b31025312531a0b34db9a10e132ca13c4bea27f795d`. `--context` is GraphQL-only and is not combined with `--format json`. REST focused context is the change facts. The 2.0.0 `payouts.json` and `settlements.json` stay because Fake still replays them. `probes/` stays. Do not add a path field to `ChangeFact`. Do not pass `--context` on an OpenAPI diff.
