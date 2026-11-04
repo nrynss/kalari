@@ -1,0 +1,140 @@
+{
+  "condition": 6,
+  "upgrade": "settlements",
+  "arm": "reference",
+  "setup": "OpenCode 2.2.5 with microsandbox-mcp, no Kalari tools",
+  "api_base": "the VM's public address",
+  "live_port": 18081,
+  "grading_port": 18091,
+  "prompt": "condition-6.txt",
+  "opencode_version": "opencode v2.2.5",
+  "session_continued": false,
+  "notes_attached": false,
+  "session_cap_s": 1200,
+  "session_capped": false,
+  "measures": {
+    "verdict": "PASS",
+    "right_first_time": true,
+    "sandbox_runs": 2,
+    "wall_time_s": 30.671,
+    "time_stuck_s": 0,
+    "tokens_input": 326783,
+    "tokens_output": 8561,
+    "records_lost": 0,
+    "records_duplicated": 0
+  },
+  "sandbox_runs_against_v1": 0,
+  "sandbox_runs_against_v2": 2,
+  "records_extra": 0,
+  "records_mismatched": 0,
+  "grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 1873,
+    "unique": 1873,
+    "expected": 1873,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "first_v2_grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 1873,
+    "unique": 1873,
+    "expected": 1873,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "right_first_time_basis": "snapshot",
+  "cost_usd": 0.054154,
+  "cost_note": "DeepSeek V4.1 Flash list price, cached input counted as input, no cache discount",
+  "usage_delta": [
+    {
+      "model": "clef",
+      "input": 0,
+      "output": 0
+    },
+    {
+      "model": "deepseek-v4.1-flash-1017",
+      "input": 326783,
+      "output": 8561
+    },
+    {
+      "model": "qwen3-embedding-4b",
+      "input": 0,
+      "output": 0
+    }
+  ],
+  "opencode_tokens": {
+    "steps": 15,
+    "input": 30847,
+    "output": 4739,
+    "reasoning": 3822,
+    "cache_read": 295936
+  },
+  "consumer_runs": [
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 0.479,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 1.772,
+      "timed_out": false,
+      "basis": "snapshot"
+    }
+  ],
+  "event_summary": {
+    "lines": 52,
+    "unparsed_lines": 0,
+    "types": {
+      "step_start": 15,
+      "tool_use": 21,
+      "step_finish": 15,
+      "text": 1
+    },
+    "tools": {
+      "read": 9,
+      "execute": 11,
+      "write": 1
+    },
+    "steps": 15,
+    "bash_denied": 0,
+    "sandbox_names": [
+      "settlement-migrate-0da53a5f"
+    ],
+    "last_reason": "stop",
+    "final_answer": "Upgraded `settlement_reconcile.py` to the v2 API.\n\nChanges:\n- Switched from `POST /v1/graphql` to `POST /v2/graphql`.\n- Added cursor pagination via `first`/`after`, stopping only when `pageInfo.hasNextPage` is false.\n- Handles short and empty pages correctly.\n- Deduplicates by `id`, keeping the last version received for amended settlements.\n- Restarts the traversal without `after` when a cursor is rejected, with a bounded retry limit.\n\nVerification against the live API (`http://the VM's public address:18081`):\n- v1 records: **1873**\n- v2 traversal: **27 pages**, **1892 nodes**, **1873 unique settlements**\n- Amended duplicates collapsed: **19**\n- Missing: **0**\n- Extra: **0**\n- Duplicate output IDs: **0**\n- Records differing from v1: **0**\n- Output order also matches v1\n\nAlso tested pagination edge cases, amended records, cursor rejection/restart, and persistent cursor failure. All passed.",
+    "stderr_excerpt": "",
+    "diff_stat": "settlement_reconcile.py | 47 +++++++++++++++++++++++++++++++++++++++++++++--\n 1 file changed, 45 insertions(+), 2 deletions(-)"
+  },
+  "grader_runs": {
+    "final": {
+      "status": "EXIT 0",
+      "log_excerpt": "reconciled 1873 settlements\n"
+    },
+    "first": {
+      "status": "EXIT 0",
+      "log_excerpt": "reconciled 1873 settlements\n"
+    }
+  },
+  "cleanup": {
+    "sandboxes_removed": [],
+    "sandboxes_left": [],
+    "processes_left": []
+  },
+  "process_elapsed_s": 32.0,
+  "opencode_exit": 0
+}
