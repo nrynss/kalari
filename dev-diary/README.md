@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0 done. P1 done. P2 7/7. P3 6/7. P4 6/9. P5 0/6. T3.2b and T5.1 claimed. T4.6 claimed by another orchestrator. T4.5b ready. T4.7 waits for T4.6. T6.1 ready. Live spend is approved, including the pilot (T5.2, about $16) and T3.2b (under $0.01). Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
+**Current status:** P0 done. P1 done. P2 7/7. P3 7/7. P4 6/9. P5 0/6. T3.2b done. T5.1 claimed. T4.6 claimed by another orchestrator. T4.5b ready. T4.7 waits for T4.6. T6.1 ready. Live spend is approved, including the pilot (T5.2, about $16) and T3.2b (under $0.01). Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
 
 ---
 
@@ -142,7 +142,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P0 | 6 / 6 | All done |
 | P1 | 5 / 5 | T1.1 through T1.5 done |
 | P2 | 7 / 7 | T2.1 through T2.6 done. The Microsandbox-only exit line stays open because the Docker fallback exists |
-| P3 | 6 / 7 | T3.1, T3.1a, T3.2, T3.3, T3.3b and T3.4 done. T3.2b claimed |
+| P3 | 7 / 7 | T3.1 through T3.4 done, including T3.1a, T3.2b and T3.3b |
 | P4 | 6 / 9 | T4.1 through T4.5 and T4.6a done. T4.6 claimed by another orchestrator. T4.5b ready. T4.7 waits for T4.6 |
 | P5 | 0 / 6 | T5.1 claimed. T5.2 (pilot) waits for T5.1. The spend is approved |
 | P6 | 0 / 3 | T6.1 ready. T6.2 waits for T6.1 |
@@ -152,6 +152,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 
 ## Handoff Log
 
+- **T3.2b closed: the payouts lesson reached Candidate.** `tests/live/lambo.sh` is not part of the gate. It downloads Lambo 0.9.0, checks sha256 `21f334dc4752625970ba1a4cf9760c7b901b7975ddf19f5ee024747678e7b0bd`, and runs a fresh Solo store. The `lambo` already on PATH was 0.8.0. The client does not pass `--session`; `[serve] default_session = "kalari"` selects it. `lessons` found the lesson on `pagination_changed`. Score 1.50 at once. Eligible at 75 s (score 10.5, still None). Candidate at 145 s. The change-kind resource was promoted in the same cycle. Venerable was not eligible (coverage 0.28, bar 0.30). Embeddings were 2723 input tokens, $0.000136. The child was gone after `shutdown`.
 - **T3.2b claimed.** Live Lambo client: a fresh store, the payouts lesson, three citing runs, then Solo promotion to Candidate. Budget under $0.01.
 - **T4.4 closed.** Terra implemented and reviewed recall. Luna made linked lesson references resolve through typed evidence, with explicit errors for missing or ambiguous required checks. T4.6 writes the versioned reference documented in Recall.lean.
 
