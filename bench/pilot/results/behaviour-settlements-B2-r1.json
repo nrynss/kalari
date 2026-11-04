@@ -1,0 +1,180 @@
+{
+  "condition": 3,
+  "behaviour": "B2",
+  "repeat": 1,
+  "sandbox_setup": "isolated pilot adapter; restricted tool surface and network",
+  "upgrade": "settlements",
+  "arm": "reference",
+  "setup": "OpenCode 2.2.5 with isolated pilot MCP adapter, no Kalari tools",
+  "api_base": "the VM's public address",
+  "live_port": 19121,
+  "grading_port": 19122,
+  "prompt": "upgrade.txt",
+  "opencode_version": "opencode v2.2.5",
+  "session_continued": false,
+  "notes_attached": false,
+  "session_cap_s": 1200,
+  "session_capped": false,
+  "measures": {
+    "verdict": "PASS",
+    "right_first_time": true,
+    "sandbox_runs": 5,
+    "wall_time_s": 1129.485,
+    "time_stuck_s": 423.587,
+    "tokens_input": 1695898,
+    "tokens_output": 30269,
+    "records_lost": 0,
+    "records_duplicated": 0
+  },
+  "sandbox_runs_against_v1": 0,
+  "sandbox_runs_against_v2": 5,
+  "records_extra": 0,
+  "records_mismatched": 0,
+  "grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 1873,
+    "unique": 1873,
+    "expected": 1873,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "first_v2_grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 1873,
+    "unique": 1873,
+    "expected": 1873,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "right_first_time_basis": "snapshot",
+  "cost_usd": 0.272546,
+  "cost_note": "DeepSeek V4.1 Flash list price, cached input counted as input, no cache discount",
+  "usage_delta": [
+    {
+      "model": "clef",
+      "input": 0,
+      "output": 0
+    },
+    {
+      "model": "deepseek-v4.1-flash-1017",
+      "input": 1695898,
+      "output": 30269
+    },
+    {
+      "model": "qwen3-embedding-4b",
+      "input": 0,
+      "output": 0
+    }
+  ],
+  "opencode_tokens": {
+    "steps": 63,
+    "input": 33178,
+    "output": 14166,
+    "reasoning": 16103,
+    "cache_read": 1662720
+  },
+  "consumer_runs": [
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 61.871,
+      "timed_out": true,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 180.334,
+      "timed_out": true,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 0.242,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 5.541,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 120.485,
+      "timed_out": false,
+      "basis": "snapshot"
+    }
+  ],
+  "event_summary": {
+    "lines": 196,
+    "unparsed_lines": 0,
+    "types": {
+      "step_start": 63,
+      "tool_use": 69,
+      "step_finish": 63,
+      "text": 1
+    },
+    "tools": {
+      "execute": 42,
+      "read": 13,
+      "write": 12,
+      "edit": 2
+    },
+    "steps": 63,
+    "bash_denied": 0,
+    "sandbox_names": [
+      "recon",
+      "recon2",
+      "recon3",
+      "clean",
+      "mocktest"
+    ],
+    "last_reason": "stop",
+    "final_answer": "Upgraded `settlement_reconcile.py` to the v2 API.\n\n**Changes**\n- Endpoint now `POST /v2/graphql`.\n- Paginates with `settlements(first: 100, after: ...)`, continuing while `pageInfo.hasNextPage` is true.\n- Continues through short or empty pages instead of treating them as the end.\n- Deduplicates by `id`, keeping the last version received for amended settlements.\n- Restarts pagination without `after` if a cursor is rejected/expired.\n- Guards against a cursor that never advances.\n\n**Verification against the live server**\n- Full v2 traversal: 19 pages, 1,892 delivered rows, including 19 re-delivered amended settlements.\n- Final output: **1,873 unique settlements**, one per line.\n- Compared with the live v1 endpoint: same 1,873 settlements and identical content.\n- Output SHA-256: `bee318f395e2aefab10489e8c4afa7e3c2b3f6f3d901e9cac0fc99772f32f065`\n- A local mock-server test also passed for short/empty pages, amendments, and cursor-error restart handling.",
+    "stderr_excerpt": "",
+    "diff_stat": "settlement_reconcile.py | 58 ++++++++++++++++++++++++++++++++++++++++++++++---\n 1 file changed, 55 insertions(+), 3 deletions(-)"
+  },
+  "grader_runs": {
+    "final": {
+      "status": "EXIT 0",
+      "log_excerpt": "reconciled 1873 settlements\n"
+    },
+    "first": {
+      "status": "EXIT 0",
+      "log_excerpt": "reconciled 1873 settlements\n"
+    }
+  },
+  "cleanup": {
+    "sandboxes_left": [],
+    "processes_left": [],
+    "owned_names": [
+      "kalari-grade-final-b4f2f4a103b4",
+      "kalari-grade-first-b4f2f4a103b4",
+      "kalari-pilot-b4f2f4a103b4",
+      "kalari-pilot-gradeb4f2f4a103b4",
+      "kalari-pilot-liveb4f2f4a103b4",
+      "kalari-preflight-b4f2f4a103b4"
+    ],
+    "scope_verified": true
+  },
+  "process_elapsed_s": 1132.0,
+  "opencode_exit": 0
+}

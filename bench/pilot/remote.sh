@@ -309,7 +309,17 @@ shim, workspace, ip = sys.argv[1:]
 env = dict(os.environ); env.pop('VULTR_INFERENCE_API_KEY', None); env.pop('KALARI_REDACT_KEY', None)
 commands = [
  {'name':'sandbox_create','arguments':{'name':'test','volumes':[{'kind':'bind','guestPath':'/workspace','hostPath':workspace}]}},
- {'name':'sandbox_exec','arguments':{'name':'test','command':'python3','args':['-c', 'import os,socket,sys; assert not os.getenv("VULTR_INFERENCE_API_KEY"); assert os.path.isfile("/workspace/README.md"); s=socket.socket(); s.settimeout(2); assert s.connect_ex((sys.argv[1],18080)) != 0; print("isolated")',ip]}},
+ {'name':'sandbox_exec','arguments':{'name':'test','command':'python3','args':['-c', '''import os,sys,urllib.request,urllib.error
+assert not os.getenv("VULTR_INFERENCE_API_KEY")
+assert os.path.isfile("/workspace/README.md")
+try:
+    with urllib.request.urlopen("http://"+sys.argv[1]+":18080/v2/payouts?limit=1",timeout=5) as r:
+        raise AssertionError("shared API answered")
+except urllib.error.HTTPError as e:
+    assert e.code==403 and "network_policy_denied" in e.read().decode()
+except (TimeoutError, ConnectionError, urllib.error.URLError):
+    pass
+print("isolated")''',ip]}} ,
  {'name':'sandbox_exec','arguments':{'name':'not-owned','command':'true'}},
  {'name':'sandbox_restore','arguments':{'name':'not-owned'}},
 ]

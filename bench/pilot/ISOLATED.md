@@ -26,8 +26,9 @@ Before paid runs, each live and grading endpoint was checked with its
 behaviour's characteristic reference consumer. The B2, B3, and B4 checks
 matched the exact expected missing, duplicate and mismatch counts; both B1
 checks timed out as expected. A separate guest check reached its allowed API,
-was denied access to the pre-existing shared API port, and executed a copied
-workspace file. A scope preflight captured and stopped a detached child. The adapter smoke test checked key absence and refused a foreign
+executed a copied workspace file, and was denied an HTTP request to the
+pre-existing shared API. The original bare-connect denial probe was insufficient;
+the HTTP check supplied the denial evidence. A scope preflight captured and stopped a detached child. The adapter smoke test checked key absence and refused a foreign
 sandbox and restore operation. No inference was used for those checks.
 
 The first session, payouts B1 repeat 1, cost $0.033182 at the recorded list
@@ -57,3 +58,7 @@ hidden grader itself runs locally after the session.
 A separate copy of the payouts server from the initial no-inference preflight
 also remained outside the workspace until it was removed during the twentieth
 variant session; the same external-directory restriction applied.
+The independent HTTP denial recheck ran in a separate, short-lived guest while
+settlements B2 repeat 1 was active. It made no inference calls, but it shared VM
+resources with that session, so its wall time may include a small amount of
+probe contention. The result remains in the pilot.
