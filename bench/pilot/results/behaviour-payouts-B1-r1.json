@@ -1,0 +1,166 @@
+{
+  "condition": 3,
+  "behaviour": "B1",
+  "sandbox_setup": "isolated pilot adapter; restricted tool surface and network",
+  "upgrade": "payouts",
+  "arm": "reference",
+  "setup": "OpenCode 2.2.5 with microsandbox-mcp, no Kalari tools",
+  "api_base": "the VM's public address",
+  "live_port": 19121,
+  "grading_port": 19122,
+  "prompt": "upgrade.txt",
+  "opencode_version": "opencode v2.2.5",
+  "session_continued": false,
+  "notes_attached": false,
+  "session_cap_s": 1200,
+  "session_capped": false,
+  "measures": {
+    "verdict": "PASS",
+    "right_first_time": true,
+    "sandbox_runs": 4,
+    "wall_time_s": 85.163,
+    "time_stuck_s": 0,
+    "tokens_input": 192792,
+    "tokens_output": 7106,
+    "records_lost": 0,
+    "records_duplicated": 0
+  },
+  "sandbox_runs_against_v1": 0,
+  "sandbox_runs_against_v2": 4,
+  "records_extra": 0,
+  "records_mismatched": 0,
+  "grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "expected": 2431,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "first_v2_grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "expected": 2431,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "right_first_time_basis": "snapshot",
+  "cost_usd": 0.033182,
+  "cost_note": "DeepSeek V4.1 Flash list price, cached input counted as input, no cache discount",
+  "usage_delta": [
+    {
+      "model": "clef",
+      "input": 0,
+      "output": 0
+    },
+    {
+      "model": "deepseek-v4.1-flash-1017",
+      "input": 192792,
+      "output": 7106
+    },
+    {
+      "model": "qwen3-embedding-4b",
+      "input": 0,
+      "output": 0
+    }
+  ],
+  "opencode_tokens": {
+    "steps": 17,
+    "input": 11544,
+    "output": 4336,
+    "reasoning": 2770,
+    "cache_read": 181248
+  },
+  "consumer_runs": [
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 1.583,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 1.177,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 51.143,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 0.3,
+      "timed_out": false,
+      "basis": "snapshot"
+    }
+  ],
+  "event_summary": {
+    "lines": 57,
+    "unparsed_lines": 0,
+    "types": {
+      "step_start": 17,
+      "tool_use": 22,
+      "step_finish": 17,
+      "text": 1
+    },
+    "tools": {
+      "execute": 13,
+      "read": 7,
+      "glob": 1,
+      "write": 1
+    },
+    "steps": 17,
+    "bash_denied": 0,
+    "sandbox_names": [
+      "verify"
+    ],
+    "last_reason": "stop",
+    "final_answer": "Upgraded `payout_sync.py` from the v1 endpoint to the v2 export API.\n\n### Changes\n- Requests `GET /v2/payouts` instead of `GET /v1/payouts`.\n- Follows the opaque `cursor` through each response window until `drained` is `true`.\n- Deduplicates on payout `id`, since adjacent windows overlap at their edges.\n- Uses the maximum `limit` of `1000`.\n- Guards against a cursor that fails to advance, preventing an infinite loop.\n\n### Verification against the live v2 server\nRan the consumer against `http://the VM's public address:19121`:\n\n- Synced **2,431 payouts**.\n- Output contained **2,431 unique IDs** \u2014 no duplicates.\n- Pagination tested with limits `1`, `2`, `7`, `13`, and `1000`; all produced the identical ordered ID set.\n- Compared v2 output against the live v1 endpoint:\n  - `v1: 2431`, `v2: 2431`\n  - No payouts missing from v2\n  - No extra payouts in v2\n  - All payout objects were identical\n\nThe CLI path was also exercised directly:\n\n```bash\npython3 payout_sync.py --base-url http://the VM's public address:19121 --out payouts.jsonl\n# synced 2431 payouts\n```",
+    "stderr_excerpt": "",
+    "diff_stat": "payout_sync.py | 29 ++++++++++++++++++++++++++---\n 1 file changed, 26 insertions(+), 3 deletions(-)"
+  },
+  "grader_runs": {
+    "final": {
+      "status": "EXIT 0",
+      "log_excerpt": "synced 2431 payouts\n"
+    },
+    "first": {
+      "status": "EXIT 0",
+      "log_excerpt": "synced 2431 payouts\n"
+    }
+  },
+  "cleanup": {
+    "sandboxes_left": [],
+    "processes_left": [],
+    "owned_names": [
+      "kalari-grade-final-e2bc49a6a7b0",
+      "kalari-grade-first-e2bc49a6a7b0",
+      "kalari-pilot-e2bc49a6a7b0",
+      "kalari-pilot-gradee2bc49a6a7b0",
+      "kalari-pilot-livee2bc49a6a7b0",
+      "kalari-preflight-e2bc49a6a7b0"
+    ]
+  },
+  "process_elapsed_s": 87.0,
+  "opencode_exit": 0
+}
