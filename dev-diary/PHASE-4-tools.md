@@ -130,11 +130,15 @@ requires:   [T4.5, T3.2, T3.3, T4.6a]
 fixture-ok: yes
 size:       M · frontier
 owns:       Kalari/Tools/Lesson.lean, Kalari/Tools/Run.lean (trusted truth artifact only)
-status:     claimed:gpt-6.1-terra
+status:     in-review
 ```
 Lessons from **what verified runs showed**, not only from failures (bench/README.md, Where lessons come from). Three sources: a failure Clef attributes to `api_change`, and the fix that passed; a behaviour the differential check observed on a pass (boundary duplicates, a token on the final page); a behaviour the passing code had to handle (a short page mid-stream). Each written to Lambo with its change kind, observation, run and check. A failure Clef calls `flaky`, `test_setup` or `unrelated_bug` is never a lesson. Kalari decides what is recorded; the agent can propose, never write directly.
 
 **Done when:** from the payouts reference runs, the expected lesson is written (with the one-payout overlap and the final-page token as observations); its rule says to key records by ID with **the last delivery winning**, never "keep the first" or a bare "dedupe", even though payouts' identical overlaps can't tell them apart (settlements' amended repeats can: bench/README.md); a `flaky` failure writes nothing; a pass with no observed behaviour writes nothing.
+
+**Notes (in review):** `record` takes a run ID and reads the service-owned Evidence store. It accepts a `verified-behavior` record only when its envelope identifies the same session and passing run, its kind is indexed, its named check is present and passed, and the differential check passed. The trusted producer payload contains `change_kind`, a complete check, `behaviors` (page observations: `boundary_overlap_one`, `final_page_token`, or `short_page_midstream`), and optional `failed_run_id` linking a failing run to this verified fix. Failure-linked evidence is classified with Clef; non-`api_change` results write nothing. An empty pass writes nothing. Overlap checks must state last-delivery-wins by ID. The graph uses the versioned T4.4 reference and an evidence-backed full Model.Lesson; the resource, constraint and run observation writes wait for receipts.
+
+**Unmet integration evidence:** T4.5 currently stores final comparison counts and run/check results, not page-level observations or failure-to-fix links. The build fixture supplies those trusted producer records explicitly; it verifies overlap, final token, last-wins check, flaky/no-observation no-write cases, API-change fix, and resolution by T4.4. It does not demonstrate those observations from actual reference-run instrumentation. T4.7 must supply verified page-level producer records and trusted Clef context; no agent proposal is accepted as evidence. Appending lesson evidence precedes publishing its graph reference, so a failed graph write may require recovery before retry.
 
 ---
 
