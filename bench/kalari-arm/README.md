@@ -42,3 +42,12 @@ requests from Kalari's subprocess. The existing service sends Clef directly to
 its fixed HTTPS endpoint. Counting only OpenCode events or polling the
 account-wide usage endpoint after requests cannot enforce the budget. These
 helpers do not supply a request-time guard for both paths.
+
+`runner.py --offline-fixture` exercises preparation, fixture Lambo seeding,
+standalone OpenCode, redacted structured event capture, grading, and process
+group cleanup with fake executables. `test-offline.sh` supplies those fakes and
+checks all five named tool events, redaction, grader invocation and removal.
+The runner deliberately rejects live execution until the shared budget guard is
+implemented. Its offline transcript and grade are fixture evidence only. The
+runner does not yet collect the first-v2 snapshot, account-wide usage delta, or
+prove cleanup of Kalari-created sandboxes after an interrupted run.
