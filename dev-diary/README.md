@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0 done: Vimanam 2.1.0 (T0.6) and Lambo 0.9.0 (T0.4) landed. P1 done; P2 6/7; P3 4/7. T2.6 claimed. T3.1a done. T3.2, T4.1 and T4.2 are claimed by another orchestrator. The run continues through P3, then P4, then P5. Ready: T3.3b, T5.1. Live spend is approved, including the pilot (T5.2, about $16) and T3.2b and T3.3b (each under $0.01). Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
+**Current status:** P0 done: Vimanam 2.1.0 (T0.6) and Lambo 0.9.0 (T0.4) landed. P1 done; P2 7/7; P3 4/7. T2.6 done. T3.1a done. T3.2, T4.1 and T4.2 are claimed by another orchestrator. The run continues through P3, then P4, then P5. Ready: T3.3b, T5.1. Live spend is approved, including the pilot (T5.2, about $16) and T3.2b and T3.3b (each under $0.01). Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
 
 ---
 
@@ -141,9 +141,9 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 |---|---|---|
 | P0 | 6 / 6 | All done |
 | P1 | 5 / 5 | T1.1 through T1.5 done |
-| P2 | 6 / 7 | T2.1 through T2.5 done, including T2.3b. T2.6 claimed. The Microsandbox-only exit line stays open because the Docker fallback exists |
+| P2 | 7 / 7 | T2.1 through T2.6 done. The Microsandbox-only exit line stays open because the Docker fallback exists |
 | P3 | 4 / 7 | T3.1, T3.1a, T3.3 and T3.4 done. T3.2 claimed by another orchestrator. T3.3b ready |
-| P4 | 0 / 8 | T4.1 and T4.2 claimed by another orchestrator. T4.5 also needs T2.6 |
+| P4 | 0 / 8 | T4.1 and T4.2 claimed by another orchestrator. T4.5 waits for those |
 | P5 | 0 / 6 | T5.1 ready. T5.2 (pilot) waits for T5.1. The spend is approved |
 | P6 | 0 / 3 | Waits for T4.2 |
 | P7 | 0 / 4 | Waits for P5, P6 |
@@ -154,6 +154,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 
 Newest first. One entry per closed task, finding, or split.
 
+- **T2.6 closed: the Microsandbox image is `python:3.13-slim`.** `sandbox.image` defaults to that tag when the key is absent. An explicit string is kept. An empty string is `sandbox.image: empty`. Every create is `--no-net`, one allow rule per entry, `--pull never`, then the image. `ensureImage` still tries three times. The waits are 1000 ms then 2000 ms, recorded and not slept. The image is 43069135 bytes. The first pull failed with Docker Hub `Not authorized`. The second pull cached it. The eight aashaan cases matched, and `correct.py` graded PASS through that image. `cursor_loop.py` was `killed_timeout` at 804 ms. The live scripts do not switch images. `list-json.stdout`, `list-text.stdout`, and `msb run debian -- true` still say debian because they are old recordings. The Docker backend stays `debian:stable-slim`. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
 - **T3.1a closed: Vimanam runner on 2.1.0.** The checks replay `testdata/vimanam/2.1.0/` and do not spawn `vimanam`. `ChangeFact` stays `id` and `kind`. Payouts is 11 facts. `pagination_changed` is `vc2_ff47bb628a187fbe4f28e53ef03a6231e2b22188bc0e84446306104ba37029d8`. `operation_moved` is `vc2_a604d335c9ac1b47b192a9f46eca61773f4ccd1db93a772f71808fbdb36b933c`, old path `/v1/payouts`, new path `/v2/payouts`. Every change with a string path names `/v2/payouts`. `type_added` has a null path. Settlements is 6 facts. Its `pagination_changed` is `vc2_25e58920a86bef7532571b31025312531a0b34db9a10e132ca13c4bea27f795d`. `--context` is GraphQL-only and is not combined with `--format json`. REST focused context is the change facts. The 2.0.0 `payouts.json` and `settlements.json` stay because Fake still replays them. `probes/` stays. Do not add a path field to `ChangeFact`. Do not pass `--context` on an OpenAPI diff.
 - **T2.6 claimed.** The Microsandbox image becomes a config setting. The gate is the recordings. A live run is attempted. A Docker Hub pull that fails three times is reported and does not switch the image back to `debian`.
 - **T2.6 added: the sandbox image can't run Python.** T2.3b's report: the backend creates `debian`, which has no `python3`, and the live script switched to `python` on its own. T2.6 makes the image a config setting defaulting to `python`, re-records `create`, and proves the aashaan and `correct.py` through the backend itself. T4.5 now requires it.
