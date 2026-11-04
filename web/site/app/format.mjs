@@ -60,6 +60,15 @@ export function money(value) {
   return `$${numberFormat(value, 4, 4)}`;
 }
 
+/* The API accepts only these characters in a run or session id, so the app
+   refuses to build a link for anything else. A slash would read as a path
+   separator and the API would answer 400. */
+const ID_PATTERN = /^[A-Za-z0-9._-]+$/;
+
+export function isId(value) {
+  return typeof value === "string" && ID_PATTERN.test(value);
+}
+
 export function runHref(runId) {
   return `run.html?id=${encodeURIComponent(runId)}`;
 }
@@ -68,14 +77,15 @@ export function sessionHref(sessionId) {
   return `session.html?id=${encodeURIComponent(sessionId)}`;
 }
 
-/* A run link is only rendered when the run id is in the served run index.
-   When it is not, the caller gets a plain word instead of a number, so a
-   figure can never appear without a working destination. */
+/* A run link is only rendered when the run id passes the API id rule and is
+   in the served run index. When it is not, the caller gets a plain word
+   instead of a number, so a figure can never appear without a working
+   destination. */
 export function runLink(runId, inner, runIds, label) {
   if (!runIds) {
     return `<span class="measure-unavailable" title="The run index could not be loaded.">unavailable</span>`;
   }
-  if (!runIds.has(runId)) {
+  if (!isId(runId) || !runIds.has(runId)) {
     return `<span class="measure-missing" title="This run is not in the evidence store.">evidence missing</span>`;
   }
   return `<a class="run-link" href="${attr(runHref(runId))}" data-run-link="${attr(runId)}" title="${attr(label)}">${inner}</a>`;

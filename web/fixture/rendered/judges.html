@@ -5,24 +5,23 @@
     <p class="hero-copy">This page is the evidence index. Every figure comes from an evidence record, and every benchmark figure links to the run that produced it.</p>
     <p class="status-line"><span class="status-dot is-pilot" aria-hidden="true"></span>Pilot results published. The frozen comparison is pending.</p>
     <nav class="reading-path" aria-label="On this page">
-      <ul><li><a href="#comparison">The measured before and after</a></li><li><a href="#baseline">Every condition, run by run</a></li><li><a href="#containment">The containment moment</a></li><li><a href="#runs">Every run</a></li><li><a href="#sessions">Read a session</a></li></ul>
+      <ul><li><a href="#comparison">The pilot baseline</a></li><li><a href="#baseline">Every condition in this fixture</a></li><li><a href="#containment">The containment moment</a></li><li><a href="#runs">Every run</a></li><li><a href="#sessions">Read a session</a></li></ul>
     </nav>
   </header>
 
     <section id="comparison" class="section section--comparison">
-      <h2>The measured before and after</h2>
+      <h2>The pilot baseline</h2>
     <div class="notice notice--pending" role="status">
     <h3>The frozen comparison is not yet published.</h3>
     <p>The pilot below is the reference arm. The Kalari arm has not run on the frozen pair.</p>
-    <p>When it does, this panel will show Kalari with the lesson against the fresh session, the notes handoff and the verifier prompt. It will report verdicts, right first time, sandbox attempts, wall time, time stuck, tokens, and records lost or duplicated. Every figure will link to its run.</p>
+    <p>When it is, this panel will show Kalari with the lesson against the fresh session, the notes handoff and the verifier prompt. It will report verdicts, right first time, sandbox attempts, wall time, time stuck, tokens, and records lost or duplicated. Every figure will link to its run.</p>
     <p><a href="#baseline">The baseline pilot is published below.</a></p>
   </div>
-
-    <div class="contrast">
-    <h3>The measured baseline: the notes handoff on settlements</h3>
-    <p class="caveat">Both columns are the reference setup. Five repeats each. This is the baseline's notes handoff, not Kalari's comparison.</p>
+    <div class="contrast" data-contrast="pilot">
+    <h3>The pilot baseline: the notes handoff on settlements</h3>
+    <p class="caveat">Both columns are the reference setup. Five repeats each. This is the reference baseline, not Kalari's comparison.</p>
     <div class="contrast-grid">
-      <div class="contrast-column">
+      <div class="contrast-column" data-condition="3" data-upgrade="settlements" data-provenance="pilot">
     <h4>Fresh session, no notes</h4>
     <p class="contrast-note">A new session for upgrade two, with no earlier context.</p>
     <ul class="tally" aria-label="The sessions in this group"><li><a class="tally-dot is-pass " href="run.html?id=pilot-c3-settlements-r1" data-run-link="pilot-c3-settlements-r1" aria-label="Run one: passed, not right first time"><span class="tally-mark" aria-hidden="true"></span><span class="visually-hidden">Run one: passed, not right first time</span></a></li><li><a class="tally-dot is-pass is-first" href="run.html?id=pilot-c3-settlements-r2" data-run-link="pilot-c3-settlements-r2" aria-label="Run two: passed, right first time"><span class="tally-mark" aria-hidden="true"></span><span class="visually-hidden">Run two: passed, right first time</span></a></li><li><a class="tally-dot is-pass is-first" href="run.html?id=pilot-c3-settlements-r3" data-run-link="pilot-c3-settlements-r3" aria-label="Run three: passed, right first time"><span class="tally-mark" aria-hidden="true"></span><span class="visually-hidden">Run three: passed, right first time</span></a></li><li><a class="tally-dot is-pass is-first" href="run.html?id=pilot-c3-settlements-r4" data-run-link="pilot-c3-settlements-r4" aria-label="Run four: passed, right first time"><span class="tally-mark" aria-hidden="true"></span><span class="visually-hidden">Run four: passed, right first time</span></a></li><li><a class="tally-dot is-pass is-first" href="run.html?id=pilot-c3-settlements-r5" data-run-link="pilot-c3-settlements-r5" aria-label="Run five: passed, right first time"><span class="tally-mark" aria-hidden="true"></span><span class="visually-hidden">Run five: passed, right first time</span></a></li></ul>
@@ -30,7 +29,7 @@
     <p class="median-line"><span class="median-label">Median wall time</span><span class="median-value"><a class="run-link" href="run.html?id=pilot-c3-settlements-r3" data-run-link="pilot-c3-settlements-r3" title="Median wall time">25.416 s</a></span></p>
     <p class="median-line"><span class="median-label">Median sandbox runs</span><span class="median-value"><a class="run-link" href="run.html?id=pilot-c3-settlements-r2" data-run-link="pilot-c3-settlements-r2" title="Median sandbox runs">3</a></span></p>
   </div>
-      <div class="contrast-column">
+      <div class="contrast-column" data-condition="2" data-upgrade="settlements" data-provenance="pilot">
     <h4>New session with notes</h4>
     <p class="contrast-note">The agent reads the notes it wrote after upgrade one.</p>
     <ul class="tally" aria-label="The sessions in this group"><li><a class="tally-dot is-pass is-first" href="run.html?id=pilot-c2-settlements-r1" data-run-link="pilot-c2-settlements-r1" aria-label="Run one: passed, right first time"><span class="tally-mark" aria-hidden="true"></span><span class="visually-hidden">Run one: passed, right first time</span></a></li><li><a class="tally-dot is-pass is-first" href="run.html?id=pilot-c2-settlements-r2" data-run-link="pilot-c2-settlements-r2" aria-label="Run two: passed, right first time"><span class="tally-mark" aria-hidden="true"></span><span class="visually-hidden">Run two: passed, right first time</span></a></li><li><a class="tally-dot is-pass is-first" href="run.html?id=pilot-c2-settlements-r3" data-run-link="pilot-c2-settlements-r3" aria-label="Run three: passed, right first time"><span class="tally-mark" aria-hidden="true"></span><span class="visually-hidden">Run three: passed, right first time</span></a></li><li><a class="tally-dot is-pass is-first" href="run.html?id=pilot-c2-settlements-r4" data-run-link="pilot-c2-settlements-r4" aria-label="Run four: passed, right first time"><span class="tally-mark" aria-hidden="true"></span><span class="visually-hidden">Run four: passed, right first time</span></a></li><li><a class="tally-dot is-pass is-first" href="run.html?id=pilot-c2-settlements-r5" data-run-link="pilot-c2-settlements-r5" aria-label="Run five: passed, right first time"><span class="tally-mark" aria-hidden="true"></span><span class="visually-hidden">Run five: passed, right first time</span></a></li></ul>
@@ -43,8 +42,8 @@
   </div>
     </section>
     <section id="baseline" class="section">
-            <h2>Every condition, run by run</h2>
-            <p>Each row is one pilot session. The numbers are the committed measures. The invalid rows stay for the record and cannot count.</p>
+            <h2>Every condition in this fixture</h2>
+            <p>Each row is one session in the store. The numbers are the committed measures. The invalid rows stay for the record and cannot count.</p>
             <div class="condition-list"><section class="condition">
     <header class="condition-head">
       <div class="condition-title"><h3>The notes handoff</h3><span class="badge badge--pilot">Pilot, reference arm</span></div>
@@ -930,7 +929,7 @@
   </section></div>
 
     <section class="subsection subsection--invalid">
-            <h3>Invalid pilot rows, kept for the record</h3>
+            <h3>Invalid rows, kept for the record</h3>
             <p>These rows cannot count. The run pages carry the note for each row.</p>
             <div class="condition-list"><section class="condition">
     <header class="condition-head">
@@ -1507,6 +1506,10 @@
       </tr></tbody>
     </table></div>
   </section>
+    <div class="not-run">
+    <h3>Conditions not run in this fixture</h3>
+    <ul><li data-not-run="4"><strong>Kalari, without stored lessons</strong> (condition four). Not run. No record for this condition is in the store.</li><li data-not-run="5"><strong>Kalari, with the lesson</strong> (condition five). Not run. No record for this condition is in the store.</li></ul>
+  </div>
           </section>
     <section id="containment" class="containment" aria-labelledby="containment-title">
     <div class="containment-inner">
@@ -1593,8 +1596,4 @@
     </a>
     <p class="quiet-line"><a href="session.html?id=payouts-earlier">The earlier session that left the recalled lesson</a></p>
     </section>
-    <footer class="judges-footer">
-    <p><strong>Chaaya</strong> is the Kalari front end. The evidence store is append-only. It keeps the run, the checks, the Clef answers and the lessons.</p>
-    <p class="fine-print">Clef answers are a model's opinion, never a measurement and never a verdict. The hidden grader and the sandbox checks decide the result.</p>
-  </footer>
   </article>

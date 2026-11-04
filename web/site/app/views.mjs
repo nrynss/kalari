@@ -9,6 +9,7 @@ import {
   count,
   countWord,
   escapeHtml as h,
+  isId,
   measure,
   milliseconds,
   money,
@@ -78,6 +79,12 @@ function conditionArm(conditionGroup) {
   return payloadOf(firstRecord).arm;
 }
 
+function conditionProvenance(conditionGroup) {
+  const firstUpgrade = conditionGroup.upgrades?.[0];
+  const firstRecord = firstUpgrade?.records?.[0];
+  return payloadOf(firstRecord).provenance === "frozen" ? "frozen" : "pilot";
+}
+
 function warningsSection(warnings) {
   if (!Array.isArray(warnings) || !warnings.length) return "";
   return `<div class="notice notice--warning" role="alert">
@@ -144,6 +151,18 @@ function allPassed(records) {
 
 function allFirstTime(records) {
   return records.length > 0 && firstTimeCount(records) === records.length;
+}
+
+function repeatCount(records) {
+  return unique(
+    records.map((record) => Number(payloadOf(record).repeat)).filter((value) => Number.isFinite(value)),
+  ).length;
+}
+
+function repeatPhrase(records) {
+  const repeats = repeatCount(records);
+  if (!repeats) return "The repeats";
+  return `${capitalise(countWord(repeats))} ${repeats === 1 ? "repeat" : "repeats"}`;
 }
 
 function tallySentence(records) {
@@ -413,14 +432,15 @@ function detailsTables(records, runIds) {
 function conditionSection(conditionGroup, runIds, tone = "valid") {
   const { condition, upgrades } = conditionGroup;
   const arm = conditionArm(conditionGroup);
+  const provenance = conditionProvenance(conditionGroup);
   const badgeText =
     tone === "invalid"
-      ? "Invalid pilot row"
+      ? `Invalid ${provenance} row`
       : tone === "diagnostic"
         ? "Diagnostic session"
         : tone === "frozen"
           ? `Frozen, ${armLabel(arm)}`
-          : `Pilot, ${armLabel(arm)}`;
+          : `${capitalise(provenance)}, ${armLabel(arm)}`;
   const badgeTone = tone === "invalid" ? "fail" : tone === "diagnostic" ? "pilot" : tone === "frozen" ? "live" : "pilot";
   return `<section class="condition">
     <header class="condition-head">
@@ -459,8 +479,10 @@ function conditionGroupsSection(groups, runIds, tone) {
     .join("")}</div>`;
 }
 
-function contrastColumn({ title, records, runIds, note }) {
-  return `<div class="contrast-column">
+function contrastColumn({ title, records, runIds, note, condition, upgrade, provenance }) {
+  return `<div class="contrast-column" data-condition="${attr(String(condition))}" data-upgrade="${attr(
+    upgrade,
+  )}" data-provenance="${attr(provenance)}">
     <h4>${h(title)}</h4>
     ${note ? `<p class="contrast-note">${h(note)}</p>` : ""}
     ${runTally(records, runIds)}
@@ -490,21 +512,27 @@ function pilotContrast(valid, runIds) {
     allPassed(freshPayouts) && allFirstTime(freshPayouts) && allPassed(notesPayouts) && allFirstTime(notesPayouts)
       ? "On payouts, both conditions passed every session first time."
       : "On payouts, the two conditions did not match. The tables below show each session.";
-  return `<div class="contrast">
-    <h3>The measured baseline: the notes handoff on settlements</h3>
-    <p class="caveat">Both columns are the reference setup. Five repeats each. This is the baseline's notes handoff, not Kalari's comparison.</p>
+  return `<div class="contrast" data-contrast="pilot">
+    <h3>The pilot baseline: the notes handoff on settlements</h3>
+    <p class="caveat">Both columns are the reference setup. ${repeatPhrase(fresh)} each. This is the reference baseline, not Kalari's comparison.</p>
     <div class="contrast-grid">
       ${contrastColumn({
         title: "Fresh session, no notes",
         records: fresh,
         runIds,
         note: "A new session for upgrade two, with no earlier context.",
+        condition: 3,
+        upgrade: "settlements",
+        provenance: "pilot",
       })}
       ${contrastColumn({
         title: "New session with notes",
         records: notes,
         runIds,
         note: "The agent reads the notes it wrote after upgrade one.",
+        condition: 2,
+        upgrade: "settlements",
+        provenance: "pilot",
       })}
     </div>
     <p class="caveat caveat--last">${h(payoutsLine)}</p>
@@ -519,21 +547,27 @@ function frozenUpgradeContrast(frozen, upgrade, runIds) {
     (record) => payloadOf(record).condition === 3 && payloadOf(record).upgrade === upgrade,
   );
   if (!after.length || !before.length) return "";
-  return `<div class="contrast">
+  return `<div class="contrast" data-contrast="frozen" data-upgrade="${attr(upgrade)}">
     <h3>The frozen comparison: ${h(upgradeLabel(upgrade))}</h3>
-    <p class="caveat">Five repeats per condition. Counts, never percentages. The tables below show every session, and every figure links to its run.</p>
+    <p class="caveat">${repeatPhrase(before)} per condition. Counts, never percentages. The tables below show every session, and every figure links to its run.</p>
     <div class="contrast-grid">
       ${contrastColumn({
         title: "Reference, fresh session",
         records: before,
         runIds,
         note: "The reference setup, with no notes.",
+        condition: 3,
+        upgrade,
+        provenance: "frozen",
       })}
       ${contrastColumn({
         title: "Kalari, with the lesson",
         records: after,
         runIds,
         note: "OpenCode with Kalari, and the lesson from upgrade one.",
+        condition: 5,
+        upgrade,
+        provenance: "frozen",
       })}
     </div>
     <div class="loss-grid">
@@ -561,16 +595,19 @@ function frozenContrast(frozen, runIds) {
     <p class="caveat caveat--last">The verifier-prompt rows below are the control. If they match Kalari, say so plainly.</p>`;
 }
 
-function notPublishedPanel() {
+function notPublishedPanel(hasFrozenParts) {
+  const lead = hasFrozenParts
+    ? "Some frozen rows are in the store. No upgrade has both condition five and condition three yet, so the comparison is not published."
+    : "The pilot below is the reference arm. The Kalari arm has not run on the frozen pair.";
   return `<div class="notice notice--pending" role="status">
     <h3>The frozen comparison is not yet published.</h3>
-    <p>The pilot below is the reference arm. The Kalari arm has not run on the frozen pair.</p>
-    <p>When it does, this panel will show Kalari with the lesson against the fresh session, the notes handoff and the verifier prompt. It will report verdicts, right first time, sandbox attempts, wall time, time stuck, tokens, and records lost or duplicated. Every figure will link to its run.</p>
+    <p>${lead}</p>
+    <p>When it is, this panel will show Kalari with the lesson against the fresh session, the notes handoff and the verifier prompt. It will report verdicts, right first time, sandbox attempts, wall time, time stuck, tokens, and records lost or duplicated. Every figure will link to its run.</p>
     <p><a href="#baseline">The baseline pilot is published below.</a></p>
   </div>`;
 }
 
-function comparisonSection(bench, runIds) {
+function comparisonSection(bench, runIds, hasFrozenPair) {
   if (!bench.length) {
     return `<h2>Benchmark results are not yet published.</h2>
       <p>The page is waiting for benchmark records in the evidence store. A producer will write one record per run. No producer exists yet.</p>
@@ -586,9 +623,9 @@ function comparisonSection(bench, runIds) {
   const validPilot = bench.filter(
     (record) => payloadOf(record).provenance !== "frozen" && payloadOf(record).status === "valid",
   );
-  return `<h2>The measured before and after</h2>
-    ${frozen.length ? "" : notPublishedPanel()}
-    ${frozen.length ? frozenContrast(frozen, runIds) : ""}
+  const heading = hasFrozenPair ? "The measured before and after" : "The pilot baseline";
+  return `<h2>${heading}</h2>
+    ${hasFrozenPair ? frozenContrast(frozen, runIds) : notPublishedPanel(frozen.length > 0)}
     ${validPilot.length ? pilotContrast(validPilot, runIds) : ""}`;
 }
 
@@ -606,7 +643,7 @@ function containmentSection(bench, runIds) {
   const cap = Number(payload.session_cap_s);
   const capText = cap === 1200 ? "twenty-minute" : cap === 600 ? "ten-minute" : "";
   const capPhrase = capText ? `the ${capText} session cap` : "the session cap";
-  const hasRun = runIds && runIds.has(capped.run_id);
+  const hasRun = runIds && isId(capped.run_id) && runIds.has(capped.run_id);
   return `<section id="containment" class="containment" aria-labelledby="containment-title">
     <div class="containment-inner">
       <h2 id="containment-title">The cap fired. The evidence survived.</h2>
@@ -639,7 +676,13 @@ function containmentSection(bench, runIds) {
               )}">Read the capped run</a>`
             : ""
         }
-        <a class="quiet-link quiet-link--light" href="${attr(sessionHref(capped.session_id))}">Open its session</a>
+        ${
+          isId(capped.session_id)
+            ? `<a class="quiet-link quiet-link--light" href="${attr(
+                sessionHref(capped.session_id),
+              )}">Open its session</a>`
+            : ""
+        }
       </div>
     </div>
   </section>`;
@@ -647,6 +690,14 @@ function containmentSection(bench, runIds) {
 
 function diagnosticsSection(diagnostic, runIds) {
   if (!diagnostic.length) return "";
+  const byGroup = groupBy(diagnostic, (record) =>
+    JSON.stringify([payloadOf(record).upgrade, payloadOf(record).behaviour]),
+  );
+  const sizes = unique([...byGroup.values()].map((group) => group.length));
+  const perBehaviour = sizes.length === 1 ? sizes[0] : 0;
+  const sessionsText = perBehaviour
+    ? `${capitalise(countWord(perBehaviour))} sessions for each behaviour`
+    : "Several sessions for each behaviour";
   const rows = byBehaviour(diagnostic)
     .map((record) => {
       const payload = payloadOf(record);
@@ -693,7 +744,7 @@ function diagnosticsSection(diagnostic, runIds) {
     .join("");
   return `<section class="subsection">
     <h3>Single-behaviour diagnostics</h3>
-    <p>Five sessions for each behaviour, on the isolated pilot adapter. It restricted the tool surface and network more than the condition rows. These sessions diagnose one behaviour alone and are not compared with the condition rows.</p>
+    <p>${sessionsText}, on the isolated pilot adapter. It restricted the tool surface and network more than the condition rows. These sessions diagnose one behaviour alone and are not compared with the condition rows.</p>
     <div class="table-wrap"><table class="measures-table diagnostics-table">
       <caption class="visually-hidden">Single-behaviour diagnostics.</caption>
       <thead><tr><th scope="col">Behaviour</th><th scope="col">Run</th><th scope="col">Verdict</th><th scope="col">Right first time</th><th scope="col" class="num">Sandbox runs</th><th scope="col" class="num">Wall time</th><th scope="col" class="num">Records lost</th><th scope="col" class="num">Records duplicated</th></tr></thead>
@@ -813,12 +864,25 @@ function sessionLinksSection(sessions) {
     }`;
 }
 
-function heroSection({ hasBenchmark, hasFrozen, sections }) {
+function frozenPairUpgrades(frozen) {
+  const byUpgrade = groupBy(frozen, (record) => String(payloadOf(record).upgrade));
+  const pairs = [];
+  for (const [upgrade, records] of byUpgrade) {
+    const hasAfter = records.some((record) => payloadOf(record).condition === 5);
+    const hasBefore = records.some((record) => payloadOf(record).condition === 3);
+    if (hasAfter && hasBefore) pairs.push(upgrade);
+  }
+  return pairs.sort();
+}
+
+function heroSection({ hasBenchmark, hasFrozen, hasFrozenRows, sections }) {
   const status = !hasBenchmark
     ? `<p class="status-line"><span class="status-dot" aria-hidden="true"></span>Waiting for published results</p>`
     : hasFrozen
       ? `<p class="status-line"><span class="status-dot is-live" aria-hidden="true"></span>Frozen comparison published</p>`
-      : `<p class="status-line"><span class="status-dot is-pilot" aria-hidden="true"></span>Pilot results published. The frozen comparison is pending.</p>`;
+      : hasFrozenRows
+        ? `<p class="status-line"><span class="status-dot is-pilot" aria-hidden="true"></span>Some frozen rows are published. The comparison needs condition five and condition three in one upgrade.</p>`
+        : `<p class="status-line"><span class="status-dot is-pilot" aria-hidden="true"></span>Pilot results published. The frozen comparison is pending.</p>`;
   return `<header class="judges-hero">
     <h1>For judges: start here.</h1>
     <p class="deck">Kalari rehearses an API upgrade in a contained arena. A proved gate checks each sandbox call. A hidden grader decides whether the upgrade works. Kalari writes a lesson from what the verified run showed.</p>
@@ -835,11 +899,24 @@ function heroSection({ hasBenchmark, hasFrozen, sections }) {
   </header>`;
 }
 
-function footerSection() {
-  return `<footer class="judges-footer">
-    <p><strong>Chaaya</strong> is the Kalari front end. The evidence store is append-only. It keeps the run, the checks, the Clef answers and the lessons.</p>
-    <p class="fine-print">Clef answers are a model's opinion, never a measurement and never a verdict. The hidden grader and the sandbox checks decide the result.</p>
-  </footer>`;
+function notRunSection(bench) {
+  const present = new Set(bench.map((record) => Number(payloadOf(record).condition)));
+  const missing = Object.keys(CONDITIONS)
+    .map(Number)
+    .filter((condition) => !present.has(condition))
+    .sort((left, right) => left - right);
+  if (!missing.length) return "";
+  return `<div class="not-run">
+    <h3>Conditions not run in this fixture</h3>
+    <ul>${missing
+      .map(
+        (condition) =>
+          `<li data-not-run="${condition}"><strong>${h(conditionLabel(condition))}</strong> (condition ${h(
+            countWord(condition),
+          )}). Not run. No record for this condition is in the store.</li>`,
+      )
+      .join("")}</ul>
+  </div>`;
 }
 
 export function judgesView({
@@ -864,11 +941,13 @@ export function judgesView({
   const invalid = bench.filter((record) => payloadOf(record).status === "invalid");
   const diagnostic = bench.filter((record) => payloadOf(record).status === "diagnostic");
   const hasBenchmark = bench.length > 0;
-  const hasFrozen = frozen.length > 0;
+  const frozenPairs = frozenPairUpgrades(frozen);
+  const hasFrozen = frozenPairs.length > 0;
+  const comparisonHeading = hasFrozen ? "The measured before and after" : "The pilot baseline";
 
-  const sections = [{ id: "comparison", label: "The measured before and after" }];
+  const sections = [{ id: "comparison", label: comparisonHeading }];
   if (hasBenchmark) {
-    sections.push({ id: "baseline", label: "Every condition, run by run" });
+    sections.push({ id: "baseline", label: "Every condition in this fixture" });
     sections.push({ id: "containment", label: "The containment moment" });
     sections.push({ id: "runs", label: "Every run" });
   }
@@ -883,25 +962,26 @@ export function judgesView({
     ${
       invalidGroups.length
         ? `<section class="subsection subsection--invalid">
-            <h3>Invalid pilot rows, kept for the record</h3>
+            <h3>Invalid rows, kept for the record</h3>
             <p>These rows cannot count. The run pages carry the note for each row.</p>
             ${conditionGroupsSection(invalidGroups, runIds, "invalid")}
           </section>`
         : ""
     }
-    ${diagnosticsSection(diagnostic, runIds)}`;
+    ${diagnosticsSection(diagnostic, runIds)}
+    ${notRunSection(bench)}`;
 
   return `<article class="judges">
-    ${heroSection({ hasBenchmark, hasFrozen, sections })}
+    ${heroSection({ hasBenchmark, hasFrozen, hasFrozenRows: frozen.length > 0, sections })}
     ${warningsSection(warnings)}
     <section id="comparison" class="section section--comparison">
-      ${comparisonSection(bench, runIds)}
+      ${comparisonSection(bench, runIds, hasFrozen)}
     </section>
     ${
       hasBenchmark
         ? `<section id="baseline" class="section">
-            <h2>Every condition, run by run</h2>
-            <p>Each row is one pilot session. The numbers are the committed measures. The invalid rows stay for the record and cannot count.</p>
+            <h2>Every condition in this fixture</h2>
+            <p>Each row is one session in the store. The numbers are the committed measures. The invalid rows stay for the record and cannot count.</p>
             ${baseline}
           </section>`
         : ""
@@ -911,7 +991,6 @@ export function judgesView({
     <section id="sessions" class="section section--sessions">
       ${sessionLinksSection(sessions)}
     </section>
-    ${footerSection()}
   </article>`;
 }
 
@@ -979,7 +1058,7 @@ function changeBlock(changeRecord, radii) {
       ${change.severity ? `<span class="severity severity--${attr(change.severity)}">${h(change.severity)}</span>` : ""}
     </div>
     <h3>${h(change.title || changeKindLabel(change.kind))}</h3>
-    <p>${h(change.summary || "")}</p>
+    <p>${h(redactUrls(change.summary || ""))}</p>
     <p class="endpoint">${change.endpoint ? `<code>${h(change.endpoint)}</code>` : ""}</p>
     <p class="change-id"><span>Change id</span> <code>${h(change.id || changeRecord.run_id)}</code></p>
     <div class="call-sites">
@@ -988,12 +1067,13 @@ function changeBlock(changeRecord, radii) {
         sites.length
           ? `<ul>${sites
               .map(
-                (site) => `<li><code>${h(site.path || "")}</code><pre>${h(site.detail || "")}</pre></li>`,
+                (site) =>
+                  `<li><code>${h(site.path || "")}</code><pre>${h(redactUrls(site.detail || ""))}</pre></li>`,
               )
               .join("")}</ul>`
           : `<p class="muted">No call sites were found for this change.</p>`
       }
-      ${notes.map((note) => `<p class="fine-print">${h(note)}</p>`).join("")}
+      ${notes.map((note) => `<p class="fine-print">${h(redactUrls(note))}</p>`).join("")}
     </div>
   </li>`;
 }
@@ -1012,7 +1092,7 @@ function checkList(record, checkRecords) {
         <div class="check-head"><strong>${h(result.check_id || "check")}</strong><span>${h(
           result.passed === true ? "passed" : "failed",
         )}</span></div>
-        ${result.detail ? `<p>${h(result.detail)}</p>` : ""}
+        ${result.detail ? `<p>${h(redactUrls(result.detail))}</p>` : ""}
       </li>`,
     )
     .join("")}</ul>`;
@@ -1058,9 +1138,11 @@ function runCard(record, index, checks, decisions, runIds) {
   const stateTone = state === "passed" ? "pass" : state === "failed" ? "fail" : "neutral";
   const decision = decisions.find((item) => item.run_id === record.run_id);
   const logs = `<details class="logs"><summary>Standard output</summary><pre>${h(
-    verdict.stdout || "",
+    redactUrls(verdict.stdout || ""),
   )}</pre></details>
-    <details class="logs"><summary>Standard error</summary><pre>${h(verdict.stderr || "")}</pre></details>`;
+    <details class="logs"><summary>Standard error</summary><pre>${h(
+      redactUrls(verdict.stderr || ""),
+    )}</pre></details>`;
   return `<article class="run-card ${passed ? "is-pass" : state === "failed" ? "is-fail" : "is-none"}">
     <header class="run-head">
       <p class="run-eyebrow">Attempt ${countWord(index + 1)}</p>
@@ -1112,9 +1194,13 @@ function runCard(record, index, checks, decisions, runIds) {
       </div></details>
     </div>
     <footer class="run-foot">
-      <a class="quiet-link" href="${attr(runHref(record.run_id))}" data-run-link="${attr(
-        record.run_id,
-      )}">Open this run</a>
+      ${
+        isId(record.run_id) && (!runIds || runIds.has(record.run_id))
+          ? `<a class="quiet-link" href="${attr(runHref(record.run_id))}" data-run-link="${attr(
+              record.run_id,
+            )}">Open this run</a>`
+          : `<span class="measure-missing">evidence missing</span>`
+      }
     </footer>
   </article>`;
 }
@@ -1141,10 +1227,10 @@ function lessonList(records, { runIds, title, empty, observations, verified }) {
           const uniqueBehaviors = unique(behaviors);
           return `<li class="lesson">
             <h3>${h(changeKindLabel(lesson.change_kind))}</h3>
-            <p>${h(lesson.observation || "No observation was recorded.")}</p>
+            <p>${h(redactUrls(lesson.observation || "No observation was recorded."))}</p>
             <div class="lesson-check">
-              <p><strong>Check:</strong> ${h(check.assertion || "No check was recorded.")}</p>
-              ${check.command ? `<pre>${h(check.command.join(" "))}</pre>` : ""}
+              <p><strong>Check:</strong> ${h(redactUrls(check.assertion || "No check was recorded."))}</p>
+              ${check.command ? `<pre>${h(redactUrls(check.command.join(" ")))}</pre>` : ""}
             </div>
             <p class="lesson-run">${
               lesson.run_id
@@ -1188,16 +1274,23 @@ function lessonList(records, { runIds, title, empty, observations, verified }) {
 }
 
 function benchmarkTable(records, runIds) {
+  const allFrozen = records.every((record) => payloadOf(record).provenance === "frozen");
+  const anyFrozen = records.some((record) => payloadOf(record).provenance === "frozen");
+  const provenance = allFrozen ? "frozen" : anyFrozen ? "mixed" : "pilot";
+  const lead =
+    provenance === "mixed"
+      ? "This benchmark session holds records from more than one provenance."
+      : `This is a ${provenance} benchmark session. The measures are from the committed ${provenance} results.`;
   return `<div class="panel panel--pilot">
     <h2>Benchmark measures</h2>
-    <p>This is a pilot benchmark session. The measures are from the committed pilot results. ${
+    <p>${lead} ${
       records.some((record) => payloadOf(record).status === "invalid")
         ? "The condition-one rows are invalid for the comparison."
         : records.some((record) => payloadOf(record).status === "diagnostic")
           ? "The isolated adapter makes these diagnostic rows not comparable with the condition rows."
           : ""
     }</p>
-    ${measuresTable(records, runIds, "Pilot benchmark sessions.")}
+    ${measuresTable(records, runIds, `${capitalise(provenance)} benchmark sessions.`)}
     ${detailsTables(records, runIds)}
   </div>`;
 }
@@ -1249,15 +1342,35 @@ export function sessionView({ sessionId = "", records = [], lessons = [], runs =
           record.kind === "lesson" && record.session_id !== sessionId && intersects(record.change_kinds, changeKinds),
       );
   const title = meta?.title || "Session evidence";
+  const frozenBench = bench.filter((record) => payloadOf(record).provenance === "frozen");
+  const pilotBench = bench.filter((record) => payloadOf(record).provenance !== "frozen");
+  const provenanceWord =
+    bench.length && frozenBench.length === bench.length
+      ? "frozen"
+      : bench.length && pilotBench.length === bench.length
+        ? "pilot"
+        : "benchmark";
+  const provenanceLabel = provenanceWord === "benchmark" ? "Mixed" : capitalise(provenanceWord);
+  const sessionKindLabel = provenanceWord === "benchmark" ? "benchmark" : `${provenanceWord} benchmark`;
   const badges = [];
   if (meta?.illustrative) badges.push(badge("Illustrative walkthrough", "draft"));
-  if (bench.length) badges.push(badge("Pilot benchmark session", "pilot"));
-  if (bench.some((record) => payloadOf(record).status === "invalid")) badges.push(badge("Invalid pilot row", "fail"));
+  if (frozenBench.length === bench.length && bench.length) {
+    badges.push(badge("Frozen benchmark session", "live"));
+  } else if (pilotBench.length === bench.length && bench.length) {
+    badges.push(badge("Pilot benchmark session", "pilot"));
+  } else if (bench.length) {
+    badges.push(badge("Mixed benchmark session", "pilot"));
+  }
+  if (bench.some((record) => payloadOf(record).status === "invalid")) {
+    badges.push(badge(provenanceWord === "frozen" ? "Invalid frozen row" : "Invalid pilot row", "fail"));
+  }
   if (bench.some((record) => payloadOf(record).status === "diagnostic")) badges.push(badge("Diagnostic session", "pilot"));
   const summary =
     meta?.summary ||
     (bench.length
-      ? "This session holds the pilot benchmark measures for one condition."
+      ? provenanceWord === "benchmark"
+        ? "This session holds benchmark measures from more than one provenance."
+        : `This session holds the ${provenanceWord} benchmark measures for one condition.`
       : "This session holds the evidence records the service wrote.");
 
   return `<article class="session-page">
@@ -1266,7 +1379,7 @@ export function sessionView({ sessionId = "", records = [], lessons = [], runs =
       <div class="page-title"><h1>${h(title)}</h1>${badges.join("")}</div>
       <p class="page-summary">${h(summary)}</p>
       <p class="session-id">Session <code>${h(sessionId)}</code></p>
-      ${meta?.notes ? `<p class="caveat">${h(meta.notes)}</p>` : ""}
+      ${meta?.notes ? `<p class="caveat">${h(redactUrls(meta.notes))}</p>` : ""}
       <p class="quiet-line"><a href="index.html">Back to the evidence index</a></p>
     </header>
 
@@ -1283,7 +1396,7 @@ export function sessionView({ sessionId = "", records = [], lessons = [], runs =
               .join("")}</ul>
           </section>`
         : bench.length
-          ? `<section class="subsection"><h2>What changed</h2><p class="muted">Pilot sessions record benchmark measures only. The walkthrough session shows the change list, the blast radius and the lesson written.</p><p><a href="${attr(
+          ? `<section class="subsection"><h2>What changed</h2><p class="muted">${provenanceLabel} benchmark sessions record benchmark measures only. The walkthrough session shows the change list, the blast radius and the lesson written.</p><p><a href="${attr(
               sessionHref("payouts-upgrade"),
             )}">Open the walkthrough</a></p></section>`
           : `<section class="subsection"><h2>What changed</h2><p class="muted">This session did not record its change list.</p></section>`
@@ -1291,7 +1404,7 @@ export function sessionView({ sessionId = "", records = [], lessons = [], runs =
 
     ${
       isPilotOnly
-        ? `<section class="subsection"><h2>Recalled checks</h2><p class="muted">This pilot session records benchmark measures only. It does not record recalled checks.</p></section>`
+        ? `<section class="subsection"><h2>Recalled checks</h2><p class="muted">This ${sessionKindLabel} session records benchmark measures only. It does not record recalled checks.</p></section>`
         : recalled.length
         ? `<section class="subsection">
             <h2>Recalled checks</h2>
@@ -1302,19 +1415,23 @@ export function sessionView({ sessionId = "", records = [], lessons = [], runs =
                 const check = object(lesson.check) || {};
                 return `<li class="lesson">
                   <h3>${h(changeKindLabel(lesson.change_kind))}</h3>
-                  <p>${h(lesson.observation || "")}</p>
+                  <p>${h(redactUrls(lesson.observation || ""))}</p>
                   <div class="lesson-check"><p><strong>Check:</strong> ${h(
-                    check.assertion || "No check was recorded.",
-                  )}</p>${check.command ? `<pre>${h(check.command.join(" "))}</pre>` : ""}</div>
+                    redactUrls(check.assertion || "No check was recorded."),
+                  )}</p>${check.command ? `<pre>${h(redactUrls(check.command.join(" ")))}</pre>` : ""}</div>
                   <p class="lesson-run">Shown by ${runLink(
                     lesson.run_id,
                     `<code>${h(lesson.run_id)}</code>`,
                     runIds,
                     `Open run ${lesson.run_id}`,
                   )}</p>
-                  <p class="fine-print">From <a href="${attr(
-                    sessionHref(record.session_id),
-                  )}">an earlier session</a>.</p>
+                  ${
+                    isId(record.session_id)
+                      ? `<p class="fine-print">From <a href="${attr(
+                          sessionHref(record.session_id),
+                        )}">an earlier session</a>.</p>`
+                      : ""
+                  }
                 </li>`;
               })
               .join("")}</ul>
@@ -1340,7 +1457,7 @@ export function sessionView({ sessionId = "", records = [], lessons = [], runs =
           </section>`
         : `<section class="subsection"><h2>The runs</h2><p class="muted">${
             bench.length
-              ? "This pilot session records benchmark measures, not sandbox run records."
+              ? "This " + sessionKindLabel + " session records benchmark measures, not sandbox run records."
               : "No sandbox runs were recorded in this session."
           }</p></section>`
     }
@@ -1349,7 +1466,7 @@ export function sessionView({ sessionId = "", records = [], lessons = [], runs =
       runIds,
       title: "The lesson written",
       empty: isPilotOnly
-        ? "This pilot session records benchmark measures only. It does not record a lesson."
+        ? "This " + sessionKindLabel + " session records benchmark measures only. It does not record a lesson."
         : "No new lesson was written in this session.",
       observations,
       verified,
@@ -1370,13 +1487,15 @@ function fact(label, value) {
 function benchmarkRunDetail(payload, sessionId) {
   const grade = object(payload.grade);
   const firstGrade = object(payload.first_v2_grade);
+  const provenance = payload.provenance === "frozen" ? "frozen" : "pilot";
+  const provenanceTitle = provenance === "frozen" ? "Frozen comparison" : "Pilot";
   const statusTone = payload.status === "invalid" ? "fail" : payload.status === "diagnostic" ? "pilot" : "live";
   const statusText =
     payload.status === "invalid"
-      ? "Invalid pilot row"
+      ? `Invalid ${provenance} row`
       : payload.status === "diagnostic"
         ? "Diagnostic session"
-        : payload.provenance === "frozen"
+        : provenance === "frozen"
           ? "Frozen comparison run"
           : "Measured pilot run";
   const gradeRowsHtml = grade
@@ -1408,7 +1527,7 @@ function benchmarkRunDetail(payload, sessionId) {
   return `<section class="panel">
     <div class="panel-head">
       <div>
-        <h2>Pilot run: ${h(upgradeLabel(payload.upgrade))}</h2>
+        <h2>${provenanceTitle} run: ${h(upgradeLabel(payload.upgrade))}</h2>
         <p class="run-id"><code>${h(sessionId || "")}</code></p>
       </div>
       <div class="badge-row">${badge(statusText, statusTone)} ${badge(
@@ -1419,7 +1538,7 @@ function benchmarkRunDetail(payload, sessionId) {
         "neutral",
       )}</div>
     </div>
-    <p>${h(payload.notes || "A committed pilot result.")}</p>
+    <p>${h(redactUrls(payload.notes || `A committed ${provenance} result.`))}</p>
     <dl class="facts facts--wide">
       ${fact("Verdict", h(verdictWord(payload.verdict)))}
       ${fact("Right first time", h(boolWord(payload.right_first_time)))}
@@ -1444,8 +1563,8 @@ function benchmarkRunDetail(payload, sessionId) {
     </dl>
     <h3>The grade</h3>
     <dl class="facts">${gradeRowsHtml}</dl>
-    ${grade?.note ? `<p class="fine-print">${h(grade.note)}</p>` : ""}
-    ${log ? `<h3>The grader log</h3><pre class="log">${h(log)}</pre>` : ""}
+    ${grade?.note ? `<p class="fine-print">${h(redactUrls(grade.note))}</p>` : ""}
+    ${log ? `<h3>The grader log</h3><pre class="log">${h(redactUrls(log))}</pre>` : ""}
     ${
       firstRows
         ? `<details class="more"><summary>First run against the new endpoint</summary><div class="more-body"><dl class="facts">${firstRows}</dl></div></details>`
@@ -1517,17 +1636,21 @@ function sandboxRunDetail(record, records, runIds) {
                 <div class="check-head"><strong>${h(result.check_id || "check")}</strong><span>${h(
                   result.passed ? "passed" : "failed",
                 )}</span></div>
-                ${result.detail ? `<p>${h(result.detail)}</p>` : ""}
+                ${result.detail ? `<p>${h(redactUrls(result.detail))}</p>` : ""}
               </li>`,
             )
             .join("")}</ul>`
         : `<p class="muted">No check results were recorded.</p>`
     }
     <h3>Logs</h3>
-    <details class="logs" open><summary>Standard output</summary><pre>${h(verdict.stdout || "")}</pre></details>
-    <details class="logs"><summary>Standard error</summary><pre>${h(verdict.stderr || "")}</pre></details>
+    <details class="logs" open><summary>Standard output</summary><pre>${h(
+      redactUrls(verdict.stdout || ""),
+    )}</pre></details>
+    <details class="logs"><summary>Standard error</summary><pre>${h(
+      redactUrls(verdict.stderr || ""),
+    )}</pre></details>
     ${decision ? `<h3>What Clef thought</h3>${opinionBlock(decision)}` : ""}
-    ${lesson ? `<h3>The lesson from this run</h3><p>${h(payloadOf(lesson).observation || "")}</p>` : ""}
+    ${lesson ? `<h3>The lesson from this run</h3><p>${h(redactUrls(payloadOf(lesson).observation || ""))}</p>` : ""}
     ${
       observation
         ? `<h3>What the run observed</h3><ul>${(payloadOf(observation).behaviors || [])
@@ -1558,18 +1681,21 @@ export function runView({ runId = "", records = [], runs = null, warnings = [] }
   const bench = benchmarkRecords(records);
   const runRecords = ofKind(records, "run");
   const sessionId = records[0]?.session_id || "";
+  const firstPayload = bench.length ? payloadOf(bench[0]) : {};
+  const provenance = firstPayload.provenance === "frozen" ? "frozen" : "pilot";
+  const provenanceTitle = provenance === "frozen" ? "Frozen comparison" : "Pilot";
   const title = bench.length
-    ? `Pilot run: ${upgradeLabel(payloadOf(bench[0]).upgrade)}`
+    ? `${provenanceTitle} run: ${upgradeLabel(firstPayload.upgrade)}`
     : runRecords.length
       ? "Sandbox run"
       : "Run evidence";
-  const benchStatus = bench.length ? payloadOf(bench[0]).status : "";
+  const benchStatus = bench.length ? firstPayload.status : "";
   const benchBadge =
     benchStatus === "invalid"
-      ? badge("Invalid pilot row", "fail")
+      ? badge(`Invalid ${provenance} row`, "fail")
       : benchStatus === "diagnostic"
         ? badge("Diagnostic session", "pilot")
-        : badge("Measured pilot run", "live");
+        : badge(provenance === "frozen" ? "Frozen comparison run" : "Measured pilot run", "live");
   const illustrativeBadge = runRecords.some((record) => payloadOf(record).illustrative === true)
     ? badge("Illustrative", "draft")
     : "";
@@ -1578,9 +1704,13 @@ export function runView({ runId = "", records = [], runs = null, warnings = [] }
       <p class="breadcrumb"><a href="index.html">For judges</a> <span aria-hidden="true">/</span> Run</p>
       <div class="page-title"><h1>${h(title)}</h1>${bench.length ? benchBadge : ""}${illustrativeBadge}</div>
       <p class="run-id"><code>${h(runId)}</code></p>
-      ${sessionId ? `<p class="quiet-line">From <a href="${attr(sessionHref(sessionId))}">${h(
-        sessionId,
-      )}</a></p>` : ""}
+      ${
+        sessionId
+          ? isId(sessionId)
+            ? `<p class="quiet-line">From <a href="${attr(sessionHref(sessionId))}">${h(sessionId)}</a></p>`
+            : `<p class="quiet-line">Session <code>${h(sessionId)}</code></p>`
+          : ""
+      }
       <p class="quiet-line"><a href="index.html">Back to the evidence index</a></p>
     </header>
     ${warningsSection(warnings)}

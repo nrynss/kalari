@@ -87,6 +87,101 @@ async function runDetailsFor(base, runs, benchmark) {
   return Object.fromEntries(otherIds.map((runId, index) => [runId, results[index]]));
 }
 
+/* Synthetic records for the view tests. They carry no measure, so every value
+   on the page reads as unknown. They exist to prove the frozen labels and the
+   split-pair status, which the committed pilot store cannot exercise. */
+function syntheticBenchmark({ runId, sessionId, condition, upgrade }) {
+  return {
+    kind: "benchmark",
+    session_id: sessionId,
+    run_id: runId,
+    change_kinds: ["pagination_changed"],
+    payload: {
+      schema: "kalari.benchmark.v1",
+      provenance: "frozen",
+      status: "valid",
+      arm: condition === 5 ? "kalari" : "reference",
+      condition,
+      upgrade,
+      repeat: 1,
+      behaviour: null,
+      session_id: sessionId,
+      session_continued: false,
+      notes_attached: false,
+      session_capped: false,
+      session_cap_s: null,
+      verdict: "PASS",
+      right_first_time: true,
+      right_first_time_basis: "fixture",
+      sandbox_runs: null,
+      sandbox_runs_against_v1: null,
+      sandbox_runs_against_v2: null,
+      wall_time_s: null,
+      time_stuck_s: null,
+      tokens_input: null,
+      tokens_output: null,
+      records_lost: null,
+      records_duplicated: null,
+      records_extra: null,
+      records_mismatched: null,
+      cost_usd: null,
+      grade: null,
+      first_v2_grade: null,
+      grader_runs: null,
+      opencode_exit: null,
+      process_elapsed_s: null,
+      source: "web/fixture/render.mjs",
+      notes: "Synthetic fixture for the frozen label test. Not a measurement.",
+    },
+  };
+}
+
+const frozenAfter = syntheticBenchmark({
+  runId: "fixture-c5-payouts-r1",
+  sessionId: "fixture-c5-payouts",
+  condition: 5,
+  upgrade: "payouts",
+});
+const frozenBeforeOther = syntheticBenchmark({
+  runId: "fixture-c3-settlements-r1",
+  sessionId: "fixture-c3-settlements",
+  condition: 3,
+  upgrade: "settlements",
+});
+const frozenBeforeSame = syntheticBenchmark({
+  runId: "fixture-c3-payouts-r1",
+  sessionId: "fixture-c3-payouts",
+  condition: 3,
+  upgrade: "payouts",
+});
+const frozenRuns = [frozenAfter.run_id, frozenBeforeOther.run_id, frozenBeforeSame.run_id];
+
+const endpointRecord = {
+  kind: "run",
+  session_id: "endpoint-fixture",
+  run_id: "endpoint-fixture-r1",
+  change_kinds: ["pagination_changed"],
+  payload: {
+    request: {
+      workspace: "fixture",
+      command: ["python3", "sync.py", "--base-url", "ENDPOINT"],
+      caps: { timeout_ms: 120000, output_cap_bytes: 65536, memory_mib: 512 },
+    },
+    verdict: {
+      verdict: "exited",
+      exit_code: 0,
+      wall_ms: 1200,
+      stdout: "fetched https://api.example.invalid/payouts\n",
+      stdout_truncated: false,
+      stderr: "",
+    },
+    checks: [],
+    check_results: [],
+    illustrative: true,
+  },
+};
+const endpointRuns = [endpointRecord.run_id];
+
 const { child, base } = await startServer();
 try {
   const [benchmark, runs, sessions, lessons] = await Promise.all([
@@ -111,9 +206,29 @@ try {
     judges: judgesView({ benchmark, runs, sessions, lessons, runDetails }),
     "judges-empty": judgesView({ benchmark: [], runs, sessions, lessons }),
     "judges-no-store": judgesView({ benchmark: [], runs: [], sessions: [], lessons: [] }),
+    "judges-frozen-pair": judgesView({
+      benchmark: [frozenAfter, frozenBeforeSame],
+      runs: frozenRuns,
+      sessions: [],
+      lessons: [],
+    }),
+    "judges-frozen-split": judgesView({
+      benchmark: [frozenAfter, frozenBeforeOther],
+      runs: frozenRuns,
+      sessions: [],
+      lessons: [],
+    }),
     session: sessionView({ sessionId: "payouts-upgrade", records: sessionRecords, lessons, runs }),
+    "session-frozen": sessionView({
+      sessionId: "fixture-c5-payouts",
+      records: [frozenAfter],
+      lessons: [],
+      runs: frozenRuns,
+    }),
     run: runView({ runId: "pilot-c3-payouts-r5", records: runRecords, runs }),
+    "run-frozen": runView({ runId: frozenAfter.run_id, records: [frozenAfter], runs: frozenRuns }),
     "run-illustrative": runView({ runId: "payouts-attempt-1", records: illustrativeRunRecords, runs }),
+    "run-endpoint": runView({ runId: endpointRecord.run_id, records: [endpointRecord], runs: endpointRuns }),
   };
   const clean = (html) =>
     `${html

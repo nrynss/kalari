@@ -6,7 +6,11 @@
     <title>For judges · Kalari</title>
     <meta
       name="description"
-      content="The evidence index for Kalari: the measured before and after, every condition, the containment moment, and every run."
+      content="The evidence index for Kalari: the pilot baseline, every condition in the fixture, the containment moment, and every run."
+    />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"
     />
     <link rel="stylesheet" href="app.css" />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
@@ -36,6 +40,10 @@
     <main id="app" class="app" aria-busy="true">
       <p class="loading" role="status">Loading the evidence…</p>
     </main>
+    <footer class="site-foot" role="contentinfo">
+      <p><strong>Chaaya</strong> is the Kalari front end. The evidence store is append-only. It keeps the run, the checks, the Clef answers and the lessons.</p>
+      <p class="fine-print">Clef answers are a model's opinion, never a measurement and never a verdict. The hidden grader and the sandbox checks decide the result.</p>
+    </footer>
     <noscript>
       <p class="noscript">
         Chaaya reads the evidence API with JavaScript. Enable it to see the records.

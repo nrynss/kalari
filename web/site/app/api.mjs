@@ -10,14 +10,29 @@ export class ApiError extends Error {
   }
 }
 
+/* The app only talks to its own origin. Reject any path that is not relative,
+   so a value assembled at runtime cannot reach another host. The published
+   pages also carry a Content-Security-Policy, which blocks the request in the
+   browser even if this guard were bypassed. */
+const LOCAL_PATH = /^(?!\/\/)[A-Za-z0-9._~!$&'()*+,;=:@%/?-]+$/;
+const SCHEME = /^[A-Za-z][A-Za-z0-9+.-]*:/;
+
+export function localPath(path) {
+  if (typeof path !== "string" || !path || !LOCAL_PATH.test(path) || SCHEME.test(path)) {
+    throw new ApiError(0, "The app only requests relative paths.", String(path || ""));
+  }
+  return path;
+}
+
 async function getJson(path) {
   let response;
   try {
-    response = await fetch(path, {
+    response = await fetch(localPath(path), {
       headers: { Accept: "application/json" },
       cache: "no-store",
     });
   } catch (cause) {
+    if (cause instanceof ApiError) throw cause;
     throw new ApiError(0, "The evidence API could not be reached.", path);
   }
   let body = null;

@@ -4,10 +4,10 @@
     python3 web/fixture/server.py --port 0
 
 The API routes, status codes and JSON array shapes follow Kalari/Http.lean. The
-server binds loopback only. It injects a visible fixture banner into every HTML
-page it serves, including the rendered snapshots, so a screenshot from this
-server cannot pass for a published result. The fixture files live outside the
-published static root.
+server binds loopback only. It serves web/site/ and nothing else. It injects a
+visible fixture banner into every HTML page it serves, so a screenshot from
+this server cannot pass for a published result. The fixture files live outside
+the published static root.
 
 Options:
     --store PATH       evidence JSONL file (default: web/fixture/evidence.jsonl)
@@ -34,6 +34,11 @@ MAX_BODY = 4096
 ID_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 HTML_RE = re.compile(r"<html\b", re.IGNORECASE)
 BODY_RE = re.compile(r"(<body\b[^>]*>)", re.IGNORECASE)
+CSP = (
+    "default-src 'self'; connect-src 'self'; img-src 'self'; "
+    "style-src 'self' 'unsafe-inline'; script-src 'self'; object-src 'none'; "
+    "base-uri 'none'; form-action 'none'"
+)
 BANNER = (
     '<div class="fixture-banner" role="note">'
     "<strong>Fixture mode.</strong> This server serves this page from a local evidence "
@@ -145,8 +150,8 @@ class Handler(BaseHTTPRequestHandler):
         if method != "GET":
             self.send_json(HTTPStatus.NOT_FOUND, {"error": "not found"})
             return
-        path = unquote(urlsplit(target).path)
-        parts = path.split("/")
+        raw = urlsplit(target).path
+        parts = raw.split("/")
         records = self.state.records()
         if parts == ["", "api", "sessions"]:
             self.send_json(HTTPStatus.OK, ids(records, "session_id"))
@@ -179,17 +184,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def static(self, target: str, head_only: bool) -> None:
         path = unquote(urlsplit(target).path)
-        rendered = path.startswith("/rendered/")
-        if rendered:
-            base = HERE / "rendered"
-            relative = path[len("/rendered/") :]
-        else:
-            base = self.state.root
-            if path in ("", "/"):
-                path = "/index.html"
-            if path.endswith("/"):
-                path = f"{path}index.html"
-            relative = path.lstrip("/")
+        base = self.state.root
+        if path in ("", "/"):
+            path = "/index.html"
+        if path.endswith("/"):
+            path = f"{path}index.html"
+        relative = path.lstrip("/")
         candidate = (base / relative).resolve()
         root = base.resolve()
         if root not in candidate.parents and candidate != root:
@@ -212,18 +212,14 @@ class Handler(BaseHTTPRequestHandler):
             content_type = "application/json; charset=utf-8"
         data = candidate.read_bytes()
         if suffix in (".html", ".htm"):
-            text = data.decode("utf-8")
-            if rendered:
-                text = self.rendered_page(text)
-            else:
-                text = self.with_banner(text)
-            data = text.encode("utf-8")
+            data = self.with_banner(data.decode("utf-8")).encode("utf-8")
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("Content-Security-Policy", CSP)
         self.end_headers()
         if not head_only:
             self.wfile.write(data)
@@ -235,17 +231,6 @@ class Handler(BaseHTTPRequestHandler):
             return BODY_RE.sub(lambda match: match.group(1) + BANNER, text, count=1)
         return BANNER + text
 
-    @staticmethod
-    def rendered_page(fragment: str) -> str:
-        return (
-            '<!doctype html>\n<html lang="en" data-fixture="true">\n'
-            '<head><meta charset="utf-8">'
-            '<meta name="viewport" content="width=device-width, initial-scale=1">'
-            "<title>Rendered fixture</title>"
-            '<link rel="stylesheet" href="/app.css"></head>\n'
-            f"<body>{BANNER}<main class=\"app\">{fragment}</main></body>\n</html>\n"
-        )
-
     def send_json(self, status: HTTPStatus, value) -> None:
         body = json_bytes(value)
         self.send_response(status)
@@ -254,6 +239,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("Content-Security-Policy", CSP)
         self.end_headers()
         self.wfile.write(body)
 
