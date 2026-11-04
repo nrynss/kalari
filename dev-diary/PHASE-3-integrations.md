@@ -136,11 +136,26 @@ requires:   [T3.3]
 fixture-ok: no
 size:       XS · mid
 owns:       tests/live/clef.sh
-status:     claimed:grok-impl
+status:     in-review
 ```
 The three questions on one real failure from the benchmark (the `no_dedupe` payouts run's grader output and its code).
 
 **Done when:** the transcript is in the report; `failureCause` says `api_change`; cost under $0.01.
+
+Notes:
+
+`tests/live/clef.sh` is not part of the gate. It starts the local payouts server with `--v1 off`, runs `bench/apis/payouts/reference/no_dedupe.py`, and grades that jsonl. The consumer printed `synced 2455 payouts`. The grader JSON was `verdict` FAIL, `records` 2455, `unique` 2431, `duplicates` 24. That JSON is the run value. The change text is the B2 fact: the next window starts at the previous window's last payout, and the docs say to deduplicate on id. The code text is `no_dedupe.py`. The call site is line 18, the `/v2/payouts` request. The lesson is `Deduplicate on id.`
+
+A temp Lean file outside the repo imports `Kalari.Clef` and is deleted on exit. It calls `failureCause`, then `callsChangedOperation`, then `lessonApplies`, each with `Kalari.Clef.live` and PATH `/usr/bin:/bin`. The delay is `IO.sleep`. The key is read from `VULTR_INFERENCE_API_KEY` or the keyring. It is not an argument and it is not printed.
+
+`failureCause` returned `api_change`, confidence `0.485748`. Probabilities, in name order: `api_change` `0.614311`, `flaky` `0.019747`, `test_setup` `0.010406`, `unrelated_bug` `0.355536`. `callsChangedOperation` for `no_dedupe_call` was `0.867934`. `lessonApplies` for `b2` was `0.981022`. One call each. The criteria were not changed.
+
+`/v1/usage` has no dollar amount. `clef` is a row of `usage.current_month.chat_usage`. List price is $0.10 per 1M input tokens, and output is not priced. The first call moved `clef` by 533 input tokens and 0 output tokens, $0.00005330. Three times that is $0.00015990, under $0.01, so the other two ran. All three moved 956 input tokens and 0 output tokens, $0.00009560. The counter had moved on the first after-read, so the character estimate was not used.
+
+Surprises:
+
+- The label is `api_change`, but confidence is under 0.5 and `unrelated_bug` is 0.356. The change text is only the overlap sentence. That was not sent again.
+- `callsChangedOperation` still put 0.868 on the `/v2/payouts` line, and the dedupe-on-id lesson applied at 0.981, from that same short change text.
 
 ---
 
