@@ -1,0 +1,160 @@
+{
+  "condition": 3,
+  "behaviour": "B1",
+  "sandbox_setup": "isolated pilot adapter; restricted tool surface and network",
+  "upgrade": "payouts",
+  "arm": "reference",
+  "setup": "OpenCode 2.2.5 with isolated pilot MCP adapter, no Kalari tools",
+  "api_base": "the VM's public address",
+  "live_port": 19121,
+  "grading_port": 19122,
+  "prompt": "upgrade.txt",
+  "opencode_version": "opencode v2.2.5",
+  "session_continued": false,
+  "notes_attached": false,
+  "session_cap_s": 1200,
+  "session_capped": false,
+  "measures": {
+    "verdict": "PASS",
+    "right_first_time": true,
+    "sandbox_runs": 3,
+    "wall_time_s": 33.391,
+    "time_stuck_s": 0,
+    "tokens_input": 201883,
+    "tokens_output": 5983,
+    "records_lost": 0,
+    "records_duplicated": 0
+  },
+  "sandbox_runs_against_v1": 0,
+  "sandbox_runs_against_v2": 3,
+  "records_extra": 0,
+  "records_mismatched": 0,
+  "grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "expected": 2431,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "first_v2_grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "expected": 2431,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "right_first_time_basis": "snapshot",
+  "cost_usd": 0.033872,
+  "cost_note": "DeepSeek V4.1 Flash list price, cached input counted as input, no cache discount",
+  "usage_delta": [
+    {
+      "model": "clef",
+      "input": 0,
+      "output": 0
+    },
+    {
+      "model": "deepseek-v4.1-flash-1017",
+      "input": 201883,
+      "output": 5983
+    },
+    {
+      "model": "qwen3-embedding-4b",
+      "input": 0,
+      "output": 0
+    }
+  ],
+  "opencode_tokens": {
+    "steps": 17,
+    "input": 11803,
+    "output": 2866,
+    "reasoning": 3117,
+    "cache_read": 190080
+  },
+  "consumer_runs": [
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 0.473,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 0.269,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 0.596,
+      "timed_out": false,
+      "basis": "snapshot"
+    }
+  ],
+  "event_summary": {
+    "lines": 56,
+    "unparsed_lines": 0,
+    "types": {
+      "step_start": 17,
+      "tool_use": 21,
+      "step_finish": 17,
+      "text": 1
+    },
+    "tools": {
+      "read": 7,
+      "grep": 1,
+      "execute": 10,
+      "edit": 3
+    },
+    "steps": 17,
+    "bash_denied": 0,
+    "sandbox_names": [
+      "payout-verify"
+    ],
+    "last_reason": "stop",
+    "final_answer": "Upgraded `payout_sync.py` to the v2 export API.\n\nChanges:\n- Switched from `GET /v1/payouts` to `GET /v2/payouts`.\n- Follows the response `cursor` until `drained` is true.\n- Deduplicates on payout `id`, since v2 windows overlap at their edges.\n- Preserves creation order.\n- Restarts from the beginning if the server returns `400 invalid_cursor`.\n\nVerification against `http://the VM's public address:19121`:\n- Synced **2,431 payouts**.\n- Output IDs were all unique with **no duplicates**.\n- Output matched the v1 ledger exactly: same IDs, same objects, same order, no missing or extra payouts.",
+    "stderr_excerpt": "",
+    "diff_stat": "payout_sync.py | 43 +++++++++++++++++++++++++++++++++++++++++--\n 1 file changed, 41 insertions(+), 2 deletions(-)"
+  },
+  "grader_runs": {
+    "final": {
+      "status": "EXIT 0",
+      "log_excerpt": "synced 2431 payouts\n"
+    },
+    "first": {
+      "status": "EXIT 0",
+      "log_excerpt": "synced 2431 payouts\n"
+    }
+  },
+  "cleanup": {
+    "sandboxes_left": [],
+    "processes_left": [],
+    "owned_names": [
+      "kalari-grade-final-f9dbf75cd1e7",
+      "kalari-grade-first-f9dbf75cd1e7",
+      "kalari-pilot-f9dbf75cd1e7",
+      "kalari-pilot-gradef9dbf75cd1e7",
+      "kalari-pilot-livef9dbf75cd1e7",
+      "kalari-preflight-f9dbf75cd1e7"
+    ],
+    "scope_verified": false
+  },
+  "process_elapsed_s": 36.0,
+  "opencode_exit": 0,
+  "repeat": 4
+}

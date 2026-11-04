@@ -1,0 +1,152 @@
+{
+  "condition": 3,
+  "behaviour": "B2",
+  "sandbox_setup": "isolated pilot adapter; restricted tool surface and network",
+  "upgrade": "payouts",
+  "arm": "reference",
+  "setup": "OpenCode 2.2.5 with isolated pilot MCP adapter, no Kalari tools",
+  "api_base": "the VM's public address",
+  "live_port": 19121,
+  "grading_port": 19122,
+  "prompt": "upgrade.txt",
+  "opencode_version": "opencode v2.2.5",
+  "session_continued": false,
+  "notes_attached": false,
+  "session_cap_s": 1200,
+  "session_capped": false,
+  "measures": {
+    "verdict": "PASS",
+    "right_first_time": true,
+    "sandbox_runs": 2,
+    "wall_time_s": 28.491,
+    "time_stuck_s": 0,
+    "tokens_input": 281424,
+    "tokens_output": 8204,
+    "records_lost": 0,
+    "records_duplicated": 0
+  },
+  "sandbox_runs_against_v1": 0,
+  "sandbox_runs_against_v2": 2,
+  "records_extra": 0,
+  "records_mismatched": 0,
+  "grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "expected": 2431,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "first_v2_grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "expected": 2431,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "right_first_time_basis": "snapshot",
+  "cost_usd": 0.047136,
+  "cost_note": "DeepSeek V4.1 Flash list price, cached input counted as input, no cache discount",
+  "usage_delta": [
+    {
+      "model": "clef",
+      "input": 0,
+      "output": 0
+    },
+    {
+      "model": "deepseek-v4.1-flash-1017",
+      "input": 281424,
+      "output": 8204
+    },
+    {
+      "model": "qwen3-embedding-4b",
+      "input": 0,
+      "output": 0
+    }
+  ],
+  "opencode_tokens": {
+    "steps": 23,
+    "input": 16592,
+    "output": 4989,
+    "reasoning": 3215,
+    "cache_read": 264832
+  },
+  "consumer_runs": [
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 1.233,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 0.418,
+      "timed_out": false,
+      "basis": "snapshot"
+    }
+  ],
+  "event_summary": {
+    "lines": 76,
+    "unparsed_lines": 0,
+    "types": {
+      "step_start": 23,
+      "tool_use": 29,
+      "step_finish": 23,
+      "text": 1
+    },
+    "tools": {
+      "read": 13,
+      "execute": 15,
+      "write": 1
+    },
+    "steps": 23,
+    "bash_denied": 0,
+    "sandbox_names": [
+      "payout-sync",
+      "sh"
+    ],
+    "last_reason": "stop",
+    "final_answer": "Upgraded `payout_sync.py` from the v1 endpoint to v2 and verified it against the live server.\n\n### Changes\n- Replaced `GET /v1/payouts` with `GET /v2/payouts`.\n- Paginates by passing the returned `cursor` until `drained` is true.\n- Deduplicates on payout `id`, since v2 windows overlap at their edges.\n- Recovers once from an expired/invalid cursor (`400 invalid_cursor`) by restarting the export while retaining already-seen IDs.\n- Keeps the same CLI and output format (`payouts.jsonl`, one payout per line).\n\n### Verification against `http://the VM's public address:19121`\n- Synced **2,431 payouts**.\n- **2,431 unique IDs**, **0 duplicates**.\n- Output matched the v1 export exactly: same count, order, and payout objects.\n- Exercised 3 overlapping windows (1,000 + 1,000 + 433 rows); edge overlaps were correctly removed.\n- Ran the consumer twice: identical output checksums each time.\n\nOne observed server detail: the final drained response returns `\"cursor\": null` despite the spec declaring it a string. The consumer stops on `drained` before reading the cursor, so it handles this correctly.",
+    "stderr_excerpt": "",
+    "diff_stat": "payout_sync.py | 42 ++++++++++++++++++++++++++++++++++++++++--\n 1 file changed, 40 insertions(+), 2 deletions(-)"
+  },
+  "grader_runs": {
+    "final": {
+      "status": "EXIT 0",
+      "log_excerpt": "synced 2431 payouts\n"
+    },
+    "first": {
+      "status": "EXIT 0",
+      "log_excerpt": "synced 2431 payouts\n"
+    }
+  },
+  "cleanup": {
+    "sandboxes_left": [],
+    "processes_left": [],
+    "owned_names": [
+      "kalari-grade-final-6d1525c1f935",
+      "kalari-grade-first-6d1525c1f935",
+      "kalari-pilot-6d1525c1f935",
+      "kalari-pilot-grade6d1525c1f935",
+      "kalari-pilot-live6d1525c1f935",
+      "kalari-preflight-6d1525c1f935"
+    ],
+    "scope_verified": false
+  },
+  "process_elapsed_s": 30.0,
+  "opencode_exit": 0,
+  "repeat": 4
+}

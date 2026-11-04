@@ -175,10 +175,11 @@ duplicated = final.get("duplicates")
 result = {
     "condition": int(cond),
     "behaviour": behaviour,
+    "repeat": int(re.search(r"-r([1-5])\.json$", dest).group(1)),
     "sandbox_setup": "isolated pilot adapter; restricted tool surface and network",
     "upgrade": upgrade,
     "arm": "reference",
-    "setup": "OpenCode 2.2.5 with microsandbox-mcp, no Kalari tools",
+    "setup": "OpenCode 2.2.5 with isolated pilot MCP adapter, no Kalari tools",
     "api_base": "the VM's public address",
     "live_port": analysis.get("live_port"),
     "grading_port": analysis.get("grading_port"),

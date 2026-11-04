@@ -80,12 +80,30 @@ API_LIVE=kalari-pilot-live${RUN_ID}
 API_GRADE=kalari-pilot-grade${RUN_ID}
 GUEST=kalari-pilot-${RUN_ID}
 SESSION_PID=""
+SCOPE="kalari-pilot-${RUN_ID}.scope"
+SCOPE_STARTED=0
+SCOPE_GROUP=""
 OWNED=()
+stop_scope() {
+  [[ "$SCOPE_STARTED" == 1 ]] || return 0
+  local group
+  group=${SCOPE_GROUP:-$(systemctl --user show "$SCOPE" -p ControlGroup --value 2>/dev/null || true)}
+  if ! systemctl --user stop "$SCOPE" >/dev/null 2>&1; then
+    local state
+    state=$(systemctl --user show "$SCOPE" -p LoadState --value 2>/dev/null) || return 1
+    [[ "$state" == not-found ]] || return 1
+  fi
+  if [[ -n "$group" && -s "/sys/fs/cgroup${group}/cgroup.procs" ]]; then
+    echo "owned process scope survived" >&2
+    return 1
+  fi
+  SCOPE_STARTED=0
+}
 cleanup() {
   local rc=$?
   trap - EXIT
   set +e
-  if [[ -n "$SESSION_PID" ]]; then kill -- "-$SESSION_PID" 2>/dev/null || true; fi
+  stop_scope || echo "scope cleanup failed" >&2
   for n in "${OWNED[@]}"; do msb remove -f "$n" >/dev/null 2>&1 || true; done
   unset VULTR_INFERENCE_API_KEY KALARI_REDACT_KEY KALARI_PUBLIC_IP
   exit "$rc"
@@ -94,6 +112,9 @@ trap cleanup EXIT
 for n in "$GUEST" "$API_LIVE" "$API_GRADE"; do
   if msb list | awk 'NR>1 {print $1}' | grep -Fxq "$n"; then echo "sandbox name collision" >&2; exit 1; fi
 done
+if [[ $(systemctl --user show "$SCOPE" -p LoadState --value 2>/dev/null || true) == loaded ]]; then
+  echo "scope name collision" >&2; exit 1
+fi
 for port in "$LIVE_PORT" "$GRADE_PORT"; do
   if ss -ltn | awk '{print $4}' | grep -q ":${port}$"; then echo "pilot port occupied" >&2; exit 1; fi
 done
@@ -299,7 +320,22 @@ assert len(responses)==4 and responses[1]['structuredContent']['exitCode']==0
 assert 'isolated' in responses[1]['structuredContent']['stdout']
 assert responses[2]['isError'] and responses[3]['isError']
 PYSHIM
-  echo "status=variant_checks_ok" >&2
+  # Verify this user scope contains and stops a detached descendant.
+  systemd-run --user --scope --unit "$SCOPE" --quiet sh -c 'setsid sleep 300 & wait' > "$RUN/scope-probe.log" 2>&1 &
+  SESSION_PID=$!
+  SCOPE_STARTED=1
+  group=""
+  for _ in $(seq 1 50); do
+    group=$(systemctl --user show "$SCOPE" -p ControlGroup --value 2>/dev/null || true)
+    [[ -n "$group" && -s "/sys/fs/cgroup${group}/cgroup.procs" ]] && [[ $(wc -l < "/sys/fs/cgroup${group}/cgroup.procs") -ge 2 ]] && break
+    sleep .1
+  done
+  [[ -n "$group" ]] && [[ $(wc -l < "/sys/fs/cgroup${group}/cgroup.procs") -ge 2 ]] || { echo "scope preflight failed" >&2; exit 1; }
+  SCOPE_GROUP="$group"
+  stop_scope
+  wait "$SESSION_PID" 2>/dev/null || true
+  SESSION_PID=""
+  echo "status=variant_checks_ok scope_ok" >&2
   exit 0
 fi
 
@@ -313,11 +349,27 @@ fi
 args+=("$(cat "$RUN/prompt.txt")")
 start=$(date +%s)
 set +e
-setsid timeout --kill-after=15 1200 "${args[@]}" > "$RUN/events.jsonl" 2> "$RUN/opencode.stderr" &
+systemd-run --user --scope --unit "$SCOPE" --quiet timeout --kill-after=15 1200 "${args[@]}" > "$RUN/events.jsonl" 2> "$RUN/opencode.stderr" &
 SESSION_PID=$!
+SCOPE_STARTED=1
+for _ in $(seq 1 50); do
+  SCOPE_GROUP=$(systemctl --user show "$SCOPE" -p ControlGroup --value 2>/dev/null || true)
+  [[ -n "$SCOPE_GROUP" ]] && break
+  kill -0 "$SESSION_PID" 2>/dev/null || break
+  sleep .1
+done
+if [[ -z "$SCOPE_GROUP" ]]; then
+  echo "failed to verify session scope" >&2
+  kill "$SESSION_PID" 2>/dev/null || true
+  wait "$SESSION_PID" 2>/dev/null || true
+  exit 1
+fi
 wait "$SESSION_PID"
 rc=$?
 set -e
+stop_scope
+SESSION_PID=""
+[[ -s "$RUN/events.jsonl" ]] || { echo "session produced no events" >&2; exit 1; }
 end=$(date +%s)
 elapsed=$((end - start))
 echo "status=session_exit:$rc elapsed:$elapsed" >&2
@@ -405,12 +457,7 @@ if [[ -f "$RUN/first-v2-src/$CONSUMER" ]]; then
 fi
 
 echo "status=cleanup" >&2
-kill -- "-$SESSION_PID" 2>/dev/null || true
-for _ in $(seq 1 20); do
-  kill -0 -- "-$SESSION_PID" 2>/dev/null || break
-  sleep .1
-done
-if kill -0 -- "-$SESSION_PID" 2>/dev/null; then echo "owned process group survived" >&2; exit 1; fi
+stop_scope
 SESSION_PID=""
 for n in "${OWNED[@]}"; do msb remove -f "$n" >/dev/null 2>&1 || true; done
 python3 - "$RUN/cleanup.json" "${OWNED[@]}" <<'PYCLEAN'
@@ -419,7 +466,7 @@ names = set(sys.argv[2:])
 r = subprocess.run(['msb','list'], capture_output=True, text=True)
 if r.returncode: raise SystemExit('could not verify cleanup')
 left = [line.split()[0] for line in r.stdout.splitlines()[1:] if line.split() and line.split()[0] in names]
-json.dump({'sandboxes_left':left, 'processes_left':[], 'owned_names': sorted(names)}, open(sys.argv[1], 'w'))
+json.dump({'sandboxes_left':left, 'processes_left':[], 'owned_names': sorted(names), 'scope_verified': True}, open(sys.argv[1], 'w'))
 if left: raise SystemExit('owned sandbox cleanup failed')
 PYCLEAN
 

@@ -4,7 +4,7 @@
   "sandbox_setup": "isolated pilot adapter; restricted tool surface and network",
   "upgrade": "payouts",
   "arm": "reference",
-  "setup": "OpenCode 2.2.5 with microsandbox-mcp, no Kalari tools",
+  "setup": "OpenCode 2.2.5 with isolated pilot MCP adapter, no Kalari tools",
   "api_base": "the VM's public address",
   "live_port": 19121,
   "grading_port": 19122,
@@ -159,8 +159,10 @@
       "kalari-pilot-gradee2bc49a6a7b0",
       "kalari-pilot-livee2bc49a6a7b0",
       "kalari-preflight-e2bc49a6a7b0"
-    ]
+    ],
+    "scope_verified": false
   },
   "process_elapsed_s": 87.0,
-  "opencode_exit": 0
+  "opencode_exit": 0,
+  "repeat": 1
 }
