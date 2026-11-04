@@ -167,15 +167,29 @@ The executable serves a single trusted session with shared evidence and writer; 
 
 ---
 
-### T4.7: Kalari with OpenCode ★
+### T4.7b: Offline OpenCode arm fixture
 ```yaml
 requires:   [T4.7a]
+fixture-ok: yes
+size:       S · mid
+owns:       bench/kalari-arm/
+status:     done
+```
+The trusted offline fixture checks standalone configuration, five fake tool events, transcript redaction and grader cleanup. Live mode stays disabled.
+
+---
+
+### T4.7: Kalari with OpenCode ★
+```yaml
+requires:   [T4.7b]
 fixture-ok: no
 size:       S · mid
 owns:       bench/kalari-arm/
 status:     in-review
 ```
 The Kalari arm's setup: OpenCode 2.2.5 with `kalari serve` as its MCP server (and `microsandbox-mcp` removed, so code runs only through `run_in_sandbox`), host shell denied, `--standalone` and per-run `XDG_*` directories. One upgrade-one session end to end on the VM, **not counted as a benchmark run** (the pair isn't frozen until T5.3).
+
+Live acceptance is blocked on a verified spend guard for OpenCode and Clef. The offline fixture provides no live transcript, hidden grade or usage measures.
 
 **Done when:** the session's transcript shows the five tools called, a run graded by the hidden grader, the measures recorded; no process or sandbox left.
 
