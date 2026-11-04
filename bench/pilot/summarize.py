@@ -32,8 +32,8 @@ for upgrade, behaviours in (('payouts',('B1','B2','B4')),('settlements',('B1','B
 variant_cost = sum(json.loads(p.read_text())['cost_usd'] for p in Path('bench/pilot/results').glob('behaviour-*.json'))
 total_cost = sum(json.loads(p.read_text())['cost_usd'] for p in Path('bench/pilot/results').glob('*.json'))
 rows += ['', f'Single-behaviour list-price spend: ${variant_cost:.6f}; all 70 pilot rows: ${total_cost:.6f}.', '', '## Condition counts', '',
-         '| Condition | Upgrade | Runs | PASS | Right first time | Sandbox runs | Lost | Duplicated | Results |',
-         '|---:|---|---:|---:|---:|---:|---:|---:|---|']
+         '| Condition | Upgrade | Runs | PASS | Right first time | Sandbox runs | Lost | Duplicated | Results | Validity |',
+         '|---:|---|---:|---:|---:|---:|---:|---:|---|---|']
 for cond in (1,2,3,6):
     for upgrade in ('payouts','settlements'):
         paths = [Path(f'bench/pilot/results/condition-{cond}-{upgrade}-r{i}.json') for i in range(1,6)]
@@ -43,8 +43,9 @@ for cond in (1,2,3,6):
             vals = [m[field] for m in ms]
             return 'unknown' if any(v is None for v in vals) else str(sum(vals))
         links = ', '.join(f'[{i}](results/{p.name})' for i,p in enumerate(paths,1))
-        rows.append(f"| {cond} | {upgrade} | 5 | {sum(m['verdict']=='PASS' for m in ms)} | {sum(m['right_first_time'] for m in ms)} | {total('sandbox_runs')} | {total('records_lost')} | {total('records_duplicated')} | {links} |")
-rows += ['', end, '']
+        validity = 'invalid pilot/debug; excluded from reference arm' if cond == 1 else '-'
+        rows.append(f"| {cond} | {upgrade} | 5 | {sum(m['verdict']=='PASS' for m in ms)} | {sum(m['right_first_time'] for m in ms)} | {total('sandbox_runs')} | {total('records_lost')} | {total('records_duplicated')} | {links} | {validity} |")
+rows += ['', '**Invalid pilot/debug evidence, excluded from the frozen reference arm.** The five condition-1 pairs (payouts r1-r5 with settlements r1-r5) are kept for debugging only. The resumed settlements session worked in the payouts workspace while the harness graded a fresh, untouched settlements copy, so every settlements row has grade note `no consumer output`. No condition-1 pair may count in the frozen reference arm.', '', end, '']
 text = text.replace('## Condition 1', '\n'.join(rows) + '\n## Condition 1', 1)
 p.write_text(text)
 

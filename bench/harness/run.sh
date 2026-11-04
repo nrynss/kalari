@@ -52,6 +52,8 @@ echo "status=usage_before" >&2
 
 ssh -o BatchMode=yes kalari 'rm -rf ~/kalari-harness/stage && mkdir -p ~/kalari-harness/stage ~/kalari-harness/runs'
 rsync -a bench/harness/remote.sh bench/harness/measures.py bench/harness/grade_runner.py \
+  bench/harness/continuation.py bench/harness/continuation.sh \
+  bench/harness/tree_digest.py bench/harness/grade_status.py \
   kalari:kalari-harness/stage/
 rsync -a bench/prompts bench/workspaces kalari:kalari-harness/stage/
 rsync -a bench/reference-paging/repo/opencode.jsonc kalari:kalari-harness/stage/opencode.jsonc
@@ -147,9 +149,24 @@ def grade(path):
     except ValueError:
         return {"verdict": "FAIL", "note": "grader did not print JSON", "stdout": proc.stdout[-300:], "stderr": proc.stderr[-300:]}
 
-final = grade(os.path.join(tmp, "final.jsonl"))
+def apply_meta(value, meta):
+    if not meta:
+        return value
+    for field in ("consumer_exit", "output_present", "grade_status", "output_bytes",
+                  "stale_output_ignored"):
+        if field in meta:
+            value[field] = meta[field]
+    if meta.get("note"):
+        value["note"] = meta["note"]
+    if value.get("output_present") is False:
+        value["verdict"] = "FAIL"
+    return value
+
+grading = analysis.get("grading") or {}
+final = apply_meta(grade(os.path.join(tmp, "final.jsonl")), grading.get("final"))
 first_path = os.path.join(tmp, "first.jsonl")
-first = grade(first_path) if os.path.exists(first_path) else None
+first_meta = grading.get("first")
+first = apply_meta(grade(first_path), first_meta) if (os.path.exists(first_path) or first_meta) else None
 found = bool((analysis.get("first_v2") or {}).get("found"))
 if not found:
     right = False
@@ -174,9 +191,18 @@ result = {
     "prompt": analysis.get("prompt"),
     "opencode_version": analysis.get("opencode_version"),
     "session_continued": analysis.get("session_continued"),
+    "resumed_session_id": analysis.get("resumed_session_id"),
+    "session_id_expected": analysis.get("session_id_expected"),
+    "session_identity_ok": analysis.get("session_identity_ok"),
+    "workspace": analysis.get("workspace"),
+    "workspace_digest": analysis.get("workspace_digest"),
+    "workspace_identity_ok": analysis.get("workspace_identity_ok"),
     "notes_attached": analysis.get("notes_attached"),
     "session_cap_s": 1200,
     "session_capped": analysis.get("session_capped"),
+    "consumer_exit": final.get("consumer_exit"),
+    "output_present": final.get("output_present"),
+    "grade_status": final.get("grade_status"),
     "measures": {
         "verdict": final.get("verdict"),
         "right_first_time": right,
@@ -229,6 +255,9 @@ print(json.dumps({
     "cost_usd": result["cost_usd"],
     "records_lost": lost,
     "records_duplicated": duplicated,
+    "consumer_exit": result["consumer_exit"],
+    "output_present": result["output_present"],
+    "grade_status": result["grade_status"],
     "session_capped": result["session_capped"],
     "cleanup": result["cleanup"],
 }))

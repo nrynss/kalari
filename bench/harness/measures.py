@@ -56,27 +56,34 @@ def markers(upgrade):
     return ("/v2/graphql", "/v1/graphql")
 
 
-def find_gitdir(xdg):
+def find_gitdirs(xdg):
+    """Every snapshot repository in this XDG base.
+
+    A resumed session can leave the payouts snapshot repository beside a new
+    settlements one: replacing the workspace's `.git` changes the project id.
+    A tree hash belongs to exactly one of them, so callers try each.
+    """
     root = os.path.join(xdg, "opencode", "snapshot")
     found = []
     if not os.path.isdir(root):
-        return ""
+        return found
     for dirpath, _dirs, files in os.walk(root):
         if "HEAD" in files and "config" in files:
             found.append(dirpath)
-    return found[0] if found else ""
+    return found
 
 
-def source_at(gitdir, tree, consumer):
-    if not gitdir or not tree:
-        return None
-    proc = subprocess.run(
-        ["git", "--git-dir", gitdir, "show", f"{tree}:{consumer}"],
-        capture_output=True,
-    )
-    if proc.returncode != 0:
-        return None
-    return proc.stdout.decode(errors="replace")
+def source_at(gitdirs, tree, consumer):
+    if not tree:
+        return None, None
+    for gitdir in gitdirs:
+        proc = subprocess.run(
+            ["git", "--git-dir", gitdir, "show", f"{tree}:{consumer}"],
+            capture_output=True,
+        )
+        if proc.returncode == 0:
+            return proc.stdout.decode(errors="replace"), gitdir
+    return None, None
 
 
 def extract_embedded(code, consumer, v2_marker):
@@ -116,7 +123,7 @@ def timed_out(state, capped_tool):
 def is_consumer_run(tool, inp, consumer):
     if not isinstance(inp, dict):
         return False
-    if tool == "bash":
+    if tool in {"bash", "shell"}:
         cmd = str(inp.get("command") or "")
         return consumer in cmd and PYTHON.search(cmd) is not None
     if tool != "execute":
@@ -232,6 +239,9 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--materialize", default="")
     ap.add_argument("--notes-dir", default="")
+    ap.add_argument("--workspace-digest", default="")
+    ap.add_argument("--stage-digest", default="")
+    ap.add_argument("--session-id-expected", default="")
     args = ap.parse_args()
 
     key = os.environ.get("KALARI_REDACT_KEY", "")
@@ -239,7 +249,7 @@ def main():
     consumer = "payout_sync.py" if args.upgrade == "payouts" else "settlement_reconcile.py"
     v2_marker, v1_marker = markers(args.upgrade)
     events, bad_lines = load_events(args.events)
-    gitdir = find_gitdir(args.xdg)
+    gitdirs = find_gitdirs(args.xdg)
     capped = args.exit_code == 124
 
     session_id = ""
@@ -307,8 +317,9 @@ def main():
                 stuck.append({"tool": tool, "duration_s": dur or 0.0, "consumer": False})
             if not consumer_run:
                 continue
-            host = source_at(gitdir, current_tree, consumer)
+            host, host_gitdir = source_at(gitdirs, current_tree, consumer)
             chosen = host
+            chosen_gitdir = host_gitdir
             basis = "snapshot"
             if not (host and v2_marker in host) and latest_embedded and v2_marker in latest_embedded:
                 chosen = latest_embedded
@@ -323,6 +334,7 @@ def main():
                 "basis": basis,
                 "snapshot": current_tree or "",
                 "source": chosen or "",
+                "gitdir": chosen_gitdir or "",
             })
             if hung:
                 stuck.append({"tool": tool, "duration_s": dur or 0.0, "consumer": True})
@@ -334,7 +346,7 @@ def main():
         # Overlay the classified consumer so a failed archive cannot grade a later edit.
         materialize(
             args.materialize,
-            gitdir,
+            first.get("gitdir") or "",
             first.get("snapshot") or "",
             args.workspace,
             consumer,
@@ -383,6 +395,18 @@ def main():
 
     out = {
         "session_id": session_id,
+        "session_id_expected": args.session_id_expected,
+        "session_identity_ok": (
+            session_id == args.session_id_expected if args.session_id_expected else None
+        ),
+        "workspace": args.workspace,
+        "workspace_digest": args.workspace_digest,
+        "stage_digest": args.stage_digest,
+        "workspace_identity_ok": (
+            args.workspace_digest == args.stage_digest
+            if args.workspace_digest and args.stage_digest
+            else None
+        ),
         "session_capped": capped,
         "opencode_exit": args.exit_code,
         "wall_time_s": round(wall, 3),
@@ -419,6 +443,13 @@ def main():
     with open(args.out, "w") as f:
         f.write(text)
         f.write("\n")
+    if args.session_id_expected and session_id != args.session_id_expected:
+        print(
+            "measures: resumed session id mismatch: "
+            f"expected {args.session_id_expected}, observed {session_id or 'none'}",
+            file=sys.stderr,
+        )
+        raise SystemExit(3)
 
 
 if __name__ == "__main__":

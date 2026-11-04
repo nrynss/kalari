@@ -156,28 +156,51 @@ bad = [n for n, got, want in checks if got != want]
 sys.exit(1 if bad else 0)
 PY
 
-# Condition 1 reuses one OpenCode session and one data directory across upgrades.
+# Condition 1 reuses one OpenCode session, one data directory and one absolute
+# workspace. The settlements run replaces that directory's contents; it never
+# gets a fresh directory of its own.
+. "$STAGE/continuation.sh"
+STATE=$ROOT/state/condition-1.json
 SESSION_ID=""
 SESSION_CONTINUED=0
-XDG_BASE=$RUN/xdg
+WORKSPACE_DIGEST=""
+STAGE_DIGEST=""
+STAGE_WS=$STAGE/workspaces/$WS_NAME
 if [[ "$COND" == 1 && "$UPGRADE" == payouts ]]; then
-  rm -rf "$ROOT/state/condition-1-xdg" "$ROOT/state/condition-1.json"
+  rm -rf "$ROOT/state/condition-1-xdg" "$STATE"
   XDG_BASE=$ROOT/state/condition-1-xdg
-elif [[ "$COND" == 1 && "$UPGRADE" == settlements && -f "$ROOT/state/condition-1.json" ]]; then
-  XDG_BASE=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["xdg"])' "$ROOT/state/condition-1.json")
-  SESSION_ID=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["session_id"])' "$ROOT/state/condition-1.json")
+  WS=$RUN/workspace
+elif [[ "$COND" == 1 && "$UPGRADE" == settlements ]]; then
+  echo "status=continuation" >&2
+  load_condition1_state "$STATE"
+  XDG_BASE=$STATE_XDG
+  WS=$STATE_WORKSPACE
+  SESSION_ID=$STATE_SESSION_ID
   SESSION_CONTINUED=1
+else
+  XDG_BASE=$RUN/xdg
+  WS=$RUN/workspace
 fi
 export XDG_DATA_HOME=$XDG_BASE/data
 export XDG_STATE_HOME=$XDG_BASE/state
 export XDG_CACHE_HOME=$XDG_BASE/cache
 export XDG_CONFIG_HOME=$XDG_BASE/config
-mkdir -p "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME"
+if [[ "$SESSION_CONTINUED" == 1 ]]; then
+  for dir in "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME"; do
+    [[ -d "$dir" ]] || { echo "continuation: missing XDG directory $dir" >&2; exit 1; }
+  done
+else
+  mkdir -p "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME"
+fi
 
-WS=$RUN/workspace
-rm -rf "$WS"
+if [[ "$SESSION_CONTINUED" == 1 ]]; then
+  # Keep the absolute path the session is attached to; replace what is inside it.
+  find "$WS" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+else
+  rm -rf "$WS"
+fi
 mkdir -p "$WS"
-cp -a "$STAGE/workspaces/$WS_NAME/." "$WS/"
+cp -a "$STAGE_WS/." "$WS/"
 cp "$STAGE/opencode.jsonc" "$WS/opencode.jsonc"
 NOTES_ATTACHED=0
 if [[ "$COND" == 2 && "$UPGRADE" == settlements && -d "$ROOT/state/condition-2-notes" ]]; then
@@ -192,6 +215,16 @@ git -C "$WS" config user.email kalari-bench@localhost
 git -C "$WS" config user.name kalari-bench
 git -C "$WS" add -A
 git -C "$WS" commit -qm "v1 consumer"
+
+# The reused workspace must be exactly the staged tree: `.git`, the OpenCode
+# configuration and attached notes are added by the harness and excluded.
+STAGE_DIGEST=$(python3 "$STAGE/tree_digest.py" "$STAGE_WS")
+WORKSPACE_DIGEST=$(python3 "$STAGE/tree_digest.py" "$WS")
+if [[ "$STAGE_DIGEST" != "$WORKSPACE_DIGEST" ]]; then
+  echo "status=workspace_identity_failed" >&2
+  echo "staged workspace digest $STAGE_DIGEST != workspace digest $WORKSPACE_DIGEST" >&2
+  exit 1
+fi
 
 PROMPT_NAME=upgrade.txt
 if [[ "$COND" == 6 ]]; then PROMPT_NAME=condition-6.txt; fi
@@ -290,45 +323,75 @@ measure_args=(
   --stderr "$RUN/opencode.stderr"
   --out "$RUN/analysis.json"
   --materialize "$RUN/first-v2-src"
+  --workspace-digest "$WORKSPACE_DIGEST"
+  --stage-digest "$STAGE_DIGEST"
 )
+if [[ "$SESSION_CONTINUED" == 1 ]]; then
+  measure_args+=(--session-id-expected "$STATE_SESSION_ID")
+fi
 if [[ -n "$NOTES_DIR" ]]; then
   measure_args+=(--notes-dir "$NOTES_DIR")
 fi
 python3 "$STAGE/measures.py" "${measure_args[@]}"
 
 if [[ "$COND" == 1 && "$UPGRADE" == payouts ]]; then
-  python3 - "$RUN/analysis.json" "$ROOT/state/condition-1.json" "$XDG_BASE" << 'PY'
-import json, sys
-analysis, dest, xdg = sys.argv[1:4]
-sid = json.load(open(analysis)).get("session_id") or ""
-if sid:
-    json.dump({"session_id": sid, "xdg": xdg}, open(dest, "w"))
-PY
+  sid=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("session_id") or "")' "$RUN/analysis.json")
+  if [[ -z "$sid" ]]; then
+    echo "status=condition1_session_missing" >&2
+    echo "payouts session produced no session id; cannot save continuation state" >&2
+    exit 1
+  fi
+  python3 "$STAGE/continuation.py" save \
+    --state "$STATE" \
+    --workspace "$WS" \
+    --xdg "$XDG_BASE" \
+    --session-id "$sid" \
+    --digest "$WORKSPACE_DIGEST"
 fi
 
 grade_one() { # $1 source dir, $2 basename. Failures are recorded; they must not drop the session.
   local src=$1 base=$2
   local name="kalari-grade-${base}-${RUN_ID}"
+  local failed="" exec_rc=0
   echo "status=grade:$base" >&2
   umask 022
+  rm -f "$RUN/${base}.status" "$RUN/${base}.jsonl" "$RUN/${base}.consumer.log" "$RUN/${base}.grade.json"
   if ! msb create --name "$name" --cpus 1 --memory 512M --pull never --no-net \
     --net-rule "allow@${IP}/32:tcp:${GRADE_PORT}" python >/dev/null; then
-    echo "EXIT create" > "$RUN/${base}.status"
-    return 0
+    failed=create
+  elif ! msb exec "$name" -- mkdir -p /w/src; then
+    failed=mkdir
+  elif ! tar -C "$src" --exclude .git -czf "$RUN/${base}.tgz" .; then
+    failed=tar
+  elif ! msb copy -q "$RUN/${base}.tgz" "$name:/w/src.tgz"; then
+    failed=copy
+  elif ! msb copy -q "$STAGE/grade_runner.py" "$name:/w/grade_runner.py"; then
+    failed=copy-runner
+  elif ! msb exec "$name" -- tar -C /w/src -xzf /w/src.tgz; then
+    failed=untar
   fi
-  msb exec "$name" -- mkdir -p /w/src || { echo "EXIT mkdir" > "$RUN/${base}.status"; msb remove -f "$name" >/dev/null 2>&1 || true; return 0; }
-  tar -C "$src" --exclude .git -czf "$RUN/${base}.tgz" . || { echo "EXIT tar" > "$RUN/${base}.status"; msb remove -f "$name" >/dev/null 2>&1 || true; return 0; }
-  msb copy -q "$RUN/${base}.tgz" "$name:/w/src.tgz" || { echo "EXIT copy" > "$RUN/${base}.status"; msb remove -f "$name" >/dev/null 2>&1 || true; return 0; }
-  msb copy -q "$STAGE/grade_runner.py" "$name:/w/grade_runner.py" || { echo "EXIT copy-runner" > "$RUN/${base}.status"; msb remove -f "$name" >/dev/null 2>&1 || true; return 0; }
-  msb exec "$name" -- tar -C /w/src -xzf /w/src.tgz || { echo "EXIT untar" > "$RUN/${base}.status"; msb remove -f "$name" >/dev/null 2>&1 || true; return 0; }
-  timeout 150 msb exec "$name" -- python3 /w/grade_runner.py "/w/src/${CONSUMER}" "http://${IP}:${GRADE_PORT}" "/w/out.jsonl" \
-    > "$RUN/${base}.status" 2> "$RUN/${base}.err" || true
-  msb copy -q "$name:/w/out.jsonl" "$RUN/${base}.jsonl" 2>/dev/null || true
-  if [[ ! -s "$RUN/${base}.jsonl" ]]; then
-    msb copy -q "$name:/w/src/${OUT_NAME}" "$RUN/${base}.jsonl" 2>/dev/null || true
+  if [[ -n "$failed" ]]; then
+    echo "EXIT $failed" > "$RUN/${base}.status"
+  else
+    set +e
+    timeout 150 msb exec "$name" -- python3 /w/grade_runner.py "/w/src/${CONSUMER}" "http://${IP}:${GRADE_PORT}" "/w/out.jsonl" \
+      > "$RUN/${base}.status" 2> "$RUN/${base}.err"
+    exec_rc=$?
+    set -e
+    # Only the fresh guest output is graded. There is deliberately no copy from
+    # /w/src/${OUT_NAME}: a file left in the workspace cannot stand in for it.
+    msb copy -q "$name:/w/out.jsonl" "$RUN/${base}.jsonl" 2>/dev/null || true
+    msb copy -q "$name:/w/consumer.log" "$RUN/${base}.consumer.log" 2>/dev/null || true
   fi
-  msb copy -q "$name:/w/consumer.log" "$RUN/${base}.consumer.log" 2>/dev/null || true
   msb remove -f "$name" >/dev/null 2>&1 || true
+  python3 "$STAGE/grade_status.py" \
+    --status "$RUN/${base}.status" \
+    --fresh-output "$RUN/${base}.jsonl" \
+    --workspace "$WS" \
+    --output-name "$OUT_NAME" \
+    --exec-rc "$exec_rc" \
+    --pass "$base" \
+    --out "$RUN/${base}.grade.json"
   python3 - "$RUN/${base}.consumer.log" "$RUN/${base}.log-excerpt" << 'PY'
 import os, re, sys
 src, dest = sys.argv[1], sys.argv[2]
@@ -419,6 +482,17 @@ for base in ("final", "first"):
             "log_excerpt": open(excerpt, errors="replace").read() if os.path.exists(excerpt) else "",
         }
 doc["grader_runs"] = excerpts
+doc["resumed_session_id"] = (doc.get("session_id_expected") or "") if doc["session_continued"] else ""
+grading = {}
+for base in ("final", "first"):
+    path = os.path.join(run, base + ".grade.json")
+    if os.path.exists(path):
+        grading[base] = json.load(open(path))
+doc["grading"] = grading
+final = grading.get("final") or {}
+doc["consumer_exit"] = final.get("consumer_exit")
+doc["output_present"] = final.get("output_present")
+doc["grade_status"] = final.get("grade_status")
 json.dump(doc, open(analysis, "w"), indent=2)
 open(analysis, "a").write("\n")
 PY
