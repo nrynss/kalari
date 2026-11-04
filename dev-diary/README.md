@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0 done. P1 done. P2 7/7. P3 7/7. P4 11/11. P5 1/6. T3.2b done. T5.1 done. T5.2 in review: 40 condition sessions committed, behaviour sessions not run. T4.6 done. T4.5b done. T4.7a done. T4.7b done. T4.7 done. T6.1 ready. Live spend is approved, including the pilot (T5.2, about $16) and T3.2b (under $0.01). Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
+**Current status:** P0 done. P1 done. P2 7/7. P3 7/7. P4 11/11. P5 1/6. T3.2b done. T5.1 done. T5.2 active: 40 condition sessions committed, behaviour sessions not run. T4.6 done. T4.5b done. T4.7a done. T4.7b done. T4.7 done. T6.1 ready. Live spend is approved, including the pilot (T5.2, about $16) and T3.2b (under $0.01). Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
 
 ---
 
@@ -144,7 +144,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P2 | 7 / 7 | T2.1 through T2.6 done. The Microsandbox-only exit line stays open because the Docker fallback exists |
 | P3 | 7 / 7 | T3.1 through T3.4 done, including T3.1a, T3.2b and T3.3b |
 | P4 | 11 / 11 | T4.1 through T4.5 and T4.6a done. T4.6 done. T4.5b done. T4.7a done. T4.7b done. T4.7 done |
-| P5 | 1 / 6 | T5.1 done. T5.2 in review. The 40 condition sessions are in. The 30 behaviour sessions were not run. The spend is approved |
+| P5 | 1 / 6 | T5.1 done. T5.2 active. The 40 condition sessions are in. The 30 behaviour sessions were not run. The spend is approved |
 | P6 | 0 / 3 | T6.1 ready. T6.2 waits for T6.1 |
 | P7 | 0 / 4 | Waits for P5, P6 |
 
