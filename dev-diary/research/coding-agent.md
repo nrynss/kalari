@@ -82,6 +82,8 @@ OpenCode 2.2.5 sends `initialize`, `notifications/initialized`, `tools/list`, th
 
 - **`opencode run --standalone`** runs a private server that exits with the run (verified: nothing left running).
 - Per-run **`XDG_DATA_HOME`, `XDG_STATE_HOME`, `XDG_CACHE_HOME`** isolate the database (verified).
+
+**T5.1, condition 3, one fresh session of each upgrade.** OpenCode 2.2.5, `--standalone`, its own `XDG_*` directories, a 20-minute cap. Payouts: grader PASS, 2,431 of 2,431, right first time, 1 sandbox run, 29.265 s, 0 stuck, 577,808 in / 7,804 out, $0.091354. Settlements: grader PASS, 1,873 of 1,873, right first time, 2 sandbox runs, 27.722 s, 0 stuck, 452,070 in / 8,629 out, $0.072988. The usage delta matched OpenCode's own step tokens. The reference arm chooses its sandbox network, so it could reach the grading API. The hidden grade does not use that check. Nothing the harness started was left running.
 - `opencode service stop` stops a daemon that was started anyway.
 
 ## Running it
