@@ -122,6 +122,9 @@ def derive (c : Client) (kind content : String) (dependsOn against : List String
 def awaitReceipt (c : Client) (receipt : String) (waitMs : Nat := 10000) : IO Json := do
   let r ← call c "lambo_stats" [("receipt", Json.str receipt), ("wait_ms", toJson waitMs)]
   let result ← IO.ofExcept (field r.structured "receipt")
+  let returnedReceipt ← IO.ofExcept (str result "id")
+  unless returnedReceipt == receipt do
+    throw <| .userError s!"Lambo receipt mismatch: requested {receipt}, received {returnedReceipt}"
   let state ← IO.ofExcept (str result "state")
   unless state == "applied" do throw <| .userError s!"write receipt {receipt}: {state}"
   return result
@@ -248,7 +251,12 @@ private def dependentIds (g : Json) : IO (List String) := do
 
 private def recallIds (g : Json) : IO (List String) := do
   let hits ← IO.ofExcept (arr g "hits")
-  return hits.toList.filterMap fun h => (str h "node_id").toOption
+  let mut ids := []
+  for hit in hits do
+    let id ← IO.ofExcept (str hit "node_id")
+    unless validNodeId id do throw <| .userError s!"malformed Lambo recall hit ID: {id}"
+    ids := ids ++ [id]
+  return ids
 
 /-- The frozen backend plus its owning typed client and lifecycle operation. -/
 structure MemoryAdapter where
@@ -293,6 +301,7 @@ private def transcriptServer : String := String.intercalate "\n" [
   "        pending = None",
   "positions = {}",
   "last_receipt = None",
+  "last_concept_id = None; last_content = None",
   "death_marker = sys.argv[2] if len(sys.argv) > 2 else None",
   "for line in sys.stdin:",
   "    request = json.loads(line); method = request.get('method')",
@@ -319,10 +328,20 @@ private def transcriptServer : String := String.intercalate "\n" [
   "        if 'against.jsonl' in sys.argv[1]: assert args.get('focus') == '36b116fe'",
   "        elif args.get('focus') == 'pagination_changed': pass",
   "        else: assert len(args.get('focus', '')) == 36",
-  "    i = 0 if key == 'lambo_stats' else positions.get(key, 0); source = dict(choices[min(i, len(choices)-1)])",
+  "    i = 0 if key == 'lambo_stats' else positions.get(key, 0); source = json.loads(json.dumps(choices[min(i, len(choices)-1)]))",
+  "    if key == 'lambo_stats':",
+  "        outcome = source['result']['structuredContent']['receipt']; outcome['id'] = 'wrong-receipt' if death_marker == 'bad-receipt' else last_receipt",
+  "        outcome['created'] = [] if death_marker == 'adapter' and (last_content or '').startswith('against:') else [last_concept_id]",
+  "        outcome['matched'] = [last_concept_id] if death_marker == 'adapter' and (last_content or '').startswith('against:') else []",
   "    positions[key] = i + 1; source['id'] = request.get('id')",
   "    print(json.dumps(source, separators=(',', ':')), flush=True)",
-  "    if key == 'lambo_derive': last_receipt = source.get('result', {}).get('structuredContent', {}).get('receipt')",
+  "    if key == 'lambo_derive':",
+  "        last_receipt = source.get('result', {}).get('structuredContent', {}).get('receipt')",
+  "        last_content = args['concepts'][0]['content']",
+  "        if last_content == 'pagination_changed': last_concept_id = '4f15dceb-e99c-480a-95e6-d941a1b62339'",
+  "        elif last_content.startswith('When a list endpoint'): last_concept_id = '36b116fe-cfc4-4e01-a51d-f12b440107ce'",
+  "        elif last_content.startswith('against:'): last_concept_id = '58954999-38fc-4f5e-96d6-d0308e3919be'",
+  "        else: last_concept_id = '48ad60d3-2d17-4bcf-b2c6-ae2af2ce7717'",
   "    if death_marker and death_marker.endswith('.death') and not __import__('os').path.exists(death_marker) and key == 'lambo_derive': open(death_marker, 'w').close(); __import__('os')._exit(0)" ]
 
 private def replayConfig (transcript : String) (mode : Option String := none) : Kalari.Config.Lambo :=
@@ -357,10 +376,18 @@ private def childReplayChecks : IO Unit := do
   let derivedId ← match derived with
     | .ok id => pure id
     | .error e => throw <| .userError e
-  unless validNodeId derivedId do throw <| .userError "MemoryClient derive did not return a concept ID"
+  unless derivedId == "48ad60d3-2d17-4bcf-b2c6-ae2af2ce7717" do
+    throw <| .userError s!"MemoryClient derive returned unexpected concept ID {derivedId}"
+  let recalled ← adapter.backend.«recall» "reworded paging query"
+  let recalledIds ← match recalled with
+    | .ok ids => pure ids
+    | .error e => throw <| .userError e
+  unless recalledIds.contains "73b56b66-3b07-4ed9-a7c4-9da0abfbb212" do
+    throw <| .userError "MemoryClient recall omitted its recorded hit ID"
   let contradicted ← adapter.backend.against "36b116fe"
   match contradicted with
-  | .ok id => unless validNodeId id do throw <| .userError "MemoryClient against did not return a concept ID"
+  | .ok id => unless id == "58954999-38fc-4f5e-96d6-d0308e3919be" do
+      throw <| .userError s!"MemoryClient against returned unexpected concept ID {id}"
   | .error e => throw <| .userError e
   adapter.shutdown
   let c3 ← create (replayConfig "testdata/lambo/receipt.jsonl" (some deathMarker))
@@ -371,11 +398,20 @@ private def childReplayChecks : IO Unit := do
   if first.isEmpty then throw <| .userError "Lambo child-death fixture did not acknowledge first write"
   shutdown c3
   try IO.FS.removeFile deathMarker catch _ => pure ()
+  let badReceiptClient ← create (replayConfig "testdata/lambo/receipt.jsonl" (some "bad-receipt"))
+  let badReceipt ← derive badReceiptClient "resource" "pagination_changed"
+  let mismatchRejected ← try let _ ← awaitReceipt badReceiptClient badReceipt; pure false catch _ => pure true
+  shutdown badReceiptClient
+  let malformedHit := obj [("hits", Json.arr #[obj [("node_id", "not-a-uuid")]])]
+  let missingHit := obj [("hits", Json.arr #[obj [("content", "without an id")]])]
+  let malformedHitRejected ← try let _ ← recallIds malformedHit; pure false catch _ => pure true
+  let missingHitRejected ← try let _ ← recallIds missingHit; pure false catch _ => pure true
   let malformed := obj [("focus", obj [("dependents", Json.arr #[obj [("node_id", "bad")]])])]
   let truncated := obj [("focus", obj [("dependents_truncated", Json.bool true), ("dependents", Json.arr #[])])]
   let malformedRejected ← try let _ ← dependentIds malformed; pure false catch _ => pure true
   let truncatedRejected ← try let _ ← dependentIds truncated; pure false catch _ => pure true
-  unless malformedRejected && truncatedRejected do throw <| .userError "MemoryClient accepted malformed or truncated dependent IDs"
+  unless mismatchRejected && malformedHitRejected && missingHitRejected && malformedRejected && truncatedRejected do
+    throw <| .userError "Lambo accepted a mismatched receipt or malformed/missing/truncated ID"
 
 #eval childReplayChecks
 
