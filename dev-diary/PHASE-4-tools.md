@@ -173,11 +173,14 @@ requires:   [T4.7a]
 fixture-ok: no
 size:       S · mid
 owns:       bench/kalari-arm/
-status:     claimed:gpt-6.1-terra
+status:     in-review
 ```
 The Kalari arm's setup: OpenCode 2.2.5 with `kalari serve` as its MCP server (and `microsandbox-mcp` removed, so code runs only through `run_in_sandbox`), host shell denied, `--standalone` and per-run `XDG_*` directories. One upgrade-one session end to end on the VM, **not counted as a benchmark run** (the pair isn't frozen until T5.3).
 
 **Done when:** the session's transcript shows the five tools called, a run graded by the hidden grader, the measures recorded; no process or sandbox left.
+
+**Notes (in review; incomplete):** Added a private OpenCode configuration generator for a separately prepared trusted session. It registers only Kalari, disables Code Mode, denies host shell and web access, and creates per-run XDG directories. It is not a live runner: the spend guard, transcript and measures, hidden grading, and cleanup remain to be implemented. No inference session was run. The service rejects observer configuration and does not wire an observer into the run context; an exclusive source address alone would not enable production observations. Calling `record_lesson` is distinct from successfully publishing a lesson. A read-only VM inspection showed the four pre-existing benchmark API sandboxes running; no shared VM state was changed.
+
 
 ---
 
