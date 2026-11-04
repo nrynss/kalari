@@ -152,7 +152,7 @@ requires:   [T4.3, T4.4, T4.5, T4.6]
 fixture-ok: yes
 size:       M · frontier
 owns:       Kalari/Main.lean, Kalari/Service.lean
-status:     in-review
+status:     done
 ```
 Wire the five MCP tools through a shared trusted session, evidence store, and lesson writer. Keep model-controlled inputs separate from trusted runtime setup.
 
