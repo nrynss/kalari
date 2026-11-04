@@ -12,11 +12,13 @@ requires:   [T1.5, T0.5]
 fixture-ok: yes
 size:       M · frontier
 owns:       Kalari/Mcp.lean
-status:     claimed:gpt-6.1-terra
+status:     in-review
 ```
 JSON-RPC 2.0 over stdio, meeting what OpenCode 2.2.5 actually sends (T0.5): `initialize`, `notifications/initialized`, `tools/list`, `tools/call`, shutdown. Tool results as MCP content with `isError` for tool failures. Logs to stderr only. Each tool's input schema is small and exact: the agent reads it every step, so its size is a cost.
 
 **Done when:** OpenCode's recorded session replays against it; `tools/list` returns the five tools; an unknown tool, bad arguments and a tool that throws each return the right error without killing the server.
+
+**Notes (in review):** `Kalari.Mcp.serve` runs a newline JSON-RPC loop over supplied streams and an injected handler; it emits only protocol replies, flushing each one, and exits on EOF. `handle` returns no notification response. Initialization echoes OpenCode's protocol version. The five compact schemas validate their own calls, including nested sandbox fields and extra-key rejection. Tool failures and exceptions return MCP text with `isError: true`; unknown tools and bad arguments return JSON-RPC -32602. Both recorded OpenCode sessions replay through the loop in build-time checks, followed by bad arguments, unknown tool, a thrown handler exception, and a successful call proving recovery. The schemas for the four tools beyond `what_changed` are inferred from their phase descriptions and the current model; downstream implementations must use or reconcile them. Wiring `serve` into the executable is outside this task's owned path.
 
 ---
 
