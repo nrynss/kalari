@@ -533,15 +533,28 @@ p {
   background: transparent;
 }
 
-.tally-mark {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: transparent;
+.tally-dot.is-first {
+  box-shadow: inset 0 0 0 2px var(--paper);
 }
 
-.tally-dot.is-first .tally-mark {
-  background: var(--paper);
+.tally-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  color: var(--paper);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.tally-dot.is-pass .tally-mark::after {
+  content: "✓";
+}
+
+.tally-dot.is-fail .tally-mark::after {
+  content: "×";
 }
 
 .tally-note {
@@ -906,6 +919,10 @@ td.num {
 
 .quiet-link--light:hover {
   color: #f0c9bd;
+}
+
+.containment :focus-visible {
+  outline-color: var(--dark-ink);
 }
 
 /* Every run -------------------------------------------------------------- */
@@ -1309,6 +1326,10 @@ td.num {
 
 .run-card.is-fail {
   border-color: #d8b5b0;
+}
+
+.run-card.is-none {
+  border-color: var(--rule-strong);
 }
 
 .run-head {
@@ -1797,7 +1818,7 @@ td.num {
     display: none !important;
   }
 
-  .fixture-banner {
+  html[data-fixture="true"] .fixture-banner {
     display: block !important;
     position: static;
     color: #000;

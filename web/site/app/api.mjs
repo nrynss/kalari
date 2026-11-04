@@ -3,7 +3,7 @@
 
 export class ApiError extends Error {
   constructor(status, message, path) {
-    super(message || `The API answered ${status}.`);
+    super(message || "The API answered with an error.");
     this.name = "ApiError";
     this.status = status;
     this.path = path;
@@ -62,16 +62,36 @@ export async function loadJudgesData() {
   if (benchmark.status === "rejected") {
     throw benchmark.reason;
   }
+  const benchmarkValue = valueOf(benchmark);
+  const runsValue = valueOf(runs);
+  const benchmarkIds = new Set(
+    (Array.isArray(benchmarkValue) ? benchmarkValue : [])
+      .filter((record) => record?.kind === "benchmark" && typeof record.run_id === "string")
+      .map((record) => record.run_id),
+  );
+  const otherRunIds =
+    Array.isArray(runsValue) && Array.isArray(benchmarkValue) && benchmarkValue.length
+      ? runsValue.filter((runId) => !benchmarkIds.has(runId))
+      : [];
+  const detailResults = await Promise.allSettled(
+    otherRunIds.map((runId) => getJson(`api/runs/${encodeURIComponent(runId)}`)),
+  );
+  const runDetails = {};
   const entries = [
     { label: "The run index", error: errorOf(runs) },
     { label: "The session index", error: errorOf(sessions) },
     { label: "The lesson index", error: errorOf(lessons) },
   ];
+  detailResults.forEach((result, index) => {
+    if (result.status === "fulfilled") runDetails[otherRunIds[index]] = result.value;
+    else entries.push({ label: "A run detail", error: result.reason });
+  });
   return {
-    benchmark: valueOf(benchmark),
-    runs: valueOf(runs),
+    benchmark: benchmarkValue,
+    runs: runsValue,
     sessions: valueOf(sessions),
     lessons: valueOf(lessons),
+    runDetails,
     warnings: warningsFrom(entries),
   };
 }

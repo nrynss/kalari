@@ -2,18 +2,21 @@
 
 Chaaya is the Kalari web front end. It is plain HTML, CSS and ES modules.
 There is no build step, no npm, no bundler, no framework and no CDN.
-Caddy serves the files and proxies `/api` to the Kalari service.
+Caddy serves `web/site/` and proxies `/api` to the Kalari service.
 
 The app reads the evidence API in the browser. Every link is relative.
 No host and no port appear in the app.
+
+`web/site/` is the published static root. `web/fixture/` is not inside it.
+The fixture server does not serve the fixture files.
 
 ## Pages
 
 | File | Address | What it shows |
 |---|---|---|
-| `index.html` | `/` | For judges: start here. The measured comparison, every condition, the containment moment and every run. |
-| `session.html` | `/session.html?id=<id>` | One session: the change list, the blast radius, the recalled checks, each run with logs, the retry loop and the lesson written. |
-| `run.html` | `/run.html?id=<id>` | One run: its verdict, checks, logs, Clef answer and evidence record. |
+| `web/site/index.html` | `/` | For judges: start here. The measured comparison, every condition, the containment moment and every run. |
+| `web/site/session.html` | `/session.html?id=<id>` | One session: the change list, the blast radius, the recalled checks, each run with logs, the retry loop and the lesson written. |
+| `web/site/run.html` | `/run.html?id=<id>` | One run: its verdict, checks, logs, Clef answer and evidence record. |
 
 Deep links work. Reloading a session or a run page fetches that id again.
 
@@ -23,18 +26,23 @@ Deep links work. Reloading a session or a run page fetches that id again.
 python3 web/fixture/server.py --port 0
 ```
 
-Open the loopback address the server prints. It serves `web/` and `/api/*`.
-The API status codes and JSON shapes match `Kalari/Http.lean`.
+Open the loopback address the server prints. It serves `web/site/` and `/api/*`.
+It does not serve `web/fixture/`.
 
-The server injects `data-fixture="true"` into every HTML page.
-That makes a visible fixture banner appear. The real static files never carry it.
-A screenshot from this server cannot pass for a published result.
+The server injects `data-fixture="true"` and a visible fixture banner into every
+HTML page it serves. The injected pages include the rendered snapshots under
+`/rendered/`. The published files in `web/site/` carry no banner. A screenshot of
+a served page shows the banner. A screenshot of a published page does not.
 
 Options:
 
 - `--no-benchmark` answers `GET /api/benchmark` with `[]`.
 - `--store PATH` reads another evidence JSONL file.
 - A missing store file is an empty store, not an error.
+
+The fixture server answers the same status codes and record shapes as
+`Kalari/Http.lean`. The web check tests the fixture server. The Lean handler has
+its own tests.
 
 ## Run the check
 
@@ -45,15 +53,22 @@ Options:
 The check is Python standard library only. It starts the fixture server on
 loopback and stops it on exit. It checks these things:
 
-1. The rendered judges page, session page and run page are served with 200.
-2. Every number on the judges page is inside an anchor that points to a run
-   present in `/api/runs`.
-3. Every run id in the store appears in a link on the judges page.
-4. No served page or asset contains an external URL.
-5. An empty `/api/benchmark` renders the not-yet-published state.
-6. Every Clef probability sits inside a block labelled a model's opinion.
-7. The fixture store has no IP address, email, key pattern or URL.
-8. The API returns 400, 404 and 413 as the real service does.
+1. Every file under `web/site/` is hashed in the manifest, and every rendered
+   page has a hash.
+2. Every served file and snapshot has no external URL.
+3. The fixture store has no IP address, email, key pattern or URL.
+4. The published static pages carry no fixture banner.
+5. The fixture server does not serve `web/fixture/` or the check files.
+6. The live shells and entry modules are present.
+7. The API returns 400, 404 and 413 as expected. The benchmark records pass the
+   contract validator.
+8. Every number on the judges page is inside a working run link.
+9. Every run id in `/api/runs` appears in a link on the judges page.
+10. Every table value matches the record named by its run link.
+11. Every table has a caption or `aria-labelledby`.
+12. Every Clef probability sits inside a block labelled a model's opinion.
+13. An empty `/api/benchmark` renders the not-yet-published state.
+14. An absent store returns empty arrays and shows a clear state.
 
 ## How the pages render from the fixture
 
@@ -62,13 +77,15 @@ loopback and stops it on exit. It checks these things:
 walkthrough records. Run the build only when the fixture sources change.
 
 `web/fixture/rendered/` holds snapshots of the view output. The check parses
-these snapshots. They are made by the same `web/app/views.mjs` the browser runs.
+these snapshots. They are made by the same `web/site/app/views.mjs` the browser
+runs.
 
 `web/fixture/render.mjs` regenerates the snapshots. It is a development tool.
 It uses Node, but the app and the check do not need Node.
 
-`web/fixture/rendered/manifest.json` pins the view code and the fixture evidence.
-`check.sh` fails when a snapshot is stale. Regenerate with:
+`web/fixture/rendered/manifest.json` has a sha256 for every rendered page and
+every file under `web/site/`. It also has the fixture evidence hash.
+`check.sh` fails when any hash changes. Regenerate with:
 
 ```sh
 node web/fixture/render.mjs
@@ -93,7 +110,8 @@ The judges page shows the committed baseline pilot. The pilot files are in
   `testdata/clef/failure-api-change-truncated.response.json`. The run timings and
   log lines are illustrative.
 - The UI marks every illustrative session and run. The pilot rows say
-  `Pilot, reference arm`, `Invalid pilot row` or `Diagnostic session`.
+  `Pilot, reference arm`, `Pilot, Kalari arm`, `Invalid pilot row` or
+  `Diagnostic session`.
 
 ## The benchmark record shape
 
@@ -114,19 +132,19 @@ The payload fields:
 
 | Field | Type | Meaning |
 |---|---|---|
-| `schema` | string | `kalari.benchmark.v1`. |
-| `provenance` | string | `pilot` or `frozen`. |
-| `status` | string | `valid`, `invalid` or `diagnostic`. |
-| `arm` | string | `reference` or `kalari`. |
-| `condition` | number | The condition number, 1 to 6. |
-| `upgrade` | string | `payouts` or `settlements`. |
-| `repeat` | number | The repeat number, 1 to 5. |
-| `behaviour` | string or null | `B1` to `B5` for a diagnostic row. |
-| `session_id` | string | The session that produced the run. |
+| `schema` | string | `kalari.benchmark.v1`. Required. |
+| `provenance` | string | `pilot` or `frozen`. Required. |
+| `status` | string | `valid`, `invalid` or `diagnostic`. Required. |
+| `arm` | string | `reference` or `kalari`. Required. |
+| `condition` | number | The condition number, 1 to 6. Required. |
+| `upgrade` | string | `payouts` or `settlements`. Required. |
+| `repeat` | number | The repeat number, 1 to 5. Required. |
+| `behaviour` | string or null | `B1` to `B5` for a diagnostic row. Null otherwise. |
+| `session_id` | string | The session that produced the run. It must equal the envelope `session_id`. |
 | `session_continued` | boolean or null | Whether the session resumed an earlier one. |
 | `notes_attached` | boolean or null | Whether the session read the earlier notes. |
 | `session_capped` | boolean or null | Whether the session cap fired. |
-| `session_cap_s` | number or null | The cap in seconds. |
+| `session_cap_s` | number or null | The cap in seconds. Required when `session_capped` is true. |
 | `verdict` | string | `PASS` or `FAIL` from the hidden grader. |
 | `right_first_time` | boolean or null | Whether the first new-endpoint run passed. |
 | `right_first_time_basis` | string | How that first run was graded. |
@@ -147,8 +165,8 @@ The payload fields:
 | `grader_runs` | object or null | The final grader status and log excerpt. |
 | `opencode_exit` | number or null | The coding agent process exit code. |
 | `process_elapsed_s` | number or null | Wall time of the harness process. |
-| `source` | string | The committed result file. |
-| `notes` | string | A short note for the reader. |
+| `source` | string | The committed result file. Required. It is repo-relative and it exists. |
+| `notes` | string | A short note for the reader. The judges page does not show it. |
 
 The `grade` object has these fields. Each may be null when it is unknown.
 
@@ -157,13 +175,27 @@ The `grade` object has these fields. Each may be null when it is unknown.
 
 Rules for the producer:
 
+- The envelope `session_id` is authoritative. The payload copy must equal it.
 - `null` means unknown. Never write zero when the measure is unknown.
 - `run_id` must exist in `/api/runs`. The app hides a number whose run id is
   not in the run index, so a broken link cannot appear.
+- A benchmark `run_id` is unique. Write one record per run.
+- `source` is a non-empty path relative to the repository. The file must exist.
+- `condition` and `arm` must agree. Conditions 1, 2, 3 and 6 use
+  `reference`. Conditions 4 and 5 use `kalari`.
+- `status: "diagnostic"` needs a `behaviour`. Other statuses use `null`.
+  A diagnostic row keeps the condition it ran under, for information. The page
+  groups diagnostics by upgrade and behaviour.
+- `verdict` and `grade.verdict` must agree when both are present.
+- `records_lost` equals `grade.missing` when both are present.
+  `records_duplicated` equals `grade.duplicates` when both are present.
+- `sandbox_runs` equals the sum of the against counts when all three are present.
 - Use `provenance: "frozen"` for the published comparison. With condition 5 and
-  condition 3 present, the judges page shows the frozen before and after.
-- Write one record per run. The app groups records by condition and upgrade.
+  condition 3 present for an upgrade, the judges page shows the frozen before
+  and after for that upgrade. Diagnostic rows do not enter the frozen contrast.
+- The page groups records by condition and upgrade.
 - Every number on the judges page comes from a record and links to its run.
+- Run `python3 web/fixture/validate.py` before writing a store.
 
 ## Other record kinds the session view reads
 
@@ -198,24 +230,28 @@ It never treats them as a measurement, a grade or a verdict.
 The fixture has no IP address, key, account detail or email.
 The illustrative command names its endpoint `ENDPOINT`.
 The app redacts a URL before display.
-The fixture banner prevents a fixture screenshot from passing for a result.
+The fixture lives outside the published root.
+The fixture server adds a banner to every page it serves.
+The published files carry no banner.
 
 ## Files
 
 ```text
 web/
-├── index.html, session.html, run.html   the page shells
-├── app.css                              the whole visual system
-├── favicon.svg
-├── app/
-│   ├── api.mjs                          fetch the evidence API
-│   ├── boot.mjs                         put a view into the page
-│   ├── format.mjs                       numbers, links and escaping
-│   ├── labels.mjs                       product language
-│   ├── views.mjs                        the judges, session and run views
-│   └── judges.mjs, session.mjs, run.mjs the three entry points
-├── fixture/
+├── site/                                the published static root
+│   ├── index.html, session.html, run.html   the page shells
+│   ├── app.css                          the whole visual system
+│   ├── favicon.svg
+│   └── app/
+│       ├── api.mjs                      fetch the evidence API
+│       ├── boot.mjs                     put a view into the page
+│       ├── format.mjs                   numbers, links and escaping
+│       ├── labels.mjs                   product language
+│       ├── views.mjs                    the judges, session and run views
+│       └── judges.mjs, session.mjs, run.mjs the three entry points
+├── fixture/                             development files, not published
 │   ├── build.py                         write evidence.jsonl from pilot results
+│   ├── validate.py                      validate benchmark records
 │   ├── evidence.jsonl                   the fixture store
 │   ├── server.py                        static files plus the evidence API
 │   ├── render.mjs                       regenerate the rendered snapshots

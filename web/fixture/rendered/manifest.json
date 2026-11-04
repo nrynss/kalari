@@ -1,30 +1,50 @@
 {
   "schema": "kalari.web.rendered.v1",
   "generator": "web/fixture/render.mjs",
+  "root": "web/site",
   "pages": {
-    "judges": "web/fixture/rendered/judges.html",
-    "judges-empty": "web/fixture/rendered/judges-empty.html",
-    "judges-no-store": "web/fixture/rendered/judges-no-store.html",
-    "session": "web/fixture/rendered/session.html",
-    "run": "web/fixture/rendered/run.html",
-    "run-illustrative": "web/fixture/rendered/run-illustrative.html"
+    "judges": {
+      "path": "web/fixture/rendered/judges.html",
+      "sha256": "8b15686a76643dfb4268bc18e4e6ac3b70aa478b4f7eb99879fb112067048ab2"
+    },
+    "judges-empty": {
+      "path": "web/fixture/rendered/judges-empty.html",
+      "sha256": "90c7645949f72e2dc0b2408133f20e86bb282adc8705f3153f162eb16c7c23a5"
+    },
+    "judges-no-store": {
+      "path": "web/fixture/rendered/judges-no-store.html",
+      "sha256": "3d941d6ce11259f07d6c977a20013c73dbea11f48342749417a8e4d68a1858d3"
+    },
+    "session": {
+      "path": "web/fixture/rendered/session.html",
+      "sha256": "5800396c3a983cbe4aa3cb8c128ae565e6bded7e35db1155396a633fe2d27623"
+    },
+    "run": {
+      "path": "web/fixture/rendered/run.html",
+      "sha256": "1c35499404f163fadee5bade8c71c64d91da809bce4ad8fb13166f171c0929ab"
+    },
+    "run-illustrative": {
+      "path": "web/fixture/rendered/run-illustrative.html",
+      "sha256": "40269b4f197e8a47a9f8aad2813d992896b9d417da33cc379eb2c6d07f43c5d2"
+    }
   },
   "sha256": {
-    "views": {
-      "path": "web/app/views.mjs",
-      "sha256": "57ca1d2f81932ab661c069a565a00b18a6d180f9d6b17af995042b793ded1107"
-    },
-    "format": {
-      "path": "web/app/format.mjs",
-      "sha256": "cce3cbda74961797b576103282f39c945e6bf6e1bd148de7575788361bd1d066"
-    },
-    "labels": {
-      "path": "web/app/labels.mjs",
-      "sha256": "4352e35e17bc43ef5247269d0b600ac330c97f8955eb49dbae9e462ae6291f4a"
-    },
-    "evidence": {
-      "path": "web/fixture/evidence.jsonl",
-      "sha256": "d0847b63d95e1637360623c9170e958bef168af01cb507212edf0db6ca5fd59d"
-    }
+    "app.css": "28d5699594f36597fc2b121d765a14114b3f09d7ceb898128476679781b63d93",
+    "app/api.mjs": "461e38d2dc5c6df4d4373249887e01d198bd9253bdafed03bdeadec4419acb17",
+    "app/boot.mjs": "52ed3a653d7826d3d9080c9d50aedee1570a3bce7fba91bd69bb627d9253ce81",
+    "app/format.mjs": "cce3cbda74961797b576103282f39c945e6bf6e1bd148de7575788361bd1d066",
+    "app/judges.mjs": "a130bc07c443a17e3532ad82a40f553e9d9944774b5ac96ddc13deb4d1d9e744",
+    "app/labels.mjs": "4352e35e17bc43ef5247269d0b600ac330c97f8955eb49dbae9e462ae6291f4a",
+    "app/run.mjs": "714aa943c55dc4244ef1fc1fe8730256cf84e220d3ef3a23226e4a040688c4b1",
+    "app/session.mjs": "1ed6aec3c10f3b7fb641c8de9efb3a35b1639d477d09e99e0bb612402dcecc4f",
+    "app/views.mjs": "97bdb54e3d02d017dc5ff3259f1f97194366a9c6b1a5102f93bca2155e9bfece",
+    "favicon.svg": "7a69c115330c1927f6667c41ad4f0bd403e1162d221c7581db98a491fb522b0a",
+    "index.html": "a52de98ab7a22efc3643773ce0dfe0c88285b4f0f97697f5babfae8adf15c80d",
+    "run.html": "6fb35a48f2113b431e1d747a0fc52ddde7a0c7f3c634c55c4f319273bed739f7",
+    "session.html": "cf26b9c6f017412492cd366dfd9e7b8afbc169a9778327018146cf9a65632103"
+  },
+  "evidence": {
+    "path": "web/fixture/evidence.jsonl",
+    "sha256": "d0847b63d95e1637360623c9170e958bef168af01cb507212edf0db6ca5fd59d"
   }
 }

@@ -66,6 +66,18 @@ function badge(text, tone = "neutral") {
   return `<span class="badge badge--${attr(tone)}">${h(text)}</span>`;
 }
 
+function armLabel(arm) {
+  if (arm === "kalari") return "Kalari arm";
+  if (arm === "reference") return "reference arm";
+  return "arm unknown";
+}
+
+function conditionArm(conditionGroup) {
+  const firstUpgrade = conditionGroup.upgrades?.[0];
+  const firstRecord = firstUpgrade?.records?.[0];
+  return payloadOf(firstRecord).arm;
+}
+
 function warningsSection(warnings) {
   if (!Array.isArray(warnings) || !warnings.length) return "";
   return `<div class="notice notice--warning" role="alert">
@@ -380,6 +392,7 @@ function detailsTables(records, runIds) {
     <div class="more-body">
       <h5>Tokens and time</h5>
       <div class="table-wrap"><table class="measures-table">
+        <caption class="visually-hidden">Tokens and time, one row per session.</caption>
         <thead><tr><th scope="col">Run</th><th scope="col" class="num">Tokens in</th><th scope="col" class="num">Tokens out</th><th scope="col" class="num">Time stuck</th><th scope="col" class="num">Cost</th><th scope="col" class="num">Session cap</th></tr></thead>
         <tbody>${tokenRows(records, runIds)}</tbody>
       </table></div>
@@ -387,38 +400,27 @@ function detailsTables(records, runIds) {
         graded.length
           ? `<h5>The hidden grader</h5>
       <div class="table-wrap"><table class="measures-table">
+        <caption class="visually-hidden">The hidden grader, one row per session.</caption>
         <thead><tr><th scope="col">Run</th><th scope="col">Grade</th><th scope="col" class="num">Records</th><th scope="col" class="num">Missing</th><th scope="col" class="num">Extra</th><th scope="col" class="num">Duplicates</th><th scope="col" class="num">Mismatched</th></tr></thead>
         <tbody>${gradeRows(records, runIds)}</tbody>
       </table></div>`
           : ""
       }
-      ${graded
-        .map((record) => {
-          const note = payloadOf(record).grade?.note;
-          return note
-            ? `<p class="fine-print">${runLink(
-                record.run_id,
-                `<code>${h(record.run_id)}</code>`,
-                runIds,
-                `Open run ${record.run_id}`,
-              )} ${h(note)}</p>`
-            : "";
-        })
-        .join("")}
     </div>
   </details>`;
 }
 
 function conditionSection(conditionGroup, runIds, tone = "valid") {
   const { condition, upgrades } = conditionGroup;
+  const arm = conditionArm(conditionGroup);
   const badgeText =
     tone === "invalid"
       ? "Invalid pilot row"
       : tone === "diagnostic"
         ? "Diagnostic session"
         : tone === "frozen"
-          ? "Frozen comparison"
-          : "Pilot, reference arm";
+          ? `Frozen, ${armLabel(arm)}`
+          : `Pilot, ${armLabel(arm)}`;
   const badgeTone = tone === "invalid" ? "fail" : tone === "diagnostic" ? "pilot" : tone === "frozen" ? "live" : "pilot";
   return `<section class="condition">
     <header class="condition-head">
@@ -509,14 +511,16 @@ function pilotContrast(valid, runIds) {
   </div>`;
 }
 
-function frozenContrast(frozen, runIds) {
-  const after = frozen.filter((record) => payloadOf(record).condition === 5);
-  const before = frozen.filter((record) => payloadOf(record).condition === 3);
-  if (!after.length || !before.length) {
-    return `<div class="notice notice--quiet"><p>The frozen comparison needs condition five and condition three. One of them is not in the store yet.</p></div>`;
-  }
+function frozenUpgradeContrast(frozen, upgrade, runIds) {
+  const after = frozen.filter(
+    (record) => payloadOf(record).condition === 5 && payloadOf(record).upgrade === upgrade,
+  );
+  const before = frozen.filter(
+    (record) => payloadOf(record).condition === 3 && payloadOf(record).upgrade === upgrade,
+  );
+  if (!after.length || !before.length) return "";
   return `<div class="contrast">
-    <h3>The frozen comparison</h3>
+    <h3>The frozen comparison: ${h(upgradeLabel(upgrade))}</h3>
     <p class="caveat">Five repeats per condition. Counts, never percentages. The tables below show every session, and every figure links to its run.</p>
     <div class="contrast-grid">
       ${contrastColumn({
@@ -544,8 +548,17 @@ function frozenContrast(frozen, runIds) {
         ${worstLine(after, "records_duplicated", count, "Worst run: records duplicated", runIds)}
       </div>
     </div>
-    <p class="caveat caveat--last">The verifier-prompt rows below are the control. If they match Kalari, say so plainly.</p>
   </div>`;
+}
+
+function frozenContrast(frozen, runIds) {
+  const upgrades = unique(frozen.map((record) => payloadOf(record).upgrade));
+  const blocks = upgrades.map((upgrade) => frozenUpgradeContrast(frozen, upgrade, runIds)).filter(Boolean);
+  if (!blocks.length) {
+    return `<div class="notice notice--quiet"><p>The frozen comparison needs condition five and condition three for one upgrade. One of them is not in the store yet.</p></div>`;
+  }
+  return `${blocks.join("")}
+    <p class="caveat caveat--last">The verifier-prompt rows below are the control. If they match Kalari, say so plainly.</p>`;
 }
 
 function notPublishedPanel() {
@@ -564,7 +577,12 @@ function comparisonSection(bench, runIds) {
       <p>When it does, this page will show the frozen before-and-after, each condition's result, and the containment moment. Every figure will link to the run that produced it.</p>
       <p>The session view is ready now. It shows the shape of the evidence the page will read.</p>`;
   }
-  const frozen = bench.filter((record) => payloadOf(record).provenance === "frozen" && payloadOf(record).status !== "invalid");
+  const frozen = bench.filter(
+    (record) =>
+      payloadOf(record).provenance === "frozen" &&
+      payloadOf(record).status !== "invalid" &&
+      payloadOf(record).status !== "diagnostic",
+  );
   const validPilot = bench.filter(
     (record) => payloadOf(record).provenance !== "frozen" && payloadOf(record).status === "valid",
   );
@@ -575,10 +593,12 @@ function comparisonSection(bench, runIds) {
 }
 
 function containmentSection(bench, runIds) {
-  const capped = bench.find((record) => payloadOf(record).session_capped === true);
+  const capped = bench.find(
+    (record) => payloadOf(record).session_capped === true && payloadOf(record).status !== "invalid",
+  );
   if (!capped) {
     return `<section id="containment" class="section containment-wrap">
-      <div class="notice notice--quiet"><h2>The containment moment</h2><p>No capped session is published yet.</p></div>
+      <div class="notice notice--quiet"><h2>The containment moment</h2><p>No valid capped session is published yet.</p></div>
     </section>`;
   }
   const payload = payloadOf(capped);
@@ -614,7 +634,9 @@ function containmentSection(bench, runIds) {
       <div class="containment-links">
         ${
           hasRun
-            ? `<a class="button button--light" href="${attr(runHref(capped.run_id))}">Read the capped run</a>`
+            ? `<a class="button button--light" href="${attr(runHref(capped.run_id))}" data-run-link="${attr(
+                capped.run_id,
+              )}">Read the capped run</a>`
             : ""
         }
         <a class="quiet-link quiet-link--light" href="${attr(sessionHref(capped.session_id))}">Open its session</a>
@@ -673,6 +695,7 @@ function diagnosticsSection(diagnostic, runIds) {
     <h3>Single-behaviour diagnostics</h3>
     <p>Five sessions for each behaviour, on the isolated pilot adapter. It restricted the tool surface and network more than the condition rows. These sessions diagnose one behaviour alone and are not compared with the condition rows.</p>
     <div class="table-wrap"><table class="measures-table diagnostics-table">
+      <caption class="visually-hidden">Single-behaviour diagnostics.</caption>
       <thead><tr><th scope="col">Behaviour</th><th scope="col">Run</th><th scope="col">Verdict</th><th scope="col">Right first time</th><th scope="col" class="num">Sandbox runs</th><th scope="col" class="num">Wall time</th><th scope="col" class="num">Records lost</th><th scope="col" class="num">Records duplicated</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
@@ -696,7 +719,39 @@ function everyRunGroup(records, runIds) {
   return `<ul class="run-index-list">${items}</ul>`;
 }
 
-function everyRunSection(bench, runIds) {
+function otherRunsGroup(runs, bench, runDetails, runIds) {
+  const known = new Set(bench.map((record) => record.run_id));
+  const other = (Array.isArray(runs) ? runs : []).filter((runId) => !known.has(runId));
+  if (!other.length) return "";
+  const items = other
+    .slice()
+    .sort()
+    .map((runId) => {
+      const detail = Array.isArray(runDetails?.[runId]) ? runDetails[runId] : [];
+      const runRecord = ofKind(detail, "run")[0];
+      const payload = payloadOf(runRecord);
+      const verdict = payload.verdict?.verdict;
+      const illustrative = payload.illustrative === true;
+      const checkState = runRecord ? runCheckState(runRecord, ofKind(detail, "check")) : "none";
+      const checkText =
+        checkState === "passed" ? "Checks passed" : checkState === "failed" ? "Checks failed" : "No checks";
+      return `<li>${runLink(
+        runId,
+        `<code>${h(runId)}</code>`,
+        runIds,
+        `Open run ${runId}`,
+      )}${illustrative ? badge("Illustrative", "draft") : ""}<span class="run-index-verdict ${
+        checkState === "passed" ? "is-pass" : checkState === "failed" ? "is-fail" : ""
+      }">${h(verdict ? `${verdictWord(verdict)}. ${checkText}` : "Run record not loaded")}</span></li>`;
+    })
+    .join("");
+  return `<div class="run-group">
+    <h3>Sandbox runs</h3>
+    <ul class="run-index-list">${items}</ul>
+  </div>`;
+}
+
+function everyRunSection(bench, runs, runDetails, runIds) {
   const conditions = groupBy(
     bench.filter((record) => "condition" in payloadOf(record) && !payloadOf(record).behaviour),
     (record) => JSON.stringify([payloadOf(record).condition, payloadOf(record).upgrade]),
@@ -722,7 +777,7 @@ function everyRunSection(bench, runIds) {
   }
   groups.sort((a, b) => a.title.localeCompare(b.title));
   return `<h2>Every run</h2>
-    <p>Every benchmark record in the store is listed here. The tables above link the same runs with their measures.</p>
+    <p>Every run id in the run index is listed here. Benchmark runs are grouped by condition. Other runs are listed at the end.</p>
     <div class="run-groups">${groups
       .map(
         (group) => `<div class="run-group">
@@ -730,21 +785,13 @@ function everyRunSection(bench, runIds) {
           ${everyRunGroup(group.records, runIds)}
         </div>`,
       )
-      .join("")}</div>`;
+      .join("")}${otherRunsGroup(runs, bench, runDetails, runIds)}</div>`;
 }
 
-function sessionLinksSection(sessions, runIds) {
+function sessionLinksSection(sessions) {
   const ids = Array.isArray(sessions) ? sessions : [];
   const hasWalkthrough = ids.includes("payouts-upgrade");
   const hasEarlier = ids.includes("payouts-earlier");
-  const walkthroughRuns = ["payouts-attempt-1", "payouts-attempt-2", "payouts-attempt-3"];
-  const walkthroughLinks = hasWalkthrough
-    ? walkthroughRuns
-        .map((runId) =>
-          runLink(runId, `<code>${h(runId)}</code>`, runIds, `Open illustrative run ${runId}`),
-        )
-        .join(" ")
-    : "";
   return `<h2>Read a full session</h2>
     <p>The run pages show one measurement each. A session page shows the whole trail. It has the change list, the blast radius, the recalled check, each attempt with its logs, and the lesson written.</p>
     ${
@@ -754,20 +801,14 @@ function sessionLinksSection(sessions, runIds) {
       <h3>Upgrading the payout ledger</h3>
       <p>Follow the change facts, the call site, the recalled check, three attempts and the lesson. The change facts and the Clef answer are recorded. The run timings and log excerpts are illustrative.</p>
       <span class="session-card-cta">Open the walkthrough</span>
-    </a>
-    <p class="quiet-line">Illustrative runs: ${walkthroughLinks}</p>`
+    </a>`
         : `<p class="muted">The walkthrough session is not in the current evidence store.</p>`
     }
     ${
       hasEarlier
         ? `<p class="quiet-line"><a href="${attr(
             sessionHref("payouts-earlier"),
-          )}">The earlier session that left the recalled lesson</a> ${runLink(
-            "payouts-earlier-pass",
-            `<code>payouts-earlier-pass</code>`,
-            runIds,
-            "Open the earlier illustrative run",
-          )}</p>`
+          )}">The earlier session that left the recalled lesson</a></p>`
         : ""
     }`;
 }
@@ -780,7 +821,7 @@ function heroSection({ hasBenchmark, hasFrozen, sections }) {
       : `<p class="status-line"><span class="status-dot is-pilot" aria-hidden="true"></span>Pilot results published. The frozen comparison is pending.</p>`;
   return `<header class="judges-hero">
     <h1>For judges: start here.</h1>
-    <p class="deck">Kalari rehearses an API upgrade in a contained arena. A proved gate checks each sandbox call. A hidden grader decides whether the upgrade works. A lesson is written from what the verified run showed.</p>
+    <p class="deck">Kalari rehearses an API upgrade in a contained arena. A proved gate checks each sandbox call. A hidden grader decides whether the upgrade works. Kalari writes a lesson from what the verified run showed.</p>
     <p class="hero-copy">This page is the evidence index. Every figure comes from an evidence record, and every benchmark figure links to the run that produced it.</p>
     ${status}
     <nav class="reading-path" aria-label="On this page">
@@ -801,11 +842,21 @@ function footerSection() {
   </footer>`;
 }
 
-export function judgesView({ benchmark = [], runs = null, sessions = [], lessons = [], warnings = [] } = {}) {
+export function judgesView({
+  benchmark = [],
+  runs = null,
+  sessions = [],
+  lessons = [],
+  runDetails = {},
+  warnings = [],
+} = {}) {
   const bench = benchmarkRecords(benchmark);
   const runIds = runIdSet(runs);
   const frozen = bench.filter(
-    (record) => payloadOf(record).provenance === "frozen" && payloadOf(record).status !== "invalid",
+    (record) =>
+      payloadOf(record).provenance === "frozen" &&
+      payloadOf(record).status !== "invalid" &&
+      payloadOf(record).status !== "diagnostic",
   );
   const validPilot = bench.filter(
     (record) => payloadOf(record).provenance !== "frozen" && payloadOf(record).status === "valid",
@@ -833,7 +884,7 @@ export function judgesView({ benchmark = [], runs = null, sessions = [], lessons
       invalidGroups.length
         ? `<section class="subsection subsection--invalid">
             <h3>Invalid pilot rows, kept for the record</h3>
-            <p>${h(payloadOf(invalid[0]).notes || "These rows cannot count.")}</p>
+            <p>These rows cannot count. The run pages carry the note for each row.</p>
             ${conditionGroupsSection(invalidGroups, runIds, "invalid")}
           </section>`
         : ""
@@ -856,9 +907,9 @@ export function judgesView({ benchmark = [], runs = null, sessions = [], lessons
         : ""
     }
     ${hasBenchmark ? containmentSection(bench, runIds) : ""}
-    ${hasBenchmark ? `<section id="runs" class="section">${everyRunSection(bench, runIds)}</section>` : ""}
+    ${hasBenchmark ? `<section id="runs" class="section">${everyRunSection(bench, runs, runDetails, runIds)}</section>` : ""}
     <section id="sessions" class="section section--sessions">
-      ${sessionLinksSection(sessions, runIds)}
+      ${sessionLinksSection(sessions)}
     </section>
     ${footerSection()}
   </article>`;
@@ -881,24 +932,37 @@ function sessionChangeKinds(records) {
   return unique((records || []).flatMap((record) => (Array.isArray(record.change_kinds) ? record.change_kinds : [])));
 }
 
-function runPassed(record) {
+function checkResultsFor(record, checkRecords) {
   const payload = payloadOf(record);
-  const verdict = object(payload.verdict) || {};
-  const ok = verdict.verdict === "exited" && verdict.exit_code === 0;
-  const results = Array.isArray(payload.check_results) ? payload.check_results : [];
-  return ok && results.length > 0 && results.every((result) => result.passed === true);
+  const fromPayload = Array.isArray(payload.check_results) ? payload.check_results : [];
+  const fromRecords = (checkRecords || [])
+    .filter((check) => check.run_id === record.run_id)
+    .map((check) => payloadOf(check));
+  return fromPayload.length ? fromPayload : fromRecords;
 }
 
-function runAttemptSummary(records) {
+function runCheckState(record, checkRecords) {
+  const results = checkResultsFor(record, checkRecords);
+  if (!results.length) return "none";
+  return results.every((result) => result.passed === true) ? "passed" : "failed";
+}
+
+function runAttemptSummary(records, checkRecords) {
   if (!records.length) return "No sandbox runs were recorded in this session.";
-  const passed = records.filter(runPassed).length;
-  const failed = records.length - passed;
+  const states = records.map((record) => runCheckState(record, checkRecords));
+  const passed = states.filter((state) => state === "passed").length;
+  const failed = states.filter((state) => state === "failed").length;
+  const none = states.filter((state) => state === "none").length;
   if (records.length === 1) {
-    return passed ? "One attempt. It passed its checks." : "One attempt. It failed its checks.";
+    if (passed) return "One attempt. It passed its checks.";
+    if (failed) return "One attempt. It failed its checks.";
+    return "One attempt. It had no checks.";
   }
-  return `${capitalise(countWord(records.length))} attempts. ${capitalise(countWord(passed))} passed. ${capitalise(
-    countWord(failed),
-  )} failed.`;
+  const clauses = [];
+  if (passed) clauses.push(`${capitalise(countWord(passed))} passed.`);
+  if (failed) clauses.push(`${capitalise(countWord(failed))} failed.`);
+  if (none) clauses.push(`${capitalise(countWord(none))} had no checks.`);
+  return `${capitalise(countWord(records.length))} attempts. ${clauses.join(" ")}`;
 }
 
 function changeBlock(changeRecord, radii) {
@@ -984,21 +1048,25 @@ function opinionBlock(decision) {
   </section>`;
 }
 
-function runCard(record, index, total, checks, decisions, runIds) {
+function runCard(record, index, checks, decisions, runIds) {
   const payload = payloadOf(record);
   const verdict = object(payload.verdict) || {};
-  const passed = runPassed(record);
+  const state = runCheckState(record, checks);
+  const results = checkResultsFor(record, checks);
+  const passed = state === "passed";
+  const stateText = state === "passed" ? "Checks passed" : state === "failed" ? "Checks failed" : "No checks";
+  const stateTone = state === "passed" ? "pass" : state === "failed" ? "fail" : "neutral";
   const decision = decisions.find((item) => item.run_id === record.run_id);
   const logs = `<details class="logs"><summary>Standard output</summary><pre>${h(
     verdict.stdout || "",
   )}</pre></details>
     <details class="logs"><summary>Standard error</summary><pre>${h(verdict.stderr || "")}</pre></details>`;
-  return `<article class="run-card ${passed ? "is-pass" : "is-fail"}">
+  return `<article class="run-card ${passed ? "is-pass" : state === "failed" ? "is-fail" : "is-none"}">
     <header class="run-head">
       <p class="run-eyebrow">Attempt ${countWord(index + 1)}</p>
       <div class="run-title"><h3>${h(
         verdict.verdict ? verdictWord(verdict.verdict) : "Sandbox run",
-      )}</h3>${badge(passed ? "Checks passed" : "Checks failed", passed ? "pass" : "fail")}${
+      )}</h3>${badge(stateText, stateTone)}${
         payload.illustrative ? badge("Illustrative", "draft") : ""
       }</div>
       <p class="run-id">${runLink(
@@ -1013,8 +1081,8 @@ function runCard(record, index, total, checks, decisions, runIds) {
       <div><dt>Exit code</dt><dd>${Number.isFinite(verdict.exit_code) ? h(String(verdict.exit_code)) : h("none")}</dd></div>
       <div><dt>Wall time</dt><dd>${h(milliseconds(verdict.wall_ms))}</dd></div>
       <div><dt>Checks</dt><dd>${h(
-        Array.isArray(payload.check_results)
-          ? `${payload.check_results.filter((result) => result.passed).length} of ${payload.check_results.length} passed`
+        results.length
+          ? `${results.filter((result) => result.passed).length} of ${results.length} passed`
           : "not recorded",
       )}</dd></div>
     </dl>
@@ -1044,8 +1112,9 @@ function runCard(record, index, total, checks, decisions, runIds) {
       </div></details>
     </div>
     <footer class="run-foot">
-      <a class="quiet-link" href="${attr(runHref(record.run_id))}">Open this run</a>
-      ${index < total - 1 ? "" : ""}
+      <a class="quiet-link" href="${attr(runHref(record.run_id))}" data-run-link="${attr(
+        record.run_id,
+      )}">Open this run</a>
     </footer>
   </article>`;
 }
@@ -1150,8 +1219,9 @@ function evidenceIndex(records, runIds) {
     .join("");
   return `<section class="subsection">
     <h2>Every evidence record</h2>
-    <p>This is the append-only trail the page read. The records are shown by kind and run; the run page has the full payload.</p>
+    <p>This is the append-only trail the page read. The page shows the records by kind and run. The run page has the full payload.</p>
     <div class="table-wrap"><table class="measures-table">
+      <caption class="visually-hidden">Every evidence record in this session.</caption>
       <thead><tr><th scope="col">Kind</th><th scope="col">Run</th><th scope="col">Change kinds</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
@@ -1256,12 +1326,12 @@ export function sessionView({ sessionId = "", records = [], lessons = [], runs =
       runRecords.length
         ? `<section class="subsection">
             <h2>The runs</h2>
-            <p class="run-summary">${h(runAttemptSummary(runRecords))}</p>
+            <p class="run-summary">${h(runAttemptSummary(runRecords, checks))}</p>
             <div class="timeline">${runRecords
               .map(
                 (record, index) =>
-                  `${runCard(record, index, runRecords.length, checks, decisions, runIds)}${
-                    index < runRecords.length - 1 && !runPassed(record)
+                  `${runCard(record, index, checks, decisions, runIds)}${
+                    index < runRecords.length - 1 && runCheckState(record, checks) === "failed"
                       ? `<p class="retry">The checks failed. The agent changed the loop and ran again.</p>`
                       : ""
                   }`,
@@ -1306,7 +1376,9 @@ function benchmarkRunDetail(payload, sessionId) {
       ? "Invalid pilot row"
       : payload.status === "diagnostic"
         ? "Diagnostic session"
-        : "Measured pilot run";
+        : payload.provenance === "frozen"
+          ? "Frozen comparison run"
+          : "Measured pilot run";
   const gradeRowsHtml = grade
     ? [
         ["Records", grade.records, count],
@@ -1339,7 +1411,10 @@ function benchmarkRunDetail(payload, sessionId) {
         <h2>Pilot run: ${h(upgradeLabel(payload.upgrade))}</h2>
         <p class="run-id"><code>${h(sessionId || "")}</code></p>
       </div>
-      <div class="badge-row">${badge(statusText, statusTone)} ${badge(conditionLabel(payload.condition), "neutral")} ${badge(
+      <div class="badge-row">${badge(statusText, statusTone)} ${badge(
+        conditionLabel(payload.condition),
+        "neutral",
+      )} ${badge(armLabel(payload.arm), "neutral")} ${badge(
         `Repeat ${countWord(payload.repeat)}`,
         "neutral",
       )}</div>
@@ -1383,18 +1458,21 @@ function benchmarkRunDetail(payload, sessionId) {
 function sandboxRunDetail(record, records, runIds) {
   const payload = payloadOf(record);
   const verdict = object(payload.verdict) || {};
-  const results = Array.isArray(payload.check_results) ? payload.check_results : [];
+  const checks = ofKind(records, "check");
+  const state = runCheckState(record, checks);
+  const results = checkResultsFor(record, checks);
+  const stateText = state === "passed" ? "Checks passed" : state === "failed" ? "Checks failed" : "No checks";
+  const stateTone = state === "passed" ? "pass" : state === "failed" ? "fail" : "neutral";
   const decision = ofKind(records, "decision").find((item) => item.run_id === record.run_id);
   const lesson = ofKind(records, "lesson").find((item) => item.run_id === record.run_id);
   const observation = ofKind(records, "page-observation").find((item) => item.run_id === record.run_id);
-  const passed = runPassed(record);
   return `<section class="panel">
     <div class="panel-head">
       <div><h2>Sandbox run</h2><p class="run-id"><code>${h(record.run_id)}</code></p></div>
       <div class="badge-row">${badge(
         verdictWord(verdict.verdict),
         verdict.verdict === "exited" ? "neutral" : "fail",
-      )} ${badge(passed ? "Checks passed" : "Checks failed", passed ? "pass" : "fail")}${
+      )} ${badge(stateText, stateTone)}${
         payload.illustrative ? badge("Illustrative", "draft") : ""
       }</div>
     </div>
@@ -1469,6 +1547,7 @@ function recordsTable(records) {
     )
     .join("");
   return `<section class="subsection"><h2>Every record in this run</h2><div class="table-wrap"><table class="measures-table">
+    <caption class="visually-hidden">Every evidence record in this run.</caption>
     <thead><tr><th scope="col">Kind</th><th scope="col">Run</th><th scope="col">Change kinds</th></tr></thead>
     <tbody>${rows}</tbody>
   </table></div></section>`;

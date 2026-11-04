@@ -3,27 +3,38 @@
 
    This is a development tool, not part of the app and not part of the check.
    The app itself is plain ES modules and needs no Node. The check reads the
-   committed snapshots and verifies their hashes against the view code and the
-   fixture evidence, so a stale snapshot fails the check.
+   committed snapshots. It verifies a sha256 for every rendered page and for
+   every file under web/site/, so a stale snapshot fails the check.
 
        node web/fixture/render.mjs
 */
 
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "../..");
+const SITE = path.join(REPO, "web/site");
 const OUT = path.join(HERE, "rendered");
 const { sessionView, runView, judgesView } = await import(
-  path.join(REPO, "web/app/views.mjs")
+  path.join(SITE, "app/views.mjs")
 );
 
 function sha256(file) {
   return createHash("sha256").update(readFileSync(file)).digest("hex");
+}
+
+function walk(directory) {
+  const files = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const full = path.join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...walk(full));
+    else if (entry.isFile()) files.push(full);
+  }
+  return files.sort();
 }
 
 function startServer() {
@@ -65,6 +76,17 @@ async function getJson(base, route) {
   return response.json();
 }
 
+async function runDetailsFor(base, runs, benchmark) {
+  const benchmarkIds = new Set(
+    benchmark
+      .filter((record) => record.kind === "benchmark" && typeof record.run_id === "string")
+      .map((record) => record.run_id),
+  );
+  const otherIds = benchmark.length ? runs.filter((runId) => !benchmarkIds.has(runId)) : [];
+  const results = await Promise.all(otherIds.map((runId) => getJson(base, `api/runs/${runId}`)));
+  return Object.fromEntries(otherIds.map((runId, index) => [runId, results[index]]));
+}
+
 const { child, base } = await startServer();
 try {
   const [benchmark, runs, sessions, lessons] = await Promise.all([
@@ -82,10 +104,11 @@ try {
   const sessionRecords = await getJson(base, "api/sessions/payouts-upgrade");
   const runRecords = await getJson(base, "api/runs/pilot-c3-payouts-r5");
   const illustrativeRunRecords = await getJson(base, "api/runs/payouts-attempt-1");
+  const runDetails = await runDetailsFor(base, runs, benchmark);
 
   mkdirSync(OUT, { recursive: true });
   const pages = {
-    judges: judgesView({ benchmark, runs, sessions, lessons }),
+    judges: judgesView({ benchmark, runs, sessions, lessons, runDetails }),
     "judges-empty": judgesView({ benchmark: [], runs, sessions, lessons }),
     "judges-no-store": judgesView({ benchmark: [], runs: [], sessions: [], lessons: [] }),
     session: sessionView({ sessionId: "payouts-upgrade", records: sessionRecords, lessons, runs }),
@@ -103,24 +126,24 @@ try {
     writeFileSync(path.join(OUT, `${name}.html`), clean(html), "utf8");
   }
 
-  const sources = {
-    views: path.join(REPO, "web/app/views.mjs"),
-    format: path.join(REPO, "web/app/format.mjs"),
-    labels: path.join(REPO, "web/app/labels.mjs"),
-    evidence: path.join(HERE, "evidence.jsonl"),
-  };
+  const siteFiles = walk(SITE);
   const manifest = {
     schema: "kalari.web.rendered.v1",
     generator: "web/fixture/render.mjs",
+    root: "web/site",
     pages: Object.fromEntries(
-      Object.keys(pages).map((name) => [name, `web/fixture/rendered/${name}.html`]),
+      Object.keys(pages).map((name) => {
+        const file = path.join(OUT, `${name}.html`);
+        return [name, { path: path.relative(REPO, file), sha256: sha256(file) }];
+      }),
     ),
     sha256: Object.fromEntries(
-      Object.entries(sources).map(([key, file]) => [
-        key,
-        { path: path.relative(REPO, file), sha256: sha256(file) },
-      ]),
+      siteFiles.map((file) => [path.relative(SITE, file), sha256(file)]),
     ),
+    evidence: {
+      path: path.relative(REPO, path.join(HERE, "evidence.jsonl")),
+      sha256: sha256(path.join(HERE, "evidence.jsonl")),
+    },
   };
   writeFileSync(path.join(OUT, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   console.log(`rendered ${Object.keys(pages).length} pages into web/fixture/rendered/`);

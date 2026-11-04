@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Serve web/ and an evidence API from a local fixture store.
+"""Serve web/site/ and an evidence API from a local fixture store.
 
     python3 web/fixture/server.py --port 0
 
-The API routes, status codes and JSON array shapes match Kalari/Http.lean. The
-server binds loopback only. It injects a visible fixture marker into every HTML
-page, so a screenshot from this server can never pass for a published result.
+The API routes, status codes and JSON array shapes follow Kalari/Http.lean. The
+server binds loopback only. It injects a visible fixture banner into every HTML
+page it serves, including the rendered snapshots, so a screenshot from this
+server cannot pass for a published result. The fixture files live outside the
+published static root.
 
 Options:
     --store PATH       evidence JSONL file (default: web/fixture/evidence.jsonl)
-    --root PATH        static root (default: web/)
     --port N           port, 0 picks a free one (default: 0)
     --host ADDRESS     loopback address (default: 127.0.0.1)
     --no-benchmark     answer GET /api/benchmark with an empty array
@@ -28,15 +29,22 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 HERE = Path(__file__).resolve().parent
-WEB = HERE.parent
+SITE = HERE.parent / "site"
 MAX_BODY = 4096
 ID_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 HTML_RE = re.compile(r"<html\b", re.IGNORECASE)
+BODY_RE = re.compile(r"(<body\b[^>]*>)", re.IGNORECASE)
+BANNER = (
+    '<div class="fixture-banner" role="note">'
+    "<strong>Fixture mode.</strong> This server serves this page from a local evidence "
+    "store, not the published API. A screenshot of this page is not a published result."
+    "</div>"
+)
 
 
 class FixtureState:
-    def __init__(self, root: Path, store: Path, no_benchmark: bool) -> None:
-        self.root = root
+    def __init__(self, store: Path, no_benchmark: bool) -> None:
+        self.root = SITE
         self.store = store
         self.no_benchmark = no_benchmark
 
@@ -171,7 +179,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def static(self, target: str, head_only: bool) -> None:
         path = unquote(urlsplit(target).path)
-        if path.startswith("/rendered/"):
+        rendered = path.startswith("/rendered/")
+        if rendered:
             base = HERE / "rendered"
             relative = path[len("/rendered/") :]
         else:
@@ -204,7 +213,10 @@ class Handler(BaseHTTPRequestHandler):
         data = candidate.read_bytes()
         if suffix in (".html", ".htm"):
             text = data.decode("utf-8")
-            text = HTML_RE.sub('<html data-fixture="true"', text, count=1)
+            if rendered:
+                text = self.rendered_page(text)
+            else:
+                text = self.with_banner(text)
             data = text.encode("utf-8")
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", content_type)
@@ -215,6 +227,24 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         if not head_only:
             self.wfile.write(data)
+
+    @staticmethod
+    def with_banner(text: str) -> str:
+        text = HTML_RE.sub('<html data-fixture="true"', text, count=1)
+        if BODY_RE.search(text):
+            return BODY_RE.sub(lambda match: match.group(1) + BANNER, text, count=1)
+        return BANNER + text
+
+    @staticmethod
+    def rendered_page(fragment: str) -> str:
+        return (
+            '<!doctype html>\n<html lang="en" data-fixture="true">\n'
+            '<head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            "<title>Rendered fixture</title>"
+            '<link rel="stylesheet" href="/app.css"></head>\n'
+            f"<body>{BANNER}<main class=\"app\">{fragment}</main></body>\n</html>\n"
+        )
 
     def send_json(self, status: HTTPStatus, value) -> None:
         body = json_bytes(value)
@@ -236,19 +266,17 @@ class Server(ThreadingHTTPServer):
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--store", type=Path, default=HERE / "evidence.jsonl")
-    parser.add_argument("--root", type=Path, default=WEB)
     parser.add_argument("--port", type=int, default=0)
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--no-benchmark", action="store_true")
     args = parser.parse_args()
     if args.host not in ("127.0.0.1", "::1", "localhost"):
         parser.error("the fixture server binds loopback only")
-    root = args.root.resolve()
-    if not root.is_dir():
-        parser.error(f"static root is not a directory: {root}")
+    if not SITE.is_dir():
+        parser.error(f"static root is not a directory: {SITE}")
     store = args.store.resolve()
     server = Server((args.host, args.port), Handler)
-    server.state = FixtureState(root, store, args.no_benchmark)  # type: ignore[attr-defined]
+    server.state = FixtureState(store, args.no_benchmark)  # type: ignore[attr-defined]
     host, port = server.server_address[:2]
     print(f"http://{host}:{port}/", flush=True)
     try:
