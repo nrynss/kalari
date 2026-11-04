@@ -58,11 +58,13 @@ requires:   [T4.1, T3.2, T3.3]
 fixture-ok: yes
 size:       S · frontier
 owns:       Kalari/Tools/Recall.lean
-status:     claimed:gpt-6.1-terra
+status:     in-review
 ```
 Change kinds in, the lessons for them out **as checks that must pass**, not as advice: each with its check ID, what it asserts, and the run that taught it. Lessons linked to the change kind always apply. One found only by meaning becomes a required check only if Clef's `lessonApplies` is confident; otherwise it's returned as advice and labelled so.
 
 **Done when:** with the payouts lesson stored, recall on the settlements change returns it as a required check; an unrelated lesson found by meaning comes back as advice.
+
+**Notes (in review):** Linked constraints take precedence over semantic hits; semantic candidates require a Clef probability of at least 0.9 to become required. Errors and lower scores yield advice. Incoming contradictions mark lessons stale rather than required. The tool expects constraint content to be a JSON-encoded `Model.Lesson`, including the check and run ID. The measured Lambo transcript stores a free-text constraint with a check ID alone, so it cannot provide the full model; the fixture uses a complete encoded payouts lesson. The fixture exercises the shared pagination kind, a low-scoring unrelated semantic lesson, duplicate suppression and stale status. Integration with the future lesson writer must use the same encoding.
 
 ---
 
