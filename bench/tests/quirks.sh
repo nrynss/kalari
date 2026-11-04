@@ -47,4 +47,37 @@ check settlements no_dedupe        "$sp" FAIL:duplicates=19,mismatched=19   # B2
 check settlements keep_first       "$sp" FAIL:mismatched=19    # B2: dedupes, but keeps the old version
 check settlements correct          "$sp" PASS
 
+# Dedicated observed instance: no page requests are used for readiness, so the
+# trace contains only this one real reference-consumer run.
+op=$((sp + 1))
+python3 -I apis/payouts/server.py --port "$op" --v1 off --trace "$tmp/observed.jsonl" >"$tmp/observed.log" 2>&1 &
+observer_pid=$!
+for _ in $(seq 1 50); do
+  curl -s "http://127.0.0.1:$op/health" >/dev/null 2>&1 && break
+  sleep 0.1
+done
+if ! timeout 8 python3 -I apis/payouts/reference/correct.py --base-url "http://127.0.0.1:$op" --out "$tmp/observed-output.jsonl" >/dev/null; then
+  echo "FAIL observed payouts reference"; fail=1
+fi
+kill "$observer_pid" 2>/dev/null || true
+wait "$observer_pid" 2>/dev/null || true
+if ! python3 -I - "$tmp/observed.jsonl" "$tmp/observed-output.jsonl" <<'PYTRACE'
+import json, subprocess, sys
+raw = open(sys.argv[1], "rb").read()
+assert raw.endswith(b"\n") and len(raw) <= 262144
+pages = [json.loads(line) for line in raw.splitlines()]
+assert 1 < len(pages) <= 256 and not pages[0]["request"]
+assert all(p["count"] == len(p["ids"]) > 0 for p in pages)
+assert all(a["response"] == b["request"] for a, b in zip(pages, pages[1:]))
+assert all(not p["drained"] for p in pages[:-1])
+assert pages[-1]["drained"] and pages[-1]["response"]
+assert all(set(a["ids"]) & set(b["ids"]) == {a["last"]} == {b["first"]} for a, b in zip(pages, pages[1:]))
+grade = json.loads(subprocess.check_output(["python3", "-I", "graders/grade.py", "payouts", sys.argv[2]]))
+assert grade["verdict"] == "PASS"
+print(f"ok   payouts observed: {len(pages)} pages, one-record overlaps, final token, grader PASS")
+PYTRACE
+then
+  echo "FAIL observed payouts trace or grader"; fail=1
+fi
+
 exit $fail

@@ -21,6 +21,7 @@ import json
 import os
 import sys
 import time
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
@@ -30,6 +31,13 @@ from data import COUNT, PAYOUTS  # noqa: E402
 PAGE_CAP = 100
 SPEC_MAX_LIMIT = 1000
 SECRET = os.urandom(16)
+TRACE_LIMIT = 256
+TRACE = None
+TRACE_LOCK = threading.Lock()
+TRACE_COUNT = 0
+
+def digest(value):
+    return hashlib.sha256(value.encode()).hexdigest() if value else ""
 
 
 def mint(offset: int) -> str:
@@ -88,7 +96,25 @@ class Handler(BaseHTTPRequestHandler):
         end = start + len(page)
         drained = end >= COUNT
         nxt = max(end - 1, 0)                           # B2: the next window starts at this page's last payout
-        return self.reply(200, {"payouts": page, "cursor": mint(nxt), "drained": drained})  # B1
+        cursor = mint(nxt)
+        response = {"payouts": page, "cursor": cursor, "drained": drained}
+        if TRACE is None:
+            return self.reply(200, response)
+        # Serialize response completion and trace appends so the host can reject
+        # branching or interleaving instead of guessing an order.
+        global TRACE_COUNT
+        with TRACE_LOCK:
+            self.reply(200, response)
+            if TRACE_COUNT < TRACE_LIMIT:
+                event = {"request": digest(q.get("cursor", "")), "response": digest(cursor),
+                         "first": page[0]["id"] if page else "", "last": page[-1]["id"] if page else "",
+                         "ids": [p["id"] for p in page], "count": len(page), "drained": drained}
+                TRACE.write(json.dumps(event, separators=(",", ":")) + "\n")
+                TRACE.flush()
+            elif TRACE_COUNT == TRACE_LIMIT:
+                TRACE.write('{"overflow":true}\n')
+                TRACE.flush()
+            TRACE_COUNT += 1
 
     def log_message(self, *args):
         pass
@@ -99,7 +125,12 @@ def main():
     ap.add_argument("--bind", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=18080)
     ap.add_argument("--v1", choices=["on", "off"], default="on")
+    ap.add_argument("--trace", help="exclusive host-owned page trace file")
     a = ap.parse_args()
+    global TRACE
+    if a.trace:
+        fd = os.open(a.trace, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        TRACE = os.fdopen(fd, "w", encoding="utf-8")
     Handler.v1_enabled = a.v1 == "on"
     print(f"payouts listening on {a.bind}:{a.port} (v1 {a.v1})", flush=True)
     ThreadingHTTPServer((a.bind, a.port), Handler).serve_forever()

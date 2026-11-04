@@ -112,11 +112,15 @@ requires:   [T4.5]
 fixture-ok: yes
 size:       M · frontier
 owns:       bench/apis/payouts/server.py, bench/tests/quirks.sh, Kalari/Tools/Run.lean (observer seam)
-status:     claimed:gpt-6.1-terra
+status:     in-review
 ```
 Capture bounded, host-owned page-response metadata from a dedicated payouts API instance for a verified candidate run. Bind observations to the run and derive boundary overlap and final-page token presence from a cursor-linked trace. Record only what the API sent. A passing result on identical payout overlaps does not establish last-delivery-wins behavior.
 
 **Done when:** the real payouts reference consumer and grader produce a passing result and a trace showing one-record overlap and a token on the drained page. The run pipeline associates observations with a passing run and rejects missing, truncated, or ambiguous traces. The offline gate requires no live service or microVM.
+
+**Notes (in review):** The optional `--trace` server argument exclusively creates a mode-0600 host file; it records up to 256 serialized successfully sent v2 pages, cursor digests, record IDs and terminal status, with an overflow marker. A dedicated server instance is required. The offline gate starts that instance separately, runs the actual payouts `correct.py`, grades its output, and validates the recorded chain: 25 pages, one-ID overlap at every boundary and a cursor on the drained page. That host run is not a microVM run; payouts keeps the first copy and establishes no last-wins policy.
+
+`Run.Context.observer` is an optional trusted host lifecycle seam. It receives the run ID, starts a dedicated observer, and returns a stop/read closure; the session owner must ensure the candidate really uses that isolated server and that its trace is inaccessible to the guest. Run stops it even after sandbox execution failure. Only a passing run with all checks and differential comparison passing may emit `page-observation` evidence indexed by that exact run and session, with `{source: "payouts-api", behaviors: [...]}`. Parsing rejects missing, nonterminated, oversized, malformed, branched, repeated-cursor or nonterminal traces and verifies each observed one-record boundary intersection from complete page IDs. Offline fake-backend tests cover association, failing-run suppression and malformed traces. The service has no concrete observer lifecycle implementation yet; its trusted setup and endpoint binding remain integration work, and unrelated external APIs do not produce this evidence.
 
 ---
 

@@ -15,6 +15,49 @@ private def guestWorkspace := "/workspace"
 private def supervisor := "/usr/local/bin/kalari-aashaan"
 private def artifactCap := 4 * 1024 * 1024
 
+/-- A trusted host starts a dedicated observed API for this run and returns a
+closure that stops it and reads its bounded trace. The service must ensure the
+candidate actually targets that instance; this is never supplied by an agent. -/
+abbrev Observer := String → IO (Except String (IO (Except String String)))
+
+private structure PageEvent where
+  request : String
+  response : String
+  first : String
+  last : String
+  count : Nat
+  ids : List String
+  drained : Bool
+  deriving FromJson
+
+/-- Validate one complete, unbranched cursor chain. A response is evidence of
+what the API sent, not of how the consumer used it. -/
+def pageObservations (trace : String) : Except String (List String) := do
+  if trace.utf8ByteSize > 262144 || !trace.endsWith "\n" then throw "missing, truncated or oversized page trace"
+  let lines := (trace.splitOn "\n").dropLast
+  if lines.isEmpty || lines.length > 256 then throw "empty or oversized page trace"
+  let events ← lines.mapM fun line => Json.parse line >>= (fromJson? (α := PageEvent))
+  let mut previous := ""
+  let mut previousIds : List String := []
+  let mut overlap := false
+  let mut terminal := false
+  let mut seen : List String := []
+  for event in events do
+    if terminal || event.request != previous || event.response.isEmpty || seen.contains event.response || event.count == 0 || event.first.isEmpty || event.last.isEmpty then
+      throw "ambiguous or incomplete page trace"
+    if event.ids.length != event.count || event.ids.eraseDups.length != event.ids.length ||
+        event.ids.head? != some event.first || event.ids.getLast? != some event.last then
+      throw "invalid page IDs"
+    if !previous.isEmpty then
+      let repeated := event.ids.filter previousIds.contains
+      if repeated.length == 1 && repeated.head? == previousIds.getLast? && repeated.head? == some event.first then overlap := true
+    seen := event.response :: seen
+    previous := event.response
+    previousIds := event.ids
+    terminal := event.drained
+  unless terminal do throw "page trace has no drained response"
+  return (if overlap then ["boundary_overlap_one"] else []) ++ ["final_page_token"]
+
 /-- Session-owned inputs. The candidate and baseline workspace paths point to
 separate prepared consumer trees; `checkWorkspace` points to a host-owned tree
 of trusted lesson-check programs. The baseline is pristine and targets v1 of
@@ -36,6 +79,7 @@ structure Context where
   evidence : Kalari.Evidence.Store
   sessionId : String
   changeKinds : List String
+  observer : Option Observer := none
 
 /-- External operations can replay through the same orchestration as live runs. -/
 structure Runtime where
@@ -342,10 +386,35 @@ def run (runtime : Runtime) (ctx : Context) (request : RunRequest) : IO (Except 
     let runId := dir.fileName.getD "run"
     let name := "kalari-" ++ runId
     requireStep "image pull" (← liftM (Microsandbox.ensureImage runtime.runner ctx.image 4096 runtime.wait))
-    let candidate ← execute runtime ctx name request allow
+    let finish ← match ctx.observer with
+      | none => pure none
+      | some start =>
+        match ← liftM (start runId) with
+        | .error e => throw s!"observer start: {e}"
+        | .ok stop => pure (some stop)
+    let candidateResult ← liftM <| try (execute runtime ctx name request allow).run
+      catch _ => pure (.error "sandbox execution failed")
+    -- Always stop the host observer, including when sandbox execution failed.
+    let traceResult : Option (Except String String) ← match finish with
+      | none => pure none
+      | some stop =>
+        let result ← liftM <| try stop catch _ => pure (.error "observer stop failed")
+        pure (some result)
+    let candidate ← match candidateResult with
+      | .error e => throw e
+      | .ok c => pure c
     let lessonResults ← runChecks runtime ctx name request allow dir candidate.artifact
     let diff ← compareRun runtime ctx name baselineAllow candidate
     let checks := lessonResults ++ [diff]
+    let observations ← if successful candidate.verdict && checks.all (·.passed) then
+      match traceResult with
+      | none => pure none
+      | some (.error e) => throw s!"observer: {e}"
+      | some (.ok trace) =>
+        match pageObservations trace with
+        | .error e => throw s!"observer: {e}"
+        | .ok facts => pure (some facts)
+      else pure none
     let record : RunRecord := {
       request, verdict := candidate.verdict, checks := ctx.checks, check_results := checks
       timings := { wall_ms := candidate.verdict.wall_ms }
@@ -353,6 +422,8 @@ def run (runtime : Runtime) (ctx : Context) (request : RunRequest) : IO (Except 
     evidence ctx runId "run" (toJson record)
     for check in checks do
       evidence ctx runId "check" (toJson check)
+    if let some facts := observations then
+      evidence ctx runId "page-observation" (Json.mkObj [("source", Json.str "payouts-api"), ("behaviors", toJson facts)])
     return {
       run_id := runId, verdict := candidate.verdict, checks
       passed := successful candidate.verdict && checks.all (·.passed)
@@ -572,6 +643,29 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
       verify (actualCalls == ["resolve", "resolve", "pull", "create-v2"])
         "duplicate-name failure attempted cleanup"
   IO.println "run create-timeout: force cleanup; duplicate name: preserved"
+  let trace := "{\"request\":\"\",\"response\":\"a\",\"first\":\"1\",\"last\":\"2\",\"ids\":[\"1\",\"2\"],\"count\":2,\"drained\":false}\n{\"request\":\"a\",\"response\":\"b\",\"first\":\"2\",\"last\":\"3\",\"ids\":[\"2\",\"3\"],\"count\":2,\"drained\":true}\n"
+  verify ((pageObservations trace).toOption == some ["boundary_overlap_one", "final_page_token"]) "valid trace rejected"
+  verify ((pageObservations "").isOk == false) "missing trace accepted"
+  verify ((pageObservations (trace.replace "\"drained\":true" "\"drained\":false")).isOk == false) "unterminated chain accepted"
+  verify ((pageObservations (trace.toSlice.dropEnd 1).toString).isOk == false) "truncated trace accepted"
+  verify ((pageObservations (trace.replace "\"request\":\"a\"" "\"request\":\"x\"")).isOk == false) "ambiguous trace accepted"
+  let stopped ← IO.mkRef false
+  let observer : Observer := fun _ => pure (.ok (do stopped.set true; pure (.ok trace)))
+  let observed := { ctx with observer := some observer }
+  let obsCalls ← IO.mkRef []
+  let obsTamper ← IO.mkRef false
+  let obsExists ← IO.mkRef false
+  let result ← expectOk (← run (fixtureRuntime obsCalls "correct" caps truth duplicateRows obsTamper obsExists) observed { req with command := ["python3", "/candidate/correct.py"] })
+  let obsRecords := Kalari.Evidence.byRun (← Kalari.Evidence.load store) result.run_id
+  verify (result.passed && (← stopped.get) && obsRecords.any (fun r => r.kind == "page-observation" && (r.payload.getObjValAs? (List String) "behaviors").toOption == some ["boundary_overlap_one", "final_page_token"])) "verified observation not linked to run"
+  stopped.set false
+  let failedRun ← expectOk (← run (fixtureRuntime obsCalls "no_dedupe" caps truth duplicateRows obsTamper obsExists) observed { req with command := ["python3", "/candidate/no_dedupe.py"] })
+  let failedRecords := Kalari.Evidence.byRun (← Kalari.Evidence.load store) failedRun.run_id
+  verify (!failedRun.passed && (← stopped.get) && !(failedRecords.any (fun r => r.kind == "page-observation"))) "failed run emitted observations or observer leaked"
+  let invalid : Observer := fun _ => pure (.ok (pure (.ok "bad")))
+  let rejectedTrace ← run (fixtureRuntime obsCalls "correct" caps truth duplicateRows obsTamper obsExists) { ctx with observer := some invalid } { req with command := ["python3", "/candidate/correct.py"] }
+  verify (rejectedTrace.isOk == false) "invalid observed run accepted"
+  IO.println "run observer: complete linked trace accepted; malformed trace rejected"
 
 #guard (compareRecords
   "{\"id\":\"A\",\"amount\":2}\n{\"id\":\"B\",\"amount\":4}\n"
@@ -584,3 +678,4 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
 #eval exercise
 
 end Kalari.Tools.Run
+
