@@ -42,8 +42,21 @@ $0.60 per million output tokens, not a provider bill.
    lesson. The full numeric measures and bounded stream markers are in
    `fresh-budget-success-measures.json`. The account delta was 83,885 input and
    2,837 output tokens (about $0.0143), with zero Clef tokens. Cleanup reported
-   four tracked sandboxes, none left and no errors. The runner does not record a
-   first-v2 snapshot or time-stuck measure, so neither is claimed here.
+   four tracked sandboxes, none left and no errors.
+
+The retained events support recovering measures in
+`fresh-budget-recovered-measures.json`. The single successful consumer write
+contains the v2 path and no v1 path. One `run_in_sandbox` followed it; that
+tool runs the candidate and a separate v1 baseline, so there were two consumer
+sandbox runs. The trusted check and the post-session grader used separate
+guests and are excluded from that count. The candidate exited normally in
+458 ms; a passing differential check requires a successful baseline, so no
+consumer run timed out and time stuck was zero. Only `record_lesson` followed
+the run, and its implementation does not edit the candidate. Thus the final
+hidden grade applies to the same written code as the first v2 run, making
+right-first-time true by inference from the retained event order and trusted
+tool behavior. No independent first-v2 source snapshot was retained, so this
+is not a direct snapshot-to-grader verification.
 
 Summed account-wide deltas are approximately $0.3716 at the recorded rates,
 including the overlapping benchmark. The detached session process was reaped;

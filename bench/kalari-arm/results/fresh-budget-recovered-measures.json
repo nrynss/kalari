@@ -1,0 +1,22 @@
+{
+  "consumer_sandbox_runs": 2,
+  "consumer_sandbox_runs_v2": 1,
+  "consumer_sandbox_runs_v1": 1,
+  "time_stuck_seconds": 0,
+  "right_first_time": true,
+  "right_first_time_basis": "inferred from event order and final grade; no first-v2 snapshot was retained",
+  "provenance": {
+    "write_events": 1,
+    "written_consumer_sha256": "cda1f4554c7425d2fc8fe107ce464c973d1841f4017909c59a796f844d748296",
+    "written_source_has_v2_payouts_path": true,
+    "written_source_has_v1_payouts_path": false,
+    "sandbox_tool_calls": 1,
+    "candidate_verdict": "exited",
+    "candidate_wall_ms": 458,
+    "differential_v1_passed": true,
+    "subsequent_agent_tools": ["kalari_record_lesson"],
+    "final_hidden_grade": "PASS",
+    "hidden_grade_records": 2431,
+    "tracked_sandboxes_including_check_and_grader": 4
+  }
+}
