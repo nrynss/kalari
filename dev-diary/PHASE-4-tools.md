@@ -173,7 +173,7 @@ requires:   [T4.7a]
 fixture-ok: no
 size:       S · mid
 owns:       bench/kalari-arm/
-status:     not-started
+status:     claimed:gpt-6.1-terra
 ```
 The Kalari arm's setup: OpenCode 2.2.5 with `kalari serve` as its MCP server (and `microsandbox-mcp` removed, so code runs only through `run_in_sandbox`), host shell denied, `--standalone` and per-run `XDG_*` directories. One upgrade-one session end to end on the VM, **not counted as a benchmark run** (the pair isn't frozen until T5.3).
 
