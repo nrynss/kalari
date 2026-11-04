@@ -98,7 +98,7 @@ requires:   [T4.5, T2.3b]
 fixture-ok: no
 size:       S · mid
 owns:       tests/live/run.sh, Kalari/Service.lean (trusted executable path only)
-status:     in-review
+status:     done
 ```
 The reference consumers (six for payouts, seven for settlements), through `kalari serve`'s `run_in_sandbox` on the VM against the live APIs.
 
