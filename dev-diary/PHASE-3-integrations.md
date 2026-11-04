@@ -119,11 +119,34 @@ requires:   [T1.5, T0.3]
 fixture-ok: yes
 size:       M · frontier
 owns:       Kalari/Search.lean, testdata/search/
-status:     claimed:grok-impl
+status:     in-review
 ```
 From a change fact to the places in the consumer that call the changed operation: the endpoint path (REST), the field (GraphQL), the RPC name (gRPC), searched with `rg` through the process runner. Each hit with file, line and the line's text. Uncertain hits are confirmed by Clef's `callsChangedOperation` (T3.3), kept with their probability, and shown as uncertain, never counted.
 
 **Done when:** on both benchmark workspaces, the v1 call sites are found with no false hits; a fixture with a decoy (the path in a comment, a similarly named field) shows the decoy as uncertain.
+
+Notes:
+
+`search` takes a runner, a confirmer, a `ChangeFact`, an operation, and a consumer root. The operation is separate from `ChangeFact`: REST is the endpoint path, GraphQL is the field, gRPC is the RPC name. `ChangeFact` stays `id` and `kind`. The counted `BlastRadius.change_id` is that id.
+
+`rg --json -F` runs through `Proc.run`. `live` passes an explicit `PATH` and `inheritEnv := false`. Exit 0 and exit 1 (no matches) are parsed. Exit 2, a cap, or empty stdout is an error, not an empty radius. The checks run `rg`. They do not replay a recording, and they do not spawn `vimanam`, `msb`, or `curl`.
+
+Source globs are code (`*.py`, `*.go`, and the other source suffixes). Specs and guides are not searched. A GraphQL schema line `settlements(` and the guide's query sample would look like calls.
+
+A line is certain when a match is the call. REST: the path is a whole path, inside a string, on a line that performs a request (`urlopen` on the payouts consumer). GraphQL: the field is a whole name inside a string and the next token is `{` or `(`. gRPC: the RPC name is a whole name in code and the next token is `(`. A line is uncertain when the match is in a comment, or it is only a substring of a longer name, or the line is not the call. Uncertain lines are not in `BlastRadius`.
+
+`CallSite` has no line field. A counted hit's `path` is the file. Its `detail` is the line number, a colon, and the line text, as in `8: ...`.
+
+Uncertain hits go to the confirmer in one call. The checks pass `clefConfirmer` with a stub runner, so `callsChangedOperation` runs and Clef's `live` does not. The stub answers each question with noul `0.25`. The uncertain hit keeps that probability. It prints as `0.250000`.
+
+On `payout-sync`, the only counted hit is `payout_sync.py` line 8, the `/v1/payouts` request. Nothing else is counted. On `settlement-reconcile`, the only counted hit is `settlement_reconcile.py` line 6, the `settlements` field in the query. Lines 1, 22, 24, 26, and 28 name `settlements` and stay uncertain. The decoy counts the `/v1/ledger` request once. The comment and the field `/v1/ledgerItems` are uncertain. The gRPC fixture counts `stub.GetLedger(ctx, req)` once.
+
+Surprises:
+
+- `ChangeFact` cannot name the path or the field, so the operation is a separate argument. The search does not re-parse a Vimanam diff and does not spawn `vimanam`.
+- `rg` exit 1 means no matches. Treating it as a hard error would fail a consumer that does not call the operation.
+- The settlements schema and the developer guide both contain `settlements(`. They are not the consumer. The search stays on source files so those lines are not counted.
+- `String.get?` in this toolchain is deprecated. The neighbour scan uses `String.Pos.Raw.get?`.
 
 ---
 
