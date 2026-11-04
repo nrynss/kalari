@@ -112,10 +112,13 @@ private def call (c : Client) (name : String) (args : List (String × Json)) : I
     throw e
 
 /-- Derive a typed concept and return its asynchronous receipt. -/
-def derive (c : Client) (kind content : String) (dependsOn against : List String := []) : IO String := do
+def derive (c : Client) (kind content : String) (dependsOn against : List String := [])
+    (repoScope : Option String := none) : IO String := do
   let concept := obj [("concept_type", Json.str kind), ("content", Json.str content),
     ("depends_on", toJson dependsOn), ("against", toJson against)]
-  let r ← call c "lambo_derive" [("concepts", Json.arr #[concept])]
+  let args := [("concepts", Json.arr #[concept])] ++
+    (match repoScope with | none => [] | some scope => [("repo_scope", Json.str scope)])
+  let r ← call c "lambo_derive" args
   IO.ofExcept (str r.structured "receipt")
 
 /-- Wait for a specific write to settle; fail rather than treating a pending or failed write as applied. -/
@@ -140,8 +143,9 @@ def awaitConceptId (c : Client) (receipt : String) (waitMs : Nat := 10000) : IO 
   return id
 
 /-- Write and wait before a dependent write or read. -/
-def write (c : Client) (kind content : String) (dependsOn against : List String := []) : IO Json := do
-  let receipt ← derive c kind content dependsOn against
+def write (c : Client) (kind content : String) (dependsOn against : List String := [])
+    (repoScope : Option String := none) : IO Json := do
+  let receipt ← derive c kind content dependsOn against repoScope
   awaitReceipt c receipt
 
 /-- Inspect the graph by concept ID or content. -/
@@ -312,6 +316,8 @@ private def transcriptServer : String := String.intercalate "\n" [
   "    args = request.get('params', {}).get('arguments', {})",
   "    assert args.get('agent_id') == 'kalari' if method == 'tools/call' else True",
   "    if key == 'lambo_derive':",
+  "        if death_marker == 'scoped': assert args.get('repo_scope') == 'kalari/test'",
+  "        else: assert 'repo_scope' not in args",
   "        c = args['concepts'][0]; assert set(c) >= {'concept_type','content','depends_on','against'}",
   "        expected = [('resource','pagination_changed'), ('constraint','When a list endpoint starts paging, follow next_page_token until absent; every record imported exactly once. check: chk-paging-001'), ('observation','run after clean child restart')]",
   "        if 'against.jsonl' in sys.argv[1]: expected = [('observation','run r-004: contradictory outcome')]",
@@ -336,6 +342,8 @@ private def transcriptServer : String := String.intercalate "\n" [
   "    positions[key] = i + 1; source['id'] = request.get('id')",
   "    print(json.dumps(source, separators=(',', ':')), flush=True)",
   "    if key == 'lambo_derive':",
+  "        if death_marker == 'scoped': assert args.get('repo_scope') == 'kalari/test'",
+  "        else: assert 'repo_scope' not in args",
   "        last_receipt = source.get('result', {}).get('structuredContent', {}).get('receipt')",
   "        last_content = args['concepts'][0]['content']",
   "        if last_content == 'pagination_changed': last_concept_id = '4f15dceb-e99c-480a-95e6-d941a1b62339'",
@@ -390,6 +398,10 @@ private def childReplayChecks : IO Unit := do
       throw <| .userError s!"MemoryClient against returned unexpected concept ID {id}"
   | .error e => throw <| .userError e
   adapter.shutdown
+  let scopedClient ← create (replayConfig "testdata/lambo/receipt.jsonl" (some "scoped"))
+  let scopedReceipt ← derive scopedClient "resource" "pagination_changed" [] [] (some "kalari/test")
+  let _ ← awaitReceipt scopedClient scopedReceipt
+  shutdown scopedClient
   let c3 ← create (replayConfig "testdata/lambo/receipt.jsonl" (some deathMarker))
   let first ← derive c3 "resource" "pagination_changed"
   IO.sleep 50

@@ -44,11 +44,15 @@ requires:   [T4.1, T3.1, T3.4, T3.2]
 fixture-ok: yes
 size:       S · mid
 owns:       Kalari/Tools/Changes.lean, Kalari/Lambo.lean (scoped-write prerequisite only)
-status:     claimed:gpt-6.1-terra
+status:     in-review
 ```
 `what_changed`: two spec versions in, change facts and Vimanam's focused context out. `blast_radius`: change IDs in, call sites out (confirmed and uncertain apart), with the links written to Lambo as `resource`s with `repo_scope`.
 
 **Done when:** on both benchmark workspaces, the agent-facing output names `pagination_changed` and the v1 call sites; the output stays under a stated token budget.
+
+**Notes (in review):** The session keeps the full Vimanam diff to associate change IDs with searchable operations while the MCP arguments remain unchanged. REST paths are mapped through `operation_moved.details.old_path`; GraphQL uses the field in `native.coordinate`. `whatChanged` returns compact facts and, for GraphQL, Vimanam focused context; OpenAPI returns facts because Vimanam does not provide focused context for it. Both outputs reject JSON above 16,000 UTF-8 bytes, a conservative 16,000-token budget for byte-based tokenizers, excluding MCP envelope overhead; the GraphQL context request uses 2,000 tokens. `blastRadius` separates certain and uncertain sites and submits change and site resource links through an injected scoped writer, waiting on the writer for each applied ID. The typed Lambo client now accepts an optional top-level `repo_scope` on derive/write; the production resource writer waits for the applied concept ID. Its recorded child replay asserts scoped arguments and omission on existing calls.
+
+The build-time check replays both Vimanam 2.1.0 diffs and GraphQL context, searches both real benchmark workspaces with `rg`, and checks pagination, caller paths, output byte caps and the scope/dependency arguments supplied to the fake writer. The task does not modify the MCP schema or make a live Lambo write.
 
 ---
 
