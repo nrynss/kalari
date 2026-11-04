@@ -6,7 +6,7 @@ Kalari's `what_changed` rests on Vimanam reporting `pagination_changed`, and con
 
 - **Vimanam 2.0.0** (crates.io, the latest release): OpenAPI and protobuf. **No GraphQL**: GraphQL support ([noemaforge/vimanam#133](https://github.com/noemaforge/vimanam/pull/133), closing #125) was merged about an hour after the 2.0.0 release was tagged. It's on `main`, unreleased. *An earlier note here said all three formats shipped in 2.0.0; that was wrong for GraphQL.*
 - `main` at `491b02c` builds as `vimanam 2.0.0` (the version wasn't bumped), which makes the two easy to confuse. Check `vimanam diff --help`, or try a `.graphql` file: 2.0.0 tries to parse it as OpenAPI.
-- `~/.local/bin/vimanam` (1.7.0) and an old `target/release` build (1.4.2) predate both. The 1.7.0 binary's `vimanam diff --help` is `vimanam diff [OPTIONS] [OLD] [NEW]`. It has `--from-ref` and `--to-ref`. It does not list `--context` or `--max-tokens`. The runner still emits those two flags: the recordings' contract is the later binary, and the spec paths are positional. Git refs are not wired from the 1.7.0 flags.
+- `~/.local/bin/vimanam` (1.7.0) and an old `target/release` build (1.4.2) predate both. The 1.7.0 binary's `vimanam diff --help` is `vimanam diff [OPTIONS] [OLD] [NEW]`. It has `--from-ref` and `--to-ref`. It does not list `--context` or `--max-tokens`. The runner emits those two flags only for a GraphQL pair (T3.1a). An OpenAPI diff does not get them. Git refs are not wired from the 1.7.0 flags.
 
 ## Results
 
@@ -53,7 +53,7 @@ Released with fixes for all four issues (closed). On the benchmark specs, **unch
 
 The issue matrices on 2.1.0: version prefixes 5/5 (as `operation_moved` with the inner changes, `--exact-paths` restores exact matching), continuation fields 17/17 including nested ones, Relay connections 5/5 with `nodes` (the two controls still not detected). Recordings in `testdata/vimanam/2.1.0/`.
 
-**New limit: `--context` is GraphQL-only** ("OpenAPI and protobuf diffs do not support it"), so the REST upgrade's focused context for the agent has to come from elsewhere (T3.1a decides: Vimanam's OpenAPI rendering with a token budget is one candidate).
+**REST focused context is the change facts alone (T3.1a).** `--context` is GraphQL-only in 2.1.0. On an OpenAPI diff it fails with "--context is GraphQL-only; OpenAPI and protobuf diffs do not support it", and it cannot be combined with `--format json` because `--context` renders Markdown. `diff` has no other focused-context flag. `--overview-max-tokens` limits a conversion's split index or `SKILL.md`. It is not a `diff` flag. The `vimanam` on PATH is 1.7.0. Its `diff --help` lists neither `--context` nor `--overview-max-tokens`. A GraphQL pair still uses `vimanam diff --context --max-tokens <n> <old> <new>`, which is the command behind `testdata/vimanam/2.1.0/settlements.context.md`. For REST, `what_changed` shows the JSON change facts and does not pass `--context`.
 
 **Kalari depends on Vimanam 2.1.0.** Built with `cargo install vimanam --version 2.1.0 --locked`.
 

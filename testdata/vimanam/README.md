@@ -1,6 +1,6 @@
 # Vimanam recordings (T0.3)
 
-What `vimanam diff --format json` (contract v2) returns on the benchmark specs, for `Kalari/Vimanam.lean` (T3.1) to replay. Findings in `dev-diary/research/vimanam.md`.
+What `vimanam diff --format json` (contract v2) returns on the benchmark specs. T3.1 recorded these. T3.1a points `Kalari/Vimanam.lean` at `2.1.0/`. These JSON files stay because `Kalari/Fake.lean` still replays them. Findings in `dev-diary/research/vimanam.md`.
 
 | File | Specs | Vimanam |
 |---|---|---|

@@ -43,13 +43,28 @@ requires:   [T3.1, T0.6]
 fixture-ok: yes
 size:       S · mid
 owns:       Kalari/Vimanam.lean, testdata/vimanam/
-status:     claimed:grok-impl
+status:     in-review
 ```
 Move the runner and its checks from the 2.0.0/`main` recordings to `testdata/vimanam/2.1.0/` (T0.6). Handle `operation_moved` (its old and new paths, with the inner changes attributed to the new path). The checks assert **`pagination_changed` on both benchmark specs**, with the IDs recorded. Then delete the 2.0.0 recordings that nothing replays any more (keep `probes/` as history).
 
 **`--context` is GraphQL-only in 2.1.0.** For the REST upgrade, choose and record another source of focused context for `what_changed` (for example Vimanam's OpenAPI rendering with a token budget, `--overview-max-tokens`), or show the change facts alone, and say why.
 
 **Done when:** the checks replay the 2.1.0 recordings and see `pagination_changed` on both specs; a moved operation's facts parse; the REST context choice is recorded in `research/vimanam.md`.
+
+Notes:
+
+The checks replay `testdata/vimanam/2.1.0/`. They read the files. They do not spawn `vimanam`. `ChangeFact` stays `id` and `kind`. Derived `FromJson` ignores every other key, so a 2.1.0 object still parses. No path field was added.
+
+Payouts is 11 facts. `pagination_changed` is `vc2_ff47bb628a187fbe4f28e53ef03a6231e2b22188bc0e84446306104ba37029d8`. `operation_moved` is `vc2_a604d335c9ac1b47b192a9f46eca61773f4ccd1db93a772f71808fbdb36b933c`. Its `details.old_path` is `/v1/payouts` and its `native.path` is `/v2/payouts`. The pagination fact's `native.path` is `/v2/payouts`, the new path. Every change that has a string `native.path` names `/v2/payouts`. The decoded list contains both kinds. Settlements is 6 facts. Its `pagination_changed` is `vc2_25e58920a86bef7532571b31025312531a0b34db9a10e132ca13c4bea27f795d`.
+
+`--context` is GraphQL-only in 2.1.0. An OpenAPI diff fails with "--context is GraphQL-only; OpenAPI and protobuf diffs do not support it". `--context` renders Markdown, so it is not combined with `--format json`. `diff` has no other focused-context flag. `--overview-max-tokens` is a conversion flag, not a `diff` flag. The `vimanam` on PATH is 1.7.0. Its `diff --help` lists neither `--context` nor `--overview-max-tokens`. A GraphQL pair uses `vimanam diff --context --max-tokens <n> <old> <new>`, matching `settlements.context.md` (2000). REST focused context is the change facts: the same JSON diff, and the argv does not contain `--context`.
+
+The 2.0.0 files stay. `Kalari/Fake.lean` still replays `testdata/vimanam/payouts.json` and `testdata/vimanam/settlements.json`, and this task does not edit Fake. `probes/` stays. A 2.0.0 file is deleted only once nothing in the repo names it.
+
+Surprises:
+
+- 2.1.0 refuses `--format json` together with `--context`. The GraphQL context argv is Markdown.
+- `type_added` on the payouts diff has `native.path` null. The moved operation and the inner changes that name a path all name `/v2/payouts`.
 
 ---
 
