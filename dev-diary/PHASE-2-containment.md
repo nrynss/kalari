@@ -104,7 +104,7 @@ requires:   [T2.3]
 fixture-ok: no
 size:       S · mid
 owns:       tests/live/sandbox.sh
-status:     in-review
+status:     done
 ```
 On the VM: a run of `bench/apis/payouts/reference/correct.py` through the backend against the grading API (allowlisted), a run of `cursor_loop.py` killed by the time cap, and a run that tries the VM's SSH, the metadata service and the internet, all refused. `msb list` empty afterwards.
 
