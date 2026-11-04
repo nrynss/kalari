@@ -105,11 +105,28 @@ requires:   [T2.3]
 fixture-ok: yes
 size:       S · mid
 owns:       Kalari/Sandbox/Docker.lean, deploy/local/
-status:     claimed:grok-impl
+status:     in-review
 ```
 The same interface on Docker for hosts without KVM: `--network none` plus an allowlist (Docker has no per-IP rule, so a user-defined network with an egress proxy or nftables; the task decides and records why), `--memory`, `--pids-limit`, `--read-only` root with a writable workspace, `--rm`. Not on the demo path: Vultr uses Microsandbox.
 
 **Done when:** tests against recorded `docker` output; `deploy/local/README.md` says how to run Kalari on a laptop.
+
+Notes:
+
+Docker has no per-IP allow rule. This backend always passes `--network none` and has no flag for any other network mode. A non-empty allowlist returns `this backend has no per-IP rule` and does not call the runner, so no container starts. An egress proxy or nftables was not built: that would be a second network path. The demo path stays Microsandbox. This is the laptop fallback for a host without KVM.
+
+A run is `docker run --name <name> --rm --network none --read-only --memory <mib>m --pids-limit 256 -v <host>:/workspace:rw debian:stable-slim` and then the job command. `--pids-limit` is 256. `--rm` removes the container. `destroy` is `docker rm -f <name>` for a name left behind. The root is read-only. The workspace mount is writable at `/workspace`. The image is `debian:stable-slim`. The backend does not pull it.
+
+`make` takes a runner and returns `IO SandboxBackend`, because `copyIn` remembers the host path and `exec` is the `docker run`. `create` only checks the allowlist. An empty allowlist does not start a container. `run` is the same argv in one call. `live` binds `Proc.run` with an explicit `PATH` and `inheritEnv` false. The checks do not call `live`. Exec uses the request timeout and output cap. Destroy uses 30000 ms and that cap. The job's exit code stays in the `Result`.
+
+The recording is one real `docker run` of that argv, name `kalari-docker-record`, command `echo kalari-docker`. Stdout, stderr, and the exit code are in `deploy/local/recordings/`. Stdout is `kalari-docker` and a newline, 14 bytes. Stderr is empty. Exit is 0. `--rm` left no container. The `#eval` replays those bytes and checks the argv. It does not call docker.
+
+Surprises:
+
+- `echo` appends a newline. The check trims that to `kalari-docker` and also matches the 14 file bytes.
+- `SandboxBackend.exec` does not take a workspace or an allowlist, so `make` is in `IO` and keeps the mount from `copyIn`.
+- `--memory` is `<mib>m`, lowercase. The Microsandbox argv uses `<mib>M`.
+- There is no separate create recording. `docker run --rm` is the whole run.
 
 ---
 
