@@ -89,3 +89,10 @@ part of the transcript and fails closed if discovery did not complete. A local
 fake-provider probe with the real standalone OpenCode process confirmed the
 first forwarded request includes all five tools; no provider inference was
 used for that probe.
+
+The proxy requests identity encoding and preserves an upstream content-encoding
+header if supplied. It records, for at most eight forwarded requests, only HTTP
+status, bytes, active/EOF state, bounded finish-reason categories, `[DONE]`, and
+generic stream errors. It never saves response text. After OpenCode exits the
+runner waits briefly for request threads; an active request is not evidence of
+an upstream EOF. These markers were not collected for earlier attempts.

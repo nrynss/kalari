@@ -291,6 +291,11 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
     if proxy is not None:
         proxy.shutdown()
         atexit.unregister(proxy.shutdown)
+        # A client can disconnect while a daemon request thread is still
+        # reading upstream. Report it as active rather than implying EOF.
+        deadline = time.monotonic() + 2
+        while any(r['active'] for r in proxy_state['requests']) and time.monotonic() < deadline:
+            time.sleep(.05)
     # Persist the sanitized session transcript before cleanup can fail. This
     # lets the caller diagnose a cleanup exception without losing telemetry.
     bad = 0
