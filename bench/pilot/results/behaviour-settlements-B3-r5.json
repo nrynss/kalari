@@ -1,0 +1,151 @@
+{
+  "condition": 3,
+  "behaviour": "B3",
+  "repeat": 5,
+  "sandbox_setup": "isolated pilot adapter; restricted tool surface and network",
+  "upgrade": "settlements",
+  "arm": "reference",
+  "setup": "OpenCode 2.2.5 with isolated pilot MCP adapter, no Kalari tools",
+  "api_base": "the VM's public address",
+  "live_port": 19121,
+  "grading_port": 19122,
+  "prompt": "upgrade.txt",
+  "opencode_version": "opencode v2.2.5",
+  "session_continued": false,
+  "notes_attached": false,
+  "session_cap_s": 1200,
+  "session_capped": false,
+  "measures": {
+    "verdict": "PASS",
+    "right_first_time": true,
+    "sandbox_runs": 2,
+    "wall_time_s": 25.139,
+    "time_stuck_s": 0,
+    "tokens_input": 231960,
+    "tokens_output": 7083,
+    "records_lost": 0,
+    "records_duplicated": 0
+  },
+  "sandbox_runs_against_v1": 0,
+  "sandbox_runs_against_v2": 2,
+  "records_extra": 0,
+  "records_mismatched": 0,
+  "grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 1873,
+    "unique": 1873,
+    "expected": 1873,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "first_v2_grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 1873,
+    "unique": 1873,
+    "expected": 1873,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "right_first_time_basis": "snapshot",
+  "cost_usd": 0.039044,
+  "cost_note": "DeepSeek V4.1 Flash list price, cached input counted as input, no cache discount",
+  "usage_delta": [
+    {
+      "model": "clef",
+      "input": 0,
+      "output": 0
+    },
+    {
+      "model": "deepseek-v4.1-flash-1017",
+      "input": 231960,
+      "output": 7083
+    },
+    {
+      "model": "qwen3-embedding-4b",
+      "input": 0,
+      "output": 0
+    }
+  ],
+  "opencode_tokens": {
+    "steps": 21,
+    "input": 11544,
+    "output": 4459,
+    "reasoning": 2624,
+    "cache_read": 220416
+  },
+  "consumer_runs": [
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 0.393,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 0.705,
+      "timed_out": false,
+      "basis": "snapshot"
+    }
+  ],
+  "event_summary": {
+    "lines": 69,
+    "unparsed_lines": 0,
+    "types": {
+      "step_start": 21,
+      "tool_use": 26,
+      "step_finish": 21,
+      "text": 1
+    },
+    "tools": {
+      "read": 11,
+      "execute": 14,
+      "edit": 1
+    },
+    "steps": 21,
+    "bash_denied": 0,
+    "sandbox_names": [
+      "settle"
+    ],
+    "last_reason": "stop",
+    "final_answer": "Upgraded `settlement_reconcile.py` from v1 to the v2 paged API.\n\nChanges:\n- Queries `POST /v2/graphql` instead of `/v1/graphql`.\n- Uses `settlements(first: 100, after: $after)` with `nodes` + `pageInfo`.\n- Continues until `pageInfo.hasNextPage` is false, so short/empty pages are not treated as the end.\n- Deduplicates by `id`, keeping the last version delivered for amended settlements.\n- Restarts from the beginning if a malformed/expired cursor returns a GraphQL error.\n\nVerification against `http://the VM's public address:19121`:\n- Produced **1,873 rows** with **1,873 unique ids**.\n- Cross-checked against the live v1 endpoint: no missing ids, no extra ids, and no field differences.\n- Also exercised empty pages, duplicate/re-amended ids, and an expired-cursor restart with a local simulation.",
+    "stderr_excerpt": "",
+    "diff_stat": "settlement_reconcile.py | 39 +++++++++++++++++++++++++++++++++++++--\n 1 file changed, 37 insertions(+), 2 deletions(-)"
+  },
+  "grader_runs": {
+    "final": {
+      "status": "EXIT 0",
+      "log_excerpt": "reconciled 1873 settlements\n"
+    },
+    "first": {
+      "status": "EXIT 0",
+      "log_excerpt": "reconciled 1873 settlements\n"
+    }
+  },
+  "cleanup": {
+    "sandboxes_left": [],
+    "processes_left": [],
+    "owned_names": [
+      "kalari-grade-final-2f558ffcfaea",
+      "kalari-grade-first-2f558ffcfaea",
+      "kalari-pilot-2f558ffcfaea",
+      "kalari-pilot-grade2f558ffcfaea",
+      "kalari-pilot-live2f558ffcfaea",
+      "kalari-preflight-2f558ffcfaea"
+    ],
+    "scope_verified": true
+  },
+  "process_elapsed_s": 27.0,
+  "opencode_exit": 0
+}

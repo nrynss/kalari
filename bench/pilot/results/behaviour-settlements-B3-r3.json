@@ -1,0 +1,143 @@
+{
+  "condition": 3,
+  "behaviour": "B3",
+  "repeat": 3,
+  "sandbox_setup": "isolated pilot adapter; restricted tool surface and network",
+  "upgrade": "settlements",
+  "arm": "reference",
+  "setup": "OpenCode 2.2.5 with isolated pilot MCP adapter, no Kalari tools",
+  "api_base": "the VM's public address",
+  "live_port": 19121,
+  "grading_port": 19122,
+  "prompt": "upgrade.txt",
+  "opencode_version": "opencode v2.2.5",
+  "session_continued": false,
+  "notes_attached": false,
+  "session_cap_s": 1200,
+  "session_capped": false,
+  "measures": {
+    "verdict": "PASS",
+    "right_first_time": true,
+    "sandbox_runs": 1,
+    "wall_time_s": 90.11,
+    "time_stuck_s": 60.746,
+    "tokens_input": 157625,
+    "tokens_output": 9025,
+    "records_lost": 0,
+    "records_duplicated": 0
+  },
+  "sandbox_runs_against_v1": 0,
+  "sandbox_runs_against_v2": 1,
+  "records_extra": 0,
+  "records_mismatched": 0,
+  "grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 1873,
+    "unique": 1873,
+    "expected": 1873,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "first_v2_grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 1873,
+    "unique": 1873,
+    "expected": 1873,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "right_first_time_basis": "snapshot",
+  "cost_usd": 0.029059,
+  "cost_note": "DeepSeek V4.1 Flash list price, cached input counted as input, no cache discount",
+  "usage_delta": [
+    {
+      "model": "clef",
+      "input": 0,
+      "output": 0
+    },
+    {
+      "model": "deepseek-v4.1-flash-1017",
+      "input": 157625,
+      "output": 9025
+    },
+    {
+      "model": "qwen3-embedding-4b",
+      "input": 0,
+      "output": 0
+    }
+  ],
+  "opencode_tokens": {
+    "steps": 15,
+    "input": 11705,
+    "output": 4961,
+    "reasoning": 4064,
+    "cache_read": 145920
+  },
+  "consumer_runs": [
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 1.149,
+      "timed_out": false,
+      "basis": "snapshot"
+    }
+  ],
+  "event_summary": {
+    "lines": 52,
+    "unparsed_lines": 0,
+    "types": {
+      "step_start": 15,
+      "tool_use": 21,
+      "step_finish": 15,
+      "text": 1
+    },
+    "tools": {
+      "execute": 11,
+      "read": 9,
+      "write": 1
+    },
+    "steps": 15,
+    "bash_denied": 0,
+    "sandbox_names": [
+      "clearwell"
+    ],
+    "last_reason": "stop",
+    "final_answer": "Upgraded `settlement_reconcile.py` to the v2 GraphQL API.\n\n### Changes\n- Switched from `POST /v1/graphql` to `POST /v2/graphql`.\n- Replaced the single-list query with a paged `settlements(first, after)` connection query.\n- Pages at 100 settlements per request and continues while `pageInfo.hasNextPage` is true.\n- Handles short and empty pages correctly instead of treating them as end-of-data.\n- Deduplicates by `id`, keeping the last version received for amended settlements.\n- Handles malformed/expired cursor GraphQL errors by restarting the traversal without `after`, with a bounded retry guard.\n- Writes only after the full traversal completes, so partial runs don't produce output.\n\n### Verification against the live v2 server\n- Full traversal: **27 pages**, including **8 empty pages** and multiple short pages.\n- Wrote **1,873 settlements**, **1,873 unique ids**, no duplicates.\n- Compared field-for-field with the live v1 response: **no missing ids, no extra ids, no differing fields**.\n- Also exercised the edge cases against a local mock server:\n  - amended settlement delivered twice \u2192 last version kept, one output row\n  - empty page with `hasNextPage: true` \u2192 traversal continued\n  - expired cursor \u2192 restarted without `after` and completed correctly",
+    "stderr_excerpt": "",
+    "diff_stat": "settlement_reconcile.py | 48 ++++++++++++++++++++++++++++++++++++++++++++++--\n 1 file changed, 46 insertions(+), 2 deletions(-)"
+  },
+  "grader_runs": {
+    "final": {
+      "status": "EXIT 0",
+      "log_excerpt": "reconciled 1873 settlements\n"
+    },
+    "first": {
+      "status": "EXIT 0",
+      "log_excerpt": "reconciled 1873 settlements\n"
+    }
+  },
+  "cleanup": {
+    "sandboxes_left": [],
+    "processes_left": [],
+    "owned_names": [
+      "kalari-grade-final-19b2b1b0397e",
+      "kalari-grade-first-19b2b1b0397e",
+      "kalari-pilot-19b2b1b0397e",
+      "kalari-pilot-grade19b2b1b0397e",
+      "kalari-pilot-live19b2b1b0397e",
+      "kalari-preflight-19b2b1b0397e"
+    ],
+    "scope_verified": true
+  },
+  "process_elapsed_s": 92.0,
+  "opencode_exit": 0
+}

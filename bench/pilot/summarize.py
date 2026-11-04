@@ -7,7 +7,7 @@ import sys
 
 subprocess.run([sys.executable, 'bench/pilot/validate.py'], check=True)
 p = Path('bench/pilot/SUMMARY.md')
-text = p.read_text()
+text = p.read_text().replace("# Condition pilot counts", "# Pilot counts", 1)
 stale = 'The 30 single-behaviour sessions were not run, because the harness has no server switch and a behaviour `--run` still exits 2. There is no behaviour column in this table.'
 text = text.replace(stale, 'The 30 single-behaviour sessions use the isolated adapter described in [ISOLATED.md](ISOLATED.md); its narrower sandbox and network surface differs from the condition sessions.')
 start = '<!-- behaviour-counts:start -->'
@@ -15,7 +15,7 @@ end = '<!-- behaviour-counts:end -->'
 if start in text:
     a, rest = text.split(start, 1)
     _, b = rest.split(end, 1)
-    text = a + b
+    text = a.rstrip() + "\n\n" + b.lstrip()
 rows = [start, '## Single-behaviour counts', '',
         '| Upgrade | Behaviour | Runs | PASS | Right first time | Sandbox runs | Lost | Duplicated | Cost (USD) | Results |',
         '|---|---|---:|---:|---:|---:|---:|---:|---:|---|']
@@ -51,7 +51,7 @@ p.write_text(text)
 # The runner's sanitized result summaries are the live-run transcript.
 transcript = ['# Single-behaviour pilot transcript', '',
     'No-inference preflight: all six variants passed their characteristic consumer checks on both dedicated endpoints. The fixed guest reached its allowed endpoint, was denied a shared endpoint, and ran a copied workspace file. The adapter refused a foreign sandbox and restore request. A user-scope probe captured and stopped a detached descendant.', '',
-    'Each line below records the sanitized summary fields emitted by the runner, plus cleanup scope provenance added for the first nine sessions, which used a process group; see [ISOLATED.md](ISOLATED.md).', '', '```jsonl']
+    'Representative no-inference preflight output:', '', '```text', 'status=api live_v2=200 grade_v2=200 grade_v1=410', 'status=preflight_ok', 'status=variant_checks_ok scope_ok', 'allowed API HTTP 200; shared API denied at HTTP', '```', '', 'Each line below records the sanitized summary fields emitted by the runner, plus cleanup scope provenance added for the first nine sessions, which used a process group; see [ISOLATED.md](ISOLATED.md).', '', '```jsonl']
 for upgrade, behaviours in (('payouts',('B1','B2','B4')),('settlements',('B1','B2','B3'))):
     for behaviour in behaviours:
         for repeat in range(1,6):

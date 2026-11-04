@@ -40,7 +40,7 @@ requires:   [T5.1, T0.6]
 fixture-ok: no
 size:       M · mid
 owns:       bench/pilot/, the --behaviours flag in bench/apis/*/server.py, its cases in bench/tests/quirks.sh, bench/harness/run.sh and bench/harness/remote.sh (isolated variant routing only)
-status:     claimed:gpt-6.1-terra
+status:     in-review
 ```
 The reference setup only (bench/README.md, Protocol 6): each behaviour alone, fresh session, five runs each; then the proposed pair under conditions 1, 2, 3 and 6, five runs each. About 65 runs, ~$16. **The user approves the spend before it starts**, and the first run's cost is checked against the budget before the rest.
 
@@ -48,7 +48,7 @@ Single-behaviour pilots need single-behaviour variants of the APIs (`--behaviour
 
 **Done when:** every run's result file is committed under `bench/pilot/`; a summary table per behaviour and per condition, as counts.
 
-**Notes (in review):** `--behaviours` is optional. Omit it and the server is unchanged: payouts runs B1, B2, and B4; settlements runs B1, B2, and B3. A comma-separated list turns on only those ids. Payouts accepts B1, B2, and B4. Settlements accepts B1, B2, and B3. Any other token, including B5, is an error that names the token. B5 is not implemented.
+**Earlier partial report:** `--behaviours` is optional. Omit it and the server is unchanged: payouts runs B1, B2, and B4; settlements runs B1, B2, and B3. A comma-separated list turns on only those ids. Payouts accepts B1, B2, and B4. Settlements accepts B1, B2, and B3. Any other token, including B5, is an error that names the token. B5 is not implemented.
 
 A behaviour that is off does the plain thing. Payouts: B1 off, a drained response has `cursor` null; B2 off, the next window starts after the previous window's last payout; B4 off, the response holds up to `limit` (still at most 1000). Settlements: B1 off, the last page's `endCursor` is null, and that field is nullable only in that mode; B2 off, each settlement is emitted once, in v1's version; B3 off, void rows are dropped before the page is cut.
 
@@ -61,6 +61,15 @@ The condition rows ran, one harness call at a time, with an explicit condition, 
 Condition 1 settlements resumed the payouts session. `session_continued` is true in `condition-1-settlements-r1.json` through `condition-1-settlements-r5.json`, so repeats 2 through 5 ran. Every settlements file for condition 1 has verdict FAIL and grade note `no consumer output`, so records lost and records duplicated are null there. The payouts half of condition 1 is PASS on all five files. Conditions 2, 3, and 6 are PASS on every file. `condition-3-payouts-r5.json` has `session_capped` true and wall time 1202.0 s, and its verdict is still PASS.
 
 The 30 single-behaviour sessions were not run, because the harness has no server switch and a behaviour `--run` still exits 2. The done-when is only partly met: the condition result files and the condition counts are in; the behaviour runs and their part of the summary table are not. Status stays in-review.
+
+
+**Completion report (in review):** The missing 30 single-behaviour sessions ran as fresh condition 3 sessions, five for each of the six variants. The original 40 condition files are unchanged. Every one of the 30 final grades passed; right first time was 5/5 for each variant except payouts B2, which was 4/5. The 70 result files and linked counts per behaviour and condition are in `bench/pilot/results/` and `bench/pilot/SUMMARY.md`; the sanitized live summaries and no-inference preflight transcript are in `bench/pilot/TRANSCRIPT.md`.
+
+The first new case cost $0.033182. Including the existing $3.545642, that made $3.578824; projecting $0.25 for each remaining session gave $10.828824, under the approved $16. The runner checked the cumulative spend and projection before every subsequent session. The 30 variants cost $1.486888 at list price; all 70 pilot rows cost $5.032530. All new usage deltas matched OpenCode's own token totals. No new session hit the cap. Settlement B2 repeat 1 took 1129.485 s, with 423.587 s recorded stuck, and passed; a short no-inference HTTP isolation probe shared the VM during that run, which may have affected its wall time.
+
+**Comparability and cleanup:** The variant arm used a fixed `--no-net` guest, a live-endpoint allow rule and a restricted pilot MCP adapter. It copied workspace files into the guest rather than exposing the original reference MCP's broader sandbox, bind-mount, and network controls. That changes the reference setup and may affect results; the user must decide whether the pilot is sufficient for the intended comparison. The first nine variants used process-group cleanup; all exited normally, and a later check found no pilot processes or sandboxes. The remaining 21 used a unique user systemd scope, tested with a detached child, and verified scoped cleanup. Staged server and grader copies were outside the allowed workspace; after the nineteenth session the staged copies were removed before the arm started, and a separate preflight copy was removed during the twentieth. Details are in `bench/pilot/ISOLATED.md`.
+
+**Verification:** `bench/pilot/validate.py` checked all 70 identities, measures, grade counts, usage totals, cleanup records and variant provenance; summary generation was repeatable. All six variants were checked against characteristic consumers on their dedicated live and grading endpoints without inference; HTTP verified the allowed route and denial of the shared API. The updated adapter preflight passed with a detached-child scope check. The original four API sandboxes remained present, with no pilot sandboxes or scopes left. A scan of pilot VM files found no inference key. `./tools/check.sh` passed. The pair choice and freeze remain T5.3's user decision.
 
 ---
 

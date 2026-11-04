@@ -1,12 +1,41 @@
-# Condition pilot counts
+# Pilot counts
 
 Forty condition sessions ran: conditions 1, 2, 3, and 6, five repeats, payouts then settlements. Each number below is `measures` in the named file under `bench/pilot/results/`, except `session_continued` and `session_capped`, which are top-level fields in that file.
 
-The 30 single-behaviour sessions were not run, because the harness has no server switch and a behaviour `--run` still exits 2. There is no behaviour column in this table.
+The 30 single-behaviour sessions use the isolated adapter described in [ISOLATED.md](ISOLATED.md); its narrower sandbox and network surface differs from the condition sessions.
 
 The first session was `condition-3-payouts-r1.json`, `cost_usd` 0.086144. Forty times that cost is 3.44576. The rows below are the sessions that followed that check.
 
 Condition 1 settlements resumed the payouts session. `session_continued` is true in `condition-1-settlements-r1.json`, `condition-1-settlements-r2.json`, `condition-1-settlements-r3.json`, `condition-1-settlements-r4.json`, and `condition-1-settlements-r5.json`. Repeats 2 through 5 ran.
+
+<!-- behaviour-counts:start -->
+## Single-behaviour counts
+
+| Upgrade | Behaviour | Runs | PASS | Right first time | Sandbox runs | Lost | Duplicated | Cost (USD) | Results |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---|
+| payouts | B1 | 5 | 5 | 5 | 11 | 0 | 0 | 0.164201 | [1](results/behaviour-payouts-B1-r1.json), [2](results/behaviour-payouts-B1-r2.json), [3](results/behaviour-payouts-B1-r3.json), [4](results/behaviour-payouts-B1-r4.json), [5](results/behaviour-payouts-B1-r5.json) |
+| payouts | B2 | 5 | 5 | 4 | 13 | 0 | 0 | 0.271942 | [1](results/behaviour-payouts-B2-r1.json), [2](results/behaviour-payouts-B2-r2.json), [3](results/behaviour-payouts-B2-r3.json), [4](results/behaviour-payouts-B2-r4.json), [5](results/behaviour-payouts-B2-r5.json) |
+| payouts | B4 | 5 | 5 | 5 | 8 | 0 | 0 | 0.187589 | [1](results/behaviour-payouts-B4-r1.json), [2](results/behaviour-payouts-B4-r2.json), [3](results/behaviour-payouts-B4-r3.json), [4](results/behaviour-payouts-B4-r4.json), [5](results/behaviour-payouts-B4-r5.json) |
+| settlements | B1 | 5 | 5 | 5 | 7 | 0 | 0 | 0.184325 | [1](results/behaviour-settlements-B1-r1.json), [2](results/behaviour-settlements-B1-r2.json), [3](results/behaviour-settlements-B1-r3.json), [4](results/behaviour-settlements-B1-r4.json), [5](results/behaviour-settlements-B1-r5.json) |
+| settlements | B2 | 5 | 5 | 5 | 10 | 0 | 0 | 0.476314 | [1](results/behaviour-settlements-B2-r1.json), [2](results/behaviour-settlements-B2-r2.json), [3](results/behaviour-settlements-B2-r3.json), [4](results/behaviour-settlements-B2-r4.json), [5](results/behaviour-settlements-B2-r5.json) |
+| settlements | B3 | 5 | 5 | 5 | 6 | 0 | 0 | 0.202517 | [1](results/behaviour-settlements-B3-r1.json), [2](results/behaviour-settlements-B3-r2.json), [3](results/behaviour-settlements-B3-r3.json), [4](results/behaviour-settlements-B3-r4.json), [5](results/behaviour-settlements-B3-r5.json) |
+
+Single-behaviour list-price spend: $1.486888; all 70 pilot rows: $5.032530.
+
+## Condition counts
+
+| Condition | Upgrade | Runs | PASS | Right first time | Sandbox runs | Lost | Duplicated | Results |
+|---:|---|---:|---:|---:|---:|---:|---:|---|
+| 1 | payouts | 5 | 5 | 5 | 10 | 0 | 0 | [1](results/condition-1-payouts-r1.json), [2](results/condition-1-payouts-r2.json), [3](results/condition-1-payouts-r3.json), [4](results/condition-1-payouts-r4.json), [5](results/condition-1-payouts-r5.json) |
+| 1 | settlements | 5 | 0 | 1 | 1 | unknown | unknown | [1](results/condition-1-settlements-r1.json), [2](results/condition-1-settlements-r2.json), [3](results/condition-1-settlements-r3.json), [4](results/condition-1-settlements-r4.json), [5](results/condition-1-settlements-r5.json) |
+| 2 | payouts | 5 | 5 | 5 | 8 | 0 | 0 | [1](results/condition-2-payouts-r1.json), [2](results/condition-2-payouts-r2.json), [3](results/condition-2-payouts-r3.json), [4](results/condition-2-payouts-r4.json), [5](results/condition-2-payouts-r5.json) |
+| 2 | settlements | 5 | 5 | 5 | 13 | 0 | 0 | [1](results/condition-2-settlements-r1.json), [2](results/condition-2-settlements-r2.json), [3](results/condition-2-settlements-r3.json), [4](results/condition-2-settlements-r4.json), [5](results/condition-2-settlements-r5.json) |
+| 3 | payouts | 5 | 5 | 5 | 15 | 0 | 0 | [1](results/condition-3-payouts-r1.json), [2](results/condition-3-payouts-r2.json), [3](results/condition-3-payouts-r3.json), [4](results/condition-3-payouts-r4.json), [5](results/condition-3-payouts-r5.json) |
+| 3 | settlements | 5 | 5 | 4 | 10 | 0 | 0 | [1](results/condition-3-settlements-r1.json), [2](results/condition-3-settlements-r2.json), [3](results/condition-3-settlements-r3.json), [4](results/condition-3-settlements-r4.json), [5](results/condition-3-settlements-r5.json) |
+| 6 | payouts | 5 | 5 | 4 | 6 | 0 | 0 | [1](results/condition-6-payouts-r1.json), [2](results/condition-6-payouts-r2.json), [3](results/condition-6-payouts-r3.json), [4](results/condition-6-payouts-r4.json), [5](results/condition-6-payouts-r5.json) |
+| 6 | settlements | 5 | 5 | 5 | 9 | 0 | 0 | [1](results/condition-6-settlements-r1.json), [2](results/condition-6-settlements-r2.json), [3](results/condition-6-settlements-r3.json), [4](results/condition-6-settlements-r4.json), [5](results/condition-6-settlements-r5.json) |
+
+<!-- behaviour-counts:end -->
 
 ## Condition 1
 
