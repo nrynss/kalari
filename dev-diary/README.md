@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0: everything but T0.4 (Lambo) done; Vimanam 2.1.0 landed (T0.6). P1 done; P2 3/6; P3 3/7. T2.5 claimed. Ready: T2.2, T3.1a, T5.1. The pilot (T5.2) needs the harness (T5.1) and the user's spend approval. Config format (T1.2) is JSON.
+**Current status:** P0: everything but T0.4 (Lambo) done; Vimanam 2.1.0 landed (T0.6). P1 done; P2 4/6; P3 3/7. Ready: T2.2, T3.1a, T5.1. The pilot (T5.2) needs the harness (T5.1) and the user's spend approval. Config format (T1.2) is JSON.
 
 ---
 
@@ -141,7 +141,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 |---|---|---|
 | P0 | 5 / 6 | T0.1, T0.2, T0.3, T0.5, T0.6 done. T0.4 (Lambo) blocked on its next release |
 | P1 | 5 / 5 | T1.1 through T1.5 done |
-| P2 | 3 / 6 | T2.1, T2.3 and T2.4 done. T2.2 ready (its microVM step runs on the laptop). T2.5 claimed |
+| P2 | 4 / 6 | T2.1, T2.3, T2.4 and T2.5 done. T2.2 ready (its microVM step runs on the laptop) |
 | P3 | 3 / 7 | T3.1, T3.3 and T3.4 done. T3.1a ready |
 | P4 | 0 / 8 | Waits for P2, P3 |
 | P5 | 0 / 6 | T5.1 ready. T5.2 (pilot) waits for T5.1 and the user's spend approval |
@@ -154,6 +154,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 
 Newest first. One entry per closed task, finding, or split.
 
+- **T2.5 closed: image pulls.** `ensureImage` runs `msb pull debian`. Three attempts: the first at once, then a wait of 1000 ms, then 2000 ms. Any cap other than `none`, or any exit other than 0, retries. The stderr text is not special-cased. Three failures are `setup: pull debian: …`, and `run` returns that before create, copy, exec, or remove. Every create argv ends `--pull never debian`. `getLast?` is still `some "debian"`. No `--force`, no registry URL, no `--net-default`. The pull is not a `SandboxBackend` method. There is no pull recording. `replayRunner` treats `["msb", "pull", "debian"]` as a synthetic success and does not consume a `testdata/msb` case. Exit 3 is 8 calls and is still removed. A failed create is the pull and the create, and is not removed. The checks record the waits and do not sleep, and they do not call `live`. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
 - **CI: the runner image does not ship `rg`.** Ubuntu 26.04's image has no ripgrep, so `Kalari.Search`'s check exits 255 with `could not execute external process 'rg'`. The workflow installs the `ripgrep` package before the gate. `tools/check.sh` does not.
 - **CI: the process timeout check no longer renames `sleep`.** Ubuntu 26.04's uutils rejects an argv0 that does not match the executable, so `env -a <marker> /bin/sleep 30` exits at once and the 400 ms cap never fires. The check is now an inner `sh -c` builtin loop, backgrounded with `wait`, with the marker on that grandchild's command line. A failure prints `cap`, the exit code, `wallMs`, and stderr.
 - **T2.4 closed: the Docker backend.** `Kalari.Sandbox.Docker` is the laptop fallback. The demo path stays Microsandbox. A run is `docker run --name <name> --rm --network none --read-only --memory <mib>m --pids-limit 256 -v <host>:/workspace:rw debian:stable-slim <command...>`. `--pids-limit` is 256. Docker has no per-IP allow rule, so a non-empty allowlist returns `this backend has no per-IP rule` and does not start a container. `--rm` removes the container. `destroy` is `docker rm -f` for a name left behind. The checks replay `deploy/local/recordings/`: one `echo kalari-docker` run, stdout `kalari-docker` plus a newline, empty stderr, exit 0. They do not call docker. `deploy/local/README.md` says how to build and run this backend on a laptop without KVM. The Phase 2 line about untrusted code running only through Microsandbox stays open, because this fallback exists.
