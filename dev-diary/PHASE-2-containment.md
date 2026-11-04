@@ -104,11 +104,34 @@ requires:   [T2.3]
 fixture-ok: no
 size:       S · mid
 owns:       tests/live/sandbox.sh
-status:     claimed:grok-impl
+status:     in-review
 ```
 On the VM: a run of `bench/apis/payouts/reference/correct.py` through the backend against the grading API (allowlisted), a run of `cursor_loop.py` killed by the time cap, and a run that tries the VM's SSH, the metadata service and the internet, all refused. `msb list` empty afterwards.
 
 **Done when:** the transcript is in the report; every outcome as stated.
+
+Notes:
+
+`tests/live/sandbox.sh` is the live check. It is not part of the gate. It does not call Vultr.
+
+The grading server is `python3 -I bench/apis/payouts/server.py --v1 off` on a free port. The guest cannot use the host's loopback, so the script binds that server to the host address taken from the default route at runtime and allowlists only that address and port. The documentation address is not a target.
+
+`debian` has no `python3`. The script does not apt-get. It removes that sandbox and creates `python`, still `--no-net --pull never`. The three outcomes ran on `python`.
+
+`correct.py` under `kalari-aashaan`, 30000 ms, allowlisted: `exited`, exit 0, wall 364 ms, stdout `synced 2431 payouts`. `grade.py payouts` returned PASS: 2431 records, missing 0, duplicates 0.
+
+`cursor_loop.py`, same allowlist, 800 ms: `killed_timeout`, wall 802 ms.
+
+A sandbox with `--no-net` and no allow rule: the metadata address refused with `network_policy_denied`; the host SSH port refused with `ConnectionRefusedError` and no banner; a public request refused with `network_policy_denied`.
+
+Afterwards `msb list` had none of this script's names. Cleanup is `msb remove -f`.
+
+Surprises:
+
+- `debian` does not ship `python3`. The backend image is unchanged.
+- `msb remove` on a running sandbox fails (`sandbox still running`). `msb remove -f` stops and then removes. The script does not leave a stopped sandbox, because `exec` would start it again.
+- Three immediate `msb pull python` attempts failed with Docker Hub `Not authorized`. A later pull succeeded. The outcome run found `python` cached and created it with `--pull never`.
+- With no allow rule, a connection to the host address is refused at connect time even when a process is listening. The same address answers when the create rule names it. Metadata and the public internet come back as `network_policy_denied`, not as a page.
 
 ---
 
