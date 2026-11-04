@@ -74,7 +74,7 @@ requires:   [T1.5, T0.4]
 fixture-ok: yes
 size:       M · frontier
 owns:       Kalari/Lambo.lean
-status:     in-review
+status:     done
 ```
 `MemoryClient` over a child `lambo serve` (MCP over stdio): start it with Kalari's config, `initialize`, then `lambo_derive`, `lambo_inspect`, `lambo_recall`, `lambo_stats` (with a receipt and `wait_ms` when the next read needs the write). Kalari is the single writer under one stable agent ID. The change kind is a `resource`; a lesson a `constraint` `depends_on` it; a run an `observation` `depends_on` the lesson (research/lambo.md, How Kalari uses it). Lessons are found by `lambo_inspect` on the change kind, never by recall rank alone.
 

@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0 done: Vimanam 2.1.0 (T0.6) and Lambo 0.9.0 (T0.4) landed. P1 done; P2 7/7; P3 5/7. T2.6 done. T3.1a done. T3.3b done. T3.2, T4.1 and T4.2 are claimed by another orchestrator. The run continues through P3, then P4, then P5. Ready: T5.1. Live spend is approved, including the pilot (T5.2, about $16) and T3.2b and T3.3b (each under $0.01). Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
+**Current status:** P0 done: Vimanam 2.1.0 (T0.6) and Lambo 0.9.0 (T0.4) landed. P1 done; P2 7/7; P3 6/7. T2.6 done. T3.1a done. T3.3b done. T3.2 done. T4.1 and T4.2 are claimed. The run continues through P3, then P4, then P5. Ready: T5.1. Live spend is approved, including the pilot (T5.2, about $16) and T3.2b and T3.3b (each under $0.01). Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
 
 ---
 
@@ -142,7 +142,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P0 | 6 / 6 | All done |
 | P1 | 5 / 5 | T1.1 through T1.5 done |
 | P2 | 7 / 7 | T2.1 through T2.6 done. The Microsandbox-only exit line stays open because the Docker fallback exists |
-| P3 | 5 / 7 | T3.1, T3.1a, T3.3, T3.3b and T3.4 done. T3.2 claimed by another orchestrator. T3.2b waits for T3.2 |
+| P3 | 6 / 7 | T3.1, T3.1a, T3.3, T3.3b and T3.4 done. T3.2 done. T3.2b ready |
 | P4 | 0 / 8 | T4.1 and T4.2 claimed by another orchestrator. T4.5 waits for those |
 | P5 | 0 / 6 | T5.1 ready. T5.2 (pilot) waits for T5.1. The spend is approved |
 | P6 | 0 / 3 | Waits for T4.2 |
@@ -151,6 +151,8 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 ---
 
 ## Handoff Log
+
+- **T3.2 closed.** The Lambo client replays recorded stdio exchanges, verifies applied receipt IDs, finds lessons by inspecting the change kind, and checks incoming contradiction edges. The thin adapter returns concept IDs, and the typed client exposes graph writes and shutdown.
 
 Newest first. One entry per closed task, finding, or split.
 
