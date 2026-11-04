@@ -8,6 +8,12 @@ Vultr has no sandbox product of its own. Its agent sandboxing guide uses **Micro
 - **Every untrusted run:** `msb create --no-net --net-rule allow@<IP>/32:tcp:<port> …`, the aashaan inside with its caps, `msb stop` + `msb remove` after.
 - **Host kernel stays on Ubuntu 24.04's 6.8.**
 
+## On the laptop too
+
+**Microsandbox runs on the development laptop, not only on the VM** (msb 0.7.13, same user-space install, no sudo). `/dev/kvm` is `crw-rw-rw-` there (no `kvm` group needed), CPU `svm`, `kvm_amd` loaded, umask already `022`. `msb doctor` passes and finds **reflink support** (copy-on-write sandbox roots, unlike the VM). A cached `debian` microVM boots in **~360 ms**; the eight aashaan cases (`tests/live/microvm-cases.sh`) match in ~4.8 s. So live sandbox tests (T2.2's microVM clause, T2.3b, T4.5b's sandbox side) can run here; only what needs the benchmark APIs on the VM's IP, Vultr Inference with the VM's network, or the deployment needs the VM.
+
+**Trap: Docker Hub pulls fail intermittently here.** The first pulls of a new image fail with `registry error: Not authorized: url https://index.docker.io/v2/library/<image>/manifests/<tag>`; the same pull succeeds on the third try (seen for `debian:bookworm`; `debian` also failed once). Never seen on the VM. So: **pull every image once at setup, with retries, and run with `--pull never`** (an msb option), so a run never depends on Docker Hub. AVIC (an optional KVM acceleration) is off on the laptop; leave it, as enabling it is a privileged host-wide change.
+
 ## B1: KVM and start-up
 
 - `/dev/kvm` present (`crw-rw---- root kvm`), CPU flag `svm`. `msb doctor`: CPU virtualisation, KVM device and KVM access all pass. One warning: no reflink on the filesystem, so sandbox roots are copied, slower and larger. Informational.

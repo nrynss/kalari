@@ -43,7 +43,7 @@ Rules for any agent working in this repository. The product is in [`product.md`]
 
 ## Live tests
 
-- A live test calls a real service: Vultr Inference, a running Lambo, or a Microsandbox microVM on the Vultr VM. It lives under `tests/live/`, never runs in CI and never gates a build.
+- A live test calls a real service: Vultr Inference, a running Lambo, or a Microsandbox microVM. **Microsandbox microVMs run on the development laptop too** (msb 0.7.13 is installed, `/dev/kvm` is usable); only the benchmark APIs and the deployment need the Vultr VM. Pull images with retries before a run and use `--pull never`: Docker Hub pulls fail intermittently on the laptop. It lives under `tests/live/`, never runs in CI and never gates a build.
 - Each has a budget in its task. Run one case first, check the cost, and stop and report if it would go over.
 - A live run is evidence: commit the test, and put its transcript (no key, no personal data) in your report.
 
