@@ -123,11 +123,11 @@ requires:   [T5.2a]
 fixture-ok: no
 size:       M · mid
 owns:       bench/pilot/harder/
-status:     blocked
+status:     not-started
 ```
 Run exactly 50 reference sessions on the harder pair: five fresh B5-only sessions for each upgrade, then conditions 1, 2, 3 and 6 on the full pair, five repeats each (40 sessions). The 10 isolated rows diagnose retry alone; the 40 full-pair rows answer the benchmark question after the condition-1 repair. The old 70 rows remain published separately and are never merged into harder-pair counts. B5-in-both remains the pair even if the baseline passes every row.
 
-**No live budget is approved.** The orchestrator must record the user's dollar cap here and change the task to `not-started` before claiming it. The first case's measured cost and the remaining projection must fit that cap before any further session; stop and report otherwise. Usage deltas and cleanup are checked after every session.
+**Live budget: $12.** The first case's measured cost and the remaining projection must fit that cap before any further session. Stop and report otherwise. Usage deltas and cleanup are checked after every session. The cap is roughly twice the old pair's mean cost per session, with a reserve for one expensive row.
 
 **Done when:** all 50 result files and their sanitized transcript are committed under `bench/pilot/harder/`; counts include every existing measure plus HTTP retries reported separately from consumer sandbox runs; the old pilot is unchanged; no process, scope or sandbox started by the pilot remains.
 
@@ -159,6 +159,8 @@ status:     not-started
 ```
 Conditions 4 and 5, five repeats each, on the frozen pair, through the harness. Condition 5's lesson comes from that repeat's own upgrade-one session, never copied from another.
 
+**Live budget: $8.** Check the first session's measured cost against the cap before the rest. Stop and report if the projection would exceed it.
+
 **Done when:** every run committed with its result file; `FROZEN.md`'s hashes still match.
 
 ---
@@ -172,6 +174,8 @@ owns:       bench/runs/reference/
 status:     not-started
 ```
 Conditions 1, 2, 3 and 6, five repeats each, on the frozen pair. Only T5.2b's harder-pair rows may count, and only if they were made on the frozen files (the hashes decide). The original T5.2 rows belong to the old pair and cannot count.
+
+**Live budget: $10.** Check the first session's measured cost against the cap before the rest. Stop and report if the projection would exceed it.
 
 **Done when:** every run committed; `FROZEN.md`'s hashes still match.
 

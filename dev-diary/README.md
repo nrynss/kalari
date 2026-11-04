@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0 done. P1 done. P2 7/7. P3 7/7. P4 11/13. P5 3/9. T3.2b done. T5.1, T5.1a and T5.2 done. The user chose B5 in both upgrades and the 50-session harder-pair pilot. T5.3 now requires T5.2b; T5.2b is blocked until the user approves its live dollar budget. T5.1a repairs condition 1 before that pilot. T4.6b and T4.7c establish the retry memory path before T5.4. T4.6 done. T4.5b done. T4.7a done. T4.7b done. T4.7 done. T6.1 done. Previous live spend remains approved, including the old pilot (T5.2, about $16) and T3.2b (under $0.01); no T5.2b spend is approved. Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
+**Current status:** P0 done. P1 done. P2 7/7. P3 7/7. P4 11/13. P5 3/9. T3.2b done. T5.1, T5.1a and T5.2 done. The user chose B5 in both upgrades and the 50-session harder-pair pilot. T5.3 now requires T5.2b; T5.2b is blocked until the user approves its live dollar budget. T5.1a repairs condition 1 before that pilot. T4.6b and T4.7c establish the retry memory path before T5.4. T4.6 done. T4.5b done. T4.7a done. T4.7b done. T4.7 done. T6.1 done. Previous live spend remains approved, including the old pilot (T5.2, about $16) and T3.2b (under $0.01). New live caps are approved: T5.2b $12, T5.5 $10 and T5.4 $8, $30 in total. T6.3 reuses the current VM only. Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
 
 ---
 
@@ -146,7 +146,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P2 | 7 / 7 | T2.1 through T2.6 done. The Microsandbox-only exit line stays open because the Docker fallback exists |
 | P3 | 7 / 7 | T3.1 through T3.4 done, including T3.1a, T3.2b and T3.3b |
 | P4 | 11 / 13 | T4.1 through T4.7 done as previously recorded. New T4.6b and T4.7c establish the trusted retry observation and production memory path |
-| P5 | 3 / 9 | T5.1, T5.1a and T5.2 done. T5.2a and T5.2b precede the freeze. B5-in-both and the 50-session pilot are decided; T5.2b awaits its live budget |
+| P5 | 3 / 9 | T5.1, T5.1a and T5.2 done. T5.2a and T5.2b precede the freeze. B5-in-both and the 50-session pilot are decided. T5.2b is ready with a $12 cap |
 | P6 | 1 / 3 | T6.1 done. T6.2 ready. HTTP startup and benchmark evidence production still need integration |
 | P7 | 0 / 4 | Waits for P5, P6 |
 

@@ -46,6 +46,8 @@ status:     not-started
 ```
 The Vultr preset: `kalari serve` as a systemd unit (`UMask=0022`, its own user, the key from a credentials file only that user reads, never in the unit), Caddy for TLS in front of the HTTP API, Lambo's store on the VM, and the benchmark APIs (`bench/apis/deploy.sh`). **Opening ports 80 and 443 in the Vultr firewall is the user's call**; SSH stays Tailscale-only. A domain name for the demo URL is the user's choice.
 
+**Infrastructure: reuse the current VM only.** No resize and no second instance. Stop before any change that would increase its cost.
+
 **Done when:** the demo URL serves the web app over HTTPS from the VM; a restart brings everything back; `deploy/vultr/README.md` takes a fresh VX1 to a running deployment.
 
 ---
