@@ -12,7 +12,7 @@ requires:   [T4.2]
 fixture-ok: yes
 size:       M · mid
 owns:       Kalari/Http.lean
-status:     not-started
+status:     claimed:gpt-6.1-terra
 ```
 `Std.Http`, bound to 127.0.0.1 behind Caddy, read-only over the evidence store: sessions, runs (with verdict, checks, logs, timings, tokens), lessons, and the benchmark results. Body caps and 400/404/413 as in `Examples/HttpServer.lean`. No write endpoint: the web app shows; agents act through MCP.
 
