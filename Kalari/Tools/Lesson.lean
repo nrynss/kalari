@@ -229,6 +229,9 @@ private def recordUnlocked (store : Kalari.Evidence.Store) (session runId : Stri
           | .error e => return .error e
           | .ok s => pure s
         if observed.source.isEmpty then return .error "page observation has no trusted source"
+        -- Policy provenance establishes the lesson's rule, but cannot itself
+        -- make an otherwise empty page observation into a lesson.
+        if observed.behaviors.isEmpty then continue
         -- These observer IDs describe page traversal, so their explicit graph
         -- anchor is pagination_changed even when the run indexes other changes.
         let changeKind := "pagination_changed"
@@ -423,6 +426,18 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
   let resolvedPage ← IO.ofExcept (← Kalari.Tools.Recall.resolveEvidence store pageRef)
   unless resolvedPage.check == truthCheck && resolvedPage.observation == pageLesson.observation do
     throw <| .userError "recall did not resolve candidate truth check evidence"
+
+  -- An empty page observation remains a no-op even when valid policy
+  -- provenance exists; provenance supplies a rule, not observed behavior.
+  appendRun "page-empty-pass" pageRun
+  let emptyPageRecord : Kalari.Evidence.Record := { kind := "page-observation", session_id := "s", run_id := "page-empty-pass", change_kinds := ["pagination_changed"], payload := toJson ({ source := "payouts-api", behaviors := [] } : PageObservation) }
+  Kalari.Evidence.append store emptyPageRecord
+  let writesBeforeEmptyPage ← writes.get
+  let emptyPageResult ← IO.ofExcept (← record store "s" "page-empty-pass" classify write)
+  let afterEmptyPage ← Kalari.Evidence.load store
+  unless emptyPageResult.isEmpty && (← writes.get) == writesBeforeEmptyPage &&
+      !(afterEmptyPage.records.any fun r => r.kind == "lesson" && r.run_id == "page-empty-pass") do
+    throw <| .userError "empty page observation produced a lesson from policy provenance"
   let staleStore ← Kalari.Evidence.openStore (dir / "stale-first")
   let staleRunBody : RunRecord := { run with checks := [truthCheck], check_results := [
     { check_id := truthCheck.id, passed := false }, { check_id := "differential-v1", passed := false }] }
