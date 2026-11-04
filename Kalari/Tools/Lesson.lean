@@ -2,6 +2,7 @@ import Kalari.Evidence
 import Kalari.Lambo
 import Kalari.Clef
 import Kalari.Tools.Recall
+import Kalari.Tools.Run
 import Std.Sync.Mutex
 
 /-! Record only service-produced, sandbox-verified observations. The MCP caller
@@ -28,6 +29,57 @@ structure PageObservation where
   source : String
   behaviors : List String
   deriving FromJson, ToJson
+
+private def amendedCheckId := "amended-last-delivery-v1"
+private def amendedCheckAssertion :=
+  "The controlled amended-record fixture proves last delivery wins by ID: keep-last matches final truth and first does not."
+private def amendedCheckProgram := "kalari_amended_policy_check.py"
+private def amendedCheckFixture := "kalari_amended_policy_fixture.json"
+
+private def amendedFixture : String :=
+  "{\"stream\":[{\"id\":\"amended-a\",\"amount\":1200,\"status\":\"PENDING\"},{\"id\":\"stable\",\"amount\":500,\"status\":\"SETTLED\"},{\"id\":\"amended-b\",\"amount\":2000,\"status\":\"SETTLED\"},{\"id\":\"amended-a\",\"amount\":1100,\"status\":\"ADJUSTED\"},{\"id\":\"amended-b\",\"amount\":1500,\"status\":\"ADJUSTED\"}],\"truth\":[{\"id\":\"amended-a\",\"amount\":1100,\"status\":\"ADJUSTED\"},{\"id\":\"stable\",\"amount\":500,\"status\":\"SETTLED\"},{\"id\":\"amended-b\",\"amount\":1500,\"status\":\"ADJUSTED\"}]}"
+
+private def amendedCheckProgramText : String := String.intercalate "\n" [
+  "import json", "import sys", "from pathlib import Path", "",
+  "fixture = json.loads(Path(sys.argv[1]).read_text())",
+  "stream = fixture['stream']", "truth = {row['id']: row for row in fixture['truth']}",
+  "first = {}", "last = {}", "for row in stream:",
+  "    first.setdefault(row['id'], row)", "    last[row['id']] = row", "",
+  "if len(stream) != 5 or len(truth) != 3:",
+  "    raise SystemExit('controlled fixture shape changed')",
+  "if first == truth:",
+  "    raise SystemExit('fixture does not distinguish keep-first from final truth')",
+  "if last != truth:",
+  "    raise SystemExit('keep-last does not match the fixture final truth')",
+  "if sum(first[key] != truth[key] for key in truth) != 2:",
+  "    raise SystemExit('fixture must expose both amended first-delivery values')",
+  "print('amended fixture: first selection loses 2 amendments; last selection preserves final truth')"
+]
+
+/-- Provision a trusted policy check in the service-owned check workspace.
+It tests a controlled amended-record fixture, independently of payouts' identical
+boundary duplicates; it does not claim the candidate run demonstrated last-wins. -/
+def provisionAmendedPolicyCheck (checkWorkspace : String) : IO Check := do
+  if checkWorkspace.isEmpty then throw <| .userError "empty trusted check workspace"
+  let root : System.FilePath := checkWorkspace
+  IO.FS.createDirAll root
+  IO.FS.writeFile (root / amendedCheckFixture) amendedFixture
+  IO.FS.writeFile (root / amendedCheckProgram) amendedCheckProgramText
+  return {
+    id := amendedCheckId
+    assertion := amendedCheckAssertion
+    command := ["python3", amendedCheckProgram, amendedCheckFixture]
+  }
+
+/-- Attach the fixture policy check to a trusted Run Context. Call once while
+assembling the service context, before candidate runs begin. -/
+def attachAmendedPolicyCheck (ctx : Kalari.Tools.Run.Context) : IO Kalari.Tools.Run.Context := do
+  let check ← provisionAmendedPolicyCheck ctx.checkWorkspace
+  return { ctx with checks := ctx.checks.filter (·.id != amendedCheckId) ++ [check] }
+
+private def isAmendedPolicyCheck (check : Check) : Bool :=
+  check.id == amendedCheckId && check.assertion == amendedCheckAssertion &&
+  check.command == ["python3", amendedCheckProgram, amendedCheckFixture]
 
 /-- Clef receives the actual failing run and trusted service-supplied context. -/
 abbrev Classify := String → RunRecord → IO (Except String Kalari.Backend.DecisionAnswer)
@@ -108,16 +160,13 @@ private def recordUnlocked (store : Kalari.Evidence.Store) (session runId : Stri
           | .error e => return .error e
           | .ok s => pure s
         if observed.source.isEmpty then return .error "page observation has no trusted source"
-        let indexedKinds := loaded.records.filterMap fun r =>
-          if r.kind == "run" && r.session_id == session && r.run_id == runId then
-            r.change_kinds.find? entry.change_kinds.contains
-          else none
-        let some changeKind := indexedKinds.head? | return .error "page observation has no shared run change kind"
-        if indexedKinds.length != 1 then return .error "page observation has ambiguous run change kinds"
+        -- These observer IDs describe page traversal, so their explicit graph
+        -- anchor is pagination_changed even when the run indexes other changes.
+        let changeKind := "pagination_changed"
         let check := run.checks.find? fun candidate =>
-          candidate.assertion.contains "last delivery wins" && candidate.assertion.contains "ID" &&
+          isAmendedPolicyCheck candidate &&
           run.check_results.any fun result => result.check_id == candidate.id && result.passed
-        let some check := check | return .error "no passing runnable last-delivery-wins check is available to bootstrap the lesson"
+        let some check := check | return .error "trusted amended-record policy check did not pass with the run"
         pure (changeKind, check, observed.behaviors, none)
       else
         let signal : VerifiedBehavior ← match fromJson? entry.payload with
@@ -212,6 +261,28 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
   let check : Check := { id := "check-paging", assertion := "Key records by ID; last delivery wins", command := ["check-paging"] }
   let verdict : Verdict := { verdict := "exited", exit_code := some 0, wall_ms := 1, stdout := "", stdout_truncated := false, stderr := "", pipe_held_open := false, supervisor_peak_rss_kb := 0, cgroup_memory_limit := 0 }
   let request : RunRequest := { workspace := "/workspace", command := ["run"], caps := { timeout_ms := 1000, output_cap_bytes := 1000, memory_mib := 128 }, allowlist := [] }
+  let runContext : Kalari.Tools.Run.Context := {
+    workspace := request.workspace
+    baseline := { request with workspace := "/baseline" }
+    checkWorkspace := (dir / "trusted-checks").toString
+    artifact := "candidate.jsonl"
+    checks := []
+    maxCaps := request.caps
+    allowedNet := []
+    secrets := []
+    aashaanHost := "/trusted/aashaan"
+    evidence := store
+    sessionId := "s"
+    changeKinds := ["pagination_changed"]
+  }
+  let checkedContext ← attachAmendedPolicyCheck runContext
+  let some policyCheck := checkedContext.checks.head? | throw <| .userError "bootstrap check missing from Run Context"
+  unless isAmendedPolicyCheck policyCheck do throw <| .userError "wrong built-in policy check"
+  let checkWorkspace : System.FilePath := checkedContext.checkWorkspace
+  let policyArgs := #[(checkWorkspace / amendedCheckProgram).toString, (checkWorkspace / amendedCheckFixture).toString]
+  let policyProcess ← IO.Process.output { cmd := "python3", args := policyArgs }
+  unless policyProcess.exitCode == 0 && policyProcess.stdout.contains "first selection loses 2 amendments" do
+    throw <| .userError "amended policy executable did not distinguish first from last"
   let run : RunRecord := { request, verdict, checks := [check], check_results := [{ check_id := "check-paging", passed := true }, { check_id := "differential-v1", passed := true }], timings := { wall_ms := 1 } }
   let failed : RunRecord := { run with verdict := { verdict with exit_code := some 1 }, check_results := [{ check_id := "differential-v1", passed := false }] }
   let appendRun := fun id r => Kalari.Evidence.append store { kind := "run", session_id := "s", run_id := id, change_kinds := ["pagination_changed"], payload := toJson r }
@@ -247,13 +318,14 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
 
   -- The differential result is provenance for the passing run, while the
   -- bootstrap check must be a real runnable check already recorded on it.
-  let pageRun : RunRecord := { run with request := { request with command := ["run-page-observer"] } }
+  let pageRequest : RunRequest := { request with command := ["run-page-observer"] }
+  let pageRun : RunRecord := { run with request := pageRequest, checks := [policyCheck], check_results := [{ check_id := policyCheck.id, passed := true }, { check_id := "differential-v1", passed := true }] }
   appendRun "page-pass" pageRun
   let pageSignal : PageObservation := { source := "payouts-api", behaviors := ["boundary_overlap_one", "final_page_token"] }
   let pageRecord : Kalari.Evidence.Record := { kind := "page-observation", session_id := "s", run_id := "page-pass", change_kinds := ["pagination_changed"], payload := toJson pageSignal }
   Kalari.Evidence.append store pageRecord
   let pageResult ← IO.ofExcept (← record store "s" "page-pass" classify write)
-  unless pageResult.any (fun l => l.check == check && l.observation.contains "one payout") do
+  unless pageResult.any (fun l => l.check == policyCheck && l.observation.contains "one payout") do
     throw <| .userError "page observation did not bootstrap from the passing runnable check"
 
   -- Simulate a graph write that fails after the typed lesson is appended.
@@ -287,7 +359,8 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
 
   -- Two handler calls share one writer object and therefore one transaction lane.
   let concurrentStore ← Kalari.Evidence.openStore (dir / "concurrent")
-  let concurrentRun : Kalari.Evidence.Record := { kind := "run", session_id := "s", run_id := "parallel-pass", change_kinds := ["pagination_changed"], payload := toJson run }
+  let concurrentRunBody : RunRecord := { run with checks := [policyCheck], check_results := [{ check_id := policyCheck.id, passed := true }, { check_id := "differential-v1", passed := true }] }
+  let concurrentRun : Kalari.Evidence.Record := { kind := "run", session_id := "s", run_id := "parallel-pass", change_kinds := ["pagination_changed"], payload := toJson concurrentRunBody }
   Kalari.Evidence.append concurrentStore concurrentRun
   let concurrentSignal : PageObservation := { source := "payouts-api", behaviors := ["boundary_overlap_one"] }
   let concurrentRecord : Kalari.Evidence.Record := { kind := "page-observation", session_id := "s", run_id := "parallel-pass", change_kinds := ["pagination_changed"], payload := toJson concurrentSignal }
