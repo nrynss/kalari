@@ -14,13 +14,23 @@ requires:   [T0.2]
 fixture-ok: no
 size:       M · mid
 owns:       bench/harness/
-status:     claimed:grok-impl
+status:     in-review
 ```
 One script that runs one session of one condition on the VM and records everything: a fresh copy of the workspace (committed, so `git diff` shows the change); OpenCode 2.2.5 with `--standalone` and its own `XDG_*` directories; the key over SSH stdin; the 20-minute session cap; `/v1/usage` before and after; the event log; the hidden grader on the final consumer against the grading API; and **every measure** (bench/README.md, Measures), including "right first time" (grade the consumer as it stood at its first run against v2, from the workspace's history or the event log) and time stuck. Then a check that no `opencode`, `microsandbox-mcp` or sandbox is left.
 
 Conditions 1 and 2 span both upgrades: condition 1 keeps one session (`--session`) on one data directory; condition 2 starts a new session with the notes the first wrote.
 
 **Done when:** one reference-condition session of each upgrade runs end to end and produces a result file with every measure; nothing is left running.
+
+**Notes (in review):** `bench/harness/run.sh` takes `--condition 1|2|3|6` and `--upgrade payouts|settlements`. It copies a fresh workspace, commits it, and runs OpenCode 2.2.5 with `run --standalone` and its own `XDG_DATA_HOME`, `XDG_STATE_HOME`, `XDG_CACHE_HOME`, and `XDG_CONFIG_HOME`. The key comes from the keyring and crosses SSH on stdin. The cap is 20 minutes. Tokens are the `/v1/usage` delta for `deepseek-v4.1-flash-1017`. Condition 1 stores the session id and reuses that data directory for the other upgrade. Condition 2, on the second upgrade, copies notes the first wrote (new non-Python files, or the final answer if there were none) into `notes-from-upgrade-one/`. The proof runs are condition 3: a fresh reference session, the shared prompt, no notes. The hidden grader runs the consumer in a new microVM with `--no-net` and one allow rule for the grading API, then `grade.py` on the host. Right first time grades the consumer from OpenCode's snapshot tree at the first v2 run, or from source embedded in the event log when that tree does not yet contain v2.
+
+`bench/harness/results/c3-payouts.json`: verdict PASS, right first time true (1 v2 run, snapshot), sandbox runs 1, wall 29.265 s, time stuck 0, tokens 577,808 in / 7,804 out, records lost 0, duplicated 0. Grade 2,431 of 2,431. Cost $0.091354.
+
+`bench/harness/results/c3-settlements.json`: verdict PASS, right first time true (first of 2 v2 runs, snapshot), sandbox runs 2, wall 27.722 s, time stuck 0, tokens 452,070 in / 8,629 out, records lost 0, duplicated 0, mismatched 0. Grade 1,873 of 1,873. Cost $0.072988.
+
+Both usage deltas matched OpenCode's step tokens exactly (input plus cache reads, output plus reasoning). No other model moved. Neither session hit the cap. No `opencode`, `microsandbox-mcp`, or sandbox this harness started was still running. The four API microVMs were already up and were left up.
+
+What surprised me: both upgrades passed on the first consumer run against v2. The reference arm picks its sandbox network, so it could reach every port published on the VM, including the grading API. The payouts session found that server (v1 retired) and checked it. The settlements session compared v2 with v1 on its own. The hidden grade does not use either check; it re-runs the saved consumer with v1 off. Condition 1's resumed session and condition 2's notes handoff are in the script and were not the proof runs.
 
 ---
 
