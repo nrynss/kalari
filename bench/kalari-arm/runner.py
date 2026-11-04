@@ -139,7 +139,6 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
             try:
                 return cleanup_sandboxes()
             except Exception:
-                (result/'cleanup.json').write_text(json.dumps({'errors': ['sandbox cleanup raised an exception']}) + '\n')
                 return 'sandbox cleanup raised an exception'
         atexit.register(safe_cleanup_sandboxes)
         tools = guarded
@@ -270,13 +269,8 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
             except ProcessLookupError: pass
             for sig, handler in old_handlers.items(): signal.signal(sig, handler)
     elapsed = time.monotonic() - start
-    if a.live:
-        cleanup_error = safe_cleanup_sandboxes()
-    elif (tools/'CLEANUPFAIL').exists():
-        cleanup = subprocess.run([str(tools/'msb'), 'remove', '-f', 'kalari-offline-fixture'], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        cleanup_error = 'sandbox removal command failed' if cleanup.returncode else None
-    else:
-        cleanup_error = None
+    # Persist the sanitized session transcript before cleanup can fail. This
+    # lets the caller diagnose a cleanup exception without losing telemetry.
     bad = 0
     with (result/'transcript.jsonl').open('w') as out:
         for line in events.open(errors='replace'):
@@ -285,6 +279,13 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
                 bad += 1
                 continue
             out.write(json.dumps(sanitize(doc), ensure_ascii=True) + '\n')
+    if a.live:
+        cleanup_error = safe_cleanup_sandboxes()
+    elif (tools/'CLEANUPFAIL').exists():
+        cleanup = subprocess.run([str(tools/'msb'), 'remove', '-f', 'kalari-offline-fixture'], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        cleanup_error = 'sandbox removal command failed' if cleanup.returncode else None
+    else:
+        cleanup_error = None
     summary = execute([sys.executable, HERE/'summarize.py', result/'transcript.jsonl'], capture_output=True, text=True)
     measures = json.loads(summary.stdout)
     measures.update({'elapsed_seconds': round(elapsed, 3), 'exit_code': rc, 'timed_out': timed_out, 'invalid_event_lines': bad, 'fixture': not a.live, 'cutoff_reason': cutoff_reason, 'completed_steps': steps, 'estimated_step_cost_usd': spent_units / 100_000_000, 'tool_failures': failures, 'interrupted_signal': interrupted['signal']})
