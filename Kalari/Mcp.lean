@@ -80,15 +80,25 @@ abbrev Handler := String → Json → IO (Except String String)
 
 /-- Handle one parsed request. Notifications never produce a response. -/
 def handle (handler : Handler) (msg : Json) : IO (Option Json) := do
-  let some id := (msg.getObjVal? "id").toOption | return none
-  if (msg.getObjValAs? String "jsonrpc").toOption != some "2.0" then
-    return some <| error id (-32600) "invalid request"
-  let some method := (msg.getObjValAs? String "method").toOption |
-    return some <| error id (-32600) "invalid request"
+  let invalid := some <| error Json.null (-32600) "invalid request"
+  let .ok _ := msg.getObj? | return invalid
+  if (msg.getObjValAs? String "jsonrpc").toOption != some "2.0" then return invalid
+  let some method := (msg.getObjValAs? String "method").toOption | return invalid
+  let idField := msg.getObjVal? "id"
+  let id := match idField with
+    | .error _ => none
+    | .ok (.str value) => some <| Json.str value
+    | .ok (.num value) => if value.exponent == 0 then some <| Json.num value else none
+    | .ok _ => none
+  if idField.isOk && id.isNone then return invalid
   let params := (msg.getObjVal? "params").toOption.getD (obj [])
+  if !(params.getObj?.isOk || params.getArr?.isOk) then return invalid
+  -- A valid notification has no id and, by JSON-RPC, receives no response.
+  let some id := id | return none
   match method with
   | "initialize" =>
-    let version := (params.getObjValAs? String "protocolVersion").toOption.getD "2025-06-18"
+    let requested := (params.getObjValAs? String "protocolVersion").toOption.getD "2025-11-25"
+    let version := if requested == "2025-11-25" then requested else "2025-11-25"
     return some <| result id <| obj [("protocolVersion", Json.str version),
       ("capabilities", obj [("tools", obj [])]),
       ("serverInfo", obj [("name", "kalari"), ("version", "0.1.0")])]
@@ -201,6 +211,21 @@ private def checks : IO Unit := do
   verify (!valid changedSpec (obj [("old_spec", Json.str "a"), ("new_spec", Json.str "b"), ("extra", Json.bool true)])) "extra field accepted"
   let r ← line testHandler "{broken"
   verify (r.isSome && ((r.getD "").contains "-32700")) "parse error"
+  let malformed ← line testHandler "{\"jsonrpc\":\"2.0\"}"
+  verify (malformed.isSome && ((malformed.getD "").contains "-32600") &&
+    ((malformed.getD "").contains "\"id\":null")) "missing-id malformed request was dropped"
+  let badId ← line testHandler "{\"jsonrpc\":\"2.0\",\"id\":true,\"method\":\"ping\"}"
+  verify (badId.isSome && ((badId.getD "").contains "-32600") &&
+    ((badId.getD "").contains "\"id\":null")) "invalid id type accepted"
+  let badVersion ← line testHandler "{\"jsonrpc\":\"1.0\",\"method\":\"ping\"}"
+  verify (badVersion.isSome && ((badVersion.getD "").contains "-32600")) "unsupported JSON-RPC version was dropped"
+  let notification ← line testHandler "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}"
+  verify notification.isNone "notification received a response"
+  let initOther ← line testHandler "{\"jsonrpc\":\"2.0\",\"id\":14,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"unsupported\"}}"
+  let initOtherJson ← IO.ofExcept (Json.parse (initOther.getD "{}"))
+  let initOtherResult ← IO.ofExcept (initOtherJson.getObjVal? "result")
+  verify ((initOtherResult.getObjValAs? String "protocolVersion").toOption == some "2025-11-25")
+    "unsupported MCP version was echoed instead of negotiating the server version"
 
 #eval checks
 
