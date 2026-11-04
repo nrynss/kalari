@@ -178,7 +178,21 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
                 partial += block
                 lines = partial.split(b'\n')
                 partial = lines.pop()
+                # A producer can emit a complete JSON object without a newline
+                # and keep running. Count it as soon as it parses, otherwise
+                # fail closed on a partial record once the producer has exited.
+                if partial:
+                    try:
+                        json.loads(partial)
+                    except (ValueError, UnicodeDecodeError):
+                        if proc.poll() is not None and events.stat().st_size == offset:
+                            cutoff_reason = 'invalid_telemetry'
+                    else:
+                        lines.append(partial)
+                        partial = b''
                 for line in lines:
+                    if not line.strip():
+                        continue
                     try:
                         event = json.loads(line)
                         if event.get('type') != 'step_finish': continue

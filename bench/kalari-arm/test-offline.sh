@@ -14,6 +14,14 @@ cat > "$tmp/bin/opencode" <<'SH'
 #!/bin/sh
 if [ "$1" = --version ]; then echo '2.2.5'; exit; fi
 [ "$1" = run ] && [ "$2" = --standalone ] || exit 1
+if [ -e "$(dirname "$0")/UNTERMINATED" ]; then
+  python3 -u - <<'PYCODE'
+import json,time
+print(json.dumps({'type':'step_finish','part':{'tokens':{'input':1400000,'output':0,'reasoning':0,'cache':{'read':0,'write':0}}}}),end='',flush=True)
+time.sleep(300)
+PYCODE
+  exit
+fi
 if [ -e "$(dirname "$0")/MALFORMED" ]; then
   printf '%s\n' '{"type":"step_finish","part":{"tokens":{"input":"unknown"}}}'
   sleep 300
@@ -117,4 +125,12 @@ python3 "$root/bench/kalari-arm/runner.py" --offline-fixture --tools "$tmp/bin" 
 python3 - "$tmp/malformed/measures.json" <<'PYCODE'
 import json,sys
 assert json.load(open(sys.argv[1]))['cutoff_reason']=='invalid_telemetry'
+PYCODE
+
+rm "$tmp/bin/MALFORMED"
+touch "$tmp/bin/UNTERMINATED"
+python3 "$root/bench/kalari-arm/runner.py" --offline-fixture --tools "$tmp/bin" --opencode "$tmp/bin/opencode" --api-host 127.0.0.1 --result "$tmp/unterminated" --timeout 5 >/dev/null
+python3 - "$tmp/unterminated/measures.json" <<'PYCODE'
+import json,sys
+m=json.load(open(sys.argv[1])); assert m['cutoff_reason']=='spend_cutoff' and m['completed_steps']==1 and m['estimated_step_cost_usd'] >= .20
 PYCODE
