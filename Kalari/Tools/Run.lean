@@ -1,1 +1,450 @@
-/-! The run_in_sandbox tool: the gate, the sandbox, and the checks. Stub. -/
+import Kalari.Evidence
+import Kalari.Gate
+import Kalari.Sandbox.Microsandbox
+import Std.Net.Addr
+import Std.Data.HashMap
+
+/-! Contained consumer runs and mandatory migration checks. -/
+
+namespace Kalari.Tools.Run
+
+open Lean Kalari.Model Kalari.Proc
+open Kalari.Sandbox
+
+private def guestWorkspace := "/workspace"
+private def supervisor := "/usr/local/bin/kalari-aashaan"
+private def artifactCap := 4 * 1024 * 1024
+
+/-- Session-owned inputs. Both workspace roots point to prepared consumer trees
+containing only files intended for the guest. The baseline is a separate,
+pristine tree and its command targets v1 of the same dataset. The consumer
+writes `artifact`, a JSONL file at the root of each guest workspace. None of
+these settings or the recalled checks come from the tool arguments. -/
+structure Context where
+  workspace : String
+  baseline : RunRequest
+  artifact : String
+  checks : List Check
+  maxCaps : Caps
+  allowedNet : List AllowHost
+  secrets : List String
+  image : String := Microsandbox.imageName
+  aashaanHost : String
+  evidence : Kalari.Evidence.Store
+  sessionId : String
+  changeKinds : List String
+
+/-- External operations can replay through the same orchestration as live runs. -/
+structure Runtime where
+  runner : Microsandbox.Runner
+  resolve : String → IO (List String)
+  wait : Nat → IO Unit := fun ms => IO.sleep ms.toUInt32
+
+/-- Run commands with the storage permissions msb expects and no inherited keys. -/
+def live (path : String) : Runtime :=
+  let run := Microsandbox.live path
+  { runner := fun argv =>
+      let argv := match argv with
+        | "msb" :: "exec" :: rest => ["msb", "exec", "--quiet", "--no-tty", "--no-stdin"] ++ rest
+        | _ => argv
+      run (["/bin/sh", "-c", "umask 022; exec \"$@\"", "sh"] ++ argv)
+    resolve := fun host => do
+      let result ← run ["getent", "ahostsv4", host] 5000 16384
+      if result.cap != .none || result.exitCode != some 0 then return []
+      let lines := ((String.fromUTF8? result.stdout).getD "").splitOn "\n"
+      return lines.map fun line => (line.splitOn " ").headD "" }
+
+structure Difference where
+  missing : Nat
+  extra : Nat
+  duplicates : Nat
+  changed : Nat
+  deriving BEq, Repr
+
+private abbrev Records := Std.HashMap String (Json × Nat)
+
+private def readRecords (data : String) : Except String Records := do
+  let mut records : Records := {}
+  for line in data.splitOn "\n" do
+    if !line.trimAscii.isEmpty then
+      let row ← (Json.parse line).mapError fun _ => "invalid JSONL record"
+      let id ← (row.getObjValAs? String "id").mapError fun _ => "record has no string ID"
+      if id.isEmpty then throw "record has an empty ID"
+      records := records.insert id (row, (records[id]?.map Prod.snd).getD 0 + 1)
+  return records
+
+/-- Compare full records by ID, counting duplicate deliveries beyond the first. -/
+def compareRecords (baseline candidate : String) : Except String Difference := do
+  let expected ← readRecords baseline
+  let actual ← readRecords candidate
+  unless expected.toList.all (fun (_, _, count) => count == 1) do
+    throw "v1 returned duplicate IDs"
+  let missing := expected.toList.countP fun (id, _) => !actual.contains id
+  let extra := actual.toList.countP fun (id, _) => !expected.contains id
+  let duplicates := actual.fold (fun n _ (_, count) => n + (count - 1)) 0
+  let changed := actual.toList.countP fun (id, record, _) =>
+    (expected[id]?.map fun (old, _) => old != record).getD false
+  return { missing, extra, duplicates, changed }
+
+private def Difference.passed (d : Difference) : Bool :=
+  d == ⟨0, 0, 0, 0⟩
+
+private def Difference.summary (d : Difference) : String :=
+  s!"{d.missing} missing, {d.extra} extra, {d.duplicates} duplicates, {d.changed} changed"
+
+private def differentialId := "differential-v1"
+
+private def permit (ctx : Context) (request : RunRequest) : Except String Unit := do
+  let (allowed, reason) := Gate.decide request ctx.maxCaps ctx.allowedNet ctx.secrets
+  unless allowed do throw s!"refused: {reason.getD "gate"}"
+  if request.command.isEmpty || request.command.headD "" == "" then throw "refused: empty command"
+  if request.caps.timeout_ms == 0 || request.caps.memory_mib == 0 then throw "refused: caps"
+  if (request.workspace :: request.command).any (·.contains '\x00') then throw "refused: invalid argument"
+
+private def admit (ctx : Context) (request : RunRequest) : Except String Unit := do
+  unless request.workspace == ctx.workspace do throw "refused: workspace"
+  permit ctx request
+  permit ctx ctx.baseline
+  if ctx.baseline.workspace == ctx.workspace then throw "setup: v1 requires a separate workspace"
+  unless Gate.segmentOk ctx.artifact && ctx.artifact.toList.all
+      (fun c => c.isAlphanum || c == '.' || c == '-' || c == '_') do
+    throw "setup: invalid JSONL artifact name"
+  for check in ctx.checks do
+    permit ctx { request with command := check.command }
+
+private def resolveAllowlist (runtime : Runtime) (hosts : List AllowHost) :
+    ExceptT String IO (List AllowHost) := do
+  let mut rules := []
+  for entry in hosts do
+    unless entry.port > 0 && entry.port <= 65535 && !entry.host.isEmpty &&
+        entry.host.toList.all (fun c => c.isAlphanum || c == '.' || c == '-') &&
+        !entry.host.startsWith "-" do
+      throw "setup: invalid API host or port"
+    let answers ← match Std.Net.IPv4Addr.ofString entry.host with
+      | some ip => pure [toString ip]
+      | none => runtime.resolve entry.host
+    let ips := answers.filterMap Std.Net.IPv4Addr.ofString
+    if ips.isEmpty then throw "setup: API host has no IPv4 address"
+    rules := rules ++ ips.map fun ip => { entry with host := toString ip }
+  return rules.eraseDups
+
+private def successful (v : Verdict) : Bool :=
+  v.verdict == "exited" && v.exit_code == some 0 && !v.pipe_held_open && !v.stdout_truncated
+
+private def summary (v : Verdict) : String :=
+  match v.verdict with
+  | "killed_timeout" => "The aashaan killed the run when it reached the time cap."
+  | "killed_output_cap" => "The aashaan killed the run when it reached the output cap."
+  | _ => s!"Exited with code {v.exit_code.getD 1}."
+
+private def scrub (secrets : List String) (s : String) : String :=
+  secrets.foldl (fun acc key => if key.isEmpty then acc else acc.replace key "[redacted]") s
+
+private def clip (bytes : Nat) (s : String) : String :=
+  let raw := s.toUTF8
+  if raw.size <= bytes then s
+  else ((List.range 4).findSome? fun n => String.fromUTF8? (raw.extract 0 (bytes - n))).getD ""
+
+private def execOk (backend : Kalari.Backend.SandboxBackend) (name stage : String)
+    (command : List String) : ExceptT String IO Result := do
+  let result : Except String Result ← liftM (backend.exec name command)
+  match result with
+  | .ok r =>
+    if r.cap == .none && r.exitCode == some 0 then return r
+    throw s!"sandbox {stage}: msb exec failed"
+  | .error _ => throw s!"sandbox {stage}: msb exec failed"
+
+private def guestArg (workspace arg : String) : String :=
+  if arg == workspace then guestWorkspace
+  else match arg.dropPrefix? (workspace ++ "/") with
+    | some suffix => guestWorkspace ++ "/" ++ suffix.toString
+    | none => arg
+
+private def supervise (backend : Kalari.Backend.SandboxBackend) (name : String)
+    (request : RunRequest) (secrets : List String) : ExceptT String IO Verdict := do
+  let args := request.command.map (guestArg request.workspace)
+  -- The Python image installs Python in /usr/local/bin, outside aashaan's PATH.
+  let args := if args.head? == some "python3" then "/usr/local/bin/python3" :: args.drop 1 else args
+  let r ← execOk backend name "supervisor" <|
+    [supervisor, toString request.caps.timeout_ms, toString request.caps.output_cap_bytes,
+     "/bin/sh", "-c", "cd /workspace && exec \"$@\"", "sh"] ++ args
+  let decoded : Except String Verdict := do
+    let some text := String.fromUTF8? r.stdout | throw "invalid UTF-8"
+    let v : Verdict ← Json.parse text >>= fromJson?
+    unless (v.verdict == "exited" && v.exit_code.isSome) ||
+      (["killed_timeout", "killed_output_cap"].contains v.verdict && v.exit_code.isNone) do
+      throw "invalid supervisor verdict"
+    return v
+  match decoded with
+  | .error _ => throw "sandbox supervisor: invalid verdict"
+  | .ok v =>
+    let capped := clip request.caps.output_cap_bytes ∘ scrub secrets
+    return { v with stdout := capped v.stdout, stderr := capped v.stderr }
+
+private structure Execution where
+  verdict : Verdict
+  artifact : Except String String
+  checks : List CheckResult
+
+private def readArtifact (backend : Kalari.Backend.SandboxBackend) (name path : String) :
+    ExceptT String IO String := do
+  -- Bound transfer independently of the log cap. The host never opens a guest-selected path.
+  let result ← execOk backend name "artifact"
+    ["/bin/sh", "-c", "test -f \"$1\" && test ! -L \"$1\" && exec head -c \"$2\" -- \"$1\"",
+     "sh", path, toString (artifactCap + 1)]
+  if result.stdout.size > artifactCap then throw "record artifact exceeds the size limit"
+  match String.fromUTF8? result.stdout with
+  | none => throw "record artifact is not UTF-8"
+  | some text => return text
+
+private def requireStep (stage : String) (result : Except String Result) : ExceptT String IO Unit :=
+  match result with
+  | .ok r =>
+    if r.cap == .none && r.exitCode == some 0 then pure ()
+    else throw s!"sandbox {stage} failed"
+  | .error _ => throw s!"sandbox {stage} failed"
+
+private def execute (runtime : Runtime) (ctx : Context) (name : String) (request : RunRequest)
+    (allow : List AllowHost) (checks : List Check) : ExceptT String IO Execution := do
+  -- The host deadline lets aashaan kill, collect pipes, and emit its verdict.
+  -- JSON can escape each byte of both logs as six bytes.
+  let backend := Microsandbox.make runtime.runner (request.caps.timeout_ms + 5000)
+    (4096 + 12 * request.caps.output_cap_bytes) ctx.image
+  let artifactBackend := Microsandbox.make runtime.runner 5000 (artifactCap + 1) ctx.image
+  requireStep "create" (← liftM (backend.create name request.caps allow))
+  let outcome : Except String Execution ← liftM <| try
+    let steps : ExceptT String IO Execution := do
+      requireStep "workspace copy" (← liftM (backend.copyIn name request.workspace guestWorkspace))
+      requireStep "supervisor copy" (← liftM (backend.copyIn name ctx.aashaanHost supervisor))
+      discard <| execOk backend name "overcommit" Microsandbox.overcommitCommand
+      discard <| execOk backend name "supervisor permissions" ["chmod", "755", supervisor]
+      let path := guestWorkspace ++ "/" ++ ctx.artifact
+      discard <| execOk backend name "clear stale artifact" ["rm", "-f", "--", path]
+      let verdict ← supervise backend name request ctx.secrets
+      let artifact : Except String String ← if successful verdict then liftM (readArtifact artifactBackend name path).run
+        else pure (.error "consumer did not complete successfully")
+      let results : List CheckResult ← checks.mapM fun (check : Check) => do
+        let detail ← if successful verdict then do
+          let checked : Except String Verdict ← liftM (supervise backend name { request with command := check.command } ctx.secrets).run
+          match checked with
+          | .ok v => pure (successful v, summary v)
+          | .error e => pure (false, e)
+        else pure (false, "Skipped because the consumer did not complete successfully.")
+        pure { check_id := check.id, passed := detail.1, detail := some detail.2 }
+      return { verdict, artifact, checks := results }
+    steps.run
+  catch _ =>
+    pure (.error "sandbox execution failed")
+  -- A successful exec leaves the microVM running. Plain remove refuses it.
+  let removed ← runtime.runner ["msb", "remove", "-f", name] Microsandbox.controlTimeoutMs 4096
+  requireStep "cleanup" (.ok removed)
+  match outcome with
+  | .ok result => return result
+  | .error e => throw e
+
+structure Report where
+  run_id : String
+  verdict : Verdict
+  checks : List CheckResult
+  passed : Bool
+  summary : String
+  deriving ToJson
+
+private def evidence (ctx : Context) (id kind : String) (payload : Json) : IO Unit :=
+  Kalari.Evidence.append ctx.evidence {
+    kind, session_id := ctx.sessionId, run_id := id, change_kinds := ctx.changeKinds, payload
+  }
+
+private def compareRun (runtime : Runtime) (ctx : Context) (name : String)
+    (allow : List AllowHost) (candidate : Execution) : IO CheckResult := do
+  let diff : Except String Difference ← match candidate.artifact with
+    | .error e => pure (.error e)
+    | .ok actual => do
+      let baseline ← (execute runtime ctx (name ++ "-v1") ctx.baseline allow []).run
+      pure <| do
+        let baseline ← baseline
+        let old ← baseline.artifact.mapError fun e => "v1: " ++ e
+        compareRecords old actual
+  return match diff with
+  | .ok d => { check_id := differentialId, passed := d.passed, detail := some d.summary }
+  | .error e => { check_id := differentialId, passed := false, detail := some e }
+
+/-- The exact MCP argument shape is `RunRequest`. Refusals happen before any
+runner, resolver, evidence append, or sandbox action. -/
+def run (runtime : Runtime) (ctx : Context) (request : RunRequest) : IO (Except String Report) :=
+  match admit ctx request with
+  | .error e => pure (.error e)
+  | .ok () => IO.FS.withTempDir fun dir => (do
+    let allow ← resolveAllowlist runtime request.allowlist
+    let baselineAllow ← resolveAllowlist runtime ctx.baseline.allowlist
+    let runId := dir.fileName.getD "run"
+    let name := "kalari-" ++ runId
+    requireStep "image pull" (← liftM (Microsandbox.ensureImage runtime.runner ctx.image 4096 runtime.wait))
+    let candidate ← execute runtime ctx name request allow ctx.checks
+    let diff ← compareRun runtime ctx name baselineAllow candidate
+    let checks := candidate.checks ++ [diff]
+    let record : RunRecord := {
+      request, verdict := candidate.verdict, checks := ctx.checks, check_results := checks
+      timings := { wall_ms := candidate.verdict.wall_ms }
+    }
+    evidence ctx runId "run" (toJson record)
+    for check in checks do
+      evidence ctx runId "check" (toJson check)
+    return {
+      run_id := runId, verdict := candidate.verdict, checks
+      passed := successful candidate.verdict && checks.all (·.passed)
+      summary := summary candidate.verdict
+    } : ExceptT String IO Report).run
+
+/-- Adapter for the service's MCP handler once session state is wired. -/
+def call (runtime : Runtime) (ctx : Context) (args : Json) : IO (Except String String) :=
+  match fromJson? args with
+  | .error _ => pure (.error "invalid sandbox request")
+  | .ok request => return (← run runtime ctx request).map (fun r => (toJson r).compress)
+
+
+private def verify (condition : Bool) (message : String) : IO Unit :=
+  unless condition do throw (.userError message)
+
+private def expectOk (value : Except String α) : IO α :=
+  match value with
+  | .ok result => pure result
+  | .error e => throw (.userError e)
+
+private def row (i : Nat) : String :=
+  (Json.mkObj [("id", toJson s!"P{i}"), ("amount", toJson (100 + i))]).compress ++ "\n"
+
+private def fixtureVerdict (kind : String) (code : Option Nat) (out : String := "") : Verdict :=
+  { verdict := kind, exit_code := code, stdout := out, stderr := "", wall_ms := 800
+    stdout_truncated := false, pipe_held_open := false, supervisor_peak_rss_kb := 5500
+    cgroup_memory_limit := 0 }
+
+private def fixtureResult (stdout : String := "") : Result :=
+  { cap := .none, exitCode := some 0, stdout := stdout.toUTF8, stderr := ByteArray.empty, wallMs := 1 }
+
+private def fixtureRuntime (calls : IO.Ref (List String)) (variant : String)
+    (caps : Caps) (truth duplicates : String) : Runtime where
+  resolve := fun host => do
+    verify (host == "api.example.test") "unexpected DNS query"
+    calls.modify (· ++ ["resolve"])
+    return ["203.0.113.10", "203.0.113.10"]
+  wait := fun _ => throw (.userError "unexpected image retry")
+  runner := fun argv timeout output => do
+    let (stage, reply) ← match argv with
+      | ["msb", "pull", image] =>
+        verify (image == Microsandbox.imageName) "wrong image pull"
+        pure ("pull", fixtureResult "")
+      | "msb" :: "create" :: "--name" :: name :: _ =>
+        verify (name.startsWith "kalari-") "sandbox name missing prefix"
+        verify (argv == Microsandbox.createArgv name caps.memory_mib
+          [{ host := "203.0.113.10", port := 18080 }]) "create lacks restricted network, image, or memory"
+        pure (if name.endsWith "-v1" then "create-v1" else "create-v2", fixtureResult "")
+      | ["msb", "copy", "-q", host, guest] =>
+        let baseline := guest.contains "-v1:"
+        let expected := if baseline then "/baseline" else "/candidate"
+        if host == "/trusted/aashaan" then
+          verify (guest.endsWith (":" ++ supervisor)) "supervisor copy target"
+          pure ("copy-supervisor", fixtureResult "")
+        else
+          verify (host == expected && guest.endsWith ":/workspace") "wrong workspace copy"
+          pure ("copy-workspace", fixtureResult "")
+      | "msb" :: "exec" :: name :: "--" :: cmd =>
+        if cmd == Microsandbox.overcommitCommand then pure ("overcommit", fixtureResult "")
+        else if cmd == ["chmod", "755", supervisor] then pure ("chmod", fixtureResult "")
+        else if cmd == ["rm", "-f", "--", "/workspace/payouts.jsonl"] then
+          pure ("clear", fixtureResult "")
+        else if cmd.head? == some supervisor then
+          verify (timeout > caps.timeout_ms && output > caps.output_cap_bytes) "no supervisor transport headroom"
+          verify (cmd.take 7 == [supervisor, toString caps.timeout_ms, toString caps.output_cap_bytes,
+            "/bin/sh", "-c", "cd /workspace && exec \"$@\"", "sh"]) "missing supervisor invocation"
+          let script ← match cmd.drop 7 with
+            | ["/usr/local/bin/python3", script] => pure script
+            | _ => throw (.userError "unexpected consumer argv")
+          let verdict ←
+            if name.endsWith "-v1" then do
+              verify (script == "/workspace/v1_unchanged.py") "wrong baseline consumer"
+              pure (fixtureVerdict "exited" (some 0))
+            else if script == "lesson.py" then
+              pure (fixtureVerdict "exited" (some (if variant == "no_dedupe" then 1 else 0)))
+            else do
+              verify (script == s!"/workspace/{variant}.py") "wrong candidate consumer"
+              pure <| if variant == "cursor_loop" then fixtureVerdict "killed_timeout" none
+                else fixtureVerdict "exited" (some 0) "synced payouts"
+          pure (if script == "lesson.py" then "lesson" else "consumer",
+            fixtureResult (toJson verdict).compress)
+        else if cmd.take 2 == ["/bin/sh", "-c"] &&
+            cmd.drop 3 == ["sh", "/workspace/payouts.jsonl", toString (artifactCap + 1)] then
+          verify (output == artifactCap + 1) "artifact transfer is unbounded"
+          let data := if name.endsWith "-v1" || variant != "no_dedupe" then truth else duplicates
+          pure ("artifact", fixtureResult data)
+        else throw (.userError "unexpected exec")
+      | ["msb", "remove", "-f", name] =>
+        pure (if name.endsWith "-v1" then "remove-v1" else "remove-v2", fixtureResult "")
+      | _ => throw (.userError "unexpected msb command")
+    calls.modify (· ++ [stage])
+    return reply
+
+private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
+  let store ← Kalari.Evidence.openStore dir
+  let caps : Caps := { timeout_ms := 800, output_cap_bytes := 64, memory_mib := 256 }
+  let allow : List AllowHost := [{ host := "api.example.test", port := 18080 }]
+  let req : RunRequest := { workspace := "/candidate", command := [], caps, allowlist := allow }
+  let ctx : Context := {
+    workspace := req.workspace
+    baseline := { req with workspace := "/baseline", command := ["python3", "/baseline/v1_unchanged.py"] }
+    artifact := "payouts.jsonl"
+    checks := [{ id := "exactly-once", assertion := "Each ID appears once", command := ["python3", "lesson.py"] }]
+    maxCaps := caps, allowedNet := allow, secrets := [], aashaanHost := "/trusted/aashaan"
+    evidence := store, sessionId := "test-session", changeKinds := ["pagination_changed"]
+  }
+  let truth := String.join ((List.range 2431).map row)
+  let duplicateRows := String.join ((List.range 24).map fun i => row ((i + 1) * 99))
+  for variant in ["cursor_loop", "no_dedupe", "correct"] do
+    let calls ← IO.mkRef []
+    let runtime := fixtureRuntime calls variant caps truth (truth ++ duplicateRows)
+    let request := { req with command := ["python3", s!"/candidate/{variant}.py"] }
+    let text ← expectOk (← call runtime ctx (toJson request))
+    let payload ← expectOk (Json.parse text)
+    let id ← expectOk (payload.getObjValAs? String "run_id")
+    let verdict ← expectOk (payload.getObjValAs? Verdict "verdict")
+    let checks ← expectOk (payload.getObjValAs? (List CheckResult) "checks")
+    let passed ← expectOk (payload.getObjValAs? Bool "passed")
+    let current ← calls.get
+    let setup := ["copy-workspace", "copy-supervisor", "overcommit", "chmod", "clear", "consumer"]
+    let first := ["resolve", "resolve", "pull", "create-v2"] ++ setup
+    let [lesson, diff] := checks | throw (.userError "expected both checks")
+    verify (lesson.check_id == "exactly-once" && diff.check_id == differentialId) "wrong check IDs"
+    if variant == "cursor_loop" then
+      verify (verdict.verdict == "killed_timeout" && !passed && !lesson.passed && !diff.passed) "cursor_loop outcome"
+      verify (current == first ++ ["remove-v2"]) "timeout ran checks, retrieved artifact, or leaked sandbox"
+      let message ← expectOk (payload.getObjValAs? String "summary")
+      verify (message == "The aashaan killed the run when it reached the time cap.") "timeout message"
+    else
+      let expected := variant == "correct"
+      verify (verdict.verdict == "exited" && verdict.exit_code == some 0) "consumer did not exit successfully"
+      verify (passed == expected && lesson.passed == expected && diff.passed == expected) "wrong checks verdict"
+      let duplicateCount := if expected then 0 else 24
+      verify (diff.detail == some s!"0 missing, 0 extra, {duplicateCount} duplicates, 0 changed") "wrong differential counts"
+      verify (current == first ++ ["artifact", "lesson", "remove-v2", "create-v1"] ++ setup ++
+        ["artifact", "remove-v1"]) "incorrect baseline/lesson lifecycle"
+    let records := Kalari.Evidence.byRun (← Kalari.Evidence.load store) id
+    verify (records.map (·.kind) == ["run", "check", "check"]) "run/check evidence missing"
+    IO.println s!"run {variant}: {verdict.verdict}, passed={passed}, {diff.detail.getD ""}"
+  let calls ← IO.mkRef []
+  let denied := { req with command := ["python3", "correct.py"], allowlist := [{ host := "other.test", port := 18080 }] }
+  let rejected ← run (fixtureRuntime calls "correct" caps truth truth) ctx denied
+  verify ((rejected matches .error "refused: allowlist") && (← calls.get).isEmpty) "refusal reached runtime"
+  verify ((← Kalari.Evidence.load store).records.length == 9) "refusal wrote evidence"
+  IO.println "run refused: allowlist, runner and resolver calls=0, no evidence appended"
+
+#guard (compareRecords
+  "{\"id\":\"A\",\"amount\":2}\n{\"id\":\"B\",\"amount\":4}\n"
+  "{\"id\":\"A\",\"amount\":1}\n{\"id\":\"C\",\"amount\":5}\n").toOption ==
+  some ⟨1, 1, 0, 1⟩
+
+#guard (compareRecords "{\"id\":\"A\",\"amount\":2}\n" "{\"amount\":2,\"id\":\"A\"}\n").toOption ==
+  some ⟨0, 0, 0, 0⟩
+
+#eval exercise
+
+end Kalari.Tools.Run

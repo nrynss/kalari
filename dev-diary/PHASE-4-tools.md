@@ -72,13 +72,17 @@ requires:   [T4.1, T4.2, T2.1, T2.3, T2.6]
 fixture-ok: yes
 size:       L · frontier
 owns:       Kalari/Tools/Run.lean
-status:     claimed:gpt-6.1-sol
+status:     in-review
 ```
 The agent's code, run safely and checked: the gate; the Microsandbox backend with caps and an allowlist of the API hosts; the aashaan's verdict; then **the checks**: every recalled lesson's check, and the **differential check against v1** (bench/README.md): run the consumer's v1 version against the v1 API and its new version against v2 on the same data, compare the record sets (none missing, none extra, each exactly once, **each equal to v1's version**: an ID check alone passes a consumer that keeps the first, stale copy of an amended settlement), and report the difference in plain numbers. The result back to the agent: the verdict, each check's result, and logs, capped.
 
 A run that hangs is killed by the aashaan, and the agent is told so in one line. That's the containment moment.
 
 **Done when:** against fakes, each payouts reference consumer (T0.2) gets the right verdict and check results: `cursor_loop` killed by the cap, `no_dedupe` failing exactly-once with 24 duplicates, `correct` passing; a refused request never reaches the backend.
+
+**Notes (in review):** `Kalari.Tools.Run.call` accepts the existing MCP `RunRequest` shape. Its trusted session context provides the prepared consumer workspace, separate pristine v1 workspace and command, expected JSONL filename, recalled checks, caps, allowed endpoints, key values to exclude, and evidence indexes. The gate runs on the candidate, baseline and each check before DNS or backend calls. The implementation uses the Microsandbox backend with a resolved IPv4 allowlist, configured image, guest overcommit setup, and forced removal. The aashaan's timeout and output cap are distinct from the bounded host transport budget so the supervisor can return its final verdict. After a successful consumer exit, the backend reads a bounded regular-file artifact through guest exec before running lesson checks. A hung consumer skips the artifact and checks and returns the aashaan verdict with a one-line explanation. The differential comparison uses full JSON records and reports counts of missing IDs, extra IDs, duplicate deliveries and changed records. The v1 and v2 consumers run in separate microVMs. Wiring the adapter and trusted session context into the service is T4.7.
+
+The build-time fake replay uses the three payouts consumer commands with 2,431 IDs and the 24 boundary overlaps. It verifies the exact network and supervisor arguments, that a timed-out consumer skips checks and artifact collection, forced cleanup, the recalled check and differential outcomes, run and check evidence, and zero backend or DNS effects for a refusal. Comparator guards exercise changed content under the same ID, missing and extra IDs, and JSON object field ordering. The standard gate also runs the actual reference consumers against the benchmark API fixtures. This task performed no live sandbox run.
 
 ---
 
