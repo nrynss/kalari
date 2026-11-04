@@ -42,10 +42,17 @@ if not 1 <= a.timeout <= 1200:
     p.error('timeout must be 1..1200 seconds')
 a.result.mkdir(mode=0o700, parents=True, exist_ok=False)
 result = a.result.resolve(strict=True)
-env = os.environ.copy()
-env.pop('VULTR_INFERENCE_API_KEY', None)
-env['PATH'] = str(tools) + ':/usr/local/bin:/usr/bin:/bin'
-env['VULTR_INFERENCE_API_KEY'] = 'offline-fixture-invalid-key'
+# Fixture subprocesses receive a small, explicit environment. This is not a
+# network sandbox: the marker only establishes that this is trusted test data.
+env = {
+    'PATH': str(tools) + ':/usr/local/bin:/usr/bin:/bin',
+    'HOME': str(Path.home()),
+    'LANG': 'C.UTF-8',
+    'LC_ALL': 'C.UTF-8',
+    'KALARI_OFFLINE_FIXTURE': '1',
+    'VULTR_INFERENCE_API_KEY': 'offline-fixture-invalid-key',
+    'MSB_LOG': str(a.result.parent / 'msb.log'),
+}
 # A separate temporary workspace prevents raw event and credential material
 # from being published. Only redacted, structured events reach result/.
 
@@ -90,20 +97,34 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
     with events.open('wb') as out, stderr.open('wb') as err:
         proc = subprocess.Popen([str(opencode), 'run', '--standalone', '--format', 'json', '--auto', prompt], cwd=workspace, env=env, stdout=out, stderr=err, start_new_session=True)
         timed_out = False
+        interrupted = {'signal': None}
+        old_handlers = {}
+        def stop_group(signum, _frame):
+            interrupted['signal'] = signum
+            try: os.killpg(proc.pid, signal.SIGTERM)
+            except ProcessLookupError: pass
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            old_handlers[sig] = signal.signal(sig, stop_group)
         try:
-            rc = proc.wait(timeout=a.timeout)
-        except subprocess.TimeoutExpired:
-            timed_out = True
-            os.killpg(proc.pid, signal.SIGTERM)
             try:
-                rc = proc.wait(timeout=5)
+                rc = proc.wait(timeout=a.timeout)
             except subprocess.TimeoutExpired:
-                os.killpg(proc.pid, signal.SIGKILL)
-                rc = proc.wait()
+                timed_out = True
+                try: os.killpg(proc.pid, signal.SIGTERM)
+                except ProcessLookupError: pass
+                try:
+                    rc = proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    try: os.killpg(proc.pid, signal.SIGKILL)
+                    except ProcessLookupError: pass
+                    rc = proc.wait()
         finally:
             # Reap any descendants still in this session's process group.
             try: os.killpg(proc.pid, signal.SIGKILL)
             except ProcessLookupError: pass
+            for sig, handler in old_handlers.items(): signal.signal(sig, handler)
+        if interrupted['signal'] is not None:
+            raise SystemExit(128 + interrupted['signal'])
     elapsed = time.monotonic() - start
     bad = 0
     with (result/'transcript.jsonl').open('w') as out:

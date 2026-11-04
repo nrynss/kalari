@@ -45,8 +45,12 @@ helpers do not supply a request-time guard for both paths.
 
 `runner.py --offline-fixture` exercises preparation, fixture Lambo seeding,
 standalone OpenCode, redacted structured event capture, grading, and process
-group cleanup with fake executables. `test-offline.sh` supplies those fakes and
-checks all five named tool events, redaction, grader invocation and removal.
+group cleanup with fake executables. The runner gives subprocesses a small,
+explicit fixture environment instead of inheriting the caller's environment.
+The fixture marker and loopback check are test guards only; they do not provide
+a network sandbox. Run only trusted fixture binaries and trusted fixture data.
+`test-offline.sh` supplies those fakes and checks all five named tool events,
+redaction, grader invocation and removal.
 The runner deliberately rejects live execution until the shared budget guard is
 implemented. Its offline transcript and grade are fixture evidence only. The
 runner does not yet collect the first-v2 snapshot, account-wide usage delta, or
