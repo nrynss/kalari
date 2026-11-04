@@ -112,7 +112,7 @@ requires:   [T4.5]
 fixture-ok: yes
 size:       M · frontier
 owns:       bench/apis/payouts/server.py, bench/tests/quirks.sh, Kalari/Tools/Run.lean (observer seam)
-status:     in-review
+status:     done
 ```
 Capture bounded, host-owned page-response metadata from a dedicated payouts API instance for a verified candidate run. Bind observations to the run and derive boundary overlap and final-page token presence from a cursor-linked trace. Record only what the API sent. A passing result on identical payout overlaps does not establish last-delivery-wins behavior.
 
