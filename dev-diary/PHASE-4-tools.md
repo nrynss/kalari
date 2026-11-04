@@ -161,6 +161,8 @@ Wire the five MCP tools through a shared trusted session, evidence store, and le
 
 The executable serves a single trusted session with shared evidence and writer; model arguments cannot override trusted paths and limits. Observer configuration is rejected until exclusive guest source isolation can be verified. The offline executable self-test reaches all five routes over stdio and verifies EOF shutdown; sandbox and lesson checks cover refusals, not successful end-to-end runs. The fixture uses the same dispatcher with injected backends.
 
+**Remediation notes:** Startup validation rejects dot-prefixed artifacts, empty baseline executables, NUL-containing baseline arguments, workspace paths that resolve to files, trusted executable/spec paths that resolve to directories, and overlapping workspace roots; fixture cases cover each. The executable stdio path now passes successful `run_in_sandbox` and `record_lesson` calls through the shared dispatcher, injected runtime, shared evidence store and shared lesson writer. A real local fake Lambo child completes an MCP receipt exchange; the fixture closes the client and verifies the child PID no longer exists. `./tools/check.sh` and `.lake/build/bin/kalari --offline-self-test` pass.
+
 ---
 
 ### T4.7: Kalari with OpenCode ★

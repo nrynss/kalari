@@ -530,7 +530,7 @@ private def fixtureResult (stdout : String := "") : Result :=
 private def fixtureFailure (stderr : String) : Result :=
   { (fixtureResult "") with exitCode := some 1, stderr := stderr.toUTF8 }
 
-private def fixtureRuntime (calls : IO.Ref (List String)) (variant : String)
+def fixtureRuntime (calls : IO.Ref (List String)) (variant : String)
     (caps : Caps) (truth duplicates : String) (tampered existsRef : IO.Ref Bool) : Runtime where
   resolve := fun host => do
     verify (host == "api.example.test") "unexpected DNS query"

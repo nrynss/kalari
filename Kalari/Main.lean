@@ -25,20 +25,20 @@ def offlineSelfTest : IO Unit := do
   let requests := [request 1 "what_changed" (obj [("old_spec", "old"), ("new_spec", "new")]),
     request 2 "blast_radius" (obj [("change_ids", Lean.toJson ([] : List String))]),
     request 3 "recall_lessons" (obj [("change_kinds", Lean.toJson (["pagination_changed"] : List String))]),
-    request 4 "run_in_sandbox" (obj [("workspace", "/wrong"), ("command", Lean.toJson (["true"] : List String)), ("caps", caps), ("allowlist", Lean.toJson ([] : List String))]),
-    request 5 "record_lesson" (obj [("run_id", "missing")])]
+    request 4 "run_in_sandbox" (obj [("workspace", "/candidate"), ("command", Lean.toJson (["python3", "/candidate/correct.py"] : List String)), ("caps", caps), ("allowlist", Lean.toJson ([obj [("host", "api.example.test"), ("port", Lean.toJson (18080 : Nat))]] : List Lean.Json))]),
+    request 5 "record_lesson" (obj [("run_id", "latest")])]
   let path ← IO.appPath
   let result ← Kalari.Proc.run [path.toString, "--offline-fixture"] (stdin := some (String.intercalate "\n" requests ++ "\n").toUTF8) (timeoutMs := 10000) (outputCap := 65536)
   unless result.exitCode == some 0 && result.cap == .none do throw <| .userError "fixture process failed"
   let text := (String.fromUTF8? result.stdout).getD ""
   let lines := (text.splitOn "\n").filter (!·.isEmpty)
   unless lines.length == 5 do throw <| .userError "fixture response count"
-  for (line, expected) in lines.zip [false, false, false, true, true] do
+  for (line, expected) in lines.zip [false, false, false, false, false] do
     let json ← IO.ofExcept (Lean.Json.parse line)
     let value ← IO.ofExcept (json.getObjVal? "result")
     unless (value.getObjValAs? Bool "isError").toOption == some expected do
       throw <| .userError "fixture response status"
-  unless text.contains "pagination_changed" && text.contains "refused: workspace" && text.contains "expected one run record" do
+  unless text.contains "pagination_changed" && text.contains "passed" && text.contains "last value by ID" do
     throw <| .userError "fixture response content"
   IO.println "offline executable dispatcher: five handlers passed"
 
