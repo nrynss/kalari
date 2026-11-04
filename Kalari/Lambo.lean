@@ -145,6 +145,9 @@ structure Lesson where
   stale : Bool
   deriving Repr, BEq
 
+private def isConstraintLabel (label : String) : Bool :=
+  label.endsWith " [Constraint]" || label.endsWith " [Constraint, candidate]"
+
 private def hasContradiction (j : Json) : Except String Bool := do
   let focus ← field j "focus"
   let levels ← arr focus "levels"
@@ -165,7 +168,7 @@ def lessons (c : Client) (changeKind : String) : IO (List Lesson) := do
   for dep in deps do
     let edge ← IO.ofExcept (str dep "edge_type")
     let label ← IO.ofExcept (str dep "label")
-    if edge == "Dependency" && label.contains "[Constraint" then
+    if edge == "Dependency" && isConstraintLabel label then
       let id ← IO.ofExcept (str dep "node_id")
       let stale ← IO.ofExcept (hasContradiction (← inspect c id))
       found := found ++ [{ id := id, label := label, stale := stale }]
@@ -196,13 +199,100 @@ private def fixtureChecks : IO Unit := do
       match (arr focus "dependents").toOption with
       | some deps => deps.any fun d =>
         (str d "edge_type").toOption == some "Dependency" &&
-        ((str d "label").toOption.getD "").contains "[Constraint]"
+        isConstraintLabel ((str d "label").toOption.getD "")
       | none => false
     | none => false
   let contradicted := (structuredResponses (include_str "../testdata/lambo/against.jsonl")).any fun j =>
     (hasContradiction j).toOption == some true
   unless ack && applied && change && contradicted do
     throw <| .userError "Lambo recorded response checks failed"
+
+  unless isConstraintLabel "lesson [Constraint]" &&
+      isConstraintLabel "lesson [Constraint, candidate]" &&
+      !isConstraintLabel "free text [Constraint] in the middle [Observation]" &&
+      !isConstraintLabel "lesson [Constraint-ish]" do
+    throw <| .userError "Lambo lesson type suffix checks failed"
+
+/-! The frozen `Backend.MemoryClient` is intentionally lossy. Its adapter treats
+`derive` and `against` as observation writes, `inspect` as direct dependent IDs,
+and `recall` as IDs found among recall hits. Product flows that need typed
+resources, constraints, citations, or stale status use `Client` directly. -/
+
+private def dependentIds (g : Json) : IO (List String) := do
+  let focus ← IO.ofExcept (field g "focus")
+  let deps ← IO.ofExcept (arr focus "dependents")
+  return deps.toList.filterMap fun d => (str d "node_id").toOption
+
+private def recallIds (g : Json) : IO (List String) := do
+  let hits ← IO.ofExcept (arr g "hits")
+  return hits.toList.filterMap fun h => (str h "node_id").toOption
+
+/-- Lossy frozen-interface adapter. Each string write is an observation. -/
+def memoryClient (config : Kalari.Config.Lambo) : IO Kalari.Backend.MemoryClient := do
+  let c ← create config
+  return {
+    derive := fun content => do
+      try return .ok (← derive c "observation" content)
+      catch e => return .error e.toString
+    inspect := fun focus => do
+      try return .ok (← dependentIds (← inspect c focus))
+      catch e => return .error e.toString
+    «recall» := fun query => do
+      try return .ok (← recallIds (← «recall» c query))
+      catch e => return .error e.toString
+    against := fun focus => do
+      try return .ok (← derive c "observation" s!"against: {focus}" [] [focus])
+      catch e => return .error e.toString
+  }
+
+private def transcriptServer : String := String.intercalate "\n" [
+  "import json, sys",
+  "rows = [json.loads(x) for x in open(sys.argv[1]) if x.strip()]",
+  "responses = {}; pending = None",
+  "for row in rows:",
+  "    if row['dir'] == 'out': pending = row['msg']",
+  "    elif pending is not None:",
+  "        method = pending.get('method')",
+  "        if method == 'initialize': responses.setdefault('initialize', []).append(row['msg'])",
+  "        elif method == 'tools/call': responses.setdefault(pending.get('params', {}).get('name'), []).append(row['msg'])",
+  "        pending = None",
+  "positions = {}",
+  "for line in sys.stdin:",
+  "    request = json.loads(line); method = request.get('method')",
+  "    if method == 'notifications/initialized': continue",
+  "    key = 'initialize' if method == 'initialize' else request.get('params', {}).get('name') if method == 'tools/call' else None",
+  "    choices = responses.get(key, [])",
+  "    if not choices: continue",
+  "    i = 0 if key == 'lambo_stats' else positions.get(key, 0); source = dict(choices[min(i, len(choices)-1)])",
+  "    positions[key] = i + 1; source['id'] = request.get('id')",
+  "    print(json.dumps(source, separators=(',', ':')), flush=True)" ]
+
+private def replayConfig (transcript : String) : Kalari.Config.Lambo :=
+  { command := ["python3", "-c", transcriptServer, transcript], config_path := "testdata/lambo/lambo.toml" }
+
+private def childReplayChecks : IO Unit := do
+  let c ← create (replayConfig "testdata/lambo/receipt.jsonl")
+  let receipt ← derive c "resource" "pagination_changed"
+  let _ ← awaitReceipt c receipt
+  let _ ← write c "constraint"
+      "When a list endpoint starts paging, follow next_page_token until absent; every record imported exactly once. check: chk-paging-001"
+      ["pagination_changed"]
+  let found ← lessons c "pagination_changed"
+  unless found.any (·.label.contains "chk-paging-001") do
+    throw <| .userError "Lambo child transcript did not return the written lesson"
+  shutdown c
+  let restartedReceipt ← derive c "observation" "run after clean child restart"
+  let _ ← awaitReceipt c restartedReceipt
+  shutdown c
+  let c2 ← create (replayConfig "testdata/lambo/against.jsonl")
+  let changed ← write c2 "observation" "run r-004: contradictory outcome" [] ["36b116fe"]
+  let receiptState ← IO.ofExcept (str changed "state")
+  unless receiptState == "applied" do throw <| .userError "Lambo contradiction transcript receipt missing"
+  let stale ← IO.ofExcept (hasContradiction (← inspect c2 "36b116fe"))
+  unless stale do throw <| .userError "Lambo child transcript omitted contradiction edge"
+  shutdown c2
+
+#eval childReplayChecks
 
 #eval fixtureChecks
 
