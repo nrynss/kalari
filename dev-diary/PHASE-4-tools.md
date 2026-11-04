@@ -146,9 +146,23 @@ The build fixture covers candidate-versus-truth acceptance/rejection, separate p
 
 ---
 
-### T4.7: Kalari with OpenCode ★
+### T4.7a: Wire the Kalari MCP service ★
 ```yaml
 requires:   [T4.3, T4.4, T4.5, T4.6]
+fixture-ok: yes
+size:       M · frontier
+owns:       Kalari/Main.lean, Kalari/Service.lean
+status:     claimed:gpt-6.1-terra
+```
+Wire the five MCP tools through a shared trusted session, evidence store, and lesson writer. Keep model-controlled inputs separate from trusted runtime setup.
+
+**Done when:** the service dispatches all five tools through the executable stdio path against offline fixtures, validates trusted configuration and cleans up child resources on shutdown.
+
+---
+
+### T4.7: Kalari with OpenCode ★
+```yaml
+requires:   [T4.7a]
 fixture-ok: no
 size:       S · mid
 owns:       bench/kalari-arm/
