@@ -37,6 +37,22 @@ Surprises:
 
 ---
 
+### T3.1a: Vimanam runner on 2.1.0
+```yaml
+requires:   [T3.1, T0.6]
+fixture-ok: yes
+size:       S · mid
+owns:       Kalari/Vimanam.lean, testdata/vimanam/
+status:     not-started
+```
+Move the runner and its checks from the 2.0.0/`main` recordings to `testdata/vimanam/2.1.0/` (T0.6). Handle `operation_moved` (its old and new paths, with the inner changes attributed to the new path). The checks assert **`pagination_changed` on both benchmark specs**, with the IDs recorded. Then delete the 2.0.0 recordings that nothing replays any more (keep `probes/` as history).
+
+**`--context` is GraphQL-only in 2.1.0.** For the REST upgrade, choose and record another source of focused context for `what_changed` (for example Vimanam's OpenAPI rendering with a token budget, `--overview-max-tokens`), or show the change facts alone, and say why.
+
+**Done when:** the checks replay the 2.1.0 recordings and see `pagination_changed` on both specs; a moved operation's facts parse; the REST context choice is recorded in `research/vimanam.md`.
+
+---
+
 ### T3.2: Lambo client ★
 ```yaml
 requires:   [T1.5, T0.4]

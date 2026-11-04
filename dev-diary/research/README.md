@@ -15,6 +15,6 @@ Measured before any Kalari code, on the real accounts and the real VM. Each file
 
 The reference run's task (a paging upgrade with a hidden grader) is in [`../../bench/reference-paging/`](../../bench/reference-paging/README.md).
 
-**Versions measured:** Lean 4.35.0, Microsandbox (`msb`, `microsandbox-mcp`) 0.7.13, Lambo 0.8.0, Vimanam 2.0.0 (and `main` for GraphQL, which 2.0.0 lacks), OpenCode 2.2.5, vultr-cli 3.11.0, Ubuntu 24.04.5 with kernel 6.8.0. A finding may not hold on another version: re-measure before relying on it.
+**Versions measured:** Lean 4.35.0, Microsandbox (`msb`, `microsandbox-mcp`) 0.7.13, Lambo 0.8.0, Vimanam 2.1.0 (2.0.0 earlier; it lacked GraphQL), OpenCode 2.2.5, vultr-cli 3.11.0, Ubuntu 24.04.5 with kernel 6.8.0. A finding may not hold on another version: re-measure before relying on it.
 
 Placeholders: `<vm-public-ip>`, `<vm-tailnet-ip>`, `<laptop-ip>`, `<instance-id>`, `<firewall-group-id>`, `<ssh-key-id>`. The real values are kept outside this public repository.

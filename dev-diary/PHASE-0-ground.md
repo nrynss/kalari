@@ -60,11 +60,15 @@ requires:   [T0.3]
 fixture-ok: no
 size:       S · mid
 owns:       testdata/vimanam/, dev-diary/research/vimanam.md
-status:     blocked
+status:     done
 ```
 Blocked on a Vimanam release that fixes [vimanam#136](https://github.com/noemaforge/vimanam/issues/136)–[#139](https://github.com/noemaforge/vimanam/issues/139) (user decision: wait for Vimanam; the specs stay as built). Re-run T0.3's diffs on it, and the matrices in the issues. Re-record `testdata/vimanam/`.
 
 **Done when:** `pagination_changed` is reported on both workspaces' specs as built, with the change IDs recorded; if one is still missed, the gap is reported back on its issue and this task stays blocked.
+
+---
+
+**Notes (done):** Vimanam 2.1.0 released with all four issues closed. Both specs as built report `pagination_changed` (payouts after `operation_moved`; settlements as a `nodes` Relay connection). Matrices: 5/5, 17/17, 5/5. Recordings in `testdata/vimanam/2.1.0/`; the 2.0.0 ones stay for T3.1's checks until T3.1a. `--context` is GraphQL-only.
 
 ---
 
@@ -108,6 +112,6 @@ What later tasks replay instead of calling the real thing:
 
 - [x] T0.1, T0.2 done.
 - [x] Vimanam's verdict on the benchmark specs is known (T0.3).
-- [ ] Vimanam re-checked on its next release (T0.6).
+- [x] Vimanam re-checked on its next release (T0.6).
 - [ ] Lambo re-checked on its next release (T0.4).
 - [x] Clef, msb, OpenCode and aashaan recordings in `testdata/` (T0.5).

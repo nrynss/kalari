@@ -42,6 +42,21 @@ A connection exposing `nodes: [T!]!` and `pageInfo`, with `first`/`after`, is a 
 
 **Also:** a release including #133, so a GraphQL-capable Vimanam can be a declared dependency rather than a build of `main`. Bumping the version on `main` past 2.0.0 would also stop the two from being confused.
 
+## Vimanam 2.1.0: both specs detected, as built (T0.6)
+
+Released with fixes for all four issues (closed). On the benchmark specs, **unchanged**:
+
+| Spec | Change kinds | `pagination_changed` |
+|---|---|---|
+| Payouts (OpenAPI) | `operation_moved`, `operation_renamed`, `argument_added` ×2, `field_added` ×2, `field_required_changed` ×2, `result_added`, `type_added`, `pagination_changed` | **Yes**: `pagination_inferred`, continuation `cursor` marked generic, end flag `drained` as evidence |
+| Settlements (GraphQL) | `argument_added` ×2, `type_added` ×2, `field_type_changed`, `pagination_changed` | **Yes**: `RELAY_CONNECTION_ADOPTED`, `declared`, `connection_fields: "nodes"` |
+
+The issue matrices on 2.1.0: version prefixes 5/5 (as `operation_moved` with the inner changes, `--exact-paths` restores exact matching), continuation fields 17/17 including nested ones, Relay connections 5/5 with `nodes` (the two controls still not detected). Recordings in `testdata/vimanam/2.1.0/`.
+
+**New limit: `--context` is GraphQL-only** ("OpenAPI and protobuf diffs do not support it"), so the REST upgrade's focused context for the agent has to come from elsewhere (T3.1a decides: Vimanam's OpenAPI rendering with a token budget is one candidate).
+
+**Kalari depends on Vimanam 2.1.0.** Built with `cargo install vimanam --version 2.1.0 --locked`.
+
 ## Decided: wait for Vimanam
 
 **The specs stay as built**, and Kalari waits for Vimanam to detect them (#136–#139) rather than bending the benchmark to today's rules. The pilot (T5.2) runs only once a Vimanam release reports `pagination_changed` on both workspaces, so the specs the baseline is measured on are the ones the Kalari arm reads. Re-record `testdata/vimanam/` on that release.

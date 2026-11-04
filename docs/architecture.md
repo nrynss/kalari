@@ -105,7 +105,7 @@ The Lean patterns for each module above (HTTP server, JSON, JSON-RPC over stdio,
 | Dependency | How | Why |
 |---|---|---|
 | Lean 4.35.0 + Std | Toolchain | The executables and the proofs |
-| Vimanam | CLI subprocess | Change facts across OpenAPI and protobuf (2.0.0) and GraphQL (`main`, unreleased), including `pagination_changed` within the limits in `dev-diary/research/vimanam.md` |
+| Vimanam 2.1.0 | CLI subprocess | Change facts across OpenAPI, GraphQL and protobuf, including `pagination_changed` and moved operations. Focused context (`--context`) is GraphQL-only |
 | Lambo | `lambo serve`, MCP over stdio | Lessons, links, canonization, staleness |
 | Microsandbox (`msb`) | CLI subprocess | microVMs with their own kernel and a network policy |
 | `curl` | Subprocess | Outbound HTTPS (Lean has no HTTP client or TLS) |
