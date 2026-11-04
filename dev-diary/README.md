@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0 done: Vimanam 2.1.0 (T0.6) and Lambo 0.9.0 (T0.4) landed. P1 done; P2 7/7; P3 6/7. T2.6 done. T3.1a done. T3.3b done. T3.2 done. T4.1 done. T4.2 done. The run continues through P3, then P4, then P5. T5.1 claimed. Ready: none until T3.2, T4.1, or T4.2 lands. Live spend is approved, including the pilot (T5.2, about $16) and T3.2b and T3.3b (each under $0.01). Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
+**Current status:** P0 done. P1 done. P2 7/7. P3 6/7. P4 6/9. P5 0/6. T3.2b and T5.1 claimed. T4.6 claimed by another orchestrator. T4.5b ready. T4.7 waits for T4.6. T6.1 ready. Live spend is approved, including the pilot (T5.2, about $16) and T3.2b (under $0.01). Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
 
 ---
 
@@ -142,16 +142,17 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P0 | 6 / 6 | All done |
 | P1 | 5 / 5 | T1.1 through T1.5 done |
 | P2 | 7 / 7 | T2.1 through T2.6 done. The Microsandbox-only exit line stays open because the Docker fallback exists |
-| P3 | 6 / 7 | T3.1, T3.1a, T3.3, T3.3b and T3.4 done. T3.2 done. T3.2b ready |
-| P4 | 0 / 8 | T4.1 and T4.2 claimed by another orchestrator. T4.5 waits for those |
+| P3 | 6 / 7 | T3.1, T3.1a, T3.2, T3.3, T3.3b and T3.4 done. T3.2b claimed |
+| P4 | 6 / 9 | T4.1 through T4.5 and T4.6a done. T4.6 claimed by another orchestrator. T4.5b ready. T4.7 waits for T4.6 |
 | P5 | 0 / 6 | T5.1 claimed. T5.2 (pilot) waits for T5.1. The spend is approved |
-| P6 | 0 / 3 | Waits for T4.2 |
+| P6 | 0 / 3 | T6.1 ready. T6.2 waits for T6.1 |
 | P7 | 0 / 4 | Waits for P5, P6 |
 
 ---
 
 ## Handoff Log
 
+- **T3.2b claimed.** Live Lambo client: a fresh store, the payouts lesson, three citing runs, then Solo promotion to Candidate. Budget under $0.01.
 - **T4.4 closed.** Terra implemented and reviewed recall. Luna made linked lesson references resolve through typed evidence, with explicit errors for missing or ambiguous required checks. T4.6 writes the versioned reference documented in Recall.lean.
 
 - **T4.5 closed.** Sol implemented the run pipeline, Terra reviewed, and Luna isolated lesson checks in fresh guests and added cleanup for ambiguous creates. All six payouts cases replay offline. T4.7 supplies a distinct host-owned check workspace.

@@ -92,7 +92,7 @@ requires:   [T3.2]
 fixture-ok: no
 size:       S · mid
 owns:       tests/live/lambo.sh
-status:     not-started
+status:     claimed:grok-impl
 ```
 A fresh store, `lambo provision`, the client writing the payouts lesson and three citing runs, then reading it back by change kind, then the Solo promotion after the 60 s age floor and one canonization cycle.
 
