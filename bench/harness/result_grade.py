@@ -61,6 +61,23 @@ def apply_meta(value, meta):
     return value
 
 
+def condition1_evidence(analysis):
+    """The condition-1 evidence fields that a published result carries."""
+    return {
+        "condition1_workspace": analysis.get("condition1_workspace"),
+        "continuation_state_consumed": analysis.get("continuation_state_consumed"),
+        "continuation_state_consumed_at": analysis.get("continuation_state_consumed_at"),
+    }
+
+
+def grading_evidence(grading):
+    """The directory each grading pass checked for stale output."""
+    return {
+        "final": {"workspace_checked": (grading.get("final") or {}).get("workspace_checked")},
+        "first": {"workspace_checked": (grading.get("first") or {}).get("workspace_checked")},
+    }
+
+
 def require_condition1_identity(cond, upgrade, analysis):
     """Exit without a result unless condition-1 settlements resumed the session."""
     if int(cond) == 1 and upgrade == "settlements":

@@ -24,7 +24,10 @@ def fail(message):
 
 def load(path):
     if not os.path.isfile(path):
-        fail(f"condition-1 state missing: {path}")
+        fail(
+            f"condition-1 state missing: {path}. "
+            "Run a fresh condition-1 payouts first."
+        )
     try:
         with open(path) as f:
             doc = json.load(f)

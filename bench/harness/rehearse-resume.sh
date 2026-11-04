@@ -8,7 +8,8 @@
 # deliberately incomplete: it runs, fails the output contract, and is replaced
 # by the reference consumer, which runs again. The rehearsal then checks the
 # real condition-1 preparation (condition1.sh), the real grading path
-# (grade_one.sh with a stub `msb`), the real measures and the real grader.
+# (grade_one.sh with a stub `msb`), the real measures, the real grader and
+# structural checks on the production call sites.
 # Nothing leaves loopback and no key is used.
 #
 # This is a resume test, not the reference arm's sandbox test. It uses the host
@@ -80,16 +81,14 @@ ok "OpenCode 2.2.5: $ver"
 [[ -f "$HERE/rehearsal_first_attempt.py" ]] || fail "missing the first-attempt consumer"
 ok "using the real settlements reference consumer and a first-attempt fixture"
 
-# The production call sites must exist; the behavioural tests below exercise
+# The production call sites must exist. The behavioural tests below exercise
 # the shared modules themselves.
 [[ -f "$HERE/remote.sh" ]] || fail "remote.sh is missing"
 [[ -f "$HERE/run.sh" ]] || fail "run.sh is missing"
 [[ -f "$HERE/condition1.sh" ]] || fail "condition1.sh is missing"
 [[ -f "$HERE/grade_one.sh" ]] || fail "grade_one.sh is missing"
-grep -q 'condition1.sh' "$HERE/remote.sh" || fail "remote.sh does not source condition1.sh"
-grep -q 'grade_one.sh' "$HERE/remote.sh" || fail "remote.sh does not source grade_one.sh"
-grep -q 'require_condition1_identity' "$HERE/run.sh" || fail "run.sh does not require the condition-1 session identity"
-ok "remote.sh and run.sh call the shared condition-1 and grading modules"
+python3 "$HERE/structure_check.py" "$HERE" || fail "structural checks failed"
+ok "structural checks passed"
 
 echo "== stage"
 mkdir -p "$ROOT/state" "$STAGE/workspaces"
@@ -178,11 +177,18 @@ write_config "$STAGE"
 . "$HERE/condition1.sh"
 
 echo "== run one: payouts session in the stable condition-1 workspace"
+mkdir -p "$ROOT/workspaces/stale-dir"
+printf 'stale\n' > "$ROOT/workspaces/stale-dir/old.txt"
+printf 'stale\n' > "$ROOT/workspaces/stale-file"
 prepare_condition1 "$ROOT" "$STAGE" "$STAGE/workspaces/payout-sync" payouts
 [[ "$WS" == "$A" ]] || fail "condition-1 payouts chose workspace $WS, not the stable workspace $A"
 [[ "$XDG_BASE" == "$XDG" ]] || fail "condition-1 payouts chose XDG $XDG_BASE, not $XDG"
 [[ "$SESSION_CONTINUED" == 0 ]] || fail "condition-1 payouts started as a continuation"
+[[ ! -e "$ROOT/workspaces/stale-dir" ]] || fail "a stale workspace directory survived the payouts start"
+[[ ! -e "$ROOT/workspaces/stale-file" ]] || fail "a stale workspace file survived the payouts start"
+[[ -d "$A" ]] || fail "the condition-1 workspace is missing"
 payout_stage_digest=$STAGE_DIGEST
+ok "the workspace parent keeps only condition-1"
 ok "the shared preparation chose the stable workspace $A (digest $payout_stage_digest)"
 
 run_session "$A" "PHASE=payouts: start the payout upgrade" "$TMP/events-1.jsonl" "$TMP/opencode-1.err"
@@ -242,6 +248,17 @@ workspace_digest=$WORKSPACE_DIGEST
 ok "the shared preparation reused $A and replaced its contents (digest $workspace_digest)"
 [[ ! -e "$A/payouts-canary.txt" ]] || fail "the payouts canary survived the replacement"
 ok "the payouts canary is gone"
+
+# The state is gone before the session starts. A hard kill cannot leave a live
+# state that a retry would resume.
+[[ "$STATE_CONSUMED" == 1 ]] || fail "the settlements preparation did not consume the continuation state"
+[[ ! -e "$STATE" ]] || fail "the settlements preparation left the continuation state live"
+ok "the settlements preparation consumed the continuation state before the session"
+second_rc=0
+second_out=$(prepare_condition1 "$ROOT" "$STAGE" "$STAGE/workspaces/settlement-reconcile" settlements 2>&1) || second_rc=$?
+[[ "$second_rc" != 0 ]] || fail "a second settlements preparation was accepted"
+grep -q "Run a fresh condition-1 payouts first" <<<"$second_out" || fail "the retry error does not ask for a fresh condition-1 payouts run"
+ok "a second settlements preparation fails before any session starts"
 
 first_attempt_sha=$(sha "$HERE/rehearsal_first_attempt.py")
 final_sha=$(sha "$REPO/bench/apis/settlements/reference/correct.py")
@@ -308,15 +325,9 @@ if not resumed:
 PY
 ok "run two carried the payouts conversation into the settlements phase"
 
-echo "== consume the continuation state"
-consume_condition1_state "$ROOT"
-[[ ! -e "$STATE" ]] || fail "the settlements run did not consume the continuation state"
-if load_condition1_state "$STATE" > /dev/null 2>&1; then
-  fail "a consumed continuation state still loads"
-fi
-ok "the settlements run consumed the continuation state; a retry cannot resume it"
+echo "== base state for the rejection cases"
 # The rejection cases below need a valid base state. The production path never
-# re-saves one; the session database and workspace still exist.
+# re-saves one. The session database and workspace still exist.
 python3 "$HERE/continuation.py" save \
   --state "$STATE" \
   --workspace "$A" \
@@ -492,6 +503,32 @@ result_grade.require_condition1_identity(
 result_grade.require_condition1_identity(2, "settlements", {})
 PY
 ok "run.sh's result guard requires a continued, identity-checked condition-1 session"
+
+pycheck "the result publishes the condition-1 and grading evidence" - "$HERE" <<'PY'
+import sys
+sys.path.insert(0, sys.argv[1])
+import result_grade
+cond = result_grade.condition1_evidence({
+    "condition1_workspace": "/w/condition-1",
+    "continuation_state_consumed": True,
+    "continuation_state_consumed_at": "condition1_prepare",
+})
+if cond.get("condition1_workspace") != "/w/condition-1":
+    raise SystemExit(cond)
+if cond.get("continuation_state_consumed") is not True:
+    raise SystemExit(cond)
+if cond.get("continuation_state_consumed_at") != "condition1_prepare":
+    raise SystemExit(cond)
+grading = result_grade.grading_evidence({
+    "first": {"workspace_checked": "/w/first"},
+    "final": {"workspace_checked": "/w/final"},
+})
+if (grading.get("first") or {}).get("workspace_checked") != "/w/first":
+    raise SystemExit(grading)
+if (grading.get("final") or {}).get("workspace_checked") != "/w/final":
+    raise SystemExit(grading)
+PY
+ok "the result carries the condition-1 and grading evidence fields"
 
 echo "== denied consumer commands are not sandbox runs"
 cat > "$TMP/denied-events.jsonl" <<'JSON'

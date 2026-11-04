@@ -169,15 +169,15 @@ STAGE_DIGEST=""
 STATE_CONSUMED=0
 NOTES_ATTACHED=0
 STAGE_WS=$STAGE/workspaces/$WS_NAME
-if [[ "$COND" == 1 ]]; then
-  echo "status=condition1:$UPGRADE" >&2
-  # prepare_condition1 sets WS, XDG_BASE, SESSION_ID, SESSION_CONTINUED,
-  # STAGE_DIGEST and WORKSPACE_DIGEST; there is no separate condition-1
-  # workspace decision here.
-  prepare_condition1 "$ROOT" "$STAGE" "$STAGE_WS" "$UPGRADE"
-else
+if [[ "$COND" != 1 ]]; then
   XDG_BASE=$RUN/xdg
   WS=$RUN/workspace
+else
+  echo "status=condition1:$UPGRADE" >&2
+  # prepare_condition1 sets WS, XDG_BASE, SESSION_ID, SESSION_CONTINUED,
+  # STAGE_DIGEST and WORKSPACE_DIGEST. For settlements it also consumes the
+  # continuation state before this script can start the session.
+  prepare_condition1 "$ROOT" "$STAGE" "$STAGE_WS" "$UPGRADE"
 fi
 export XDG_DATA_HOME=$XDG_BASE/data
 export XDG_STATE_HOME=$XDG_BASE/state
@@ -292,14 +292,6 @@ end=$(date +%s)
 elapsed=$((end - start))
 echo "status=session_exit:$rc elapsed:$elapsed" >&2
 
-# The settlements attempt is in this session's history now. Consume the state
-# so a retry cannot silently resume a history that already contains it.
-if [[ "$COND" == 1 && "$UPGRADE" == settlements ]]; then
-  consume_condition1_state "$ROOT"
-  STATE_CONSUMED=1
-  echo "status=condition1_state_consumed" >&2
-fi
-
 # Drop the key from the environment before grading. measures still redacts with the copy.
 export KALARI_REDACT_KEY
 unset VULTR_INFERENCE_API_KEY
@@ -410,6 +402,9 @@ doc["api_base"] = "the VM's public address"
 if int(cond) == 1:
     doc["condition1_workspace"] = doc.get("workspace")
     doc["continuation_state_consumed"] = consumed == "1"
+    doc["continuation_state_consumed_at"] = (
+        "condition1_prepare" if consumed == "1" else ""
+    )
 run = os.path.dirname(analysis)
 clean = json.load(open(os.path.join(run, "cleanup.json")))
 doc["cleanup"] = clean
