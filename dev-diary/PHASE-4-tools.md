@@ -12,7 +12,7 @@ requires:   [T1.5, T0.5]
 fixture-ok: yes
 size:       M · frontier
 owns:       Kalari/Mcp.lean
-status:     in-review
+status:     done
 ```
 JSON-RPC 2.0 over stdio, meeting what OpenCode 2.2.5 actually sends (T0.5): `initialize`, `notifications/initialized`, `tools/list`, `tools/call`, shutdown. Tool results as MCP content with `isError` for tool failures. Logs to stderr only. Each tool's input schema is small and exact: the agent reads it every step, so its size is a cost.
 
