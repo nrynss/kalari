@@ -79,7 +79,7 @@ cat > "$tmp/bin/msb" <<'SH'
 #!/bin/sh
 case "$1" in
  create) printf '%s\n' create >> "$MSB_LOG";;
- remove) printf '%s\n' remove >> "$MSB_LOG";;
+ remove) printf '%s\n' remove >> "$MSB_LOG"; if [ -e "$(dirname "$0")/CLEANUPFAIL" ] && [ ! -e "$(dirname "$0")/REMOVALFAILED" ]; then touch "$(dirname "$0")/REMOVALFAILED"; exit 9; fi;;
  exec) case "$*" in *grade_runner.py*) echo 'EXIT 0';; esac;;
  copy) case "$3" in *:/w/out.jsonl) ;; *) :;; esac;;
 esac
@@ -103,7 +103,7 @@ python3 - "$tmp/cleanup-failure" "$tmp/cleanup.stdout" <<'PYCODE'
 import json, pathlib, sys
 p=pathlib.Path(sys.argv[1]); events=(p/'transcript.jsonl').read_text(); m=json.loads((p/'measures.json').read_text())
 assert len([line for line in events.splitlines() if line.strip()]) == 5
-assert m['tool_calls'] and m['cleanup_error'] == 'fixture cleanup failure'
+assert m['tool_calls'] and m['cleanup_error'] == 'sandbox removal command failed'
 assert json.loads(pathlib.Path(sys.argv[2]).read_text())['transcript'] == str(p/'transcript.jsonl')
 PYCODE
 rm "$tmp/bin/CLEANUPFAIL"

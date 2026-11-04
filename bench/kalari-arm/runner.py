@@ -135,7 +135,13 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
             (result/'cleanup.json').write_text(json.dumps({'left': sorted(left), 'tracked': len(names), 'errors': errors}) + '\n')
             if left: errors.append('session sandboxes remain')
             return '; '.join(errors) if errors else None
-        atexit.register(lambda: cleanup_sandboxes())
+        def safe_cleanup_sandboxes():
+            try:
+                return cleanup_sandboxes()
+            except Exception:
+                (result/'cleanup.json').write_text(json.dumps({'errors': ['sandbox cleanup raised an exception']}) + '\n')
+                return 'sandbox cleanup raised an exception'
+        atexit.register(safe_cleanup_sandboxes)
         tools = guarded
         env['PATH'] = str(tools) + ':/usr/local/bin:/usr/bin:/bin'
     execute([sys.executable, HERE/'session.py', '--directory', session, '--workspace-source', a.workspace_source, '--tools', tools, '--api-host', a.api_host, '--api-port', str(a.api_port)], stdout=subprocess.DEVNULL)
@@ -264,7 +270,13 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
             except ProcessLookupError: pass
             for sig, handler in old_handlers.items(): signal.signal(sig, handler)
     elapsed = time.monotonic() - start
-    cleanup_error = cleanup_sandboxes() if a.live else ('fixture cleanup failure' if (tools/'CLEANUPFAIL').exists() else None)
+    if a.live:
+        cleanup_error = safe_cleanup_sandboxes()
+    elif (tools/'CLEANUPFAIL').exists():
+        cleanup = subprocess.run([str(tools/'msb'), 'remove', '-f', 'kalari-offline-fixture'], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        cleanup_error = 'sandbox removal command failed' if cleanup.returncode else None
+    else:
+        cleanup_error = None
     bad = 0
     with (result/'transcript.jsonl').open('w') as out:
         for line in events.open(errors='replace'):
@@ -292,7 +304,7 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
     else:
         measures['grade'] = {'verdict': 'NOT_RUN', 'reason': 'interrupted'}
     if a.live:
-        cleanup_error = cleanup_sandboxes() or cleanup_error
+        cleanup_error = safe_cleanup_sandboxes() or cleanup_error
         try:
             before = usage_rows(usage_before); after = usage_rows(usage())
             deltas = {model: {'input': int(after.get(model, {}).get('input_tokens') or 0) - int(before.get(model, {}).get('input_tokens') or 0), 'output': int(after.get(model, {}).get('output_tokens') or 0) - int(before.get(model, {}).get('output_tokens') or 0)} for model in set(before) | set(after)}
