@@ -70,7 +70,7 @@ size:       L · frontier
 owns:       Kalari/Tools/Run.lean
 status:     not-started
 ```
-The agent's code, run safely and checked: the gate; the Microsandbox backend with caps and an allowlist of the API hosts; the aashaan's verdict; then **the checks**: every recalled lesson's check, and the **differential check against v1** (bench/README.md): run the consumer's v1 version against the v1 API and its new version against v2 on the same data, compare the record sets (none missing, none extra, each exactly once), and report the difference in plain numbers. The result back to the agent: the verdict, each check's result, and logs, capped.
+The agent's code, run safely and checked: the gate; the Microsandbox backend with caps and an allowlist of the API hosts; the aashaan's verdict; then **the checks**: every recalled lesson's check, and the **differential check against v1** (bench/README.md): run the consumer's v1 version against the v1 API and its new version against v2 on the same data, compare the record sets (none missing, none extra, each exactly once, **each equal to v1's version**: an ID check alone passes a consumer that keeps the first, stale copy of an amended settlement), and report the difference in plain numbers. The result back to the agent: the verdict, each check's result, and logs, capped.
 
 A run that hangs is killed by the aashaan, and the agent is told so in one line. That's the containment moment.
 
@@ -86,7 +86,7 @@ size:       S · mid
 owns:       tests/live/run.sh
 status:     not-started
 ```
-The same six reference consumers per service, through `kalari serve`'s `run_in_sandbox` on the VM against the live APIs.
+The reference consumers (six for payouts, seven for settlements), through `kalari serve`'s `run_in_sandbox` on the VM against the live APIs.
 
 **Done when:** the transcript is in the report; outcomes as in T4.5; no sandbox left.
 
@@ -102,7 +102,7 @@ status:     not-started
 ```
 Lessons from **what verified runs showed**, not only from failures (bench/README.md, Where lessons come from). Three sources: a failure Clef attributes to `api_change`, and the fix that passed; a behaviour the differential check observed on a pass (boundary duplicates, a token on the final page); a behaviour the passing code had to handle (a short page mid-stream). Each written to Lambo with its change kind, observation, run and check. A failure Clef calls `flaky`, `test_setup` or `unrelated_bug` is never a lesson. Kalari decides what is recorded; the agent can propose, never write directly.
 
-**Done when:** from the payouts reference runs, the expected lesson is written (with the one-payout overlap and the final-page token as observations); a `flaky` failure writes nothing; a pass with no observed behaviour writes nothing.
+**Done when:** from the payouts reference runs, the expected lesson is written (with the one-payout overlap and the final-page token as observations); its rule says to key records by ID with **the last delivery winning**, never "keep the first" or a bare "dedupe", even though payouts' identical overlaps can't tell them apart (settlements' amended repeats can: bench/README.md); a `flaky` failure writes nothing; a pass with no observed behaviour writes nothing.
 
 ---
 

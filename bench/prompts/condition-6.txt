@@ -1,1 +1,1 @@
-Upgrade this consumer from the v1 API to v2 and verify it against the v2 server. The API is at {BASE_URL}; v1 and v2 are both live. Verify v2's records against v1's, record by record: none missing, none extra, each exactly once.
+Upgrade this consumer from the v1 API to v2 and verify it against the v2 server. The API is at {BASE_URL}; v1 and v2 are both live. Verify v2's records against v1's, record by record: none missing, none extra, each exactly once, each equal to v1's version.

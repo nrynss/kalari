@@ -15,8 +15,8 @@ It handles anything written in the spec or the docs. It can't handle behaviour t
 
 | Edge | Shows in | Needs memory |
 |---|---|---|
-| **Differential check against the old API.** The v1 API stays live during the migration (decided). Kalari runs the old consumer against v1 and the new one against v2 on the same data and compares the record sets: none missing, none extra, each exactly once. **Both arms can reach v1 and have its spec and docs**; only Kalari runs the comparison without being asked | Conditions 4 and 5 | No |
-| **Lessons carry behaviour the specs don't.** "Stop on the end flag, never on the token or a short or empty page; dedupe by ID" is learned by running | Condition 5 against 2 and 3 | Yes |
+| **Differential check against the old API.** The v1 API stays live during the migration (decided). Kalari runs the old consumer against v1 and the new one against v2 on the same data and compares the record sets: none missing, none extra, each exactly once, each equal to v1's version. **Both arms can reach v1 and have its spec and docs**; only Kalari runs the comparison without being asked | Conditions 4 and 5 | No |
+| **Lessons carry behaviour the specs don't.** "Stop on the end flag, never on the token or a short or empty page; key records by ID, the last delivery wins" is learned by running | Condition 5 against 2 and 3 | Yes |
 | **Enforcement, not suggestion.** A recalled lesson is a check that must pass, not a note the agent may ignore. Condition 6 (a baseline told to do the same checks) tests whether this matters | Condition 5 against 6 | Yes |
 | **Containment.** The aashaan's time cap on a runaway loop; `--no-net` with IP rules; the reference arm's agent-chosen sandbox network | Every condition | No |
 
@@ -29,7 +29,7 @@ A lesson is written from **what a verified run observed about the API**, not onl
 | Source | Example lesson |
 |---|---|
 | A failure Clef attributes to the API change, and the fix that passed | "The stream returned a token on its final page; the loop that stopped on the token never ended" |
-| **A behaviour the differential check or the run logs observed**, even on a pass | "v2 returned 24 boundary records twice; the passing code deduped by ID" |
+| **A behaviour the differential check or the run logs observed**, even on a pass | "v2 returned 24 boundary records twice; the passing code kept one per ID, the last received" |
 | A behaviour the passing code had to handle | "A page came back shorter than the requested limit mid-stream; the passing code ignored page length" |
 
 Every lesson names the change kind (`pagination_changed`), the observation, the run that showed it, and a check. Lessons are only written from sandbox-verified runs.
@@ -54,11 +54,11 @@ Sources: [Zendesk: using the incremental export API](https://developer.zendesk.c
 |---|---|---|
 | Domain | **Merchant payout ledger** (`payout-sync`): a lost record is an unpaid merchant, a duplicate is a double payment | **Settlement batches** (`settlement-reconcile`): reconciling daily settlements |
 | Format | REST, OpenAPI 3.0. v1 returns every payout in one response; v2 is a time-windowed export | GraphQL. v1 returns a plain list; v2 is a Relay-style connection whose `endCursor` is never null |
-| Behaviours | B1 + B2 + B4 | B1 + B2 (repeats across pages) + B3 (empty pages that continue) |
+| Behaviours | B1 + B2 + B4 | B1 + B2 (amended repeats: the later copy is the final version) + B3 (empty pages that continue) |
 | Vimanam reports | `pagination_changed` on the payouts operation | `pagination_changed` on the settlements query |
-| The lesson | A `constraint` on `pagination_changed`: "stop on the end flag, never on the token's presence or a short or empty page; dedupe by ID", with a check: exact count against v1, zero duplicate IDs | Recalled by traversal from `pagination_changed` before the first run in condition 5 |
+| The lesson | A `constraint` on `pagination_changed`: "stop on the end flag, never on the token's presence or a short or empty page; key records by ID, the last delivery wins", with a check: exact count against v1, zero duplicate IDs, every record equal to v1's | Recalled by traversal from `pagination_changed` before the first run in condition 5 |
 
-The dataset is fixed for a run, so records are deduplicated by ID. Upgrade 2 adds B3, which the lesson covers ("never … an empty page") but which upgrade 1 never showed: a fair test of whether a lesson generalises, not just whether it is replayed.
+The dataset is fixed for a run, so records are keyed by ID. **Which copy to keep matters only in upgrade 2:** payouts' overlapping records are identical, so keeping the first copy passes there, but settlements' first copy of an amended record is the old version, and keeping it fails on 19 records. A lesson worded "dedupe by ID" from upgrade 1's passing code would carry that mistake over; "the last delivery wins" doesn't. Upgrade 2 also adds B3, which the lesson covers ("never … an empty page") but which upgrade 1 never showed: a fair test of whether a lesson generalises, not just whether it is replayed.
 
 ## Conditions
 

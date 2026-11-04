@@ -6,7 +6,8 @@ delta and scan APIs (bench/README.md names them; the arms never see the names). 
 
   B1  `pageInfo.endCursor` is never null, the last page included; `hasNextPage` says whether
       more remain. Following the end cursor returns an empty page and a new cursor, forever.
-  B2  amended settlements are emitted again later in the stream, unchanged.
+  B2  amended settlements are emitted again later in the stream: first the version before the
+      amendment, later the final one (the one v1 returns).
   B3  a page is `first` rows of the internal stream before voided rows are filtered out, so
       pages can be short or empty while `hasNextPage` is still true.
 
@@ -27,7 +28,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "..", "vendor", "graphql_core-3.3.1-py3-none-any.whl"))
 sys.path.insert(0, os.path.join(HERE, "graphql_core-3.3.1-py3-none-any.whl"))  # when deployed flat
 from graphql import GraphQLError, build_schema, graphql_sync  # noqa: E402
-from data import COUNT, SETTLEMENTS, STREAM  # noqa: E402
+from data import COUNT, PRELIMINARY, SETTLEMENTS, STREAM  # noqa: E402
 
 MAX_FIRST = 100
 SECRET = os.urandom(16)
@@ -90,7 +91,8 @@ def v2_settlements(_info, first=50, after=None):
         if start is None:
             raise GraphQLError("after is malformed or was not issued by this server")
     window = STREAM[start:start + first]                         # B3: page first, then filter
-    nodes = [SETTLEMENTS[i] for kind, i in window if kind == "s"]  # B2: repeats pass through
+    nodes = [PRELIMINARY[i] if kind == "pre" else SETTLEMENTS[i]   # B2: the first copy of an amended
+             for kind, i in window if kind != "void"]               # settlement is the old version
     end = start + len(window)
     return {"nodes": nodes, "pageInfo": {"endCursor": mint(end), "hasNextPage": end < len(STREAM)}}  # B1
 

@@ -26,7 +26,7 @@ check() {
   else
     local v; v=$(python3 -I graders/grade.py "$api" "$out" || true)
     if [[ $v == *'"verdict": "PASS"'* ]]; then got=PASS
-    else got="FAIL:$(python3 -I -c 'import json,sys; v=json.loads(sys.argv[1]); print(",".join(f"{k}={v[k]}" for k in ("missing","duplicates") if v[k]))' "$v")"
+    else got="FAIL:$(python3 -I -c 'import json,sys; v=json.loads(sys.argv[1]); print(",".join(f"{k}={v[k]}" for k in ("missing","duplicates","mismatched") if v[k]))' "$v")"
     fi
   fi
   if [[ $got == "$want" ]]; then echo "ok   $api/$ref: $got"; else echo "FAIL $api/$ref: wanted $want, got $got"; fail=1; fi
@@ -40,10 +40,11 @@ check payouts     no_dedupe        "$pp" FAIL:duplicates=24    # B2
 check payouts     correct          "$pp" PASS
 
 check settlements v1_unchanged     "$sp" CRASH
-check settlements single_page      "$sp" FAIL:missing=1773
-check settlements empty_page_stop  "$sp" FAIL:missing=1473,duplicates=1   # B3 (and one amended repeat before the stop)
+check settlements single_page      "$sp" FAIL:missing=1773,mismatched=1   # st_00097 arrives in its old version
+check settlements empty_page_stop  "$sp" FAIL:missing=1473,duplicates=1,mismatched=4   # B3; 4 amended settlements before the stop, only 1 repeated in time
 check settlements cursor_loop      "$sp" TIMEOUT               # B1
-check settlements no_dedupe        "$sp" FAIL:duplicates=19    # B2
+check settlements no_dedupe        "$sp" FAIL:duplicates=19,mismatched=19   # B2: old copies too
+check settlements keep_first       "$sp" FAIL:mismatched=19    # B2: dedupes, but keeps the old version
 check settlements correct          "$sp" PASS
 
 exit $fail
