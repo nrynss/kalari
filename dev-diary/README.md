@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0 done. P1 done. P2 7/7. P3 7/7. P4 11/13. P5 2/9. T3.2b done. T5.1 and T5.2 done. The user chose B5 in both upgrades and the 50-session harder-pair pilot. T5.3 now requires T5.2b; T5.2b is blocked until the user approves its live dollar budget. T5.1a repairs condition 1 before that pilot. T4.6b and T4.7c establish the retry memory path before T5.4. T4.6 done. T4.5b done. T4.7a done. T4.7b done. T4.7 done. T6.1 done. Previous live spend remains approved, including the old pilot (T5.2, about $16) and T3.2b (under $0.01); no T5.2b spend is approved. Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
+**Current status:** P0 done. P1 done. P2 7/7. P3 7/7. P4 11/13. P5 3/9. T3.2b done. T5.1, T5.1a and T5.2 done. The user chose B5 in both upgrades and the 50-session harder-pair pilot. T5.3 now requires T5.2b; T5.2b is blocked until the user approves its live dollar budget. T5.1a repairs condition 1 before that pilot. T4.6b and T4.7c establish the retry memory path before T5.4. T4.6 done. T4.5b done. T4.7a done. T4.7b done. T4.7 done. T6.1 done. Previous live spend remains approved, including the old pilot (T5.2, about $16) and T3.2b (under $0.01); no T5.2b spend is approved. Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
 
 ---
 
@@ -146,13 +146,15 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P2 | 7 / 7 | T2.1 through T2.6 done. The Microsandbox-only exit line stays open because the Docker fallback exists |
 | P3 | 7 / 7 | T3.1 through T3.4 done, including T3.1a, T3.2b and T3.3b |
 | P4 | 11 / 13 | T4.1 through T4.7 done as previously recorded. New T4.6b and T4.7c establish the trusted retry observation and production memory path |
-| P5 | 2 / 9 | T5.1 and T5.2 done. New T5.1a, T5.2a and T5.2b precede the freeze. B5-in-both and the 50-session pilot are decided; T5.2b awaits its live budget |
+| P5 | 3 / 9 | T5.1, T5.1a and T5.2 done. T5.2a and T5.2b precede the freeze. B5-in-both and the 50-session pilot are decided; T5.2b awaits its live budget |
 | P6 | 1 / 3 | T6.1 done. T6.2 ready. HTTP startup and benchmark evidence production still need integration |
 | P7 | 0 / 4 | Waits for P5, P6 |
 
 ---
 
 ## Handoff Log
+
+- **T5.1a closed.** Condition 1 keeps one stable workspace and resumes the same OpenCode session in it. `prepare_condition1` verifies the state, copies the fresh upgrade tree, compares digests, and consumes the state before the session. The no-inference rehearsal drives real OpenCode 2.2.5. It proves the first attempt differs from the final source, and that a stale workspace JSONL cannot rescue a crashed consumer. Grading now separates a consumer crash from missing output, and `EXIT launch` is a grader failure. The five old condition-1 pairs are labelled invalid debug evidence. The 70 result files are unchanged and the gate passes. Residual: the rehearsal calls the shared functions directly, so the first live condition-1 session in T5.2b must confirm the `remote.sh` wiring.
 
 - **T5.3 pair decision and prerequisite split.** The user chose both fallbacks: B5 in both upgrades, a 50-session harder-pair pilot, and reporting led by cost, attempts and containment with correctness retained. B5-in-both is the final hardness adjustment. Added T5.1a, T5.2a, T5.2b, T4.6b and T4.7c. Condition 1's old settlement failures came from resuming the session in the payouts workspace while grading a separate pristine settlements tree; those five pairs are debug evidence, not frozen reference results. Production observer configuration is currently rejected, so the memory arm needs the demonstrated observe → publish → recall → enforce path, not another tool-call smoke test. T5.2b has no approved live budget yet.
 

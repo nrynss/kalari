@@ -40,13 +40,23 @@ requires:   [T5.2]
 fixture-ok: yes
 size:       M · mid
 owns:       bench/harness/, bench/pilot/SUMMARY.md, bench/pilot/summarize.py
-status:     not-started
+status:     done
 ```
 Condition 1 resumed the OpenCode session but not its workspace: the agent remained attached to payouts while the harness graded a separate, untouched settlements tree. Save and reuse the original workspace's absolute path, replace its contents with the fresh settlement workspace, and make measures and both grading passes use that same tree. Require continuation state rather than silently starting fresh. Validate snapshot/workspace identity, distinguish consumer crashes from missing output, and never grade stale workspace output after a crash.
 
 Add a no-inference rehearsal that drives the real OpenCode 2.2.5 resume mechanism with a local scripted provider. A fake executable that merely uses its current directory is not evidence that the resume defect is fixed. Preserve the original result JSON unchanged, but label the five old condition-1 pairs as invalid pilot/debug evidence; they cannot count in the frozen reference arm.
 
 **Done when:** the rehearsal proves that the resumed session sees the settlements workspace, runs the intended consumer, and grades newly produced output from that same workspace; first-attempt and final source identity match; a stale JSONL cannot rescue a crashed consumer; missing continuation state fails before the session; the old pairs are labelled invalid; `./tools/check.sh` passes.
+
+**Notes:** Condition 1 now keeps one stable workspace at `$ROOT/workspaces/condition-1`. `prepare_condition1` in `bench/harness/condition1.sh` loads the saved state, verifies the workspace, XDG directory and session, clears the workspace, copies the fresh upgrade tree, compares tree digests, and consumes the state. `remote.sh` and the no-inference rehearsal call the same function.
+
+The rehearsal drives real OpenCode 2.2.5 against a loopback scripted provider. It writes an incomplete settlements consumer, runs it, then writes the reference consumer and runs again. It proves the workspace path, the resumed session, the first-attempt hash, a first grade FAIL and a final grade PASS. It also proves that a missing or partial state fails before OpenCode starts, and that a stale workspace JSONL cannot rescue a crashed consumer. `grade_one` moved to `bench/harness/grade_one.sh` and is exercised with a stub `msb`.
+
+The result now separates `consumer_exit`, `output_present` and `grade_status` (`ok`, `no_output`, `consumer_crashed`, `grader_failed`). `EXIT launch` is a grader failure. Denied `shell` and `bash` consumer commands are not sandbox runs. A structural checker rejects a workspace override after `prepare_condition1`, a missing consume call, a wrong `grade_one` source, and a commented identity guard.
+
+The five old condition-1 pairs are labelled invalid pilot/debug evidence in `bench/pilot/SUMMARY.md`. The 70 result files and `TRANSCRIPT.md` are unchanged, `validate.py` passes, and `./tools/check.sh` passes.
+
+Residual: the rehearsal calls the shared functions directly, so it does not execute `remote.sh` itself. The first live condition-1 session in T5.2b must confirm the call-site wiring. The microsandbox `..` containment of the stable workspace is unverified until a live run.
 
 ---
 
