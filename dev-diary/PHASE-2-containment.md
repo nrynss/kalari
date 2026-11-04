@@ -42,11 +42,24 @@ requires:   [T1.5]
 fixture-ok: yes
 size:       S · frontier
 owns:       Aashaan/, tests/aashaan-cases.sh, tests/live/microvm-cases.sh
-status:     claimed:grok-impl
+status:     in-review
 ```
 From the day-one probe to the shipped supervisor: the cap logic as pure functions with theorems (a verdict is `killed_timeout` exactly when the wall-clock cap passed first; `killed_output_cap` exactly when the output cap was crossed first; output returned is never longer than the cap); a stderr cap as well as stdout; a JSON string escaper tested on control characters and non-ASCII. Stays `Std`-only.
 
 **Done when:** the theorems are proved; the eight cases still match in `tests/aashaan-cases.sh` and in a microVM (`tests/live/microvm-cases.sh`); the stripped binary stays under 5 MB.
+
+Notes:
+
+`classify` decides one wake. An exit is taken before either cap. On a wake where the wall-clock cap and an output cap are both visible, the wall-clock cap wins, so the verdict is `killed_timeout`. `firstVerdict` is that decision on the first wake that is not still pending. `killed_timeout_iff` is `killed_timeout` exactly when `wallPassedFirst`. `killed_output_cap_iff` is `killed_output_cap` exactly when `outputCrossedFirst`. Stdout and stderr are one output cap: `stderr_is_output_cap`. The loop calls `classify` on both readers. `clampBytes` is applied to both streams before they are printed. `clampBytes_le` says the size is at most the cap.
+
+`jstr` escapes a quote, a backslash, a newline, and every other code point below `0x20` (`\u00XX`). A non-ASCII character is kept as itself. `jstr_no_raw_control` says the result has no code point below `0x20`. `jstr_no_raw_quote` says a quote inside the body is escaped. `#guard`s cover `"`, `\`, a newline, U+0001, and `λ`.
+
+The stripped binary is 3351672 bytes. The microVM create is `msb create --no-net --pull never debian`. The image was already present, so the run did not pull. All eight cases matched: normal and secret and exit3 `exited` (secret's stdout is `key=[]`), loop and trapterm and fork and escape `killed_timeout`, flood `killed_output_cap`. Escape has `pipe_held_open` true. The sandbox was removed.
+
+Surprises:
+
+- A stderr flood is the same cap as stdout. `yes` on stderr, cap 100, returned `killed_output_cap` and 100 stderr bytes.
+- Escape's reader is still blocked when the wait gives up, so the verdict's stdout is empty. `pipe_held_open` is the signal that the pipe is still held. Teardown ends the escaped process.
 
 ---
 

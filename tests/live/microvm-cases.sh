@@ -1,11 +1,30 @@
 #!/usr/bin/env bash
-# kalari-aashaan's eight cases inside a Microsandbox microVM, on the Vultr VM.
+# kalari-aashaan's eight cases inside a Microsandbox microVM.
 # Not part of the gate: needs msb and /dev/kvm. Run after `lake build`.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 name="aashaan-$$"
-msb create --name "$name" --cpus 1 --memory 256M --no-net debian >/dev/null
 trap 'msb stop "$name" >/dev/null 2>&1; msb remove "$name" >/dev/null 2>&1' EXIT
+
+create() {
+  msb create --name "$name" --cpus 1 --memory 256M --no-net --pull never debian >/dev/null
+}
+
+# Setup only. A missing image is not a case failure: pull at most three times, then create once more.
+if ! create; then
+  pulled=0
+  for _ in 1 2 3; do
+    if msb pull debian; then
+      pulled=1
+      break
+    fi
+  done
+  if [[ "$pulled" -ne 1 ]]; then
+    echo "msb pull debian failed after 3 tries" >&2
+    exit 1
+  fi
+  create
+fi
 msb copy -q .lake/build/bin/kalari-aashaan "$name":/usr/local/bin/kalari-aashaan
 msb exec "$name" -- chmod +x /usr/local/bin/kalari-aashaan
 # Without this the Lean runtime can't start threads in the guest (no swap, heuristic overcommit).
