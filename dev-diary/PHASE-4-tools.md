@@ -28,11 +28,13 @@ requires:   [T1.5]
 fixture-ok: yes
 size:       S · mid
 owns:       Kalari/Evidence.lean
-status:     claimed:gpt-6.1-terra
+status:     in-review
 ```
 Every run, every check result, every Clef answer and every lesson written, as JSON Lines in `.kalari/` (append-only, a truncated last line skipped with a warning). The source for the web app and the judges' page: every claim links to a record here.
 
 **Done when:** append and reload; queries by run, by change kind and by session; a truncated last line; `.kalari/` gitignored.
+
+**Notes (in review):** `Kalari.Evidence` appends JSONL records carrying a complete JSON payload, kind, session ID, run ID, and change-kind list. `load` returns records and warnings and also emits warnings to stderr without log contents. Queries preserve append order. Newline commits a record; decoding bytes line by line also handles a truncated UTF-8 character. Before appending after an unterminated tail, the writer appends `!` and a newline to make that tail invalid, then writes the next complete line. Existing bytes are never rewritten. Any invalid line is skipped with a warning. A mutex serializes all operations through a shared `Store` value. Independent store instances or processes writing the same path are unsupported; the service must share one value. Build-time tests exercise append/reload, all three queries, malformed and valid-looking unterminated tails, partial UTF-8, appending after each tail, 24 concurrent appends, and the existing `.kalari/` ignore rule.
 
 ---
 
