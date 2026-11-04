@@ -28,11 +28,17 @@ Windows overlap at their edges. Each window begins with the payout that ended th
 
 ### Window size
 
-`limit` (1 to 1000, default 100) is the most payouts a response will contain. Tallyline may return fewer than `limit` payouts, for example to keep responses fast under load. The number of payouts in a response doesn't tell you whether more remain; `drained` does.
+`limit` (1 to 1000, default 100) is the most payouts a response will contain. Tallyline may return fewer than `limit` payouts, for example to keep responses fast under load. The number of payouts in a response doesn't tell you whether more remain. `drained` does.
 
 ### Errors
 
 A malformed or expired cursor returns `400` with `{"error": "invalid_cursor"}`. Start the export again without a cursor. A `limit` outside 1 to 1000 returns `400` with `{"error": "invalid_limit"}`.
+
+### Rate limits and retries
+
+Under load a request can return `429 Too Many Requests` with a `Retry-After` header. The header holds the number of seconds to wait before you try again.
+
+Treat a 429 as a transient transport failure. Wait for the delay and send the identical request again. A request is identical when the method, the path and the decoded query parameters are the same. Parameter order does not matter. A repeated parameter or a different value makes it a different request. Keep the same `cursor`, and do not move to the next window until the request succeeds.
 
 ## Migrating from v1
 

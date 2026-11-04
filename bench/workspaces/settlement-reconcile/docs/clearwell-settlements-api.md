@@ -25,6 +25,8 @@ query Settlements($after: String) {
 }
 ```
 
+Send one `settlements` field per request, and a request with more than one `settlements` field that carries `after` is rejected with `400`.
+
 ### When to stop
 
 Keep requesting while `pageInfo.hasNextPage` is `true`. `endCursor` is always set, the last page included, so a later run can resume from where this one finished; its presence doesn't mean more pages remain.
@@ -40,6 +42,12 @@ When a settlement is amended after it was delivered, Clearwell delivers it again
 ### Cursors
 
 Cursors are opaque: don't parse or construct them, and expect a different value each time, even for the same position. A malformed or expired cursor returns a GraphQL error; start again without `after`.
+
+### Rate limits and retries
+
+Under load a query can return `429 Too Many Requests` with a `Retry-After` header. The header holds the number of seconds to wait before you try again.
+
+Treat a 429 as a transient transport failure. Wait for the delay and send the identical request again. A request is identical only when the query text, the operation name and every variable are the same. Keep the same `after` value, and do not move to the next page until the request succeeds.
 
 ## Migrating from v1
 

@@ -11,11 +11,21 @@
 # Egress is denied (--no-net would also block the published port), and each port is published on
 # the VM's public IP only: not loopback, not the tailnet, and dropped from the internet by the
 # Vultr firewall. No arm can read the servers: their code exists only inside these microVMs.
+#
+# Each server writes a retry journal at /srv/retry-journal.jsonl in its own guest.
+# The journal holds request digests only, never a cursor, a request body or a token.
+# The harness truncates it at a phase start and reads it at a phase end over `msb exec`.
+# A host mount would not put the file out of reach, because the arm's MCP can bind-mount
+# the same host path into its own guest. The guest name is fixed, and that MCP can exec
+# into any sandbox, so trust rests on the arm not targeting these guests. The grading
+# read rejects a live API that saw traffic and a grading API with more clients
+# than the grading passes that ran, and reports unknown instead of a count.
 set -euo pipefail
 umask 022
 cd "$(dirname "$0")"
 
 names=(api-payouts-live api-payouts-grading api-settlements-live api-settlements-grading)
+JOURNAL=/srv/retry-journal.jsonl
 
 start() {  # start <name> <api> <host-port> <v1 on|off> <ip>
   local name=$1 api=$2 port=$3 v1=$4 ip=$5
@@ -27,7 +37,7 @@ start() {  # start <name> <api> <host-port> <v1 on|off> <ip>
     msb copy -q vendor/graphql_core-3.3.1-py3-none-any.whl "$name:/srv/graphql_core-3.3.1-py3-none-any.whl"
   fi
   # Redirect the server's output, or msb exec waits on the held pipe forever.
-  msb exec "$name" -- sh -c "(nohup python3 -I /srv/server.py --bind 0.0.0.0 --port 8080 --v1 $v1 >/srv/server.log 2>&1 &)"
+  msb exec "$name" -- sh -c "(nohup python3 -I /srv/server.py --bind 0.0.0.0 --port 8080 --v1 $v1 --retry-journal $JOURNAL >/srv/server.log 2>&1 &)"
   for _ in $(seq 1 50); do
     if curl -s -o /dev/null --max-time 2 "http://$ip:$port/"; then echo "$name: http://$ip:$port (v1 $v1)"; return; fi
     sleep 0.2

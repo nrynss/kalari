@@ -54,6 +54,7 @@ ssh -o BatchMode=yes kalari 'rm -rf ~/kalari-harness/stage && mkdir -p ~/kalari-
 rsync -a bench/harness/remote.sh bench/harness/measures.py bench/harness/grade_runner.py \
   bench/harness/continuation.py bench/harness/continuation.sh bench/harness/condition1.sh \
   bench/harness/grade_one.sh bench/harness/tree_digest.py bench/harness/grade_status.py \
+  bench/harness/retry_journal.py \
   kalari:kalari-harness/stage/
 rsync -a bench/prompts bench/workspaces kalari:kalari-harness/stage/
 rsync -a bench/reference-paging/repo/opencode.jsonc kalari:kalari-harness/stage/opencode.jsonc
@@ -105,6 +106,7 @@ tmp, cond, upgrade, dest = sys.argv[1:5]
 key = os.environ.get("VULTR_INFERENCE_API_KEY", "")
 sys.path.insert(0, os.path.join(os.getcwd(), "bench", "harness"))
 import result_grade
+import result_measures
 analysis = json.load(open(os.path.join(tmp, "analysis.json")))
 
 # Condition 1 settlements is only evidence if the session really continued.
@@ -155,6 +157,16 @@ else:
 
 lost = final.get("missing")
 duplicated = final.get("duplicates")
+
+measures, http_retries = result_measures.build(
+    analysis,
+    verdict=final.get("verdict"),
+    right_first_time=right,
+    tokens_input=deep["input"],
+    tokens_output=deep["output"],
+    records_lost=lost,
+    records_duplicated=duplicated,
+)
 result = {
     "condition": int(cond),
     "upgrade": upgrade,
@@ -180,19 +192,11 @@ result = {
     "consumer_exit": final.get("consumer_exit"),
     "output_present": final.get("output_present"),
     "grade_status": final.get("grade_status"),
-    "measures": {
-        "verdict": final.get("verdict"),
-        "right_first_time": right,
-        "sandbox_runs": analysis.get("sandbox_runs"),
-        "wall_time_s": analysis.get("wall_time_s"),
-        "time_stuck_s": analysis.get("time_stuck_s"),
-        "tokens_input": deep["input"],
-        "tokens_output": deep["output"],
-        "records_lost": lost,
-        "records_duplicated": duplicated,
-    },
+    "measures": measures,
     "sandbox_runs_against_v1": analysis.get("sandbox_runs_against_v1"),
     "sandbox_runs_against_v2": analysis.get("sandbox_runs_against_v2"),
+    "http_retries": http_retries,
+    "retry_measure": analysis.get("retry_measure"),
     "records_extra": final.get("extra"),
     "records_mismatched": final.get("mismatched"),
     "grade": final,
@@ -226,6 +230,8 @@ print(json.dumps({
     "verdict": result["measures"]["verdict"],
     "right_first_time": right,
     "sandbox_runs": result["measures"]["sandbox_runs"],
+    "http_retries_agent": http_retries["agent"],
+    "http_retries_grading": http_retries["grading"],
     "wall_time_s": result["measures"]["wall_time_s"],
     "time_stuck_s": result["measures"]["time_stuck_s"],
     "tokens_input": deep["input"],

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Run one reference-arm session of one condition and one upgrade.
-# Usage: bench/harness/run.sh --condition 1|2|3|6 --upgrade payouts|settlements
+# Run one reference-arm session of one behaviour variant and one upgrade.
+# Usage: bench/pilot/run-one.sh --behaviour B1|B2|B3|B4|B5 --upgrade payouts|settlements --dest PATH
 # The inference key is read from the keyring and passed on SSH stdin.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
@@ -14,7 +14,7 @@ while [[ $# -gt 0 ]]; do
     --behaviour) BEHAVIOUR=${2:?}; shift 2 ;;
     --dest) DEST=${2:?}; shift 2 ;;
     --upgrade) UPGRADE=${2:?}; shift 2 ;;
-    *) echo "usage: bench/harness/run.sh --condition 1|2|3|6 --upgrade payouts|settlements" >&2; exit 2 ;;
+    *) echo "usage: bench/pilot/run-one.sh --behaviour B1|B2|B3|B4|B5 --upgrade payouts|settlements --dest PATH" >&2; exit 2 ;;
   esac
 done
 case "$COND" in
@@ -28,10 +28,18 @@ esac
 
 case "$UPGRADE:$BEHAVIOUR" in
   payouts:B1|payouts:B2|payouts:B4|settlements:B1|settlements:B2|settlements:B3) ;;
+  payouts:B5|settlements:B5) ;;
   *) echo "invalid variant" >&2; exit 2 ;;
 esac
-[[ "$DEST" =~ ^bench/pilot/results/behaviour-(payouts|settlements)-B[1234]-r[1-5]\.json$ ]] || { echo "invalid result path" >&2; exit 2; }
-[[ "$DEST" == "bench/pilot/results/behaviour-${UPGRADE}-${BEHAVIOUR}-r"[1-5].json ]] || { echo "result does not match variant" >&2; exit 2; }
+if [[ "$BEHAVIOUR" == B5 ]]; then
+  # B5-only rows belong to the harder-pair pilot, apart from the frozen baseline rows.
+  [[ "$DEST" =~ ^bench/pilot/harder/results/behaviour-(payouts|settlements)-B5-r[1-5]\.json$ ]] ||
+    { echo "invalid B5 result path" >&2; exit 2; }
+else
+  [[ "$DEST" =~ ^bench/pilot/results/behaviour-(payouts|settlements)-B[1234]-r[1-5]\.json$ ]] ||
+    { echo "invalid result path" >&2; exit 2; }
+fi
+[[ "$DEST" == *"/behaviour-${UPGRADE}-${BEHAVIOUR}-r"[1-5].json ]] || { echo "result does not match variant" >&2; exit 2; }
 [[ ! -e "$DEST" ]] || { echo "result already exists" >&2; exit 2; }
 
 if [[ -z ${VULTR_INFERENCE_API_KEY:-} || ${#VULTR_INFERENCE_API_KEY} -lt 8 ]]; then
@@ -62,7 +70,7 @@ fetch_usage > "$tmp/usage-before.json"
 echo "status=usage_before" >&2
 
 ssh -F /dev/null -o BatchMode=yes kalari 'mkdir -p ~/kalari-pilot-isolated/stage ~/kalari-pilot-isolated/runs'
-rsync -a -e 'ssh -F /dev/null' bench/pilot/remote.sh bench/pilot/mcp_shim.py bench/harness/measures.py bench/harness/grade_runner.py kalari:kalari-pilot-isolated/stage/
+rsync -a -e 'ssh -F /dev/null' bench/pilot/remote.sh bench/pilot/mcp_shim.py bench/harness/measures.py bench/harness/grade_runner.py bench/harness/retry_journal.py kalari:kalari-pilot-isolated/stage/
 rsync -a -e 'ssh -F /dev/null' bench/apis bench/graders bench/prompts bench/workspaces kalari:kalari-pilot-isolated/stage/
 rsync -a -e 'ssh -F /dev/null' bench/reference-paging/repo/opencode.jsonc kalari:kalari-pilot-isolated/stage/opencode.jsonc
 
@@ -110,6 +118,8 @@ python3 - "$tmp" "$COND" "$UPGRADE" "$DEST" "$BEHAVIOUR" << 'PY'
 import json, os, re, subprocess, sys
 tmp, cond, upgrade, dest, behaviour = sys.argv[1:6]
 key = os.environ.get("VULTR_INFERENCE_API_KEY", "")
+sys.path.insert(0, os.path.join(os.getcwd(), "bench", "harness"))
+import result_measures
 analysis = json.load(open(os.path.join(tmp, "analysis.json")))
 
 def rows(path):
@@ -172,6 +182,16 @@ else:
 
 lost = final.get("missing")
 duplicated = final.get("duplicates")
+
+measures, http_retries = result_measures.build(
+    analysis,
+    verdict=final.get("verdict"),
+    right_first_time=right,
+    tokens_input=deep["input"],
+    tokens_output=deep["output"],
+    records_lost=lost,
+    records_duplicated=duplicated,
+)
 result = {
     "condition": int(cond),
     "behaviour": behaviour,
@@ -189,19 +209,11 @@ result = {
     "notes_attached": analysis.get("notes_attached"),
     "session_cap_s": 1200,
     "session_capped": analysis.get("session_capped"),
-    "measures": {
-        "verdict": final.get("verdict"),
-        "right_first_time": right,
-        "sandbox_runs": analysis.get("sandbox_runs"),
-        "wall_time_s": analysis.get("wall_time_s"),
-        "time_stuck_s": analysis.get("time_stuck_s"),
-        "tokens_input": deep["input"],
-        "tokens_output": deep["output"],
-        "records_lost": lost,
-        "records_duplicated": duplicated,
-    },
+    "measures": measures,
     "sandbox_runs_against_v1": analysis.get("sandbox_runs_against_v1"),
     "sandbox_runs_against_v2": analysis.get("sandbox_runs_against_v2"),
+    "http_retries": http_retries,
+    "retry_measure": analysis.get("retry_measure"),
     "records_extra": final.get("extra"),
     "records_mismatched": final.get("mismatched"),
     "grade": final,
@@ -234,6 +246,8 @@ print(json.dumps({
     "verdict": result["measures"]["verdict"],
     "right_first_time": right,
     "sandbox_runs": result["measures"]["sandbox_runs"],
+    "http_retries_agent": http_retries["agent"],
+    "http_retries_grading": http_retries["grading"],
     "wall_time_s": result["measures"]["wall_time_s"],
     "time_stuck_s": result["measures"]["time_stuck_s"],
     "tokens_input": deep["input"],
