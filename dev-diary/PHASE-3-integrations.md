@@ -92,11 +92,30 @@ requires:   [T3.2]
 fixture-ok: no
 size:       S · mid
 owns:       tests/live/lambo.sh
-status:     claimed:grok-impl
+status:     in-review
 ```
 A fresh store, `lambo provision`, the client writing the payouts lesson and three citing runs, then reading it back by change kind, then the Solo promotion after the 60 s age floor and one canonization cycle.
 
 **Done when:** the transcript is in the report; promotion reached Candidate; cost (embeddings) under $0.01.
+
+Notes:
+
+`tests/live/lambo.sh` is not part of the gate. It provisions a fresh SQLite store in a temp directory: Solo, Qwen3 Embedding 4B at 2560, `api_key_env = "VULTR_INFERENCE_API_KEY"`, and `[daemon] gc_interval = 1`. The store path is absolute. It is not a shared `kalari.db`. The client command is `["lambo", "serve"]`. That argv does not pass `--session`, and a stdio serve refuses to start when neither `[[serve.projects]]` nor `[serve] default_session` is set, so the temp toml sets `default_session = "kalari"`.
+
+A temp Lean file outside the repo imports `Kalari.Lambo` and is deleted on exit. It calls `create`, `write`, `lessons`, `inspect`, and `shutdown`. It does not call `lambo_derive` from the shell, and it does not call recall. The change kind `pagination_changed` is a `resource`. The lesson is a `constraint` that `depends_on` that resource. Three citing runs are `observation`s that `depends_on` the lesson id from the write receipt. The lesson text is the payouts rule: stop on the end flag, never on the token's presence or a short or empty page; key records by id, and the last delivery wins, with the benchmark check (exact count against v1, zero duplicate ids, every record equal to v1).
+
+The lesson id is `a22ee882-ddcf-433c-9ecd-ef445f05c8dc`. `lessons` on `pagination_changed` found it, `stale=false`. Right after the writes the label ended `[Constraint]`, admission `status=None`, `eligible=false`, score 1.50, reason `solo score 1.50, needs at least 3.00`. At 75 s it was eligible, score 10.5, status still None, reason `every gate holds; the cycle's batch and ring order decide when`. At 145 s `lessons` returned the label ending `[Constraint, candidate]`, and inspect reported `status=Candidate`. `shutdown` returned and the child was gone.
+
+`/v1/usage` has no dollar amount. `qwen3-embedding-4b` is a row of `usage.current_month.chat_usage`. List price is $0.05 per 1M input tokens. The change-kind write, which also pinned the embedder canary, moved that row by 537 input tokens, $0.00002685. Four times that is $0.00010740, under $0.01, so the lesson and the three runs were written. The whole run moved 2511 input tokens and 0 output tokens, $0.00012555.
+
+The `lambo` already on PATH was 0.8.0. This run put the 0.9.0 release binary first on PATH, checksum checked, so the client still executed `lambo serve`.
+
+Surprises:
+
+- The same canonization cycle promoted the change-kind resource to Candidate. Its label was not read again after that.
+- Once the lesson was Candidate, the next gate was Venerable and it was not eligible: coverage 0.18, needs at least 0.30. The recorded run was eligible for Venerable. It had five unrelated observations. This run did not write them. Candidate did not need them.
+- `gc_idle_floor` stays 100, so with `gc_interval = 1` the timed GC trigger cannot fire. The serve log says so. Promotion still ran on the canonization interval.
+- The first usage delta is the canary plus the change kind, 537 tokens, not the length of the string `pagination_changed`.
 
 ---
 
