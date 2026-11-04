@@ -355,8 +355,10 @@ fi
 rm -rf -- "$STAGE/apis" "$STAGE/graders"
 [[ ! -e "$STAGE/apis" && ! -e "$STAGE/graders" ]] || { echo "server staging cleanup failed" >&2; exit 1; }
 echo "status=source_staging_removed" >&2
-# Trusted retry measurement from the API guests' host-owned journals. Truncate at
-# each phase start, read at each phase end. A missing journal stays unknown.
+# Trusted retry measurement from the API guest journals. Truncate at each phase
+# start, read at each phase end. A missing journal stays unknown. The grading
+# read also rejects a live API that saw traffic and a grading API with more than
+# one client.
 RETRY_JOURNAL=/srv/retry-journal.jsonl
 retry_truncate() { # $1 phase
   python3 "$STAGE/retry_journal.py" truncate \
@@ -365,10 +367,15 @@ retry_truncate() { # $1 phase
     --out "$RUN/retry-$1-start.json" >/dev/null || true
 }
 retry_read() { # $1 phase
+  local extra=()
+  if [[ "$1" == grading ]]; then
+    extra=(--grading-live "$API_LIVE" --grading-grade "$API_GRADE")
+  fi
   python3 "$STAGE/retry_journal.py" read --phase "$1" \
     --truncated "$RUN/retry-$1-start.json" \
     --remote "$API_LIVE=$RETRY_JOURNAL" \
     --remote "$API_GRADE=$RETRY_JOURNAL" \
+    "${extra[@]}" \
     --out "$RUN/retry-$1.json" >/dev/null || true
 }
 retry_truncate agent
@@ -410,6 +417,10 @@ echo "status=session_exit:$rc elapsed:$elapsed" >&2
 # Drop the key from the environment before grading. measures still redacts with the copy.
 export KALARI_REDACT_KEY
 unset VULTR_INFERENCE_API_KEY
+# The arm is done. Remove its guest before the agent read so a background
+# consumer cannot add events to the agent window, and before grading so the
+# grading window cannot hold arm traffic.
+msb remove -f "$GUEST" >/dev/null 2>&1 || true
 retry_read agent
 
 NOTES_DIR=""

@@ -161,9 +161,10 @@ PY
 # no-inference rehearsal calls the same function this script calls.
 . "$STAGE/condition1.sh"
 . "$STAGE/grade_one.sh"
-# Trusted retry measurement: the API servers' host-owned journals, truncated at
-# each phase start and read at each phase end. Agent activity and grading
-# activity never share a window. A missing journal stays unknown.
+# Trusted retry measurement: the API servers' journals, truncated at each phase
+# start and read at each phase end. Agent activity and grading activity never
+# share a window. A missing journal stays unknown. The grading read also rejects
+# a live API that saw traffic and a grading API with more than one client.
 RETRY_JOURNAL=/srv/retry-journal.jsonl
 retry_api() { printf 'api-%s-%s\n' "$UPGRADE" "$1"; }
 retry_truncate() { # $1 phase
@@ -173,10 +174,15 @@ retry_truncate() { # $1 phase
     --out "$RUN/retry-$1-start.json" >/dev/null || true
 }
 retry_read() { # $1 phase
+  local extra=()
+  if [[ "$1" == grading ]]; then
+    extra=(--grading-live "$(retry_api live)" --grading-grade "$(retry_api grading)")
+  fi
   python3 "$STAGE/retry_journal.py" read --phase "$1" \
     --truncated "$RUN/retry-$1-start.json" \
     --remote "$(retry_api live)=$RETRY_JOURNAL" \
     --remote "$(retry_api grading)=$RETRY_JOURNAL" \
+    "${extra[@]}" \
     --out "$RUN/retry-$1.json" >/dev/null || true
 }
 STATE=$(condition1_state_path "$ROOT")
@@ -360,6 +366,11 @@ if [[ "$COND" == 1 && "$UPGRADE" == payouts ]]; then
   # never compared with anything.
 fi
 
+# The arm has finished. Stop the arm's sandboxes and the processes they left
+# before the grading window opens, so grading traffic is only the grader's.
+# remove_ours keeps the four API guests.
+remove_ours
+kill_new_procs
 retry_truncate grading
 grade_one "$WS" final
 if [[ -f "$RUN/first-v2-src/$CONSUMER" ]]; then

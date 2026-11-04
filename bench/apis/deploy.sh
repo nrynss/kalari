@@ -12,9 +12,14 @@
 # the VM's public IP only: not loopback, not the tailnet, and dropped from the internet by the
 # Vultr firewall. No arm can read the servers: their code exists only inside these microVMs.
 #
-# Each server writes a host-owned retry journal at /srv/retry-journal.jsonl in its own guest.
-# The journal holds request digests only, never a cursor, a request body or a token. The
-# harness truncates it at a phase start and reads it at a phase end over `msb exec`.
+# Each server writes a retry journal at /srv/retry-journal.jsonl in its own guest.
+# The journal holds request digests only, never a cursor, a request body or a token.
+# The harness truncates it at a phase start and reads it at a phase end over `msb exec`.
+# A host mount would not put the file out of reach, because the arm's MCP can bind-mount
+# the same host path into its own guest. The guest name is fixed, and that MCP can exec
+# into any sandbox, so trust rests on the arm not targeting these guests. The grading
+# read rejects a live API that saw traffic and a grading API with more than one client,
+# and reports unknown instead of a count.
 set -euo pipefail
 umask 022
 cd "$(dirname "$0")"

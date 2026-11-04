@@ -106,6 +106,7 @@ tmp, cond, upgrade, dest = sys.argv[1:5]
 key = os.environ.get("VULTR_INFERENCE_API_KEY", "")
 sys.path.insert(0, os.path.join(os.getcwd(), "bench", "harness"))
 import result_grade
+import result_measures
 analysis = json.load(open(os.path.join(tmp, "analysis.json")))
 
 # Condition 1 settlements is only evidence if the session really continued.
@@ -157,25 +158,15 @@ else:
 lost = final.get("missing")
 duplicated = final.get("duplicates")
 
-
-def retry_counts(measure):
-    """Agent and grading HTTP retry counts, apart from sandbox runs."""
-    phases = (measure or {}).get("phases") or {}
-    counts = {}
-    for phase in ("agent", "grading"):
-        doc = phases.get(phase) or {}
-        counts[phase] = {
-            "status": doc.get("status") or "unknown",
-            "b5_429_responses": doc.get("b5_429_responses"),
-            "matching_retry_attempts": doc.get("matching_retry_attempts"),
-            "successful_matching_retries": doc.get("successful_matching_retries"),
-        }
-    counts["note"] = "an HTTP retry inside one consumer process is not a sandbox run"
-    counts["null_means"] = "unknown, not zero"
-    return counts
-
-
-http_retries = retry_counts(analysis.get("retry_measure"))
+measures, http_retries = result_measures.build(
+    analysis,
+    verdict=final.get("verdict"),
+    right_first_time=right,
+    tokens_input=deep["input"],
+    tokens_output=deep["output"],
+    records_lost=lost,
+    records_duplicated=duplicated,
+)
 result = {
     "condition": int(cond),
     "upgrade": upgrade,
@@ -201,17 +192,7 @@ result = {
     "consumer_exit": final.get("consumer_exit"),
     "output_present": final.get("output_present"),
     "grade_status": final.get("grade_status"),
-    "measures": {
-        "verdict": final.get("verdict"),
-        "right_first_time": right,
-        "sandbox_runs": analysis.get("sandbox_runs"),
-        "wall_time_s": analysis.get("wall_time_s"),
-        "time_stuck_s": analysis.get("time_stuck_s"),
-        "tokens_input": deep["input"],
-        "tokens_output": deep["output"],
-        "records_lost": lost,
-        "records_duplicated": duplicated,
-    },
+    "measures": measures,
     "sandbox_runs_against_v1": analysis.get("sandbox_runs_against_v1"),
     "sandbox_runs_against_v2": analysis.get("sandbox_runs_against_v2"),
     "http_retries": http_retries,

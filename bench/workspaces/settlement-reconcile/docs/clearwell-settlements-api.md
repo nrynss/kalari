@@ -45,7 +45,7 @@ Cursors are opaque: don't parse or construct them, and expect a different value 
 
 Under load a query can return `429 Too Many Requests` with a `Retry-After` header. The header holds the number of seconds to wait before you try again.
 
-Treat a 429 as a transient transport failure. Wait for the delay and send the identical request again. A request is identical only when the query text and every variable are the same. Keep the same `after` value, and do not move to the next page until the request succeeds.
+Treat a 429 as a transient transport failure. Wait for the delay and send the identical request again. A request is identical only when the query text, the operation name and every variable are the same. Keep the same `after` value, and do not move to the next page until the request succeeds.
 
 ## Migrating from v1
 

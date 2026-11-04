@@ -9,11 +9,15 @@
 #   bench/pilot/run.sh --behaviour B1 --upgrade payouts --repeat 1
 #   bench/pilot/run.sh --behaviour B5 --upgrade payouts --repeat 1
 #   bench/pilot/run.sh --condition 3 --upgrade settlements
+#   bench/pilot/run.sh --condition 3 --upgrade settlements --root bench/pilot/harder/results
 #   bench/pilot/run.sh --run
 #
 # Without --run the selected plan is printed and the process exits 2, except --list,
 # which prints the same plan and exits 0. The whole matrix is the default selection.
 # --run on that matrix refuses too; run-missing.sh handles the isolated variants.
+# Condition rows go to bench/pilot/results unless --root names another directory.
+# The runner refuses an existing destination. T5.2b passes
+# --root bench/pilot/harder/results so the old rows stay untouched.
 #
 # Condition runs are the proposed pair (every behaviour on).
 # Condition 1 is one session across both upgrades: payouts, then settlements on it.
@@ -27,9 +31,10 @@ BEHAVIOUR=""
 CONDITION=""
 UPGRADE=""
 REPEAT=""
+ROOT="bench/pilot/results"
 
 usage() {
-  sed -n '2,20p' "$0" >&2
+  sed -n '2,24p' "$0" >&2
   exit 2
 }
 
@@ -41,6 +46,7 @@ while [[ $# -gt 0 ]]; do
     --condition) CONDITION=${2:?condition}; shift 2 ;;
     --upgrade) UPGRADE=${2:?upgrade}; shift 2 ;;
     --repeat) REPEAT=${2:?repeat}; shift 2 ;;
+    --root) ROOT=${2:?destination root}; shift 2 ;;
     -h|--help) usage ;;
     *) echo "unknown argument: $1" >&2; usage ;;
   esac
@@ -58,6 +64,11 @@ if [[ -n $BEHAVIOUR && -z $UPGRADE ]]; then
   echo "a behaviour needs an upgrade" >&2
   exit 2
 fi
+ROOT=${ROOT%/}
+case "$ROOT" in
+  bench/pilot/results|bench/pilot/harder/results) ;;
+  *) echo "root must be bench/pilot/results or bench/pilot/harder/results" >&2; exit 2 ;;
+esac
 if [[ -n $CONDITION && -z $UPGRADE ]]; then
   echo "a condition needs an upgrade" >&2
   exit 2
@@ -91,7 +102,7 @@ fi
 
 if [[ -z $BEHAVIOUR && -z $CONDITION ]]; then
   cat <<'EOF'
-# 6 single-behaviour variants x 5 fresh sessions, then conditions 1, 2, 3 and 6
+# 8 single-behaviour variants x 5 fresh sessions, then conditions 1, 2, 3 and 6
 # on the proposed pair, five times each. Condition 1 is one session across both
 # upgrades (payouts, then settlements on that session).
 # Behaviour rows are listed only. Use bench/pilot/run-missing.sh for isolated variants.
@@ -109,9 +120,11 @@ fi
 
 run_harness() { # condition upgrade dest
   local cond=$1 upgrade=$2 dest=$3
+  # Refuse before the harness call, so an existing row is never overwritten.
+  [[ ! -e "$dest" ]] || { echo "result already exists: $dest" >&2; exit 2; }
   local src="bench/harness/results/c${cond}-${upgrade}.json"
   bench/harness/run.sh --condition "$cond" --upgrade "$upgrade"
-  mkdir -p bench/pilot/results
+  mkdir -p "$(dirname "$dest")"
   cp "$src" "$dest"
 }
 
@@ -136,7 +149,8 @@ handle_behaviour() { # upgrade behaviour repeat
 
 handle_condition() { # condition upgrade repeat
   local cond=$1 upgrade=$2 rep=$3
-  local line="condition $cond $upgrade repeat $rep: bench/harness/run.sh --condition $cond --upgrade $upgrade"
+  local dest="$ROOT/condition-${cond}-${upgrade}-r${rep}.json"
+  local line="condition $cond $upgrade repeat $rep: bench/harness/run.sh --condition $cond --upgrade $upgrade (writes $dest)"
   if [[ $cond == 1 && $upgrade == payouts ]]; then
     line="$line (session start; settlements repeat $rep continues it)"
   elif [[ $cond == 1 && $upgrade == settlements ]]; then
@@ -147,7 +161,7 @@ handle_condition() { # condition upgrade repeat
     return 0
   fi
   echo "$line" >&2
-  run_harness "$cond" "$upgrade" "bench/pilot/results/condition-${cond}-${upgrade}-r${rep}.json"
+  run_harness "$cond" "$upgrade" "$dest"
 }
 
 want_rep() { [[ -z $REPEAT || $REPEAT == "$1" ]]; }

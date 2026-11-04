@@ -12,7 +12,7 @@ delta and scan APIs (bench/README.md names them; the arms never see the names). 
       pages can be short or empty while `hasNextPage` is still true.
   B5  the first request of a traversal at or past offset 1000 gets HTTP 429 with
       `Retry-After: 1`. The identical request then succeeds. Each traversal gets one 429.
-      A traversal identity is minted with the first response and rides inside the opaque
+      The first response mints a traversal identity and carries it inside the opaque
       `after` cursor, so replaying a saved cursor continues that lineage.
 
 Usage: server.py [--bind ADDR] [--port N] [--v1 on|off] [--behaviours B1,B2,B3,B5]
@@ -24,11 +24,13 @@ the plain thing: B1 off, the last page's `endCursor` is null; B2 off, each settl
 emitted once, in v1's version; B3 off, void rows are dropped before the page is cut;
 B5 off, no request is throttled.
 
-The retry journal is a host-owned JSON-lines file with one event per request. It carries
-a timestamp, a client digest, the HTTP status, the request fingerprint digest, the
-traversal digest and whether the request was the matching retry. It never carries a raw
-cursor, a raw request or a token. The request fingerprint covers the exact query text,
-every variable and the operation name, not only `after`.
+The retry journal is a JSON-lines file in the API guest with one event per request. The
+harness truncates it at a phase start and reads it at a phase end over `msb exec`. It
+carries a timestamp, a client digest, the HTTP status, the request fingerprint digest,
+the traversal digest and whether the request was the matching retry. It never carries a
+raw cursor, a raw request or a token. A wrong type or an overflow marker reads as
+unknown, never as zero. The request fingerprint covers the exact query text, every
+variable and the operation name, not only `after`.
 """
 import argparse
 import base64
@@ -120,10 +122,13 @@ B3 = True
 B5 = True
 
 # B5: one throttled request per traversal, at a fixed mid-stream offset.
+# Both maps are capped. A traversal that falls out of the cap can see a second
+# 429, which is better than growing without bound.
 B5_OFFSET = 1000
+B5_STATE_LIMIT = 4096
 B5_LOCK = threading.Lock()
 B5_PENDING = {}     # traversal -> {"cursor": incoming cursor digest, "request": fingerprint}
-B5_CLEARED = set()  # traversals that already retried successfully
+B5_CLEARED = {}     # traversals that already retried successfully
 
 JOURNAL = None
 JOURNAL_LOCK = threading.Lock()
@@ -167,40 +172,73 @@ def request_fingerprint(method, path, query, variables, operation):
 
 
 def settlements_arguments(query, variables, operation_name):
-    """Best effort: the settlements field's arguments, with variables resolved."""
+    """Resolve the settlements field's arguments, following fragments.
+
+    Returns `(has_field, arguments)`. `has_field` is False when the document has
+    no settlements field. `arguments` is None when a field is present but this
+    parser cannot resolve it, so the caller rejects the request instead of
+    treating it as a fresh traversal.
+    """
     doc = parse(query)
     ops = [d for d in doc.definitions if getattr(d, "kind", "") == "operation_definition"]
     if operation_name:
         ops = [d for d in ops if getattr(getattr(d, "name", None), "value", None) == operation_name]
-    if len(ops) != 1:
-        return None
-    found = {}
+    fragments = {}
+    for d in doc.definitions:
+        if getattr(d, "kind", "") != "fragment_definition":
+            continue
+        name = getattr(getattr(d, "name", None), "value", None)
+        if name:
+            fragments[name] = d
+    fields = []
+    seen = set()
 
     def walk(selection_set):
         if selection_set is None:
-            return False
+            return
         for sel in selection_set.selections:
-            if getattr(sel, "kind", "") != "field":
-                continue
-            if sel.name.value == "settlements":
-                for arg in sel.arguments:
-                    name, value = arg.name.value, arg.value
-                    kind = getattr(value, "kind", "")
-                    if kind == "variable":
-                        found[name] = (variables or {}).get(value.name.value)
-                    elif kind == "string_value":
-                        found[name] = value.value
-                    elif kind == "int_value":
-                        found[name] = int(value.value)
-                    elif kind == "null_value":
-                        found[name] = None
-                return True
-            if walk(getattr(sel, "selection_set", None)):
-                return True
-        return False
+            kind = getattr(sel, "kind", "")
+            if kind == "field":
+                if sel.name.value == "settlements":
+                    fields.append(sel)
+            elif kind == "inline_fragment":
+                walk(getattr(sel, "selection_set", None))
+            elif kind == "fragment_spread":
+                name = getattr(getattr(sel, "name", None), "value", None)
+                if name in fragments and name not in seen:
+                    seen.add(name)
+                    walk(fragments[name].selection_set)
 
-    walk(ops[0].selection_set)
-    return found
+    if len(ops) == 1:
+        walk(ops[0].selection_set)
+    else:
+        for op in ops:
+            walk(op.selection_set)
+        if fields:
+            return True, None
+    if not fields:
+        return False, {}
+    # Several settlements fields can only come from fragments. Use the one that
+    # carries `after`, the field that decides the traversal offset.
+    chosen = next(
+        (f for f in fields if any(a.name.value == "after" for a in f.arguments)),
+        fields[0],
+    )
+    found = {}
+    for arg in chosen.arguments:
+        name, value = arg.name.value, arg.value
+        kind = getattr(value, "kind", "")
+        if kind == "variable":
+            found[name] = (variables or {}).get(value.name.value)
+        elif kind == "string_value":
+            found[name] = value.value
+        elif kind == "int_value":
+            found[name] = int(value.value)
+        elif kind == "null_value":
+            found[name] = None
+        else:
+            return True, None
+    return True, found
 
 
 def b5_decide(traversal, cursor_key, offset, fingerprint):
@@ -220,11 +258,15 @@ def b5_decide(traversal, cursor_key, offset, fingerprint):
             candidate = pending["cursor"] == cursor_key
             if candidate and pending["request"] == fingerprint:
                 del B5_PENDING[traversal]
-                B5_CLEARED.add(traversal)
+                B5_CLEARED[traversal] = None
+                if len(B5_CLEARED) > B5_STATE_LIMIT:
+                    B5_CLEARED.pop(next(iter(B5_CLEARED)))
                 return "retry", True
             # A changed query or changed variables does not count as the identical retry.
             return "throttle", candidate
         if offset >= B5_OFFSET:
+            if len(B5_PENDING) >= B5_STATE_LIMIT:
+                B5_PENDING.pop(next(iter(B5_PENDING)))
             B5_PENDING[traversal] = {"cursor": cursor_key, "request": fingerprint}
             return "throttle", False
         return "serve", False
@@ -301,12 +343,13 @@ class Handler(BaseHTTPRequestHandler):
         with JOURNAL_LOCK:
             if JOURNAL_COUNT < JOURNAL_LIMIT:
                 JOURNAL.write(json.dumps(event, separators=(",", ":"), sort_keys=True) + "\n")
-                JOURNAL.flush()
-            elif JOURNAL_COUNT == JOURNAL_LIMIT:
-                # The reader treats an overflow marker as ambiguous, so it never
-                # reports a partial count as complete.
+            else:
+                # Write the marker on every request at or past the limit. The
+                # harness truncates the file between phases, so the next request
+                # after a truncate writes it again. A phase after an overflow then
+                # reads as unknown, never as a false zero.
                 JOURNAL.write('{"overflow":true}\n')
-                JOURNAL.flush()
+            JOURNAL.flush()
             JOURNAL_COUNT += 1
 
     def reply(self, status, obj, retry_after=None):
@@ -353,10 +396,13 @@ class Handler(BaseHTTPRequestHandler):
         action, traversal, cursor_key, candidate = "serve", "", "", False
         if api == "v2":
             try:
-                args = settlements_arguments(query, variables, operation)
+                has_field, args = settlements_arguments(query, variables, operation)
             except Exception:
-                args = None
-            after = args.get("after") if args else None
+                has_field, args = False, {}
+            if has_field and args is None:
+                self.reply(400, {"errors": [{"message": "could not resolve the settlements field arguments"}]})
+                return self.journal(400, fingerprint, "", api=api)
+            after = (args or {}).get("after")
             decoded = read(after) if isinstance(after, str) and after else None
             # A malformed cursor is the resolver's GraphQL error, not a throttle.
             malformed = isinstance(after, str) and bool(after) and decoded is None
@@ -399,14 +445,17 @@ def behaviours_arg(raw):
 
 
 def main():
-    global B1, B2, B3, B5, JOURNAL
+    global B1, B2, B3, B5, JOURNAL, JOURNAL_LIMIT
     ap = argparse.ArgumentParser()
     ap.add_argument("--bind", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=18081)
     ap.add_argument("--v1", choices=["on", "off"], default="on")
     ap.add_argument("--behaviours", type=behaviours_arg, help="comma-separated subset of B1,B2,B3,B5; omit for all")
-    ap.add_argument("--retry-journal", help="host-owned retry journal file, one JSON event per request")
+    ap.add_argument("--retry-journal", help="retry journal file, one JSON event per request")
+    ap.add_argument("--retry-journal-limit", type=int, default=JOURNAL_LIMIT,
+                    help="stop writing events after N, for tests")
     a = ap.parse_args()
+    JOURNAL_LIMIT = a.retry_journal_limit
     if a.retry_journal:
         # Append mode: the harness truncates the file between phases and the held
         # descriptor must keep appending at the new end.

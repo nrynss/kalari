@@ -5,7 +5,9 @@
 #
 # B5 has its own block. It checks the real status and the Retry-After header, that each
 # traversal gets one 429 and its identical retry succeeds without skipping a page, that a
-# changed GraphQL query or changed variables stays throttled, and that B5 off changes nothing.
+# changed GraphQL query, variable, operation name or payout parameter stays throttled, that
+# a settlements fragment reaches the same field, and that B5 off changes nothing. The retry
+# journal block checks phase counts, event types, digest shapes, overflow and grading isolation.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 fail=0
@@ -115,7 +117,7 @@ fi
 kill "$observer_pid" 2>/dev/null || true
 wait "$observer_pid" 2>/dev/null || true
 if ! python3 -I - "$tmp/observed.jsonl" "$tmp/observed-output.jsonl" <<'PYTRACE'
-import json, subprocess, sys
+import json, re, subprocess, sys
 raw = open(sys.argv[1], "rb").read()
 assert raw.endswith(b"\n") and len(raw) <= 262144
 pages = [json.loads(line) for line in raw.splitlines()]
@@ -125,9 +127,14 @@ assert all(a["response"] == b["request"] for a, b in zip(pages, pages[1:]))
 assert all(not p["drained"] for p in pages[:-1])
 assert pages[-1]["drained"] and pages[-1]["response"]
 assert all(set(a["ids"]) & set(b["ids"]) == {a["last"]} == {b["first"]} for a, b in zip(pages, pages[1:]))
+# Every request and response field is a digest, never a raw cursor.
+DIGEST = re.compile(r"[0-9a-f]{0,32}")
+assert all(DIGEST.fullmatch(p["request"]) for p in pages), "trace request is not a digest"
+assert all(DIGEST.fullmatch(p["response"]) for p in pages), "trace response is not a digest"
+assert all(len(p["response"]) == 32 for p in pages), "trace response digest is not 32 hex"
 grade = json.loads(subprocess.check_output(["python3", "-I", "graders/grade.py", "payouts", sys.argv[2]]))
 assert grade["verdict"] == "PASS"
-print(f"ok   payouts observed: {len(pages)} pages, one-record overlaps, final token, grader PASS")
+print(f"ok   payouts observed: {len(pages)} pages, one-record overlaps, final token, digests only, grader PASS")
 PYTRACE
 then
   echo "FAIL observed payouts trace or grader"; fail=1
@@ -217,7 +224,7 @@ for pair in "payouts:$p_il:$tmp/il-payouts.jsonl" "settlements:$s_il:$tmp/il-set
   api=${pair%%:*}; rest=${pair#*:}; port=${rest%%:*}; journal=${rest#*:}
   : > "$journal"
   if ! python3 -I - "$api" "$port" "$journal" <<'PYB5'
-import json, sys, urllib.error, urllib.request
+import json, re, sys, urllib.error, urllib.request
 
 api, port, journal = sys.argv[1], int(sys.argv[2]), sys.argv[3]
 LIMIT = 50
@@ -253,6 +260,7 @@ class Traversal:
         self.name = name
         self.cursor = None
         self.first_cursor = None
+        self.cursors = []
         self.in_order = []
         self.seen = set()
         self.throttled = 0
@@ -281,6 +289,7 @@ class Traversal:
             self.done = not conn["pageInfo"]["hasNextPage"]
         if self.first_cursor is None:
             self.first_cursor = self.cursor
+        self.cursors.append(self.cursor)
         for record_id in page:
             if record_id not in self.seen:
                 self.seen.add(record_id)
@@ -322,14 +331,26 @@ for trav, seq in by_trav.items():
     assert len(t429) == 1 and len(retry) == 1, (trav, len(t429), len(retry))
     assert t429[0]["status"] == 429 and retry[0]["status"] == 200
     assert t429[0]["request"] == retry[0]["request"], (trav, "retry is not the identical request")
-print(f"ok   {api} interleaved: 2 identities, 1 x 429 each, identical retries, no skipped page")
+# Digest shapes only, and no raw cursor anywhere in the journal.
+DIGEST = re.compile(r"[0-9a-f]{0,32}")
+CLIENT = re.compile(r"[0-9a-f]{16}")
+raw = open(journal).read()
+for e in events:
+    assert DIGEST.fullmatch(e["request"]), e
+    assert DIGEST.fullmatch(e["traversal"]), e
+    assert CLIENT.fullmatch(e["client"]), e
+for t in (one, two):
+    for cursor in t.cursors:
+        assert cursor and cursor not in raw, "raw cursor in the journal"
+print(f"ok   {api} interleaved: 2 identities, 1 x 429 each, identical retries, no skipped page, digests only")
 PYB5
   then
     echo "FAIL $api interleaved traversal"; fail=1
   fi
 done
 
-# A changed GraphQL query or changed variables is not the identical retry.
+# A changed GraphQL query, changed variables or an added operation name is not the
+# identical retry. The first request fingerprint is the one the matching retry repeats.
 s_chg=$((op + 13))
 start_server settlements "$s_chg" "$tmp/s-chg.log" --retry-journal "$tmp/chg-settlements.jsonl"
 wait_api settlements "$s_chg"
@@ -338,16 +359,19 @@ if ! python3 -I - "$s_chg" "$tmp/chg-settlements.jsonl" <<'PYCHG'
 import json, sys, urllib.error, urllib.request
 
 port, journal = int(sys.argv[1]), sys.argv[2]
-QUERY = ("query($f: Int, $a: String) { settlements(first: $f, after: $a) { "
+QUERY = ("query Settlements($f: Int, $a: String) { settlements(first: $f, after: $a) { "
          "nodes { id } pageInfo { endCursor hasNextPage } } }")
-CHANGED_QUERY = ("query($f: Int, $a: String) { settlements(first: $f, after: $a) { "
+CHANGED_QUERY = ("query Settlements($f: Int, $a: String) { settlements(first: $f, after: $a) { "
                  "nodes { id batchDate } pageInfo { endCursor hasNextPage } } }")
 URL = f"http://127.0.0.1:{port}/v2/graphql"
 
 
-def send(query, variables):
-    body = json.dumps({"query": query, "variables": variables}).encode()
-    req = urllib.request.Request(URL, data=body, headers={"Content-Type": "application/json"})
+def send(query, variables, operation=None):
+    body = {"query": query, "variables": variables}
+    if operation:
+        body["operationName"] = operation
+    req = urllib.request.Request(URL, data=json.dumps(body).encode(),
+                                 headers={"Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=10) as r:
             return r.status, json.load(r), r.headers
@@ -378,6 +402,10 @@ assert headers.get("Retry-After") == "1", headers.get("Retry-After")
 code, _body, headers = send(CHANGED_QUERY, {"f": 100, "a": blocked_at})
 assert code == 429, ("changed query", code)
 assert headers.get("Retry-After") == "1", headers.get("Retry-After")
+# The same query and variables with an operation name is a different request.
+code, _body, headers = send(QUERY, {"f": 100, "a": blocked_at}, operation="Settlements")
+assert code == 429, ("changed operation name", code)
+assert headers.get("Retry-After") == "1", headers.get("Retry-After")
 # The identical request succeeds and the traversal continues.
 code, body, _headers = send(QUERY, {"f": 100, "a": blocked_at})
 assert code == 200, ("identical retry", code)
@@ -396,18 +424,238 @@ events = [json.loads(line) for line in open(journal) if line.strip()]
 assert len({e["traversal"] for e in events}) == 1, "more than one traversal"
 throttles = [e for e in events if e.get("throttled")]
 retries = [e for e in events if e.get("matching_retry")]
-assert len(throttles) == 3, len(throttles)
+assert len(throttles) == 4, len(throttles)
 assert len(retries) == 1, len(retries)
-assert len({e["request"] for e in throttles}) == 3, "the three requests did not differ"
+assert len({e["request"] for e in throttles}) == 4, "the four requests did not differ"
 assert throttles[0]["request"] == retries[0]["request"], "the matching retry is not the first request"
-print("ok   settlements changed query or variables stays throttled")
+print("ok   settlements changed query, variables or operation name stays throttled")
 PYCHG
 then
   echo "FAIL settlements changed request"; fail=1
 fi
 
+# A changed payout request stays throttled. The decoded parameter set is the unit:
+# order does not matter, a repeated parameter or a padded value makes a new request.
+p_chg=$((op + 15))
+start_server payouts "$p_chg" "$tmp/p-chg.log" --retry-journal "$tmp/chg-payouts.jsonl"
+wait_api payouts "$p_chg"
+: > "$tmp/chg-payouts.jsonl"
+if ! python3 -I - "$p_chg" "$tmp/chg-payouts.jsonl" <<'PYCHGP'
+import json, sys, urllib.error, urllib.parse, urllib.request
+
+port, journal = int(sys.argv[1]), sys.argv[2]
+
+
+def url(limit, cursor=None, order="limit-first", repeat=False):
+    params = [("limit", limit)]
+    if repeat:
+        params.append(("limit", limit))
+    if cursor:
+        params.append(("cursor", cursor))
+    if order == "cursor-first":
+        params.reverse()
+    return f"http://127.0.0.1:{port}/v2/payouts?" + urllib.parse.urlencode(params)
+
+
+def get(limit, cursor=None, order="limit-first", repeat=False):
+    req = urllib.request.Request(url(limit, cursor, order, repeat))
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return r.status, json.load(r), r.headers
+    except urllib.error.HTTPError as e:
+        return e.code, json.loads(e.read() or b"{}"), e.headers
+
+
+def first_throttle():
+    cursor = None
+    seen = set()
+    while True:
+        code, body, _headers = get("100", cursor)
+        if code == 429:
+            return cursor, seen
+        assert code == 200, code
+        seen |= {p["id"] for p in body["payouts"]}
+        cursor = body["cursor"]
+        assert not body["drained"], "the throttle never fired"
+
+
+def drain(cursor, seen):
+    code, body, _headers = get("100", cursor)
+    assert code == 200, code
+    seen |= {p["id"] for p in body["payouts"]}
+    cursor = body["cursor"]
+    while not body["drained"]:
+        code, body, _headers = get("100", cursor)
+        assert code == 200, code
+        seen |= {p["id"] for p in body["payouts"]}
+        cursor = body["cursor"]
+    return seen
+
+
+# One traversal shows that each changed request stays throttled and the exact
+# request clears it.
+blocked_at, seen_a = first_throttle()
+# A repeated parameter parses to the same values but is a different request.
+code, _body, headers = get("100", blocked_at, repeat=True)
+assert code == 429, ("duplicate parameter", code)
+assert headers.get("Retry-After") == "1", headers.get("Retry-After")
+# A zero-padded integer is the same value but a different request.
+code, _body, headers = get("0100", blocked_at)
+assert code == 429, ("padded limit", code)
+assert headers.get("Retry-After") == "1", headers.get("Retry-After")
+# A changed limit is a different request.
+code, _body, headers = get("99", blocked_at)
+assert code == 429, ("changed limit", code)
+assert headers.get("Retry-After") == "1", headers.get("Retry-After")
+# The exact request succeeds and the traversal continues.
+code, body, _headers = get("100", blocked_at)
+assert code == 200, ("identical retry", code)
+seen_a |= {p["id"] for p in body["payouts"]}
+cursor = body["cursor"]
+while not body["drained"]:
+    code, body, _headers = get("100", cursor)
+    assert code == 200, code
+    seen_a |= {p["id"] for p in body["payouts"]}
+    cursor = body["cursor"]
+assert len(seen_a) == 2431, len(seen_a)
+
+events = [json.loads(line) for line in open(journal) if line.strip()]
+assert len({e["traversal"] for e in events}) == 1, "more than one traversal"
+throttles = [e for e in events if e.get("throttled")]
+retries = [e for e in events if e.get("matching_retry")]
+assert len(throttles) == 4, len(throttles)
+assert len(retries) == 1, len(retries)
+assert len({e["request"] for e in throttles}) == 4, "the four requests did not differ"
+assert throttles[0]["request"] == retries[0]["request"], "the matching retry is not the first request"
+
+# A second traversal shows that reordered parameters are the identical request.
+open(journal, "w").close()
+blocked_at, seen_b = first_throttle()
+code, body, _headers = get("100", blocked_at, order="cursor-first")
+assert code == 200, ("reordered retry", code)
+seen_b |= {p["id"] for p in body["payouts"]}
+seen_b = drain(body["cursor"], seen_b)
+assert len(seen_b) == 2431, len(seen_b)
+events = [json.loads(line) for line in open(journal) if line.strip()]
+assert len({e["traversal"] for e in events}) == 1, "more than one traversal"
+throttles = [e for e in events if e.get("throttled")]
+retries = [e for e in events if e.get("matching_retry")]
+assert len(throttles) == 1 and len(retries) == 1, (len(throttles), len(retries))
+assert throttles[0]["request"] == retries[0]["request"], "reordered parameters are not the same request"
+print("ok   payouts changed request stays throttled, reordered parameters retry")
+PYCHGP
+then
+  echo "FAIL payouts changed request"; fail=1
+fi
+
+# A settlements field inside a named or inline fragment still reaches B5, and an
+# ambiguous document is rejected instead of starting a fresh traversal.
+s_frag=$((op + 16))
+start_server settlements "$s_frag" "$tmp/s-frag.log" --retry-journal "$tmp/frag-settlements.jsonl"
+wait_api settlements "$s_frag"
+if ! python3 -I - "$s_frag" "$tmp/frag-settlements.jsonl" <<'PYFRAG'
+import json, re, sys, urllib.error, urllib.request
+
+port, journal = int(sys.argv[1]), sys.argv[2]
+URL = f"http://127.0.0.1:{port}/v2/graphql"
+NAMED = ("query Q($f: Int, $a: String) { ...S } "
+         "fragment S on Query { settlements(first: $f, after: $a) { "
+         "nodes { id } pageInfo { endCursor hasNextPage } } }")
+INLINE = ("query Q($f: Int, $a: String) { ... on Query { settlements(first: $f, after: $a) { "
+          "nodes { id } pageInfo { endCursor hasNextPage } } } }")
+AMBIGUOUS = ("query A($f: Int, $a: String) { settlements(first: $f, after: $a) { "
+             "pageInfo { hasNextPage } } } "
+             "query B($f: Int, $a: String) { settlements(first: $f, after: $a) { "
+             "pageInfo { hasNextPage } } }")
+
+
+def send(query, variables):
+    body = json.dumps({"query": query, "variables": variables}).encode()
+    req = urllib.request.Request(URL, data=body, headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return r.status, json.load(r), r.headers
+    except urllib.error.HTTPError as e:
+        return e.code, json.loads(e.read() or b"{}"), e.headers
+
+
+def drain(label, query):
+    open(journal, "w").close()
+    cursor = None
+    seen = set()
+    throttles = retries = 0
+    while True:
+        code, body, headers = send(query, {"f": 100, "a": cursor})
+        if code == 429:
+            throttles += 1
+            assert headers.get("Retry-After") == "1", (label, headers.get("Retry-After"))
+            code, body, _headers = send(query, {"f": 100, "a": cursor})
+            assert code == 200, (label, "retry", code)
+            retries += 1
+        assert code == 200, (label, code, body)
+        conn = body["data"]["settlements"]
+        seen |= {s["id"] for s in conn["nodes"]}
+        cursor = conn["pageInfo"]["endCursor"]
+        if not conn["pageInfo"]["hasNextPage"]:
+            break
+    assert len(seen) == 1873, (label, len(seen))
+    assert throttles == 1, (label, "throttles", throttles)
+    assert retries == 1, (label, "retries", retries)
+    events = [json.loads(line) for line in open(journal) if line.strip()]
+    assert len({e["traversal"] for e in events}) == 1, (label, "more than one traversal")
+    hits = [e for e in events if e.get("throttled")]
+    again = [e for e in events if e.get("matching_retry")]
+    assert len(hits) == 1 and len(again) == 1, (label, len(hits), len(again))
+    assert hits[0]["request"] == again[0]["request"], (label, "retry is not identical")
+    print(f"ok   settlements {label}: one 429, one matching retry, full stream")
+
+
+drain("named fragment", NAMED)
+drain("inline fragment", INLINE)
+
+# Two settlements fields: the one that carries `after` decides the offset.
+open(journal, "w").close()
+DUAL = ("query Q($f: Int, $a: String) { "
+        "first: settlements(first: 1) { pageInfo { hasNextPage } } "
+        "second: settlements(first: $f, after: $a) { "
+        "nodes { id } pageInfo { endCursor hasNextPage } } }")
+cursor = None
+seen = set()
+throttles = retries = 0
+while True:
+    code, body, headers = send(DUAL, {"f": 100, "a": cursor})
+    if code == 429:
+        throttles += 1
+        assert headers.get("Retry-After") == "1", headers.get("Retry-After")
+        code, body, _headers = send(DUAL, {"f": 100, "a": cursor})
+        assert code == 200, ("dual retry", code)
+        retries += 1
+    assert code == 200, (code, body)
+    conn = body["data"]["second"]
+    seen |= {s["id"] for s in conn["nodes"]}
+    cursor = conn["pageInfo"]["endCursor"]
+    if not conn["pageInfo"]["hasNextPage"]:
+        break
+assert len(seen) == 1873, len(seen)
+assert throttles == 1 and retries == 1, (throttles, retries)
+print("ok   settlements multiple fields: the field with after sets the throttle")
+
+# Two operations and no operation name cannot resolve to one field: 400, no traversal.
+open(journal, "w").close()
+code, body, _headers = send(AMBIGUOUS, {"f": 100, "a": None})
+assert code == 400, (code, body)
+events = [json.loads(line) for line in open(journal) if line.strip()]
+assert len(events) == 1 and events[0]["status"] == 400, events
+assert events[0]["traversal"] == "", events
+print("ok   settlements ambiguous document rejected without a traversal")
+PYFRAG
+then
+  echo "FAIL settlements fragment traversal"; fail=1
+fi
+
 # Trusted retry measurement: one journal split into two phases gives separate agent
-# and grading counts. A missing or malformed journal is unknown with null counts.
+# and grading counts. A missing, malformed or wrong-typed journal is unknown with null
+# counts. The grading read also rejects live-API traffic and a second client.
 rj=$((op + 14))
 start_server payouts "$rj" "$tmp/rj.log" --behaviours B5 --retry-journal "$tmp/rj-journal.jsonl"
 wait_api payouts "$rj"
@@ -420,23 +668,236 @@ python3 -I harness/retry_journal.py read --phase grading --local "payouts_live=$
 python3 -I harness/retry_journal.py read --phase agent --local "payouts_live=$tmp/does-not-exist.jsonl" --out "$tmp/rj-missing.json" >/dev/null
 printf 'not json\n' > "$tmp/rj-bad.jsonl"
 python3 -I harness/retry_journal.py read --phase agent --local "payouts_live=$tmp/rj-bad.jsonl" --out "$tmp/rj-bad.json" >/dev/null
-if ! python3 -I - "$tmp/rj-agent.json" "$tmp/rj-grading.json" "$tmp/rj-missing.json" "$tmp/rj-bad.json" <<'PYRJ'
+python3 -I - "$tmp/rj-journal.jsonl" "$tmp/rj-wrongtype.jsonl" <<'PYWT'
 import json, sys
-agent, grading, missing, bad = (json.load(open(p)) for p in sys.argv[1:5])
+event = json.loads(next(line for line in open(sys.argv[1]) if line.strip()))
+event["throttled"] = "true"
+open(sys.argv[2], "w").write(json.dumps(event) + "\n")
+PYWT
+python3 -I harness/retry_journal.py read --phase agent --local "payouts_live=$tmp/rj-wrongtype.jsonl" --out "$tmp/rj-wrongtype.json" >/dev/null
+
+# Grading isolation: a clean pair is ok, live traffic or a second client is unknown.
+python3 -I - "$tmp/rj-journal.jsonl" "$tmp" <<'PYISO'
+import json, sys
+event = json.loads(next(line for line in open(sys.argv[1]) if line.strip()))
+grading = dict(event, client="a" * 16)
+
+def write(name, events):
+    with open(f"{sys.argv[2]}/{name}", "w") as f:
+        for item in events:
+            f.write(json.dumps(item) + "\n")
+
+write("iso-live-clean.jsonl", [])
+write("iso-grading.jsonl", [grading])
+write("iso-live-dirty.jsonl", [dict(event, client="a" * 16)])
+write("iso-grading-two.jsonl", [grading, dict(grading, client="b" * 16)])
+PYISO
+python3 -I harness/retry_journal.py read --phase grading \
+  --local "live=$tmp/iso-live-clean.jsonl" --local "grade=$tmp/iso-grading.jsonl" \
+  --grading-live live --grading-grade grade --out "$tmp/iso-clean.json" >/dev/null
+python3 -I harness/retry_journal.py read --phase grading \
+  --local "live=$tmp/iso-live-dirty.jsonl" --local "grade=$tmp/iso-grading.jsonl" \
+  --grading-live live --grading-grade grade --out "$tmp/iso-dirty.json" >/dev/null
+python3 -I harness/retry_journal.py read --phase grading \
+  --local "live=$tmp/iso-live-clean.jsonl" --local "grade=$tmp/iso-grading-two.jsonl" \
+  --grading-live live --grading-grade grade --out "$tmp/iso-two.json" >/dev/null
+
+if ! python3 -I - "$tmp/rj-agent.json" "$tmp/rj-grading.json" "$tmp/rj-missing.json" \
+  "$tmp/rj-bad.json" "$tmp/rj-wrongtype.json" "$tmp/iso-clean.json" "$tmp/iso-dirty.json" \
+  "$tmp/iso-two.json" <<'PYRJ'
+import json, sys
+agent, grading, missing, bad, wrongtype, clean, dirty, two = (json.load(open(p)) for p in sys.argv[1:9])
 for phase, doc in (("agent", agent), ("grading", grading)):
     assert doc["phase"] == phase and doc["status"] == "ok", doc
     assert (doc["b5_429_responses"], doc["matching_retry_attempts"],
             doc["successful_matching_retries"]) == (1, 1, 1), doc
     assert doc["apis"]["payouts_live"]["status"] == "ok"
     assert "sandbox" not in json.dumps(doc)
-for doc in (missing, bad):
+for doc in (missing, bad, wrongtype):
     assert doc["status"] == "unknown", doc
     assert doc["b5_429_responses"] is None and doc["matching_retry_attempts"] is None
     assert doc["successful_matching_retries"] is None
-print("ok   retry journal: agent 1/1/1, grading 1/1/1, missing and malformed unknown, no sandbox count")
+assert clean["status"] == "ok" and clean["requests"] == 1 and clean["clients"] == 1, clean
+assert dirty["status"] == "unknown" and "expected 0" in dirty["reason"], dirty
+assert two["status"] == "unknown" and "at most 1" in two["reason"], two
+print("ok   retry journal: phases 1/1/1, missing, malformed and wrong type unknown, grading isolation")
 PYRJ
 then
   echo "FAIL retry journal measurement"; fail=1
+fi
+
+# Digest shapes only. A raw cursor or a raw request would fail these.
+if ! python3 -I - "$tmp/rj-journal.jsonl" <<'PYSHAPE'
+import json, re, sys
+DIGEST = re.compile(r"[0-9a-f]{0,32}")
+CLIENT = re.compile(r"[0-9a-f]{16}")
+for line in open(sys.argv[1]):
+    if not line.strip():
+        continue
+    event = json.loads(line)
+    assert DIGEST.fullmatch(event["request"]), event
+    assert DIGEST.fullmatch(event["traversal"]), event
+    assert CLIENT.fullmatch(event["client"]), event
+print("ok   retry journal holds request, traversal and client digests only")
+PYSHAPE
+then
+  echo "FAIL retry journal digest shape"; fail=1
+fi
+
+# Overflow: the server writes the marker on every request at or past the limit.
+# After a truncate, the next request writes it again, so the phase reads as unknown.
+ov=$((op + 17))
+start_server payouts "$ov" "$tmp/ov.log" --behaviours B5 --retry-journal "$tmp/ov-journal.jsonl" --retry-journal-limit 2
+for _ in $(seq 1 50); do
+  (exec 3<>"/dev/tcp/127.0.0.1/$ov") 2>/dev/null && break
+  sleep 0.1
+done
+: > "$tmp/ov-journal.jsonl"
+for _ in 1 2 3; do curl -s -o /dev/null "http://127.0.0.1:$ov/v2/payouts?limit=1"; done
+lines_before=$(wc -l < "$tmp/ov-journal.jsonl")
+python3 -I harness/retry_journal.py read --phase agent --local "payouts_live=$tmp/ov-journal.jsonl" --out "$tmp/ov-before.json" >/dev/null
+: > "$tmp/ov-journal.jsonl"
+curl -s -o /dev/null "http://127.0.0.1:$ov/v2/payouts?limit=1"
+marker=$(cat "$tmp/ov-journal.jsonl")
+python3 -I harness/retry_journal.py read --phase agent --local "payouts_live=$tmp/ov-journal.jsonl" --out "$tmp/ov-after.json" >/dev/null
+if [[ "$lines_before" == 3 && "$marker" == '{"overflow":true}' ]] && python3 -I - "$tmp/ov-before.json" "$tmp/ov-after.json" <<'PYOV'
+import json, sys
+before, after = (json.load(open(p)) for p in sys.argv[1:3])
+for doc in (before, after):
+    assert doc["status"] == "unknown", doc
+    assert doc["requests"] is None, doc
+PYOV
+then
+  echo "ok   retry journal overflow: marker on every request, unknown after truncate"
+else
+  echo "FAIL retry journal overflow (lines=$lines_before marker=$marker)"; fail=1
+fi
+
+# The B5 state maps stay bounded. A traversal that falls out of the cap can be
+# throttled again, which is the documented trade for a fixed footprint.
+if ! python3 -I - <<'PYCAP'
+import importlib.util
+import sys
+
+
+def load(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+for path, name in (("apis/payouts/server.py", "payouts_cap"),
+                   ("apis/settlements/server.py", "settlements_cap")):
+    sys.modules.pop("data", None)
+    server = load(path, name)
+    server.B5_STATE_LIMIT = 2
+    for i in range(5):
+        assert server.b5_decide(f"p{i}", "", server.B5_OFFSET, "f")[0] == "throttle"
+    assert len(server.B5_PENDING) <= 2, (name, len(server.B5_PENDING))
+    for i in range(5):
+        trav = f"c{i}"
+        assert server.b5_decide(trav, "", server.B5_OFFSET, "f")[0] == "throttle"
+        assert server.b5_decide(trav, "", server.B5_OFFSET, "f")[0] == "retry"
+    assert len(server.B5_CLEARED) <= 2, (name, len(server.B5_CLEARED))
+    assert len(server.B5_PENDING) <= 2, (name, len(server.B5_PENDING))
+print("ok   B5 pending and cleared maps stay capped")
+PYCAP
+then
+  echo "FAIL B5 state cap"; fail=1
+fi
+
+# Consumer sandbox runs and HTTP retries are separate fields. Three consumer runs
+# and two successful retries must not add up to five sandbox runs.
+if ! python3 -I - <<'PYMEAS'
+import sys
+sys.path.insert(0, "harness")
+import result_measures
+analysis = {
+    "sandbox_runs": 3,
+    "consumer_runs": [{"run": i} for i in range(3)],
+    "retry_measure": {"phases": {
+        "agent": {"status": "ok", "b5_429_responses": 2,
+                  "matching_retry_attempts": 2, "successful_matching_retries": 2},
+        "grading": {"status": "ok", "b5_429_responses": 0,
+                    "matching_retry_attempts": 0, "successful_matching_retries": 0},
+    }},
+}
+measures, retries = result_measures.build(analysis, "PASS", True, 100, 50, 0, 0)
+assert measures["sandbox_runs"] == 3, measures
+assert retries["agent"]["successful_matching_retries"] == 2, retries
+assert retries["agent"]["b5_429_responses"] == 2, retries
+assert retries["grading"]["successful_matching_retries"] == 0, retries
+assert "sandbox_runs" not in retries, retries
+print("ok   result measures: 3 sandbox runs stay apart from 2 successful retries")
+PYMEAS
+then
+  echo "FAIL result measures separation"; fail=1
+fi
+
+# The stand-alone reader bounds `msb` and sets its own umask.
+mkdir -p "$tmp/bin"
+printf '#!/usr/bin/env bash\nsleep 30\n' > "$tmp/bin/msb"
+chmod +x "$tmp/bin/msb"
+start_s=$(date +%s)
+set +e
+PATH="$tmp/bin:$PATH" KALARI_MSB_TIMEOUT=1 timeout 8 python3 -I harness/retry_journal.py truncate \
+  --remote "x=/p" --out "$tmp/rj-timeout.json" >/dev/null 2>&1
+timeout_rc=$?
+set -e
+elapsed_s=$(( $(date +%s) - start_s ))
+if [[ $timeout_rc == 0 && $elapsed_s -lt 5 ]] && grep -q '"status": "failed"' "$tmp/rj-timeout.json"; then
+  echo "ok   retry journal msb timeout: failed status, no hang"
+else
+  echo "FAIL retry journal msb timeout (rc=$timeout_rc elapsed=${elapsed_s}s)"; fail=1
+fi
+rm -f "$tmp/umask-out.json"
+( umask 000; python3 -I harness/retry_journal.py read --phase agent \
+    --local "x=$tmp/no-such.jsonl" --out "$tmp/umask-out.json" >/dev/null )
+mode=$(stat -c %a "$tmp/umask-out.json")
+if [[ "$mode" == 644 ]]; then
+  echo "ok   retry journal sets umask 0022 (output mode $mode)"
+else
+  echo "FAIL retry journal umask: output mode $mode, wanted 644"; fail=1
+fi
+
+# The grading window opens only after the arm's sandboxes and processes are gone.
+grading_line=$(grep -n '^retry_truncate grading$' harness/remote.sh | cut -d: -f1)
+remove_line=$(awk -v g="$grading_line" 'NR < g && /^remove_ours$/ { last = NR } END { print last }' harness/remote.sh)
+kill_line=$(awk -v g="$grading_line" 'NR < g && /^kill_new_procs$/ { last = NR } END { print last }' harness/remote.sh)
+pilot_guest=$(grep -n 'msb remove -f "\$GUEST"' pilot/remote.sh | head -1 | cut -d: -f1)
+pilot_grade=$(grep -n '^retry_truncate grading$' pilot/remote.sh | cut -d: -f1)
+if [[ -n "$grading_line" && -n "$remove_line" && -n "$kill_line" && "$remove_line" -lt "$grading_line" && "$kill_line" -lt "$grading_line" ]] &&
+  [[ -n "$pilot_guest" && -n "$pilot_grade" && "$pilot_guest" -lt "$pilot_grade" ]] &&
+  grep -q -- '--grading-live' harness/remote.sh && grep -q -- '--grading-grade' harness/remote.sh &&
+  grep -q -- '--grading-live' pilot/remote.sh && grep -q -- '--grading-grade' pilot/remote.sh; then
+  echo "ok   grading window opens after arm sandboxes and processes are gone"
+else
+  echo "FAIL grading boundary order (harness remove=$remove_line kill=$kill_line grade=$grading_line; pilot guest=$pilot_guest grade=$pilot_grade)"
+  fail=1
+fi
+
+# The condition route honours a destination root and never overwrites an old row.
+if out=$(pilot/run.sh --list --condition 3 --upgrade payouts --root bench/pilot/harder/results) &&
+  grep -q 'bench/pilot/harder/results/condition-3-payouts-r1.json' <<<"$out"; then
+  echo "ok   pilot condition route honours --root"
+else
+  echo "FAIL pilot condition root"; fail=1
+fi
+if pilot/run.sh --list --condition 3 --upgrade payouts --root /tmp >/dev/null 2>&1; then
+  echo "FAIL pilot accepted an unknown root"; fail=1
+else
+  echo "ok   pilot rejects an unknown root"
+fi
+if [[ ! -f pilot/results/condition-3-payouts-r1.json ]]; then
+  echo "FAIL pilot baseline row missing, refusing the overwrite test"; fail=1
+elif pilot/run.sh --run --condition 3 --upgrade payouts --repeat 1 \
+  --root bench/pilot/results >/dev/null 2>"$tmp/pilot-dest.err"; then
+  echo "FAIL pilot overwrote an existing condition row"; fail=1
+elif grep -q "result already exists" "$tmp/pilot-dest.err"; then
+  echo "ok   pilot refuses an existing condition destination"
+else
+  echo "FAIL pilot existing destination check"; cat "$tmp/pilot-dest.err"; fail=1
 fi
 
 # A token outside that server's set is an error that names the token.

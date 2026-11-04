@@ -12,7 +12,7 @@ v2: GET /v2/payouts is a resumable export, modelled on a real time-windowed expo
   B4  `limit` is accepted up to 1000 (as the spec says) but each response holds at most 100.
   B5  the first request of a traversal at or past offset 1500 gets HTTP 429 with
       `Retry-After: 1`. The identical request then succeeds. Each traversal gets one 429.
-      A traversal identity is minted with the first response and rides inside the opaque
+      The first response mints a traversal identity and carries it inside the opaque
       cursor, so replaying a saved cursor continues that lineage.
 
 Usage: server.py [--bind ADDR] [--port N] [--v1 on|off] [--behaviours B1,B2,B4,B5]
@@ -24,10 +24,12 @@ the plain thing: B1 off, a drained response has `cursor` null; B2 off, the next 
 starts after the previous window's last payout; B4 off, the response holds up to `limit`
 (still at most 1000); B5 off, no request is throttled.
 
-The retry journal is a host-owned JSON-lines file with one event per request. It carries
-a timestamp, a client digest, the HTTP status, the request fingerprint digest, the
-traversal digest and whether the request was the matching retry. It never carries a raw
-cursor, a raw request or a token.
+The retry journal is a JSON-lines file in the API guest with one event per request. The
+harness truncates it at a phase start and reads it at a phase end over `msb exec`. It
+carries a timestamp, a client digest, the HTTP status, the request fingerprint digest,
+the traversal digest and whether the request was the matching retry. It never carries a
+raw cursor, a raw request or a token. A wrong type or an overflow marker reads as
+unknown, never as zero.
 """
 import argparse
 import base64
@@ -54,10 +56,13 @@ TRACE_LOCK = threading.Lock()
 TRACE_COUNT = 0
 
 # B5: one throttled request per traversal, at a fixed mid-stream offset.
+# Both maps are capped. A traversal that falls out of the cap can see a second
+# 429, which is better than growing without bound.
 B5_OFFSET = 1500
+B5_STATE_LIMIT = 4096
 B5_LOCK = threading.Lock()
 B5_PENDING = {}   # traversal -> {"cursor": incoming cursor digest, "request": fingerprint}
-B5_CLEARED = set()  # traversals that already retried successfully
+B5_CLEARED = {}   # traversals that already retried successfully
 
 JOURNAL = None
 JOURNAL_LOCK = threading.Lock()
@@ -112,11 +117,15 @@ def b5_decide(traversal: str, cursor_key: str, offset: int, fingerprint: str):
             candidate = pending["cursor"] == cursor_key
             if candidate and pending["request"] == fingerprint:
                 del B5_PENDING[traversal]
-                B5_CLEARED.add(traversal)
+                B5_CLEARED[traversal] = None
+                if len(B5_CLEARED) > B5_STATE_LIMIT:
+                    B5_CLEARED.pop(next(iter(B5_CLEARED)))
                 return "retry", True
             # A changed request does not count as the identical retry.
             return "throttle", candidate
         if offset >= B5_OFFSET:
+            if len(B5_PENDING) >= B5_STATE_LIMIT:
+                B5_PENDING.pop(next(iter(B5_PENDING)))
             B5_PENDING[traversal] = {"cursor": cursor_key, "request": fingerprint}
             return "throttle", False
         return "serve", False
@@ -154,12 +163,13 @@ class Handler(BaseHTTPRequestHandler):
         with JOURNAL_LOCK:
             if JOURNAL_COUNT < JOURNAL_LIMIT:
                 JOURNAL.write(json.dumps(event, separators=(",", ":"), sort_keys=True) + "\n")
-                JOURNAL.flush()
-            elif JOURNAL_COUNT == JOURNAL_LIMIT:
-                # The reader treats an overflow marker as ambiguous, so it never
-                # reports a partial count as complete.
+            else:
+                # Write the marker on every request at or past the limit. The
+                # harness truncates the file between phases, so the next request
+                # after a truncate writes it again. A phase after an overflow then
+                # reads as unknown, never as a false zero.
                 JOURNAL.write('{"overflow":true}\n')
-                JOURNAL.flush()
+            JOURNAL.flush()
             JOURNAL_COUNT += 1
 
     def reply(self, status, obj, retry_after=None):
@@ -268,6 +278,7 @@ def behaviours_arg(raw):
 
 
 def main():
+    global TRACE, JOURNAL, JOURNAL_LIMIT
     ap = argparse.ArgumentParser()
     ap.add_argument("--bind", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=18080)
@@ -275,9 +286,11 @@ def main():
     ap.add_argument("--behaviours", type=behaviours_arg, help="comma-separated subset of B1,B2,B4,B5; omit for all")
     ap.add_argument("--trace", help="exclusive host-owned page trace file")
     ap.add_argument("--trace-client", help="only this client IPv4 may access an observed instance")
-    ap.add_argument("--retry-journal", help="host-owned retry journal file, one JSON event per request")
+    ap.add_argument("--retry-journal", help="retry journal file, one JSON event per request")
+    ap.add_argument("--retry-journal-limit", type=int, default=JOURNAL_LIMIT,
+                    help="stop writing events after N, for tests")
     a = ap.parse_args()
-    global TRACE, JOURNAL
+    JOURNAL_LIMIT = a.retry_journal_limit
     if a.trace:
         fd = os.open(a.trace, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         TRACE = os.fdopen(fd, "w", encoding="utf-8")

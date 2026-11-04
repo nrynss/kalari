@@ -1,28 +1,38 @@
 #!/usr/bin/env python3
-"""Trusted retry measurement from the API servers' host-owned retry journals.
+"""Retry measurement from the API servers' retry journals.
 
-Each API server writes one JSON event per request to a journal on its own
+Each API server writes one JSON event per request to a journal inside its own
 microVM: timestamp, keyed client digest, HTTP status, request fingerprint
 digest, traversal digest, and whether the request was a retry candidate or the
 matching retry. The journal never holds a raw cursor, a raw request or a token.
 
 The harness truncates every journal at the start of a phase and reads it at the
 end, so agent activity and grading activity are counted apart. A missing
-journal, a failed truncation or a malformed event is `unknown` with null
-counts, never zero. HTTP retries inside one consumer process are not sandbox
-runs.
+journal, a failed truncation, a malformed or wrong-typed event, or an overflow
+marker is `unknown` with null counts, never zero. HTTP retries inside one
+consumer process are not sandbox runs.
+
+The grading read also checks isolation. It requires the live API to show zero
+requests and the grading API to show at most one client. Otherwise the grading
+phase is unknown. The journal lives in the API guest, and the reference arm's
+MCP can exec into a named sandbox, so this check catches stray traffic but not
+a deliberate write to the file.
 
 Usage:
   retry_journal.py truncate --remote NAME=PATH [--remote ...] [--out FILE]
   retry_journal.py read --phase agent --truncated FILE --remote NAME=PATH ... [--out FILE]
+  retry_journal.py read --phase grading --truncated FILE \
+      --remote NAME=PATH ... --grading-live NAME --grading-grade NAME [--out FILE]
   retry_journal.py read --phase agent --local NAME=FILE --out FILE
 
 `--remote NAME=PATH` runs `msb exec NAME` on the VM. `--local NAME=FILE` reads
-a journal file directly, for offline checks.
+a journal file directly, for offline checks. `KALARI_MSB_TIMEOUT` overrides the
+30 second `msb` timeout.
 """
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -31,6 +41,9 @@ REQUIRED = (
     "throttled", "matching_retry", "retry_candidate",
 )
 COUNTS = ("requests", "b5_429_responses", "matching_retry_attempts", "successful_matching_retries")
+HEX32 = re.compile(r"[0-9a-f]{0,32}")
+HEX16 = re.compile(r"[0-9a-f]{16}")
+MSB_TIMEOUT = float(os.environ.get("KALARI_MSB_TIMEOUT", "30"))
 
 TRUNCATE = (
     "import os,sys\n"
@@ -62,10 +75,13 @@ def parse_targets(values, flag):
 
 
 def guest(name, code, path):
-    proc = subprocess.run(
-        ["msb", "exec", name, "--", "python3", "-c", code, path],
-        capture_output=True, text=True,
-    )
+    try:
+        proc = subprocess.run(
+            ["msb", "exec", name, "--", "python3", "-c", code, path],
+            capture_output=True, text=True, timeout=MSB_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired:
+        return None, f"msb exec timed out after {MSB_TIMEOUT:g}s"
     if proc.returncode != 0:
         return None, (proc.stderr or proc.stdout or f"msb exec exit {proc.returncode}").strip()[:300]
     return proc.stdout.strip(), None
@@ -112,7 +128,51 @@ def read_docs(targets, local):
     return docs
 
 
-def summarize(phase, docs, truncated):
+def valid_event(event):
+    """Reject an event with a missing, wrong-typed or malformed field."""
+    if not isinstance(event, dict) or any(key not in event for key in REQUIRED):
+        return False
+    if type(event["t"]) not in (int, float) or isinstance(event["t"], bool):
+        return False
+    if type(event["status"]) is not int or isinstance(event["status"], bool):
+        return False
+    if not isinstance(event["api"], str):
+        return False
+    if not HEX16.fullmatch(event["client"]):
+        return False
+    for key in ("request", "traversal"):
+        if not isinstance(event[key], str) or not HEX32.fullmatch(event[key]):
+            return False
+    return all(type(event[key]) is bool for key in ("throttled", "matching_retry", "retry_candidate"))
+
+
+def isolation_problems(phase, apis, grading_live, grading_grade):
+    """The grading phase must not see live-API traffic or a second client."""
+    if phase != "grading":
+        return []
+    problems = []
+    for name in grading_live:
+        entry = apis.get(name)
+        if entry is None:
+            problems.append(f"no journal for {name}")
+            continue
+        if entry.get("status") != "ok":
+            continue
+        if entry.get("requests") != 0:
+            problems.append(f"{name} saw {entry['requests']} grading-phase requests, expected 0")
+    for name in grading_grade:
+        entry = apis.get(name)
+        if entry is None:
+            problems.append(f"no journal for {name}")
+            continue
+        if entry.get("status") != "ok":
+            continue
+        if entry.get("clients", 0) > 1:
+            problems.append(f"{name} saw {entry['clients']} clients during grading, expected at most 1")
+    return problems
+
+
+def summarize(phase, docs, truncated, grading_live=(), grading_grade=()):
     apis, unknown = {}, []
     allowed = (truncated or {}).get("journals") or {}
     totals = {key: 0 for key in COUNTS}
@@ -137,10 +197,7 @@ def summarize(phase, docs, truncated):
                           **{key: None for key in COUNTS}}
             unknown.append(name)
             continue
-        bad = [
-            e for e in events
-            if not isinstance(e, dict) or any(key not in e for key in REQUIRED)
-        ]
+        bad = [e for e in events if not valid_event(e)]
         if bad:
             apis[name] = {"status": "unknown", "reason": f"{len(bad)} malformed events",
                           **{key: None for key in COUNTS}}
@@ -164,22 +221,28 @@ def summarize(phase, docs, truncated):
         apis[name] = {"status": "ok", "clients": len({e["client"] for e in events}), **counts}
         for key in COUNTS:
             totals[key] += counts[key]
-    out = {"phase": phase, "status": "ok" if not unknown else "unknown"}
     if unknown:
-        out["reason"] = "unknown journals: " + ", ".join(unknown)
-        out.update({key: None for key in COUNTS})
+        out = {"phase": phase, "status": "unknown",
+               "reason": "unknown journals: " + ", ".join(unknown),
+               **{key: None for key in COUNTS}}
     else:
-        out.update(totals)
-        out["clients"] = len({
-            event["client"]
-            for _name, doc in docs
-            for event in doc.get("events") or []
-        })
+        problems = isolation_problems(phase, apis, grading_live, grading_grade)
+        if problems:
+            out = {"phase": phase, "status": "unknown", "reason": "; ".join(problems),
+                   **{key: None for key in COUNTS}}
+        else:
+            out = {"phase": phase, "status": "ok", **totals}
+            out["clients"] = len({
+                event["client"]
+                for _name, doc in docs
+                for event in doc.get("events") or []
+            })
     out["apis"] = apis
     return out
 
 
 def main():
+    os.umask(0o022)
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="command", required=True)
 
@@ -192,6 +255,10 @@ def main():
     r.add_argument("--remote", action="append", default=[])
     r.add_argument("--local", action="append", default=[])
     r.add_argument("--truncated")
+    r.add_argument("--grading-live", action="append", default=[],
+                   help="live API names that must show zero grading-phase requests")
+    r.add_argument("--grading-grade", action="append", default=[],
+                   help="grading API names that must show at most one client")
     r.add_argument("--out")
 
     a = ap.parse_args()
@@ -217,7 +284,8 @@ def main():
     if local and truncated is None:
         # A local journal is read directly: the caller is the phase boundary.
         truncated = {"journals": {name: {"status": "truncated"} for name, _path in targets}}
-    result = summarize(a.phase, read_docs(targets, local), truncated)
+    result = summarize(a.phase, read_docs(targets, local), truncated,
+                       a.grading_live, a.grading_grade)
     text = json.dumps(result, indent=2, sort_keys=True) + "\n"
     if a.out:
         os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
