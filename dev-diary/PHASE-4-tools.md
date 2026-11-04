@@ -58,7 +58,7 @@ requires:   [T4.1, T3.2, T3.3]
 fixture-ok: yes
 size:       S · frontier
 owns:       Kalari/Tools/Recall.lean
-status:     not-started
+status:     claimed:gpt-6.1-terra
 ```
 Change kinds in, the lessons for them out **as checks that must pass**, not as advice: each with its check ID, what it asserts, and the run that taught it. Lessons linked to the change kind always apply. One found only by meaning becomes a required check only if Clef's `lessonApplies` is confident; otherwise it's returned as advice and labelled so.
 
