@@ -152,6 +152,8 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 
 ## Handoff Log
 
+- **T4.4 closed.** Terra implemented and reviewed recall. Luna made linked lesson references resolve through typed evidence, with explicit errors for missing or ambiguous required checks. T4.6 writes the versioned reference documented in Recall.lean.
+
 - **T4.5 closed.** Sol implemented the run pipeline, Terra reviewed, and Luna isolated lesson checks in fresh guests and added cleanup for ambiguous creates. All six payouts cases replay offline. T4.7 supplies a distinct host-owned check workspace.
 
 - **T4.2 closed.** Terra implemented and independently reviewed the evidence store. The gate covers append and reload, indexed queries, interrupted tails and concurrent appends through one shared Store per path.
