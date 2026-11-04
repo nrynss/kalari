@@ -106,9 +106,23 @@ The reference consumers (six for payouts, seven for settlements), through `kalar
 
 ---
 
+### T4.6a: Trusted payouts page observations ★
+```yaml
+requires:   [T4.5]
+fixture-ok: yes
+size:       M · frontier
+owns:       bench/apis/payouts/server.py, bench/tests/quirks.sh, Kalari/Tools/Run.lean (observer seam)
+status:     claimed:gpt-6.1-terra
+```
+Capture bounded, host-owned page-response metadata from a dedicated payouts API instance for a verified candidate run. Bind observations to the run and derive boundary overlap and final-page token presence from a cursor-linked trace. Record only what the API sent. A passing result on identical payout overlaps does not establish last-delivery-wins behavior.
+
+**Done when:** the real payouts reference consumer and grader produce a passing result and a trace showing one-record overlap and a token on the drained page. The run pipeline associates observations with a passing run and rejects missing, truncated, or ambiguous traces. The offline gate requires no live service or microVM.
+
+---
+
 ### T4.6: `record_lesson` ★
 ```yaml
-requires:   [T4.5, T3.2, T3.3]
+requires:   [T4.5, T3.2, T3.3, T4.6a]
 fixture-ok: yes
 size:       M · frontier
 owns:       Kalari/Tools/Lesson.lean
