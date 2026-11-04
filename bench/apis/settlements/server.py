@@ -13,7 +13,9 @@ delta and scan APIs (bench/README.md names them; the arms never see the names). 
   B5  the first request of a traversal at or past offset 1000 gets HTTP 429 with
       `Retry-After: 1`. The identical request then succeeds. Each traversal gets one 429.
       The first response mints a traversal identity and carries it inside the opaque
-      `after` cursor, so replaying a saved cursor continues that lineage.
+      `after` cursor, so replaying a saved cursor continues that lineage. A document
+      with more than one settlements field that carries a non-null `after` is
+      ambiguous, so the server rejects it with 400 and starts no traversal.
 
 Usage: server.py [--bind ADDR] [--port N] [--v1 on|off] [--behaviours B1,B2,B3,B5]
                   [--retry-journal PATH]
@@ -22,15 +24,16 @@ Omit --behaviours and B1, B2, B3, and B5 are all on. A comma-separated list enab
 those ids. Any other token is an error that names the token. A behaviour that is off does
 the plain thing: B1 off, the last page's `endCursor` is null; B2 off, each settlement is
 emitted once, in v1's version; B3 off, void rows are dropped before the page is cut;
-B5 off, no request is throttled.
+B5 off, no request is throttled and the argument parser stays out of the request path,
+so the old GraphQL errors return unchanged.
 
 The retry journal is a JSON-lines file in the API guest with one event per request. The
 harness truncates it at a phase start and reads it at a phase end over `msb exec`. It
 carries a timestamp, a client digest, the HTTP status, the request fingerprint digest,
 the traversal digest and whether the request was the matching retry. It never carries a
-raw cursor, a raw request or a token. A wrong type or an overflow marker reads as
-unknown, never as zero. The request fingerprint covers the exact query text, every
-variable and the operation name, not only `after`.
+raw cursor, a raw request or a token. A wrong type, an overflow marker or an eviction
+marker reads as unknown, never as zero. The request fingerprint covers the exact query
+text, every variable and the operation name, not only `after`.
 """
 import argparse
 import base64
@@ -123,7 +126,7 @@ B5 = True
 
 # B5: one throttled request per traversal, at a fixed mid-stream offset.
 # Both maps are capped. A traversal that falls out of the cap can see a second
-# 429, which is better than growing without bound.
+# 429, so the server marks the journal and the phase reads as unknown.
 B5_OFFSET = 1000
 B5_STATE_LIMIT = 4096
 B5_LOCK = threading.Lock()
@@ -171,13 +174,19 @@ def request_fingerprint(method, path, query, variables, operation):
     return hashlib.sha256(canon.encode()).hexdigest()[:32]
 
 
+class AmbiguousSettlementsField(Exception):
+    """More than one settlements field carries a non-null `after`."""
+
+
 def settlements_arguments(query, variables, operation_name):
     """Resolve the settlements field's arguments, following fragments.
 
     Returns `(has_field, arguments)`. `has_field` is False when the document has
     no settlements field. `arguments` is None when a field is present but this
     parser cannot resolve it, so the caller rejects the request instead of
-    treating it as a fresh traversal.
+    treating it as a fresh traversal. Raises AmbiguousSettlementsField when more
+    than one field carries a non-null `after`, because the caller cannot tell
+    which traversal is paging.
     """
     doc = parse(query)
     ops = [d for d in doc.definitions if getattr(d, "kind", "") == "operation_definition"]
@@ -218,27 +227,48 @@ def settlements_arguments(query, variables, operation_name):
             return True, None
     if not fields:
         return False, {}
-    # Several settlements fields can only come from fragments. Use the one that
-    # carries `after`, the field that decides the traversal offset.
-    chosen = next(
-        (f for f in fields if any(a.name.value == "after" for a in f.arguments)),
-        fields[0],
-    )
-    found = {}
-    for arg in chosen.arguments:
-        name, value = arg.name.value, arg.value
-        kind = getattr(value, "kind", "")
-        if kind == "variable":
-            found[name] = (variables or {}).get(value.name.value)
-        elif kind == "string_value":
-            found[name] = value.value
-        elif kind == "int_value":
-            found[name] = int(value.value)
-        elif kind == "null_value":
-            found[name] = None
-        else:
-            return True, None
-    return True, found
+    # A field that carries `after` decides the traversal offset. Resolve every
+    # such field. A non-null `after` wins over a null one. Two non-null values
+    # are ambiguous, because the caller cannot tell which traversal is paging.
+    carrying = [f for f in fields if any(a.name.value == "after" for a in f.arguments)]
+    if not carrying:
+        carrying = fields[:1]
+    resolved = []
+    for field in carrying:
+        found = {}
+        for arg in field.arguments:
+            name, value = arg.name.value, arg.value
+            kind = getattr(value, "kind", "")
+            if kind == "variable":
+                found[name] = (variables or {}).get(value.name.value)
+            elif kind == "string_value":
+                found[name] = value.value
+            elif kind == "int_value":
+                found[name] = int(value.value)
+            elif kind == "null_value":
+                found[name] = None
+            else:
+                return True, None
+        resolved.append(found)
+    with_after = [found for found in resolved if found.get("after") is not None]
+    if len(with_after) > 1:
+        raise AmbiguousSettlementsField()
+    return True, (with_after[0] if with_after else resolved[0])
+
+
+def evicted():
+    """Mark the journal when the B5 state cap drops a traversal.
+
+    An evicted traversal can see a second 429, so the phase reads as unknown.
+    """
+    global JOURNAL_COUNT
+    if JOURNAL is None:
+        return
+    with JOURNAL_LOCK:
+        if JOURNAL_COUNT < JOURNAL_LIMIT:
+            JOURNAL.write('{"eviction":true}\n')
+            JOURNAL.flush()
+            JOURNAL_COUNT += 1
 
 
 def b5_decide(traversal, cursor_key, offset, fingerprint):
@@ -260,12 +290,14 @@ def b5_decide(traversal, cursor_key, offset, fingerprint):
                 del B5_PENDING[traversal]
                 B5_CLEARED[traversal] = None
                 if len(B5_CLEARED) > B5_STATE_LIMIT:
+                    evicted()
                     B5_CLEARED.pop(next(iter(B5_CLEARED)))
                 return "retry", True
             # A changed query or changed variables does not count as the identical retry.
             return "throttle", candidate
         if offset >= B5_OFFSET:
             if len(B5_PENDING) >= B5_STATE_LIMIT:
+                evicted()
                 B5_PENDING.pop(next(iter(B5_PENDING)))
             B5_PENDING[traversal] = {"cursor": cursor_key, "request": fingerprint}
             return "throttle", False
@@ -394,9 +426,14 @@ class Handler(BaseHTTPRequestHandler):
         operation = req.get("operationName")
         fingerprint = request_fingerprint("POST", self.path, query, variables, operation)
         action, traversal, cursor_key, candidate = "serve", "", "", False
-        if api == "v2":
+        if api == "v2" and B5:
             try:
                 has_field, args = settlements_arguments(query, variables, operation)
+            except AmbiguousSettlementsField:
+                message = ("ambiguous settlements field: more than one settlements "
+                           "field carries a non-null after")
+                self.reply(400, {"errors": [{"message": message}]})
+                return self.journal(400, fingerprint, "", api=api)
             except Exception:
                 has_field, args = False, {}
             if has_field and args is None:
@@ -411,7 +448,7 @@ class Handler(BaseHTTPRequestHandler):
                 cursor_key = digest(after)
             else:
                 offset, traversal = 0, os.urandom(8).hex()
-            if B5 and not malformed:
+            if not malformed:
                 action, candidate = b5_decide(traversal, cursor_key, offset, fingerprint)
         if action == "throttle":
             self.reply(429, {"errors": [{"message": "too many requests, retry after 1 second"}]}, retry_after="1")

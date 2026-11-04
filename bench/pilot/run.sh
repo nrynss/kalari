@@ -32,6 +32,7 @@ CONDITION=""
 UPGRADE=""
 REPEAT=""
 ROOT="bench/pilot/results"
+ROOT_SET=0
 
 usage() {
   sed -n '2,24p' "$0" >&2
@@ -46,7 +47,7 @@ while [[ $# -gt 0 ]]; do
     --condition) CONDITION=${2:?condition}; shift 2 ;;
     --upgrade) UPGRADE=${2:?upgrade}; shift 2 ;;
     --repeat) REPEAT=${2:?repeat}; shift 2 ;;
-    --root) ROOT=${2:?destination root}; shift 2 ;;
+    --root) ROOT=${2:?destination root}; ROOT_SET=1; shift 2 ;;
     -h|--help) usage ;;
     *) echo "unknown argument: $1" >&2; usage ;;
   esac
@@ -130,9 +131,17 @@ run_harness() { # condition upgrade dest
 
 handle_behaviour() { # upgrade behaviour repeat
   local upgrade=$1 behaviour=$2 rep=$3
-  local dest="bench/pilot/harder/results/behaviour-${upgrade}-${behaviour}-r${rep}.json"
-  local line="behaviour $upgrade $behaviour repeat $rep: bench/pilot/run-one.sh --behaviour $behaviour --upgrade $upgrade --dest $dest"
-  if [[ $behaviour != B5 ]]; then
+  local dest="" line
+  if [[ $behaviour == B5 ]]; then
+    # B5-only rows belong to the harder pilot, apart from the frozen baseline rows.
+    # An explicit --root must name that directory, or the flag would be ignored.
+    if [[ $ROOT_SET == 1 && $ROOT != "bench/pilot/harder/results" ]]; then
+      echo "B5 rows need --root bench/pilot/harder/results" >&2
+      exit 2
+    fi
+    dest="bench/pilot/harder/results/behaviour-${upgrade}-${behaviour}-r${rep}.json"
+    line="behaviour $upgrade $behaviour repeat $rep: bench/pilot/run-one.sh --behaviour $behaviour --upgrade $upgrade --dest $dest"
+  else
     line="behaviour $upgrade $behaviour repeat $rep: bench/pilot/run-missing.sh (isolated variant)"
   fi
   if [[ $MODE == list ]]; then

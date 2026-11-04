@@ -26,6 +26,8 @@ Real sources (bench/README.md): B1 Microsoft Graph delta, Zendesk. B2 Microsoft 
 
 `--retry-journal PATH` writes one JSON event per request: timestamp, keyed client digest, HTTP status, request fingerprint digest, traversal digest, `throttled`, `retry_candidate`, `matching_retry`. It holds no cursor, no query, no variable, no token and no address.
 
-The harness truncates the journal at a phase start and reads it at a phase end. A missing journal, a malformed or wrong-typed event, or an overflow marker is `unknown`, never zero. The server writes the overflow marker on every request at or past the journal limit. A phase with a request after a truncate then reads as unknown. `retry_candidate` marks a request that presented the throttled cursor. `matching_retry` marks the one whose exact query, operation name and variables matched.
+The harness truncates the journal at a phase start and reads it at a phase end. A missing journal, a malformed or wrong-typed event, an overflow marker or an eviction marker is `unknown`, never zero. The server writes the overflow marker on every request at or past the journal limit. A phase with a request after a truncate then reads as unknown. The server also marks the journal when the B5 state cap drops a traversal, because that traversal can see a second 429. `retry_candidate` marks a request that presented the throttled cursor. `matching_retry` marks the one whose exact query, operation name and variables matched.
 
-The grading read also rejects a live API that saw any grading-phase request and a grading API with more than one client. It reports unknown instead of a count.
+A document with more than one settlements field that carries a non-null `after` is ambiguous, because the server cannot tell which traversal is paging. The server rejects it with 400 and starts no traversal. A field with a null `after` does not compete with the field that carries the paging cursor.
+
+The grading read also rejects a live API that saw any grading-phase request and a grading API with more clients than the grading passes that ran, one or two. It reports unknown instead of a count.

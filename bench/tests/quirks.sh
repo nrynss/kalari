@@ -6,8 +6,9 @@
 # B5 has its own block. It checks the real status and the Retry-After header, that each
 # traversal gets one 429 and its identical retry succeeds without skipping a page, that a
 # changed GraphQL query, variable, operation name or payout parameter stays throttled, that
-# a settlements fragment reaches the same field, and that B5 off changes nothing. The retry
-# journal block checks phase counts, event types, digest shapes, overflow and grading isolation.
+# a settlements fragment or a dual `after` document reaches the same field, that an
+# ambiguous document is rejected, and that B5 off changes nothing. The retry journal block
+# checks phase counts, event types, digest shapes, overflow, evictions and grading isolation.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 fail=0
@@ -162,6 +163,43 @@ check settlements no_dedupe        "$s_b5off" FAIL:duplicates=19,mismatched=19  
 check settlements keep_first       "$s_b5off" FAIL:mismatched=19    # B2: dedupes, but keeps the old version
 check settlements correct          "$s_b5off" PASS
 
+# B5 off keeps the old error path. The new argument parser stays out of it, so an
+# ambiguous document and a list argument return the schema's GraphQL errors with 200.
+if ! python3 -I - "$s_b5off" "$tmp/b5off-settlements.jsonl" <<'PYB5OFF'
+import json, sys, urllib.error, urllib.request
+
+port, journal = int(sys.argv[1]), sys.argv[2]
+URL = f"http://127.0.0.1:{port}/v2/graphql"
+AMBIG = ("query A($a: String) { settlements(first: 100, after: $a) { pageInfo { hasNextPage } } } "
+         "query B($a: String) { settlements(first: 100, after: $a) { pageInfo { hasNextPage } } }")
+LIST = "query Q { settlements(first: [1, 2]) { nodes { id } pageInfo { hasNextPage } } }"
+
+
+def send(query, variables):
+    body = json.dumps({"query": query, "variables": variables}).encode()
+    req = urllib.request.Request(URL, data=body, headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return r.status, json.load(r)
+    except urllib.error.HTTPError as e:
+        return e.code, json.loads(e.read() or b"{}")
+
+
+for label, query, variables in (
+    ("ambiguous two operations", AMBIG, {"a": None}),
+    ("list argument", LIST, {}),
+):
+    code, body = send(query, variables)
+    assert code == 200, (label, code, body)
+    assert body.get("errors"), (label, body)
+events = [json.loads(line) for line in open(journal) if line.strip()]
+assert not any(event.get("throttled") for event in events), "B5 off throttled a request"
+print("ok   settlements B5 off: the old GraphQL errors return for both edge documents")
+PYB5OFF
+then
+  echo "FAIL settlements B5 off error path"; fail=1
+fi
+
 expect_count "payouts B5 off 429 responses" "$(jcount "$tmp/b5off-payouts.jsonl" throttled true)" 0
 expect_count "settlements B5 off 429 responses" "$(jcount "$tmp/b5off-settlements.jsonl" throttled true)" 0
 
@@ -279,10 +317,13 @@ class Traversal:
             self.retried += 1
         assert code == 200, (self.name, "status", code)
         if api == "payouts":
+            assert set(body) == {"payouts", "cursor", "drained"}, sorted(body)
             page = [p["id"] for p in body["payouts"]]
             self.cursor = body["cursor"]
             self.done = body["drained"]
         else:
+            assert set(body) <= {"data", "errors"}, sorted(body)
+            assert "data" in body, sorted(body)
             conn = body["data"]["settlements"]
             page = [s["id"] for s in conn["nodes"]]
             self.cursor = conn["pageInfo"]["endCursor"]
@@ -640,10 +681,51 @@ assert len(seen) == 1873, len(seen)
 assert throttles == 1 and retries == 1, (throttles, retries)
 print("ok   settlements multiple fields: the field with after sets the throttle")
 
+# Two fields both carry `after`: a null one must not win over the paging cursor.
+DUAL_TWO_AFTER = ("query Q($a: String, $b: String) { "
+                  "one: settlements(first: 1, after: $a) { pageInfo { hasNextPage } } "
+                  "two: settlements(first: 100, after: $b) { "
+                  "nodes { id } pageInfo { endCursor hasNextPage } } }")
+open(journal, "w").close()
+cursor = None
+seen = set()
+throttles = retries = 0
+while True:
+    code, body, headers = send(DUAL_TWO_AFTER, {"a": None, "b": cursor})
+    if code == 429:
+        throttles += 1
+        assert headers.get("Retry-After") == "1", headers.get("Retry-After")
+        code, body, _headers = send(DUAL_TWO_AFTER, {"a": None, "b": cursor})
+        assert code == 200, ("dual after retry", code)
+        retries += 1
+    assert code == 200, (code, body)
+    conn = body["data"]["two"]
+    seen |= {s["id"] for s in conn["nodes"]}
+    cursor = conn["pageInfo"]["endCursor"]
+    if not conn["pageInfo"]["hasNextPage"]:
+        break
+assert len(seen) == 1873, len(seen)
+assert throttles == 1 and retries == 1, (throttles, retries)
+events = [json.loads(line) for line in open(journal) if line.strip()]
+assert len({e["traversal"] for e in events}) == 1, "the null after started a new traversal"
+print("ok   settlements dual after: the non-null paging cursor decides the traversal")
+
+# Two non-null `after` values cannot resolve to one traversal: 400, no traversal.
+open(journal, "w").close()
+code, body, _headers = send(DUAL_TWO_AFTER, {"a": cursor, "b": cursor})
+assert code == 400, (code, body)
+message = body["errors"][0]["message"]
+assert message.startswith("ambiguous settlements field"), message
+events = [json.loads(line) for line in open(journal) if line.strip()]
+assert len(events) == 1 and events[0]["status"] == 400, events
+assert events[0]["traversal"] == "", events
+print("ok   settlements two non-null after fields: distinct 400 without a traversal")
+
 # Two operations and no operation name cannot resolve to one field: 400, no traversal.
 open(journal, "w").close()
 code, body, _headers = send(AMBIGUOUS, {"f": 100, "a": None})
 assert code == 400, (code, body)
+assert body["errors"][0]["message"].startswith("could not resolve the settlements field"), body
 events = [json.loads(line) for line in open(journal) if line.strip()]
 assert len(events) == 1 and events[0]["status"] == 400, events
 assert events[0]["traversal"] == "", events
@@ -655,7 +737,7 @@ fi
 
 # Trusted retry measurement: one journal split into two phases gives separate agent
 # and grading counts. A missing, malformed or wrong-typed journal is unknown with null
-# counts. The grading read also rejects live-API traffic and a second client.
+# counts. The grading read also rejects live-API traffic and extra grading clients.
 rj=$((op + 14))
 start_server payouts "$rj" "$tmp/rj.log" --behaviours B5 --retry-journal "$tmp/rj-journal.jsonl"
 wait_api payouts "$rj"
@@ -676,7 +758,9 @@ open(sys.argv[2], "w").write(json.dumps(event) + "\n")
 PYWT
 python3 -I harness/retry_journal.py read --phase agent --local "payouts_live=$tmp/rj-wrongtype.jsonl" --out "$tmp/rj-wrongtype.json" >/dev/null
 
-# Grading isolation: a clean pair is ok, live traffic or a second client is unknown.
+# Grading isolation: a clean pair is ok, live traffic or an extra client is unknown.
+# The harness grades the final source and the first-v2 source in two fresh guests, so
+# it passes an expected count of 2 when a first-v2 source exists.
 python3 -I - "$tmp/rj-journal.jsonl" "$tmp" <<'PYISO'
 import json, sys
 event = json.loads(next(line for line in open(sys.argv[1]) if line.strip()))
@@ -691,22 +775,31 @@ write("iso-live-clean.jsonl", [])
 write("iso-grading.jsonl", [grading])
 write("iso-live-dirty.jsonl", [dict(event, client="a" * 16)])
 write("iso-grading-two.jsonl", [grading, dict(grading, client="b" * 16)])
+write("iso-grading-three.jsonl", [grading, dict(grading, client="b" * 16),
+                                   dict(grading, client="c" * 16)])
 PYISO
 python3 -I harness/retry_journal.py read --phase grading \
   --local "live=$tmp/iso-live-clean.jsonl" --local "grade=$tmp/iso-grading.jsonl" \
-  --grading-live live --grading-grade grade --out "$tmp/iso-clean.json" >/dev/null
+  --grading-live live --grading-grade grade --grading-clients 1 --out "$tmp/iso-clean.json" >/dev/null
 python3 -I harness/retry_journal.py read --phase grading \
   --local "live=$tmp/iso-live-dirty.jsonl" --local "grade=$tmp/iso-grading.jsonl" \
-  --grading-live live --grading-grade grade --out "$tmp/iso-dirty.json" >/dev/null
+  --grading-live live --grading-grade grade --grading-clients 1 --out "$tmp/iso-dirty.json" >/dev/null
 python3 -I harness/retry_journal.py read --phase grading \
   --local "live=$tmp/iso-live-clean.jsonl" --local "grade=$tmp/iso-grading-two.jsonl" \
-  --grading-live live --grading-grade grade --out "$tmp/iso-two.json" >/dev/null
+  --grading-live live --grading-grade grade --grading-clients 2 --out "$tmp/iso-two.json" >/dev/null
+python3 -I harness/retry_journal.py read --phase grading \
+  --local "live=$tmp/iso-live-clean.jsonl" --local "grade=$tmp/iso-grading-two.jsonl" \
+  --grading-live live --grading-grade grade --grading-clients 1 --out "$tmp/iso-two-strict.json" >/dev/null
+python3 -I harness/retry_journal.py read --phase grading \
+  --local "live=$tmp/iso-live-clean.jsonl" --local "grade=$tmp/iso-grading-three.jsonl" \
+  --grading-live live --grading-grade grade --grading-clients 2 --out "$tmp/iso-three.json" >/dev/null
 
 if ! python3 -I - "$tmp/rj-agent.json" "$tmp/rj-grading.json" "$tmp/rj-missing.json" \
   "$tmp/rj-bad.json" "$tmp/rj-wrongtype.json" "$tmp/iso-clean.json" "$tmp/iso-dirty.json" \
-  "$tmp/iso-two.json" <<'PYRJ'
+  "$tmp/iso-two.json" "$tmp/iso-two-strict.json" "$tmp/iso-three.json" <<'PYRJ'
 import json, sys
-agent, grading, missing, bad, wrongtype, clean, dirty, two = (json.load(open(p)) for p in sys.argv[1:9])
+(agent, grading, missing, bad, wrongtype, clean, dirty,
+ two, two_strict, three) = (json.load(open(p)) for p in sys.argv[1:11])
 for phase, doc in (("agent", agent), ("grading", grading)):
     assert doc["phase"] == phase and doc["status"] == "ok", doc
     assert (doc["b5_429_responses"], doc["matching_retry_attempts"],
@@ -719,8 +812,11 @@ for doc in (missing, bad, wrongtype):
     assert doc["successful_matching_retries"] is None
 assert clean["status"] == "ok" and clean["requests"] == 1 and clean["clients"] == 1, clean
 assert dirty["status"] == "unknown" and "expected 0" in dirty["reason"], dirty
-assert two["status"] == "unknown" and "at most 1" in two["reason"], two
-print("ok   retry journal: phases 1/1/1, missing, malformed and wrong type unknown, grading isolation")
+# The real two-pass case: two grading guests, expected count 2, is ok.
+assert two["status"] == "ok" and two["clients"] == 2 and two["requests"] == 2, two
+assert two_strict["status"] == "unknown" and "at most 1" in two_strict["reason"], two_strict
+assert three["status"] == "unknown" and "at most 2" in three["reason"], three
+print("ok   retry journal: phases 1/1/1, missing, malformed and wrong type unknown, grading one or two passes")
 PYRJ
 then
   echo "FAIL retry journal measurement"; fail=1
@@ -745,7 +841,8 @@ then
 fi
 
 # Overflow: the server writes the marker on every request at or past the limit.
-# After a truncate, the next request writes it again, so the phase reads as unknown.
+# Two requests after the first marker must leave two markers. After a truncate, two
+# more requests write two markers again, so the phase reads as unknown.
 ov=$((op + 17))
 start_server payouts "$ov" "$tmp/ov.log" --behaviours B5 --retry-journal "$tmp/ov-journal.jsonl" --retry-journal-limit 2
 for _ in $(seq 1 50); do
@@ -753,31 +850,37 @@ for _ in $(seq 1 50); do
   sleep 0.1
 done
 : > "$tmp/ov-journal.jsonl"
-for _ in 1 2 3; do curl -s -o /dev/null "http://127.0.0.1:$ov/v2/payouts?limit=1"; done
+for _ in 1 2 3 4; do curl -s -o /dev/null "http://127.0.0.1:$ov/v2/payouts?limit=1"; done
 lines_before=$(wc -l < "$tmp/ov-journal.jsonl")
+markers_before=$(grep -c '"overflow":true' "$tmp/ov-journal.jsonl" || true)
 python3 -I harness/retry_journal.py read --phase agent --local "payouts_live=$tmp/ov-journal.jsonl" --out "$tmp/ov-before.json" >/dev/null
 : > "$tmp/ov-journal.jsonl"
-curl -s -o /dev/null "http://127.0.0.1:$ov/v2/payouts?limit=1"
-marker=$(cat "$tmp/ov-journal.jsonl")
+for _ in 1 2; do curl -s -o /dev/null "http://127.0.0.1:$ov/v2/payouts?limit=1"; done
+markers_after=$(grep -c '"overflow":true' "$tmp/ov-journal.jsonl" || true)
 python3 -I harness/retry_journal.py read --phase agent --local "payouts_live=$tmp/ov-journal.jsonl" --out "$tmp/ov-after.json" >/dev/null
-if [[ "$lines_before" == 3 && "$marker" == '{"overflow":true}' ]] && python3 -I - "$tmp/ov-before.json" "$tmp/ov-after.json" <<'PYOV'
+if [[ "$lines_before" == 4 && "$markers_before" == 2 && "$markers_after" == 2 ]] && python3 -I - "$tmp/ov-before.json" "$tmp/ov-after.json" <<'PYOV'
 import json, sys
 before, after = (json.load(open(p)) for p in sys.argv[1:3])
 for doc in (before, after):
     assert doc["status"] == "unknown", doc
     assert doc["requests"] is None, doc
+    assert "overflow" in doc["apis"]["payouts_live"]["reason"], doc
 PYOV
 then
-  echo "ok   retry journal overflow: marker on every request, unknown after truncate"
+  echo "ok   retry journal overflow: two markers, two more after truncate, unknown"
 else
-  echo "FAIL retry journal overflow (lines=$lines_before marker=$marker)"; fail=1
+  echo "FAIL retry journal overflow (lines=$lines_before markers=$markers_before/$markers_after)"; fail=1
 fi
 
 # The B5 state maps stay bounded. A traversal that falls out of the cap can be
-# throttled again, which is the documented trade for a fixed footprint.
-if ! python3 -I - <<'PYCAP'
+# throttled again, so the server writes an eviction marker and the phase reads unknown.
+if ! python3 -I - "$tmp" <<'PYCAP'
 import importlib.util
+import json
+import os
 import sys
+
+tmp = sys.argv[1]
 
 
 def load(path, name):
@@ -792,6 +895,8 @@ for path, name in (("apis/payouts/server.py", "payouts_cap"),
     sys.modules.pop("data", None)
     server = load(path, name)
     server.B5_STATE_LIMIT = 2
+    journal = os.path.join(tmp, name + "-evict.jsonl")
+    server.JOURNAL = open(journal, "w")
     for i in range(5):
         assert server.b5_decide(f"p{i}", "", server.B5_OFFSET, "f")[0] == "throttle"
     assert len(server.B5_PENDING) <= 2, (name, len(server.B5_PENDING))
@@ -801,10 +906,37 @@ for path, name in (("apis/payouts/server.py", "payouts_cap"),
         assert server.b5_decide(trav, "", server.B5_OFFSET, "f")[0] == "retry"
     assert len(server.B5_CLEARED) <= 2, (name, len(server.B5_CLEARED))
     assert len(server.B5_PENDING) <= 2, (name, len(server.B5_PENDING))
-print("ok   B5 pending and cleared maps stay capped")
+    server.JOURNAL.flush()
+    server.JOURNAL.close()
+    lines = [json.loads(line) for line in open(journal) if line.strip()]
+    assert any(line.get("eviction") is True for line in lines), (name, lines)
+    # Truncate at a phase start, then evict again. The marker must return.
+    open(journal, "w").close()
+    server.JOURNAL = open(journal, "w")
+    for i in range(3):
+        server.b5_decide(f"again{i}", "", server.B5_OFFSET, "f")
+    server.JOURNAL.flush()
+    server.JOURNAL.close()
+    lines = [json.loads(line) for line in open(journal) if line.strip()]
+    assert any(line.get("eviction") is True for line in lines), (name, "after truncate", lines)
+print("ok   B5 pending and cleared maps stay capped and mark an eviction")
 PYCAP
 then
   echo "FAIL B5 state cap"; fail=1
+fi
+python3 -I harness/retry_journal.py read --phase agent --local "payouts_live=$tmp/payouts_cap-evict.jsonl" --out "$tmp/cap-evict.json" >/dev/null
+if python3 -I - "$tmp/cap-evict.json" <<'PYEV'
+import json, sys
+doc = json.load(open(sys.argv[1]))
+assert doc["status"] == "unknown", doc
+assert "eviction" in doc["apis"]["payouts_live"]["reason"], doc
+assert doc["requests"] is None, doc
+print("ok   B5 eviction marker: the phase reads as unknown, not zero")
+PYEV
+then
+  :
+else
+  echo "FAIL B5 eviction marker"; fail=1
 fi
 
 # Consumer sandbox runs and HTTP retries are separate fields. Three consumer runs
@@ -833,6 +965,42 @@ print("ok   result measures: 3 sandbox runs stay apart from 2 successful retries
 PYMEAS
 then
   echo "FAIL result measures separation"; fail=1
+fi
+
+# The shell writes measures["sandbox_runs"] only from result_measures.build. A
+# reassignment after the builder would add HTTP retries to sandbox runs.
+if ! python3 -I - harness/run.sh pilot/run-one.sh <<'PYWIRE'
+import ast, re, sys
+
+for path in sys.argv[1:]:
+    text = open(path).read()
+    blocks = re.findall(r"<< 'PY'\n(.*?)^PY$", text, re.S | re.M)
+    assert blocks, f"{path}: no result block"
+    tree = ast.parse(blocks[-1])
+    build_at = None
+    for index, node in enumerate(tree.body):
+        if not isinstance(node, ast.Assign):
+            continue
+        if any(isinstance(target, ast.Tuple) and
+               any(isinstance(element, ast.Name) and element.id == "measures"
+                   for element in target.elts)
+               for target in node.targets):
+            build_at = index
+    assert build_at is not None, f"{path}: no result_measures.build assignment"
+    for node in tree.body[build_at + 1:]:
+        targets = []
+        if isinstance(node, ast.Assign):
+            targets = node.targets
+        elif isinstance(node, ast.AugAssign):
+            targets = [node.target]
+        for target in targets:
+            for sub in ast.walk(target):
+                if isinstance(sub, ast.Name) and sub.id == "measures":
+                    raise SystemExit(f"{path}: measures is reassigned after build")
+print("ok   shell result wiring: sandbox_runs comes only from result_measures.build")
+PYWIRE
+then
+  echo "FAIL shell result wiring"; fail=1
 fi
 
 # The stand-alone reader bounds `msb` and sets its own umask.
@@ -888,6 +1056,26 @@ if pilot/run.sh --list --condition 3 --upgrade payouts --root /tmp >/dev/null 2>
   echo "FAIL pilot accepted an unknown root"; fail=1
 else
   echo "ok   pilot rejects an unknown root"
+fi
+# The B5 route uses the harder root and rejects an explicit baseline root.
+if out=$(pilot/run.sh --list --behaviour B5 --upgrade payouts) &&
+  grep -q 'bench/pilot/harder/results/behaviour-payouts-B5-r1.json' <<<"$out"; then
+  echo "ok   pilot B5 route defaults to the harder root"
+else
+  echo "FAIL pilot B5 default root"; fail=1
+fi
+if out=$(pilot/run.sh --list --behaviour B5 --upgrade payouts --root bench/pilot/harder/results) &&
+  grep -q 'bench/pilot/harder/results/behaviour-payouts-B5-r1.json' <<<"$out"; then
+  echo "ok   pilot B5 route honours the harder root"
+else
+  echo "FAIL pilot B5 harder root"; fail=1
+fi
+if pilot/run.sh --list --behaviour B5 --upgrade payouts --root bench/pilot/results >/dev/null 2>"$tmp/pilot-b5-root.err"; then
+  echo "FAIL pilot B5 accepted an explicit baseline root"; fail=1
+elif grep -q "B5 rows need" "$tmp/pilot-b5-root.err"; then
+  echo "ok   pilot B5 rejects an explicit baseline root"
+else
+  echo "FAIL pilot B5 root rejection message"; cat "$tmp/pilot-b5-root.err"; fail=1
 fi
 if [[ ! -f pilot/results/condition-3-payouts-r1.json ]]; then
   echo "FAIL pilot baseline row missing, refusing the overwrite test"; fail=1

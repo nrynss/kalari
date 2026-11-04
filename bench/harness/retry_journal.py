@@ -8,13 +8,14 @@ matching retry. The journal never holds a raw cursor, a raw request or a token.
 
 The harness truncates every journal at the start of a phase and reads it at the
 end, so agent activity and grading activity are counted apart. A missing
-journal, a failed truncation, a malformed or wrong-typed event, or an overflow
-marker is `unknown` with null counts, never zero. HTTP retries inside one
-consumer process are not sandbox runs.
+journal, a failed truncation, a malformed or wrong-typed event, an overflow
+marker or an eviction marker is `unknown` with null counts, never zero. HTTP
+retries inside one consumer process are not sandbox runs.
 
 The grading read also checks isolation. It requires the live API to show zero
-requests and the grading API to show at most one client. Otherwise the grading
-phase is unknown. The journal lives in the API guest, and the reference arm's
+requests and the grading API to show no more clients than the harness expects.
+The harness grades the final source and the first-v2 source in two fresh guests,
+so it passes 1 or 2. The journal lives in the API guest, and the reference arm's
 MCP can exec into a named sandbox, so this check catches stray traffic but not
 a deliberate write to the file.
 
@@ -22,7 +23,8 @@ Usage:
   retry_journal.py truncate --remote NAME=PATH [--remote ...] [--out FILE]
   retry_journal.py read --phase agent --truncated FILE --remote NAME=PATH ... [--out FILE]
   retry_journal.py read --phase grading --truncated FILE \
-      --remote NAME=PATH ... --grading-live NAME --grading-grade NAME [--out FILE]
+      --remote NAME=PATH ... --grading-live NAME --grading-grade NAME \
+      [--grading-clients N] [--out FILE]
   retry_journal.py read --phase agent --local NAME=FILE --out FILE
 
 `--remote NAME=PATH` runs `msb exec NAME` on the VM. `--local NAME=FILE` reads
@@ -146,8 +148,20 @@ def valid_event(event):
     return all(type(event[key]) is bool for key in ("throttled", "matching_retry", "retry_candidate"))
 
 
-def isolation_problems(phase, apis, grading_live, grading_grade):
-    """The grading phase must not see live-API traffic or a second client."""
+def marker_reason(events):
+    """Name the marker that makes a phase unmeasurable, or return None."""
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+        if event.get("eviction") is True:
+            return "B5 state eviction: the cap dropped a traversal"
+        if event.get("overflow") is True:
+            return "journal overflow: the event limit was reached"
+    return None
+
+
+def isolation_problems(phase, apis, grading_live, grading_grade, grading_clients):
+    """The grading phase must not see live-API traffic or an extra client."""
     if phase != "grading":
         return []
     problems = []
@@ -167,12 +181,15 @@ def isolation_problems(phase, apis, grading_live, grading_grade):
             continue
         if entry.get("status") != "ok":
             continue
-        if entry.get("clients", 0) > 1:
-            problems.append(f"{name} saw {entry['clients']} clients during grading, expected at most 1")
+        if entry.get("clients", 0) > grading_clients:
+            problems.append(
+                f"{name} saw {entry['clients']} clients during grading, "
+                f"expected at most {grading_clients}"
+            )
     return problems
 
 
-def summarize(phase, docs, truncated, grading_live=(), grading_grade=()):
+def summarize(phase, docs, truncated, grading_live=(), grading_grade=(), grading_clients=1):
     apis, unknown = {}, []
     allowed = (truncated or {}).get("journals") or {}
     totals = {key: 0 for key in COUNTS}
@@ -199,7 +216,8 @@ def summarize(phase, docs, truncated, grading_live=(), grading_grade=()):
             continue
         bad = [e for e in events if not valid_event(e)]
         if bad:
-            apis[name] = {"status": "unknown", "reason": f"{len(bad)} malformed events",
+            reason = marker_reason(bad) or f"{len(bad)} malformed events"
+            apis[name] = {"status": "unknown", "reason": reason,
                           **{key: None for key in COUNTS}}
             unknown.append(name)
             continue
@@ -226,7 +244,7 @@ def summarize(phase, docs, truncated, grading_live=(), grading_grade=()):
                "reason": "unknown journals: " + ", ".join(unknown),
                **{key: None for key in COUNTS}}
     else:
-        problems = isolation_problems(phase, apis, grading_live, grading_grade)
+        problems = isolation_problems(phase, apis, grading_live, grading_grade, grading_clients)
         if problems:
             out = {"phase": phase, "status": "unknown", "reason": "; ".join(problems),
                    **{key: None for key in COUNTS}}
@@ -258,7 +276,9 @@ def main():
     r.add_argument("--grading-live", action="append", default=[],
                    help="live API names that must show zero grading-phase requests")
     r.add_argument("--grading-grade", action="append", default=[],
-                   help="grading API names that must show at most one client")
+                   help="grading API names that must show no more clients than expected")
+    r.add_argument("--grading-clients", type=int, default=1,
+                   help="grading passes that may appear: 1, or 2 when a first-v2 source is graded")
     r.add_argument("--out")
 
     a = ap.parse_args()
@@ -284,8 +304,10 @@ def main():
     if local and truncated is None:
         # A local journal is read directly: the caller is the phase boundary.
         truncated = {"journals": {name: {"status": "truncated"} for name, _path in targets}}
+    if a.grading_clients < 1:
+        ap.error("--grading-clients must be at least 1")
     result = summarize(a.phase, read_docs(targets, local), truncated,
-                       a.grading_live, a.grading_grade)
+                       a.grading_live, a.grading_grade, a.grading_clients)
     text = json.dumps(result, indent=2, sort_keys=True) + "\n"
     if a.out:
         os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)

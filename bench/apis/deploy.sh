@@ -18,8 +18,8 @@
 # A host mount would not put the file out of reach, because the arm's MCP can bind-mount
 # the same host path into its own guest. The guest name is fixed, and that MCP can exec
 # into any sandbox, so trust rests on the arm not targeting these guests. The grading
-# read rejects a live API that saw traffic and a grading API with more than one client,
-# and reports unknown instead of a count.
+# read rejects a live API that saw traffic and a grading API with more clients
+# than the grading passes that ran, and reports unknown instead of a count.
 set -euo pipefail
 umask 022
 cd "$(dirname "$0")"

@@ -164,7 +164,8 @@ PY
 # Trusted retry measurement: the API servers' journals, truncated at each phase
 # start and read at each phase end. Agent activity and grading activity never
 # share a window. A missing journal stays unknown. The grading read also rejects
-# a live API that saw traffic and a grading API with more than one client.
+# a live API that saw traffic and a grading API with more clients than the
+# grading passes that ran.
 RETRY_JOURNAL=/srv/retry-journal.jsonl
 retry_api() { printf 'api-%s-%s\n' "$UPGRADE" "$1"; }
 retry_truncate() { # $1 phase
@@ -176,7 +177,9 @@ retry_truncate() { # $1 phase
 retry_read() { # $1 phase
   local extra=()
   if [[ "$1" == grading ]]; then
-    extra=(--grading-live "$(retry_api live)" --grading-grade "$(retry_api grading)")
+    local clients=1
+    if [[ -f "$RUN/first-v2-src/$CONSUMER" ]]; then clients=2; fi
+    extra=(--grading-live "$(retry_api live)" --grading-grade "$(retry_api grading)" --grading-clients "$clients")
   fi
   python3 "$STAGE/retry_journal.py" read --phase "$1" \
     --truncated "$RUN/retry-$1-start.json" \

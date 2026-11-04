@@ -28,8 +28,8 @@ The retry journal is a JSON-lines file in the API guest with one event per reque
 harness truncates it at a phase start and reads it at a phase end over `msb exec`. It
 carries a timestamp, a client digest, the HTTP status, the request fingerprint digest,
 the traversal digest and whether the request was the matching retry. It never carries a
-raw cursor, a raw request or a token. A wrong type or an overflow marker reads as
-unknown, never as zero.
+raw cursor, a raw request or a token. A wrong type, an overflow marker or an eviction
+marker reads as unknown, never as zero.
 """
 import argparse
 import base64
@@ -57,7 +57,7 @@ TRACE_COUNT = 0
 
 # B5: one throttled request per traversal, at a fixed mid-stream offset.
 # Both maps are capped. A traversal that falls out of the cap can see a second
-# 429, which is better than growing without bound.
+# 429, so the server marks the journal and the phase reads as unknown.
 B5_OFFSET = 1500
 B5_STATE_LIMIT = 4096
 B5_LOCK = threading.Lock()
@@ -100,6 +100,21 @@ def request_fingerprint(method: str, path: str, pairs) -> str:
     return hashlib.sha256(canon.encode()).hexdigest()[:32]
 
 
+def evicted() -> None:
+    """Mark the journal when the B5 state cap drops a traversal.
+
+    An evicted traversal can see a second 429, so the phase reads as unknown.
+    """
+    global JOURNAL_COUNT
+    if JOURNAL is None:
+        return
+    with JOURNAL_LOCK:
+        if JOURNAL_COUNT < JOURNAL_LIMIT:
+            JOURNAL.write('{"eviction":true}\n')
+            JOURNAL.flush()
+            JOURNAL_COUNT += 1
+
+
 def b5_decide(traversal: str, cursor_key: str, offset: int, fingerprint: str):
     """One-shot throttle for this traversal.
 
@@ -119,12 +134,14 @@ def b5_decide(traversal: str, cursor_key: str, offset: int, fingerprint: str):
                 del B5_PENDING[traversal]
                 B5_CLEARED[traversal] = None
                 if len(B5_CLEARED) > B5_STATE_LIMIT:
+                    evicted()
                     B5_CLEARED.pop(next(iter(B5_CLEARED)))
                 return "retry", True
             # A changed request does not count as the identical retry.
             return "throttle", candidate
         if offset >= B5_OFFSET:
             if len(B5_PENDING) >= B5_STATE_LIMIT:
+                evicted()
                 B5_PENDING.pop(next(iter(B5_PENDING)))
             B5_PENDING[traversal] = {"cursor": cursor_key, "request": fingerprint}
             return "throttle", False
