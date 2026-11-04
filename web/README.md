@@ -33,10 +33,12 @@ It does not serve `web/fixture/` or any rendered snapshot.
 The server injects `data-fixture="true"` and a visible fixture banner into every
 HTML page it serves. The published files in `web/site/` carry no banner. A
 screenshot of a served page shows the banner. A screenshot of a published page
-does not. The server also sends a strict `Content-Security-Policy` on every
-response: `default-src 'self'` and `connect-src 'self'`. The published shells
-carry the same policy in a `meta` tag, so a deployed page makes no request to
-another origin.
+does not. The server sends a strict `Content-Security-Policy` on every response,
+including 400, 404 and 413. The policy has `default-src 'self'` and
+`connect-src 'self'`. The published shells carry the same policy in a `meta`
+tag. The policy blocks every subresource from another origin. It does not block
+top-level navigation or `window.open`, so the static check rejects both, and the
+browser check loads each page and fails on any request outside the page origin.
 
 Options:
 
@@ -60,16 +62,19 @@ loopback and stops it on exit. It reads the rendered snapshots from
 `web/fixture/rendered/` on disk, never over HTTP. It checks these things:
 
 1. Every file under `web/site/` is hashed in the manifest, and every rendered
-   page has a hash.
-2. Every served file and snapshot has no external URL. A `fetch`, `import`,
-   `WebSocket`, `EventSource` or `Worker` call must take a relative literal or
-   pass through the `localPath` guard.
+   page has a hash. The snapshot inputs have a hash too.
+2. Every served file and snapshot has no external URL, no `meta refresh` and no
+   navigation sink. A `fetch`, `import`, `WebSocket`, `EventSource` or `Worker`
+   call must take a relative literal or pass through the `localPath` guard. A
+   `window.open`, a `location` assignment, `location.assign`, `location.replace`
+   and `eval` fail.
 3. The fixture store and every rendered page have no IP address, email or key
    pattern.
 4. The published shells and the rendered pages carry no fixture banner, and
    every print rule for the banner is scoped to fixture mode.
-5. Every published shell and every server response carries
-   `default-src 'self'` and `connect-src 'self'`.
+5. Every published shell carries `default-src 'self'` and `connect-src 'self'`.
+   Every server response carries the same policy. The check reads a 200, a 400,
+   a 404 and a 413.
 6. The fixture server serves `web/site/` only. Every fixture path and snapshot
    path answers 404.
 7. The live shells and entry modules are present.
@@ -82,31 +87,45 @@ loopback and stops it on exit. It reads the rendered snapshots from
    `/api/runs/<id>`.
 10. Every run id in `/api/runs` appears in a link on the judges page.
 11. Every table value matches the record named by its run link. Every table
-    cell with a number is a known measure.
-12. Each page carries an exact count of measure links, number anchors and
-    table cells. A new number needs a new measure and a new count.
+    cell with a number is a known measure. A measure cell links its run exactly
+    when the record holds a value.
+12. The check derives the table cells, the measure links, the not-run rows and
+    the repeat counts from the records the snapshot was rendered from. A new
+    record changes the page and the expectation together. The snapshots cover a
+    new pilot run, a single frozen condition-five record, a complete frozen
+    pair and a split frozen store.
 13. Every median is computed from the benchmark records and compared with the
-    displayed text.
+    displayed text and its run link.
 14. Every table has a caption or `aria-labelledby`.
-15. Every percent on every page sits in visible text inside a block labelled a
-    model's opinion. A percent in a table cell, a verdict or a heading fails.
-    The `data-probability` marker is a second assertion.
+15. A percentage in a table cell, a verdict or a heading fails. Any other
+    percentage must sit inside an element with `data-probability`, inside an
+    opinion block labelled a model's opinion, unless it sits in a log. Every
+    number inside an opinion block needs the marker. A probability-shaped
+    decimal outside a log fails.
 16. One frozen row in each upgrade does not say the comparison is published. A
     complete pair does. Frozen run and session pages carry frozen labels.
-17. Conditions four and five without a record show explicit `not run` rows. The
-    pilot contrast says `The pilot baseline`, and the repeat counts come from
-    the records.
-18. A URL in a run log is redacted before display.
+17. A condition with no record shows an explicit `not run` row. The not-run
+    rows come from the conditions missing from the store. The comparison
+    heading is `The pilot baseline` with no frozen pair and `The measured before
+    and after` with one. The repeat copy comes from both contrast columns.
+18. A URL in a run log is redacted before display. The check proves this for
+    stdout, stderr, command, check detail, lesson, grader log, grade note,
+    session note and change detail. It covers a full URL and a scheme-relative
+    URL.
 19. An empty `/api/benchmark` renders the not-yet-published state.
 20. An absent store returns empty arrays and shows a clear state.
 
 ## Browser check
 
 `web/check.sh` does not start a browser. `python3 web/fixture/browser_check.py`
-loads the three published pages in headless Chrome when one is installed. It
-subtracts the browser's own background hosts, then fails if a page requests any
-other host. It also checks that each page rendered its heading. It is a
-development tool, not part of the gate.
+drives headless Chrome over the DevTools pipe when one is installed. It reads
+the network events of the page itself, so the browser's own background traffic
+never enters the result. It loads the three shells, the walkthrough session, a
+benchmark session and the illustrative run page. It fails on any request
+outside the page origin, on a second page target outside that origin, and on a
+page that did not render its heading. The static check is authoritative for
+every other served file. The browser check is a development tool, not part of
+the gate.
 
 ## How the pages render from the fixture
 
@@ -116,10 +135,12 @@ walkthrough records. Run the build only when the fixture sources change.
 
 `web/fixture/rendered/` holds snapshots of the view output. The check parses
 these snapshots from disk. They are made by the same `web/site/app/views.mjs`
-the browser runs. Five of the snapshots exercise states the committed pilot
-store cannot show: a partial frozen pair, a complete frozen pair, a frozen run,
-a frozen session, and a log with a URL. They are test fixtures, not served
-pages.
+the browser runs. The snapshots exercise states the committed pilot store cannot
+show: a new pilot run, a single frozen condition-five record, a partial frozen
+pair, a complete frozen pair with measures, a frozen run, a frozen session, and
+a page with a URL in each display path. `web/fixture/rendered/inputs.json`
+records the exact records each snapshot was rendered from, and the check derives
+its expectations from that file. They are test fixtures, not served pages.
 
 `web/fixture/render.mjs` regenerates the snapshots. It is a development tool.
 It uses Node, but the app and the check do not need Node.
@@ -351,9 +372,12 @@ reads, and the web check checks it on every record every route returns.
 
 The `decision` answer is `{type, choice, probabilities, confidence}`.
 The page always labels its percentages a model's opinion.
-It never treats them as a measurement, a grade or a verdict. The check reads
-every percent in visible text and rejects one in a table cell, a verdict or a
-heading.
+It never treats them as a measurement, a grade or a verdict. The view formats
+every probability as a one-decimal percentage and marks it with
+`data-probability`. The check rejects a percentage in a table cell, a verdict or
+a heading. It rejects an unmarked percentage outside a log. It rejects a number
+inside an opinion block with no marker. It rejects a probability-shaped decimal
+outside a log.
 
 ## API contract
 
@@ -369,8 +393,10 @@ heading.
 
 The fixture has no IP address, key, account detail or email.
 The illustrative command names its endpoint `ENDPOINT`.
-The app redacts a URL in every command, log, check detail and lesson text
-before display.
+The app redacts a full URL and a scheme-relative URL before display.
+It does this for stdout, stderr, the command, a check detail, a lesson, the
+grader log, a grade note, a session note, a session summary and a change detail.
+The check counts a redaction on every one of those paths in three snapshots.
 The check scans every rendered page for an IP address, an email and a key
 pattern, not only the evidence store.
 The fixture lives outside the published root.
@@ -399,6 +425,6 @@ web/
 │   ├── server.py                        static files plus the evidence API
 │   ├── browser_check.py                 load the served pages in a browser
 │   ├── render.mjs                       regenerate the rendered snapshots
-│   └── rendered/                        committed snapshots and manifest
+│   └── rendered/                        committed snapshots, inputs and manifest
 └── check.sh, check.py                   the standard-library check
 ```

@@ -25,6 +25,7 @@ import re
 import sys
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from html import escape as html_escape
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
@@ -143,6 +144,32 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self.send_error(HTTPStatus.NOT_FOUND)
 
+    def send_body(self, status: int, content_type: str, body: bytes, head_only: bool = False) -> None:
+        """Send one response with the fixture headers on every status code."""
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("Content-Security-Policy", CSP)
+        self.end_headers()
+        if not head_only:
+            self.wfile.write(body)
+
+    def send_error(self, code: int, message: str | None = None, explain: str | None = None) -> None:
+        """Answer an error with the same headers as every other response."""
+        try:
+            phrase = HTTPStatus(code).phrase
+        except ValueError:
+            phrase = "Error"
+        body = (
+            f"<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+            f"<title>{code} {html_escape(phrase)}</title></head>"
+            f"<body><h1>{code} {html_escape(phrase)}</h1></body></html>"
+        ).encode("utf-8")
+        self.send_body(code, "text/html; charset=utf-8", body, head_only=self.command == "HEAD")
+
     def api(self, method: str, target: str) -> None:
         if "?" in target or "#" in target or not target.startswith("/"):
             self.send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid request target"})
@@ -213,16 +240,7 @@ class Handler(BaseHTTPRequestHandler):
         data = candidate.read_bytes()
         if suffix in (".html", ".htm"):
             data = self.with_banner(data.decode("utf-8")).encode("utf-8")
-        self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(len(data)))
-        self.send_header("Cache-Control", "no-store")
-        self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("Referrer-Policy", "no-referrer")
-        self.send_header("Content-Security-Policy", CSP)
-        self.end_headers()
-        if not head_only:
-            self.wfile.write(data)
+        self.send_body(HTTPStatus.OK, content_type, data, head_only=head_only)
 
     @staticmethod
     def with_banner(text: str) -> str:
@@ -233,15 +251,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def send_json(self, status: HTTPStatus, value) -> None:
         body = json_bytes(value)
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
-        self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("Referrer-Policy", "no-referrer")
-        self.send_header("Content-Security-Policy", CSP)
-        self.end_headers()
-        self.wfile.write(body)
+        self.send_body(status, "application/json; charset=utf-8", body, head_only=self.command == "HEAD")
 
 
 class Server(ThreadingHTTPServer):

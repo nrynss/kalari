@@ -6,6 +6,11 @@
    committed snapshots. It verifies a sha256 for every rendered page and for
    every file under web/site/, so a stale snapshot fails the check.
 
+   The script also writes `inputs.json`: for each page, the exact records the
+   view was called with. The check derives its expected counts from those
+   records, so a new record in the store changes the snapshot and the counts
+   together.
+
        node web/fixture/render.mjs
 */
 
@@ -87,10 +92,12 @@ async function runDetailsFor(base, runs, benchmark) {
   return Object.fromEntries(otherIds.map((runId, index) => [runId, results[index]]));
 }
 
-/* Synthetic records for the view tests. They carry no measure, so every value
-   on the page reads as unknown. They exist to prove the frozen labels and the
-   split-pair status, which the committed pilot store cannot exercise. */
-function syntheticBenchmark({ runId, sessionId, condition, upgrade }) {
+/* Synthetic records for the view tests. They exercise states the committed
+   pilot store cannot show: a frozen condition-five row on its own, a complete
+   frozen pair with measures, and one extra pilot run. A record without a
+   measure reads as unknown. The source path names this file, so nobody can
+   mistake one of these rows for a measurement. */
+function syntheticBenchmark({ runId, sessionId, condition, upgrade, repeat = 1, provenance = "frozen", measures = {} }) {
   return {
     kind: "benchmark",
     session_id: sessionId,
@@ -98,12 +105,12 @@ function syntheticBenchmark({ runId, sessionId, condition, upgrade }) {
     change_kinds: ["pagination_changed"],
     payload: {
       schema: "kalari.benchmark.v1",
-      provenance: "frozen",
+      provenance,
       status: "valid",
       arm: condition === 5 ? "kalari" : "reference",
       condition,
       upgrade,
-      repeat: 1,
+      repeat,
       behaviour: null,
       session_id: sessionId,
       session_continued: false,
@@ -131,8 +138,24 @@ function syntheticBenchmark({ runId, sessionId, condition, upgrade }) {
       opencode_exit: null,
       process_elapsed_s: null,
       source: "web/fixture/render.mjs",
-      notes: "Synthetic fixture for the frozen label test. Not a measurement.",
+      notes: "Synthetic fixture for the view test. Not a measurement.",
+      ...measures,
     },
+  };
+}
+
+function gradeFixture(records) {
+  return {
+    verdict: "PASS",
+    output_present: true,
+    records,
+    unique: records,
+    expected: records,
+    missing: 0,
+    extra: 0,
+    duplicates: 0,
+    mismatched: 0,
+    unreadable_lines: 0,
   };
 }
 
@@ -141,6 +164,23 @@ const frozenAfter = syntheticBenchmark({
   sessionId: "fixture-c5-payouts",
   condition: 5,
   upgrade: "payouts",
+  measures: {
+    sandbox_runs: 2,
+    sandbox_runs_against_v1: 1,
+    sandbox_runs_against_v2: 1,
+    wall_time_s: 421.5,
+    time_stuck_s: 0,
+    tokens_input: 120000,
+    tokens_output: 4000,
+    records_lost: 0,
+    records_duplicated: 0,
+    records_extra: 0,
+    records_mismatched: 0,
+    cost_usd: 0.0123,
+    grade: gradeFixture(2431),
+    first_v2_grade: gradeFixture(2431),
+    grader_runs: { final: { status: "EXIT 0", log_excerpt: "synced 2431 payouts\n" } },
+  },
 });
 const frozenBeforeOther = syntheticBenchmark({
   runId: "fixture-c3-settlements-r1",
@@ -153,8 +193,53 @@ const frozenBeforeSame = syntheticBenchmark({
   sessionId: "fixture-c3-payouts",
   condition: 3,
   upgrade: "payouts",
+  measures: {
+    sandbox_runs: 3,
+    sandbox_runs_against_v1: 2,
+    sandbox_runs_against_v2: 1,
+    wall_time_s: 512,
+    time_stuck_s: 0,
+    tokens_input: 118000,
+    tokens_output: 3900,
+    records_lost: 1,
+    records_duplicated: 0,
+    records_extra: 0,
+    records_mismatched: 0,
+    cost_usd: 0.0119,
+    grade: gradeFixture(2430),
+    first_v2_grade: gradeFixture(2430),
+    grader_runs: { final: { status: "EXIT 0", log_excerpt: "synced 2430 payouts\n" } },
+  },
 });
 const frozenRuns = [frozenAfter.run_id, frozenBeforeOther.run_id, frozenBeforeSame.run_id];
+
+/* One extra pilot run on the notes-handoff upgrade. The fresh column then has
+   six repeats and the notes column five, so the copy must name both counts. */
+const extraRun = syntheticBenchmark({
+  runId: "fixture-extra-settlements-r6",
+  sessionId: "fixture-extra-settlements",
+  condition: 3,
+  upgrade: "settlements",
+  repeat: 6,
+  provenance: "pilot",
+  measures: {
+    sandbox_runs: 1,
+    sandbox_runs_against_v1: 0,
+    sandbox_runs_against_v2: 1,
+    wall_time_s: 301.25,
+    time_stuck_s: 0,
+    tokens_input: 101000,
+    tokens_output: 3100,
+    records_lost: 0,
+    records_duplicated: 0,
+    records_extra: 0,
+    records_mismatched: 0,
+    cost_usd: 0.0098,
+    grade: gradeFixture(2431),
+    first_v2_grade: gradeFixture(2431),
+    grader_runs: { final: { status: "EXIT 0", log_excerpt: "synced 2431 settlements\n" } },
+  },
+});
 
 const endpointRecord = {
   kind: "run",
@@ -182,6 +267,104 @@ const endpointRecord = {
 };
 const endpointRuns = [endpointRecord.run_id];
 
+/* One record per display path that shows a string from the store. Every path
+   carries a URL, so the check can prove that each one is redacted. */
+const redactionRun = {
+  kind: "run",
+  session_id: "redaction-fixture",
+  run_id: "redaction-fixture-r1",
+  change_kinds: ["pagination_changed"],
+  payload: {
+    request: {
+      workspace: "fixture",
+      command: ["curl", "--url", "https://api.example.invalid/command"],
+      caps: { timeout_ms: 120000, output_cap_bytes: 65536, memory_mib: 512 },
+    },
+    verdict: {
+      verdict: "exited",
+      exit_code: 0,
+      wall_ms: 1200,
+      stdout: "get https://api.example.invalid/stdout\npost //api.example.invalid/stdout-relative\n",
+      stdout_truncated: false,
+      stderr: "error //api.example.invalid/stderr\n",
+    },
+    checks: [],
+    check_results: [
+      { check_id: "endpoint", passed: true, detail: "checked https://api.example.invalid/check-detail" },
+    ],
+    illustrative: true,
+  },
+};
+const redactionLesson = {
+  kind: "lesson",
+  session_id: "redaction-fixture",
+  run_id: "redaction-fixture-r1",
+  change_kinds: ["pagination_changed"],
+  payload: {
+    change_kind: "pagination_changed",
+    observation: "lesson https://api.example.invalid/lesson",
+    check: {
+      assertion: "assert //api.example.invalid/assertion",
+      command: ["curl", "https://api.example.invalid/lesson-command"],
+    },
+  },
+};
+const redactionBenchmark = syntheticBenchmark({
+  runId: "redaction-fixture-r1",
+  sessionId: "redaction-fixture",
+  condition: 3,
+  upgrade: "payouts",
+  provenance: "pilot",
+  measures: {
+    grade: {
+      ...gradeFixture(2431),
+      note: "grade note https://api.example.invalid/grade-note",
+    },
+    grader_runs: { final: { status: "EXIT 0", log_excerpt: "log //api.example.invalid/grader-log\n" } },
+    notes: "notes https://api.example.invalid/notes",
+  },
+});
+const redactionRuns = [redactionRun.run_id, redactionBenchmark.run_id];
+const redactionSession = {
+  kind: "session",
+  session_id: "redaction-fixture",
+  run_id: "redaction-fixture-r1",
+  change_kinds: ["pagination_changed"],
+  payload: {
+    title: "Redaction fixture",
+    summary: "summary https://api.example.invalid/summary",
+    arm: "kalari",
+    illustrative: true,
+    notes: "session note //api.example.invalid/session-note",
+  },
+};
+const redactionChange = {
+  kind: "change",
+  session_id: "redaction-fixture",
+  run_id: "redaction-fixture-r1",
+  change_kinds: ["pagination_changed"],
+  payload: {
+    id: "change-1",
+    kind: "pagination_changed",
+    severity: "high",
+    title: "The change",
+    summary: "change detail https://api.example.invalid/change",
+    endpoint: "ENDPOINT",
+    source: "fixture",
+  },
+};
+const redactionRadius = {
+  kind: "blast-radius",
+  session_id: "redaction-fixture",
+  run_id: "redaction-fixture-r1",
+  change_kinds: ["pagination_changed"],
+  payload: {
+    change_id: "change-1",
+    call_sites: [{ path: "payout_sync.py", detail: "call site //api.example.invalid/call-site" }],
+    note: "radius note https://api.example.invalid/radius",
+  },
+};
+
 const { child, base } = await startServer();
 try {
   const [benchmark, runs, sessions, lessons] = await Promise.all([
@@ -201,35 +384,95 @@ try {
   const illustrativeRunRecords = await getJson(base, "api/runs/payouts-attempt-1");
   const runDetails = await runDetailsFor(base, runs, benchmark);
 
-  mkdirSync(OUT, { recursive: true });
-  const pages = {
-    judges: judgesView({ benchmark, runs, sessions, lessons, runDetails }),
-    "judges-empty": judgesView({ benchmark: [], runs, sessions, lessons }),
-    "judges-no-store": judgesView({ benchmark: [], runs: [], sessions: [], lessons: [] }),
-    "judges-frozen-pair": judgesView({
-      benchmark: [frozenAfter, frozenBeforeSame],
-      runs: frozenRuns,
-      sessions: [],
-      lessons: [],
-    }),
-    "judges-frozen-split": judgesView({
-      benchmark: [frozenAfter, frozenBeforeOther],
-      runs: frozenRuns,
-      sessions: [],
-      lessons: [],
-    }),
-    session: sessionView({ sessionId: "payouts-upgrade", records: sessionRecords, lessons, runs }),
-    "session-frozen": sessionView({
-      sessionId: "fixture-c5-payouts",
-      records: [frozenAfter],
-      lessons: [],
-      runs: frozenRuns,
-    }),
-    run: runView({ runId: "pilot-c3-payouts-r5", records: runRecords, runs }),
-    "run-frozen": runView({ runId: frozenAfter.run_id, records: [frozenAfter], runs: frozenRuns }),
-    "run-illustrative": runView({ runId: "payouts-attempt-1", records: illustrativeRunRecords, runs }),
-    "run-endpoint": runView({ runId: endpointRecord.run_id, records: [endpointRecord], runs: endpointRuns }),
+  const benchmarkWithExtra = [...benchmark, extraRun];
+  const runsWithExtra = [...runs, extraRun.run_id];
+  const redactionRecords = [redactionSession, redactionChange, redactionRadius, redactionRun, redactionLesson, redactionBenchmark];
+  const redactionRunRecords = [redactionRun, redactionLesson, redactionBenchmark];
+
+  const snapshots = {
+    judges: {
+      view: "judges",
+      args: { benchmark, runs, sessions, lessons, runDetails },
+      inputs: { benchmark, runs, sessions, lessons },
+    },
+    "judges-empty": {
+      view: "judges",
+      args: { benchmark: [], runs, sessions, lessons },
+      inputs: { benchmark: [], runs, sessions, lessons },
+    },
+    "judges-no-store": {
+      view: "judges",
+      args: { benchmark: [], runs: [], sessions: [], lessons: [] },
+      inputs: { benchmark: [], runs: [], sessions: [], lessons: [] },
+    },
+    "judges-extra-run": {
+      view: "judges",
+      args: { benchmark: benchmarkWithExtra, runs: runsWithExtra, sessions, lessons },
+      inputs: { benchmark: benchmarkWithExtra, runs: runsWithExtra, sessions, lessons },
+    },
+    "judges-frozen-after": {
+      view: "judges",
+      args: { benchmark: [frozenAfter], runs: frozenRuns, sessions: [], lessons: [] },
+      inputs: { benchmark: [frozenAfter], runs: frozenRuns, sessions: [], lessons: [] },
+    },
+    "judges-frozen-pair": {
+      view: "judges",
+      args: { benchmark: [frozenAfter, frozenBeforeSame], runs: frozenRuns, sessions: [], lessons: [] },
+      inputs: { benchmark: [frozenAfter, frozenBeforeSame], runs: frozenRuns, sessions: [], lessons: [] },
+    },
+    "judges-frozen-split": {
+      view: "judges",
+      args: { benchmark: [frozenAfter, frozenBeforeOther], runs: frozenRuns, sessions: [], lessons: [] },
+      inputs: { benchmark: [frozenAfter, frozenBeforeOther], runs: frozenRuns, sessions: [], lessons: [] },
+    },
+    session: {
+      view: "session",
+      args: { sessionId: "payouts-upgrade", records: sessionRecords, lessons, runs },
+      inputs: { sessionId: "payouts-upgrade", records: sessionRecords, lessons, runs },
+    },
+    "session-frozen": {
+      view: "session",
+      args: { sessionId: "fixture-c5-payouts", records: [frozenAfter], lessons: [], runs: frozenRuns },
+      inputs: { sessionId: "fixture-c5-payouts", records: [frozenAfter], lessons: [], runs: frozenRuns },
+    },
+    "session-redaction": {
+      view: "session",
+      args: { sessionId: "redaction-fixture", records: redactionRecords, lessons: [], runs: redactionRuns },
+      inputs: { sessionId: "redaction-fixture", records: redactionRecords, lessons: [], runs: redactionRuns },
+    },
+    run: {
+      view: "run",
+      args: { runId: "pilot-c3-payouts-r5", records: runRecords, runs },
+      inputs: { runId: "pilot-c3-payouts-r5", records: runRecords, runs },
+    },
+    "run-frozen": {
+      view: "run",
+      args: { runId: frozenAfter.run_id, records: [frozenAfter], runs: frozenRuns },
+      inputs: { runId: frozenAfter.run_id, records: [frozenAfter], runs: frozenRuns },
+    },
+    "run-illustrative": {
+      view: "run",
+      args: { runId: "payouts-attempt-1", records: illustrativeRunRecords, runs },
+      inputs: { runId: "payouts-attempt-1", records: illustrativeRunRecords, runs },
+    },
+    "run-endpoint": {
+      view: "run",
+      args: { runId: endpointRecord.run_id, records: [endpointRecord], runs: endpointRuns },
+      inputs: { runId: endpointRecord.run_id, records: [endpointRecord], runs: endpointRuns },
+    },
+    "run-redaction": {
+      view: "run",
+      args: { runId: redactionRun.run_id, records: redactionRunRecords, runs: redactionRuns },
+      inputs: { runId: redactionRun.run_id, records: redactionRunRecords, runs: redactionRuns },
+    },
   };
+
+  const viewFor = { judges: judgesView, session: sessionView, run: runView };
+  mkdirSync(OUT, { recursive: true });
+  const pages = {};
+  for (const [name, snapshot] of Object.entries(snapshots)) {
+    pages[name] = viewFor[snapshot.view](snapshot.args);
+  }
   const clean = (html) =>
     `${html
       .split("\n")
@@ -240,6 +483,19 @@ try {
   for (const [name, html] of Object.entries(pages)) {
     writeFileSync(path.join(OUT, `${name}.html`), clean(html), "utf8");
   }
+
+  const inputsFile = path.join(OUT, "inputs.json");
+  const inputs = {
+    schema: "kalari.web.inputs.v1",
+    generator: "web/fixture/render.mjs",
+    pages: Object.fromEntries(
+      Object.entries(snapshots).map(([name, snapshot]) => [
+        name,
+        { view: snapshot.view, ...snapshot.inputs },
+      ]),
+    ),
+  };
+  writeFileSync(inputsFile, `${JSON.stringify(inputs, null, 2)}\n`, "utf8");
 
   const siteFiles = walk(SITE);
   const manifest = {
@@ -255,6 +511,10 @@ try {
     sha256: Object.fromEntries(
       siteFiles.map((file) => [path.relative(SITE, file), sha256(file)]),
     ),
+    inputs: {
+      path: path.relative(REPO, inputsFile),
+      sha256: sha256(inputsFile),
+    },
     evidence: {
       path: path.relative(REPO, path.join(HERE, "evidence.jsonl")),
       sha256: sha256(path.join(HERE, "evidence.jsonl")),

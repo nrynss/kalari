@@ -156,10 +156,13 @@ export function truncate(value, limit = 160) {
   return `${value.slice(0, limit - 1)}…`;
 }
 
-/* Commands can carry an endpoint. The page never needs to print a scheme, and
-   a fixture must not carry a real one, so show a neutral placeholder. */
+/* Commands and logs can carry an endpoint. The page never needs to print a
+   scheme or a host, and a fixture must not carry a real one, so show a neutral
+   placeholder. Both a full URL and a scheme-relative URL are redacted. */
 export function redactUrls(value) {
-  return String(value).replace(/https?:\/\/\S+/gi, "<endpoint>");
+  return String(value)
+    .replace(/[a-z][a-z0-9+.-]*:\/\/[^\s<>"']+/gi, "<endpoint>")
+    .replace(/(^|[\s("'=])[/]{2}[^\s/<>"']+[^\s<>"']*/g, "$1<endpoint>");
 }
 
 export function unique(values) {

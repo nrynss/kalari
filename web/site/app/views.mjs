@@ -159,10 +159,31 @@ function repeatCount(records) {
   ).length;
 }
 
-function repeatPhrase(records) {
-  const repeats = repeatCount(records);
-  if (!repeats) return "The repeats";
-  return `${capitalise(countWord(repeats))} ${repeats === 1 ? "repeat" : "repeats"}`;
+function repeatCountPhrase(count) {
+  return `${countWord(count)} ${count === 1 ? "repeat" : "repeats"}`;
+}
+
+/* The pilot caveat covers two columns, so the phrase must hold for both.
+   When the two counts differ, each column gets its own count. */
+function repeatSentence(left, leftWhere, right, rightWhere) {
+  const leftCount = repeatCount(left);
+  const rightCount = repeatCount(right);
+  if (!leftCount || !rightCount) return "The repeats";
+  if (leftCount === rightCount) return `${capitalise(repeatCountPhrase(leftCount))} each`;
+  return `${capitalise(repeatCountPhrase(leftCount))} ${leftWhere}, ${repeatCountPhrase(rightCount)} ${rightWhere}`;
+}
+
+function frozenRepeatSentence(before, after) {
+  const beforeCount = repeatCount(before);
+  const afterCount = repeatCount(after);
+  if (beforeCount && afterCount && beforeCount !== afterCount) {
+    return `${capitalise(repeatCountPhrase(beforeCount))} for the reference arm, ${repeatCountPhrase(
+      afterCount,
+    )} for the Kalari arm`;
+  }
+  const count = beforeCount || afterCount;
+  if (!count) return "The repeats";
+  return `${capitalise(repeatCountPhrase(count))} per condition`;
 }
 
 function tallySentence(records) {
@@ -514,7 +535,12 @@ function pilotContrast(valid, runIds) {
       : "On payouts, the two conditions did not match. The tables below show each session.";
   return `<div class="contrast" data-contrast="pilot">
     <h3>The pilot baseline: the notes handoff on settlements</h3>
-    <p class="caveat">Both columns are the reference setup. ${repeatPhrase(fresh)} each. This is the reference baseline, not Kalari's comparison.</p>
+    <p class="caveat">Both columns are the reference setup. ${repeatSentence(
+      fresh,
+      "on the fresh side",
+      notes,
+      "on the notes side",
+    )}. This is the reference baseline, not Kalari's comparison.</p>
     <div class="contrast-grid">
       ${contrastColumn({
         title: "Fresh session, no notes",
@@ -549,7 +575,7 @@ function frozenUpgradeContrast(frozen, upgrade, runIds) {
   if (!after.length || !before.length) return "";
   return `<div class="contrast" data-contrast="frozen" data-upgrade="${attr(upgrade)}">
     <h3>The frozen comparison: ${h(upgradeLabel(upgrade))}</h3>
-    <p class="caveat">${repeatPhrase(before)} per condition. Counts, never percentages. The tables below show every session, and every figure links to its run.</p>
+    <p class="caveat">${frozenRepeatSentence(before, after)}. Counts, never percentages. The tables below show every session, and every figure links to its run.</p>
     <div class="contrast-grid">
       ${contrastColumn({
         title: "Reference, fresh session",
@@ -1376,8 +1402,8 @@ export function sessionView({ sessionId = "", records = [], lessons = [], runs =
   return `<article class="session-page">
     <header class="page-head">
       <p class="breadcrumb"><a href="index.html">For judges</a> <span aria-hidden="true">/</span> Session</p>
-      <div class="page-title"><h1>${h(title)}</h1>${badges.join("")}</div>
-      <p class="page-summary">${h(summary)}</p>
+      <div class="page-title"><h1>${h(redactUrls(title))}</h1>${badges.join("")}</div>
+      <p class="page-summary">${h(redactUrls(summary))}</p>
       <p class="session-id">Session <code>${h(sessionId)}</code></p>
       ${meta?.notes ? `<p class="caveat">${h(redactUrls(meta.notes))}</p>` : ""}
       <p class="quiet-line"><a href="index.html">Back to the evidence index</a></p>
