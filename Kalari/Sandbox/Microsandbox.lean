@@ -8,11 +8,13 @@ import Kalari.Proc
 The gate has already allowed the run. This module does not call it and does
 not resolve DNS: `AllowHost.host` is already an IP, and every rule is that IP.
 
-Create always passes `--no-net`, then one `allow@<host>/32:tcp:<port>` per
-allowlist entry, then `debian`. An empty allowlist still passes `--no-net`
-and passes no rule. Cleanup is `msb remove`. `exec` on a stopped sandbox
-starts it again, so stop is not the end of a run. A failed create is not
-removed: the name may already have belonged to another sandbox.
+`run` pulls `debian` before create. Create always passes `--no-net`, then one
+`allow@<host>/32:tcp:<port>` per allowlist entry, then `--pull never`, then
+`debian`. An empty allowlist still passes `--no-net` and passes no rule. A
+failed pull is a setup error and does not create. Cleanup is `msb remove`.
+`exec` on a stopped sandbox starts it again, so stop is not the end of a run.
+A failed create is not removed: the name may already have belonged to another
+sandbox.
 
 `Proc.run` cannot set a umask. The process that starts Kalari uses umask
 0022, because msb refuses group-writable storage. This module does not. -/
@@ -33,6 +35,10 @@ def controlTimeoutMs : Nat := 30000
 
 def imageName : String := "debian"
 
+/-- `msb pull <image>`. No `--force` and no registry URL. -/
+def pullArgv (image : String) : List String :=
+  ["msb", "pull", image]
+
 /-- `sh -c` with the write the guest needs before the aashaan can start threads. -/
 def overcommitCommand : List String :=
   ["sh", "-c", "echo 1 > /proc/sys/vm/overcommit_memory"]
@@ -46,7 +52,7 @@ def netRules (allow : List AllowHost) : List String :=
 def createArgv (name : String) (memoryMib : Nat) (allow : List AllowHost) : List String :=
   ["msb", "create", "--name", name, "--cpus", "1", "--memory", s!"{memoryMib}M", "--no-net"]
     ++ netRules allow
-    ++ [imageName]
+    ++ ["--pull", "never", imageName]
 
 def copyInArgv (name hostPath guestPath : String) : List String :=
   ["msb", "copy", "-q", hostPath, s!"{name}:{guestPath}"]
@@ -86,6 +92,10 @@ private def argvLine (argv : List String) : String :=
 private def noNetDefault (argv : List String) : Bool :=
   !(argvLine argv).contains "--net-default"
 
+/-- `--pull` immediately followed by `never`. A lone flag does not count. -/
+private def pullNever (argv : List String) : Bool :=
+  argv.zip argv.tail |>.any fun p => p.1 == "--pull" && p.2 == "never"
+
 private def showsCreate (argv : List String) : Bool :=
   argv.contains "--no-net"
     && argv.contains "--cpus"
@@ -97,22 +107,34 @@ private def showsCreate (argv : List String) : Bool :=
     && argv.contains "kalari-run-1"
     && argv.any (fun arg => arg.contains "allow@" && arg.contains "/32:tcp:")
     && noNetDefault argv
+    && pullNever argv
+
+#guard pullArgv imageName == ["msb", "pull", "debian"]
 
 #guard createArgv "kalari-run-1" 256 [] ==
-  ["msb", "create", "--name", "kalari-run-1", "--cpus", "1", "--memory", "256M", "--no-net", "debian"]
+  ["msb", "create", "--name", "kalari-run-1", "--cpus", "1", "--memory", "256M", "--no-net",
+    "--pull", "never", "debian"]
 
 #guard createArgv "kalari-run-1" 256 [{ host := "203.0.113.10", port := 18090 }] ==
   ["msb", "create", "--name", "kalari-run-1", "--cpus", "1", "--memory", "256M", "--no-net",
-    "--net-rule", "allow@203.0.113.10/32:tcp:18090", "debian"]
+    "--net-rule", "allow@203.0.113.10/32:tcp:18090", "--pull", "never", "debian"]
 
 #guard showsCreate (createArgv "kalari-run-1" 256 [{ host := "203.0.113.10", port := 18090 }])
+
+#guard !showsCreate [
+  "msb", "create", "--name", "kalari-run-1", "--cpus", "1", "--memory", "256M", "--no-net",
+  "--net-rule", "allow@203.0.113.10/32:tcp:18090", "debian"]
+
+#guard pullNever ["--pull", "never"]
+#guard !pullNever ["--pull", "always"]
+#guard !pullNever ["never", "--pull"]
 
 #guard createArgv "n" 128 [
     { host := "203.0.113.10", port := 80 },
     { host := "203.0.113.10", port := 443 }] ==
   ["msb", "create", "--name", "n", "--cpus", "1", "--memory", "128M", "--no-net",
     "--net-rule", "allow@203.0.113.10/32:tcp:80",
-    "--net-rule", "allow@203.0.113.10/32:tcp:443", "debian"]
+    "--net-rule", "allow@203.0.113.10/32:tcp:443", "--pull", "never", "debian"]
 
 #guard copyInArgv "kalari-run-1" "in.txt" "/tmp/in.txt" ==
   ["msb", "copy", "-q", "in.txt", "kalari-run-1:/tmp/in.txt"]
@@ -236,11 +258,37 @@ private def steps (b : SandboxBackend) (spec : Run) : IO (Except String Result) 
     | .error e => return .error e
     | .ok _ => return .ok job
 
-/-- Create, copy the workspace and the aashaan in, set overcommit, exec the
-job, copy results out, and remove. A failed create returns the error and
-does not remove. Any create that succeeded is removed, including when the
-job's exit code is not 0. -/
-def run (runner : Runner) (spec : Run) : IO (Except String Result) := do
+/-- Three pulls. The first runs at once. `wait` is called with 1000 before
+the second and 2000 before the third. A failed attempt is any cap other
+than `none`, or any exit other than 0. Three failures are a setup error
+naming the image, not a job result. -/
+def ensureImage (runner : Runner) (image : String) (outputCap : Nat)
+    (wait : Nat → IO Unit) : IO (Except String Result) := do
+  let first ← runner (pullArgv image) controlTimeoutMs outputCap
+  if succeeded first then
+    return .ok first
+  wait 1000
+  let second ← runner (pullArgv image) controlTimeoutMs outputCap
+  if succeeded second then
+    return .ok second
+  wait 2000
+  let third ← runner (pullArgv image) controlTimeoutMs outputCap
+  if succeeded third then
+    return .ok third
+  let err := (bytesText third.stderr).trimAscii.toString
+  return .error s!"setup: pull {image}: {err}"
+
+/-- Pull `imageName`, then create, copy the workspace and the aashaan in,
+set overcommit, exec the job, copy results out, and remove. `wait` runs
+between failed pull attempts; the default sleeps. A failed pull is returned
+and does not create. A failed create returns the error and does not remove.
+Any create that succeeded is removed, including when the job's exit code
+is not 0. -/
+def run (runner : Runner) (spec : Run)
+    (wait : Nat → IO Unit := fun ms => do IO.sleep ms.toUInt32) : IO (Except String Result) := do
+  match ← ensureImage runner imageName spec.caps.output_cap_bytes wait with
+  | .error e => return .error e
+  | .ok _ => pure ()
   let b := make runner spec.caps.timeout_ms spec.caps.output_cap_bytes
   match ← b.create spec.name spec.caps spec.allow with
   | .error e => return .error e
@@ -269,8 +317,9 @@ def reap (runner : Runner) (outputCap : Nat) : IO (Except String (List String)) 
       return .ok names
 
 /-! The checks below run during `lake build`. The runner replays `testdata/msb`.
-A step with no recording fails the build. `live` is not applied: the gate has
-no `msb` binary. -/
+A step with no recording fails the build. A pull of `debian` is a synthetic
+success and does not read a recording. `live` is not applied: the gate has
+no `msb` binary. Pull retries record their wait and do not sleep. -/
 
 private def fail {α : Type} (msg : String) : IO α :=
   throw <| .userError msg
@@ -343,9 +392,11 @@ private def accepts (case : String) (argv : List String) : Bool :=
   | "create-ok" =>
     noDefault && argv.contains "--no-net" && argv.contains "--net-rule"
       && argv.contains "--cpus" && argv.getLast? == some "debian"
+      && pullNever argv
   | "create-duplicate" =>
     noDefault && argv.contains "--no-net" && !argv.contains "--net-rule"
       && argv.getLast? == some "debian"
+      && pullNever argv
   | "copy-in-ok" =>
     match argv with
     | ["msb", "copy", "-q", host, dest] => !host.contains ":" && dest.contains ":"
@@ -376,6 +427,15 @@ private def replayRunner (root : System.FilePath) (calls : IO.Ref (List Call))
     (left : IO.Ref (List String)) : Runner :=
   fun argv timeoutMs outputCap => do
     calls.modify fun xs => xs ++ [Call.mk argv timeoutMs outputCap]
+    -- Synthetic success. Does not consume a testdata case.
+    if argv == ["msb", "pull", "debian"] then
+      return {
+        exitCode := some 0
+        stdout := ByteArray.empty
+        stderr := ByteArray.empty
+        wallMs := 0
+        cap := .none
+      }
     let rest ← left.get
     match rest with
     | [] => fail s!"no recording for extra call"
@@ -415,6 +475,30 @@ private def guardCalls (calls : List Call) : IO Unit := do
     check (noNetDefault c.argv) s!"argv contains --net-default: {argvLine c.argv}"
     if c.argv.contains "create" then
       check (c.argv.contains "--no-net") s!"create omits --no-net: {argvLine c.argv}"
+      check (pullNever c.argv) s!"create omits --pull never: {argvLine c.argv}"
+
+/-- Replay pulls succeed on the first try. A wait would be a retry. -/
+private def refuseWait (ms : Nat) : IO Unit :=
+  fail s!"unexpected pull wait {ms}"
+
+private def resultOf (code : UInt32) (stderr : String) : Result := {
+  exitCode := some code
+  stdout := ByteArray.empty
+  stderr := stderr.toUTF8
+  wallMs := 0
+  cap := .none
+}
+
+/-- One past the script fails the build, so a fourth pull is not a success. -/
+private def scripted (script : IO.Ref (List Result)) (calls : IO.Ref (List Call)) : Runner :=
+  fun argv timeoutMs outputCap => do
+    calls.modify fun xs => xs ++ [Call.mk argv timeoutMs outputCap]
+    let rest ← script.get
+    match rest with
+    | r :: more =>
+      script.set more
+      return r
+    | [] => fail "stub: extra call"
 
 private def runChecks : IO Unit := do
   let root ← repoRoot
@@ -498,26 +582,28 @@ private def runChecks : IO Unit := do
     command := job
     resultsGuest
     resultsHost
-  })
+  } refuseWait)
   expectRecording "run" root "exec-exit3" ran
   check (ran.exitCode == some 3) "run: job exit was not returned"
   unconsumed runLeft
   let ranCalls ← runCalls.get
   guardCalls ranCalls
   match ranCalls with
-  | [r0, r1, r2, r3, r4, r5, r6] =>
-    check (r0.argv == createArgv name caps.memory_mib [host]) "run create"
-    check (r1.argv == copyInArgv name wsHost wsGuest) "run workspace"
-    check (r2.argv == copyInArgv name aashaanHost aashaanGuest) "run aashaan"
-    check (r3.argv == execArgv name overcommitCommand) "run sysctl"
-    check (r4.argv == execArgv name job) "run job"
-    check (r5.argv == copyOutArgv name resultsGuest resultsHost) "run copy-out"
-    check (r6.argv == removeArgv name) "run remove"
-    check (r0.timeoutMs == controlTimeoutMs && r3.timeoutMs == caps.timeout_ms) "run budgets"
-    check (r4.timeoutMs == caps.timeout_ms && r6.timeoutMs == controlTimeoutMs) "run budgets 2"
-    check (r6.outputCap == caps.output_cap_bytes && r4.outputCap == caps.output_cap_bytes) "run cap"
+  | [r0, r1, r2, r3, r4, r5, r6, r7] =>
+    check (r0.argv == pullArgv imageName) "run pull"
+    check (r0.timeoutMs == controlTimeoutMs && r0.outputCap == caps.output_cap_bytes) "run pull budget"
+    check (r1.argv == createArgv name caps.memory_mib [host]) "run create"
+    check (r2.argv == copyInArgv name wsHost wsGuest) "run workspace"
+    check (r3.argv == copyInArgv name aashaanHost aashaanGuest) "run aashaan"
+    check (r4.argv == execArgv name overcommitCommand) "run sysctl"
+    check (r5.argv == execArgv name job) "run job"
+    check (r6.argv == copyOutArgv name resultsGuest resultsHost) "run copy-out"
+    check (r7.argv == removeArgv name) "run remove"
+    check (r1.timeoutMs == controlTimeoutMs && r4.timeoutMs == caps.timeout_ms) "run budgets"
+    check (r5.timeoutMs == caps.timeout_ms && r7.timeoutMs == controlTimeoutMs) "run budgets 2"
+    check (r7.outputCap == caps.output_cap_bytes && r5.outputCap == caps.output_cap_bytes) "run cap"
   | _ => fail s!"run count {ranCalls.length}"
-  say "msb run exit=3 remove-after-exit3=true steps=7"
+  say "msb run exit=3 remove-after-exit3=true steps=8"
 
   -- A failed create does not exec and does not remove.
   let (dupCalls, dupLeft) ← fresh ["create-duplicate"]
@@ -532,7 +618,7 @@ private def runChecks : IO Unit := do
     command := job
     resultsGuest
     resultsHost
-  } with
+  } refuseWait with
   | .ok _ => fail "failed create: expected an error"
   | .error msg =>
     let errFile ← IO.FS.readFile (root / "testdata" / "msb" / "create-duplicate.stderr")
@@ -541,12 +627,16 @@ private def runChecks : IO Unit := do
   let dupLog ← dupCalls.get
   guardCalls dupLog
   match dupLog with
-  | [only] =>
+  | [pulled, only] =>
+    check (pulled.argv == pullArgv imageName) "failed create pull"
+    check (pulled.timeoutMs == controlTimeoutMs && pulled.outputCap == caps.output_cap_bytes)
+      "failed create pull budget"
     check (only.argv == createArgv name caps.memory_mib []) "failed create argv"
     check (only.argv.contains "--no-net" && !only.argv.contains "--net-rule") "failed create shape"
+    check (pullNever only.argv) "failed create pull-never"
     check (!(argvLine only.argv).contains "--net-default") "failed create net-default"
   | _ => fail s!"failed create calls {dupLog.length}"
-  say "msb run failed-create calls=1 remove=false exec=false"
+  say "msb run failed-create calls=2 remove=false exec=false"
 
   -- A failed copy-out still removes. The error is the copy, not a missing remove.
   let (missCalls, missLeft) ← fresh
@@ -562,7 +652,7 @@ private def runChecks : IO Unit := do
     command := job
     resultsGuest
     resultsHost
-  } with
+  } refuseWait with
   | .ok _ => fail "copy-out-missing: expected an error"
   | .error msg =>
     let errFile ← IO.FS.readFile (root / "testdata" / "msb" / "copy-out-missing.stderr")
@@ -571,11 +661,72 @@ private def runChecks : IO Unit := do
   let missLog ← missCalls.get
   guardCalls missLog
   match missLog with
-  | [_, _, _, _, jobCall, _, removedCall] =>
+  | [pullCall, _, _, _, _, jobCall, _, removedCall] =>
+    check (pullCall.argv == pullArgv imageName) "copy-out-missing: pull"
     check (jobCall.argv == execArgv name job) "copy-out-missing: job"
     check (removedCall.argv == removeArgv name) "copy-out-missing: remove"
   | _ => fail s!"copy-out-missing calls {missLog.length}"
   say "msb run copy-out-missing remove-after=true"
+
+  -- A pull that fails twice, then succeeds. The wait records milliseconds.
+  let authErr := "registry error: Not authorized"
+  let retryScript ← IO.mkRef [
+    resultOf 1 authErr,
+    resultOf 1 authErr,
+    resultOf 0 "",
+  ]
+  let retryCalls ← IO.mkRef ([] : List Call)
+  let retryWaits ← IO.mkRef ([] : List Nat)
+  let recordWait : Nat → IO Unit := fun ms => retryWaits.modify (· ++ [ms])
+  match ← ensureImage (scripted retryScript retryCalls) imageName caps.output_cap_bytes recordWait with
+  | .error e => fail s!"pull retry: {e}"
+  | .ok r =>
+    check (r.exitCode == some 0 && r.cap == .none) "pull retry: not a success"
+  let retryLog ← retryCalls.get
+  check (retryLog.length == 3) s!"pull retry attempts {retryLog.length}"
+  check (retryLog.all (fun c => c.argv == ["msb", "pull", "debian"])) "pull retry argv"
+  check (retryLog.all (fun c =>
+    c.timeoutMs == controlTimeoutMs && c.outputCap == caps.output_cap_bytes)) "pull retry budget"
+  check ((← retryWaits.get) == [1000, 2000]) "pull retry waits"
+  check (← retryScript.get).isEmpty "pull retry: unused reply"
+  say "msb pull retry waits=1000,2000 attempts=3"
+
+  -- Three failures. run returns a setup error and does not create.
+  let failScript ← IO.mkRef [
+    resultOf 1 authErr,
+    resultOf 1 authErr,
+    resultOf 1 authErr,
+  ]
+  let failCalls ← IO.mkRef ([] : List Call)
+  let failWaits ← IO.mkRef ([] : List Nat)
+  let recordFail : Nat → IO Unit := fun ms => failWaits.modify (· ++ [ms])
+  let failedPull : Run := {
+    name
+    caps
+    allow := [host]
+    workspaceHost := wsHost
+    workspaceGuest := wsGuest
+    aashaanHost
+    aashaanGuest
+    command := job
+    resultsGuest
+    resultsHost
+  }
+  match ← run (scripted failScript failCalls) failedPull recordFail with
+  | .ok _ => fail "pull failed: expected a setup error"
+  | .error msg =>
+    check (msg.contains "debian") s!"pull failed image: {msg}"
+    check (msg.contains "pull") s!"pull failed pull: {msg}"
+    check (msg.contains authErr) s!"pull failed stderr: {msg}"
+  let failLog ← failCalls.get
+  check (failLog.length == 3) s!"pull failed attempts {failLog.length}"
+  check (failLog.all (fun c => c.argv == ["msb", "pull", "debian"])) "pull failed argv"
+  check (failLog.all (fun c =>
+    !c.argv.contains "create" && !c.argv.contains "exec" && !c.argv.contains "remove"
+      && !c.argv.contains "copy")) "pull failed: not only pulls"
+  check ((← failWaits.get) == [1000, 2000]) "pull failed waits"
+  check (← failScript.get).isEmpty "pull failed: fourth attempt"
+  say "msb pull failed setup image=debian calls=3 create=false remove=false exec=false"
 
   -- Next start: the recorded list has no kalari- name, so reap removes nothing.
   let listedText ← IO.FS.readFile (root / "testdata" / "msb" / "list-json.stdout")

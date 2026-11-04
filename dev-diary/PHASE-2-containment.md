@@ -136,11 +136,30 @@ requires:   [T2.3]
 fixture-ok: yes
 size:       XS · mid
 owns:       Kalari/Sandbox/Microsandbox.lean
-status:     claimed:grok-impl
+status:     in-review
 ```
 Found after T2.3 closed (research/sandbox.md, On the laptop too): Docker Hub pulls through msb fail intermittently on the laptop ("Not authorized" on the first tries of a new image). Add a setup step that pulls each configured image with retries and backoff, and pass `--pull never` on every `create`, so a run never depends on Docker Hub. A missing image is a setup error naming the image, never a run failure.
 
 **Done when:** tests against recordings cover a pull that fails twice then succeeds, a pull that never succeeds (a clear error), and `--pull never` on every create argv.
+
+Notes:
+
+`ensureImage` runs `msb pull debian`. Three attempts. The first is immediate. The wait action is called with 1000 before the second and 2000 before the third, and not otherwise. Each attempt uses 30000 ms and the request output cap. An attempt fails when the cap is not `none` or the exit is not 0. The stderr text is not special-cased. Success is exit 0 and cap `none`, and that result is returned. After three failures the result is `Except.error`. The text contains the image, `pull`, and the last stderr, trimmed. It is not a job `Result`.
+
+`run` calls `ensureImage` for `imageName` before `create`, with the request output cap. A failed pull is returned and does not create, copy, exec, or remove. A pull that succeeds keeps the old create, copy, exec, copy-out, and remove behaviour: a failed create is not removed, and exit 3 is removed and returned.
+
+Create argv is `msb create --name <name> --cpus 1 --memory <mib>M --no-net`, then one `--net-rule allow@<host>/32:tcp:<port>` per allow entry, then `--pull never debian`. `getLast?` is still `some "debian"`. No argv adds `--net-default`. `msb pull` takes the image only: no `--force`, no registry URL. The image stays `debian`. `debian:stable-slim` belongs to the Docker backend.
+
+The pull is not a `SandboxBackend` method. It is setup, before a sandbox exists, and a missing image must not look like a job that failed. The backend stays create, copy, exec, and destroy. The Docker backend does not pull, and its image string is a different one.
+
+`run` takes the wait and defaults it to `IO.sleep`. Every check passes its own wait. The replayed runs pass a wait that fails the build, because that pull succeeds on the first try. The retry checks record the milliseconds. Nothing in the `#eval` calls `IO.sleep` or `live`.
+
+There is no pull recording, and none was added. `replayRunner` treats `["msb", "pull", "debian"]` as a synthetic success: exit 0, empty stdout and stderr, wallMs 0, cap `none`. It appends the call and does not consume a `testdata/msb` case. A replayed run is that pull plus the same later steps. The exit-3 run is 8 calls. A failed create is the pull and the create.
+
+Surprises:
+
+- `--pull` and `never` have to be adjacent. `showsCreate`, `accepts` for `create-ok` and `create-duplicate`, and `guardCalls` reject a create that lacks that pair. A lone `--pull` does not pass.
+- The recorded scripts did not grow. The pull is an extra call in front of them, so the old "create is the first call" matches were wrong by one.
 
 ---
 
