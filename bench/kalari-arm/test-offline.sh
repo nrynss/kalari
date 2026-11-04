@@ -59,9 +59,10 @@ PYCODE
 fi
 if [ -e "$(dirname "$0")/HANG" ]; then
   python3 - "$(dirname "$0")/hung-child.pid" <<'PY'
-import subprocess, sys, time
+import json, subprocess, sys, time
 child=subprocess.Popen(['sleep','300'])
 open(sys.argv[1],'w').write(str(child.pid))
+print(json.dumps({'type':'tool_use','part':{'tool':'kalari_what_changed','state':{'status':'completed','input':{'text':'offline-fixture-invalid-key 127.0.0.1'}}}}), flush=True)
 time.sleep(300)
 PY
   exit
@@ -101,7 +102,16 @@ for _ in $(seq 1 200); do [ -s "$tmp/bin/hung-child.pid" ] && break; sleep 0.05;
 [ -s "$tmp/bin/hung-child.pid" ] || { echo 'fixture runner did not start hanging child' >&2; kill "$runner_pid" 2>/dev/null || true; exit 1; }
 child_pid=$(cat "$tmp/bin/hung-child.pid")
 kill -TERM "$runner_pid"
-wait "$runner_pid" || true
+rc=0
+wait "$runner_pid" || rc=$?
+[ "$rc" = 143 ]
+python3 - "$tmp/interrupted" <<'PY'
+import json, pathlib, sys
+p=pathlib.Path(sys.argv[1]); events=(p/'transcript.jsonl').read_text(); m=json.loads((p/'measures.json').read_text())
+assert 'offline-fixture-invalid-key' not in events and '127.0.0.1' not in events
+assert m['interrupted_signal'] == 15 and m['grade']['verdict'] == 'NOT_RUN'
+assert m['tool_calls']['kalari_what_changed'] == 1
+PY
 for _ in $(seq 1 40); do kill -0 "$child_pid" 2>/dev/null || break; sleep 0.05; done
 if kill -0 "$child_pid" 2>/dev/null && [ "$(ps -o stat= -p "$child_pid" | tr -d ' ')" != Z ]; then
   echo 'fixture descendant survived runner SIGTERM' >&2; exit 1

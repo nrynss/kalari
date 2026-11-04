@@ -72,3 +72,10 @@ The runner also stops after two failed calls to the same Kalari tool, even if
 other tools run between them. A successful call to that tool resets its count;
 repeated events with the same call ID count once. This early stop is separate
 from, and does not strengthen, the soft spending cutoff.
+
+Before a live session, the runner saves an account-wide model token snapshot in
+the private result directory. On SIGTERM or SIGINT during OpenCode it stops the
+process group, preserves a sanitized partial transcript and measures, skips the
+grader, attempts a usage delta, and exits with the signal status. A missing
+usage delta means actual usage is unknown. SIGKILL or an earlier interruption
+cannot be handled this way.

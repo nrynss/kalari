@@ -79,6 +79,10 @@ def usage_rows(doc):
     return {row['model']: row for row in doc['usage']['current_month']['chat_usage']}
 
 usage_before = usage() if a.live else None
+if a.live:
+    snapshot = {model: {'input_tokens': row.get('input_tokens'), 'output_tokens': row.get('output_tokens')} for model, row in usage_rows(usage_before).items()}
+    (result/'usage-before.json').write_text(json.dumps(snapshot, indent=2) + '\n')
+    (result/'usage-before.json').chmod(0o600)
 # A separate temporary workspace prevents raw event and credential material
 # from being published. Only redacted, structured events reach result/.
 
@@ -251,8 +255,6 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
             try: os.killpg(proc.pid, signal.SIGKILL)
             except ProcessLookupError: pass
             for sig, handler in old_handlers.items(): signal.signal(sig, handler)
-        if interrupted['signal'] is not None:
-            raise SystemExit(128 + interrupted['signal'])
     elapsed = time.monotonic() - start
     if a.live:
         cleanup_sandboxes()
@@ -266,24 +268,33 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
             out.write(json.dumps(sanitize(doc), ensure_ascii=True) + '\n')
     summary = execute([sys.executable, HERE/'summarize.py', result/'transcript.jsonl'], capture_output=True, text=True)
     measures = json.loads(summary.stdout)
-    measures.update({'elapsed_seconds': round(elapsed, 3), 'exit_code': rc, 'timed_out': timed_out, 'invalid_event_lines': bad, 'fixture': not a.live, 'cutoff_reason': cutoff_reason, 'completed_steps': steps, 'estimated_step_cost_usd': spent_units / 100_000_000, 'tool_failures': failures})
-    grade = temp/'grade'; grade.mkdir()
-    execute([HERE/'grade.sh', workspace, ROOT/'bench/harness/grade_runner.py', a.api_host, str(a.grade_port), grade])
-    grade_file = grade/'result.jsonl'
-    if grade_file.exists():
-        shutil.copyfile(grade_file, result/'grader-output.jsonl')
-        (result/'grader-output.jsonl').chmod(0o600)
-        graded = subprocess.run([sys.executable, str(ROOT/'bench/graders/grade.py'), 'payouts', str(grade_file)], env=env, capture_output=True, text=True)
-        try: measures['grade'] = json.loads(graded.stdout)
-        except ValueError: measures['grade'] = {'verdict': 'ERROR'}
+    measures.update({'elapsed_seconds': round(elapsed, 3), 'exit_code': rc, 'timed_out': timed_out, 'invalid_event_lines': bad, 'fixture': not a.live, 'cutoff_reason': cutoff_reason, 'completed_steps': steps, 'estimated_step_cost_usd': spent_units / 100_000_000, 'tool_failures': failures, 'interrupted_signal': interrupted['signal']})
+    if interrupted['signal'] is None:
+        grade = temp/'grade'; grade.mkdir()
+        execute([HERE/'grade.sh', workspace, ROOT/'bench/harness/grade_runner.py', a.api_host, str(a.grade_port), grade])
+        grade_file = grade/'result.jsonl'
+        if grade_file.exists():
+            shutil.copyfile(grade_file, result/'grader-output.jsonl')
+            (result/'grader-output.jsonl').chmod(0o600)
+            graded = subprocess.run([sys.executable, str(ROOT/'bench/graders/grade.py'), 'payouts', str(grade_file)], env=env, capture_output=True, text=True)
+            try: measures['grade'] = json.loads(graded.stdout)
+            except ValueError: measures['grade'] = {'verdict': 'ERROR'}
+        else:
+            measures['grade'] = {'verdict': 'FAIL', 'reason': 'no output'}
+        measures['grader_status'] = (grade/'status').read_text().strip() if (grade/'status').exists() else 'missing'
     else:
-        measures['grade'] = {'verdict': 'FAIL', 'reason': 'no output'}
-    measures['grader_status'] = (grade/'status').read_text().strip() if (grade/'status').exists() else 'missing'
+        measures['grade'] = {'verdict': 'NOT_RUN', 'reason': 'interrupted'}
     if a.live:
         cleanup_sandboxes()
-        before = usage_rows(usage_before); after = usage_rows(usage())
-        deltas = {model: {'input': int(after.get(model, {}).get('input_tokens') or 0) - int(before.get(model, {}).get('input_tokens') or 0), 'output': int(after.get(model, {}).get('output_tokens') or 0) - int(before.get(model, {}).get('output_tokens') or 0)} for model in set(before) | set(after)}
-        measures['usage_delta'] = deltas
+        try:
+            before = usage_rows(usage_before); after = usage_rows(usage())
+            deltas = {model: {'input': int(after.get(model, {}).get('input_tokens') or 0) - int(before.get(model, {}).get('input_tokens') or 0), 'output': int(after.get(model, {}).get('output_tokens') or 0) - int(before.get(model, {}).get('output_tokens') or 0)} for model in set(before) | set(after)}
+            measures['usage_delta'] = deltas
+        except Exception:
+            measures['usage_delta'] = None
+            measures['usage_error'] = 'Usage after session unavailable; actual usage is unknown.'
         measures['cost_note'] = 'Account-wide token deltas may include concurrent sessions; calculate using current model-specific prices.'
     (result/'measures.json').write_text(json.dumps(sanitize(measures), indent=2) + '\n')
     print(json.dumps({'transcript': str(result/'transcript.jsonl'), 'measures': str(result/'measures.json')}))
+    if interrupted['signal'] is not None:
+        raise SystemExit(128 + interrupted['signal'])
