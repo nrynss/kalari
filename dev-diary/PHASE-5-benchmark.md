@@ -40,7 +40,7 @@ requires:   [T5.1, T0.6]
 fixture-ok: no
 size:       M · mid
 owns:       bench/pilot/, the --behaviours flag in bench/apis/*/server.py, its cases in bench/tests/quirks.sh
-status:     not-started
+status:     claimed:grok-impl
 ```
 The reference setup only (bench/README.md, Protocol 6): each behaviour alone, fresh session, five runs each; then the proposed pair under conditions 1, 2, 3 and 6, five runs each. About 65 runs, ~$16. **The user approves the spend before it starts**, and the first run's cost is checked against the budget before the rest.
 
