@@ -148,6 +148,22 @@ The build fixture covers candidate-versus-truth acceptance/rejection, separate p
 
 ---
 
+### T4.6b: Trusted retry observations ★
+```yaml
+requires:   [T4.6, T5.2a]
+fixture-ok: yes
+size:       M · frontier
+owns:       Kalari/Tools/Run.lean (observer and trace validation), Kalari/Tools/Lesson.lean, bench/apis/payouts/server.py (trusted trace only), bench/tests/quirks.sh (observed trace case)
+status:     not-started
+```
+Extend the trusted payouts observer for B5 without weakening the existing complete-chain validation. The evidence sequence is a 429, the immediately subsequent request with the same trusted full-request fingerprint, a successful response, a complete cursor chain, and a passing candidate with every check and the differential comparison passing. The fingerprint, not the cursor alone, establishes request identity. Traces carry no raw request or token. A changed request, ambiguous sequence, failed run or missing differential pass cannot emit a retry observation.
+
+Keep the observed fact separate from the transferred lesson and its runnable check. The observation claims only what the trace proves; it does not claim that the consumer honoured the retry delay unless trusted timing evidence establishes that too. Add the retry behaviour to typed lesson publication and recall-resolution fixtures.
+
+**Done when:** the real payouts reference consumer and grader produce a verified B5 trace and `record_lesson` publishes a non-empty typed retry lesson; a mismatched fingerprint or unverified traversal publishes nothing; malformed and branched traces fail closed; `./tools/check.sh` passes.
+
+---
+
 ### T4.7a: Wire the Kalari MCP service ★
 ```yaml
 requires:   [T4.3, T4.4, T4.5, T4.6]
@@ -203,7 +219,21 @@ A diagnostic retry with identity encoding called all five Kalari tools and the h
 
 **Cleanup evidence fix:** Cleanup command failures and failed post-cleanup verification are now captured in `cleanup.json` and `measures.json`. The runner writes and announces the sanitized transcript and measures before exiting nonzero on cleanup failure. An offline fixture injects a cleanup failure and checks that the five-tool transcript and measures survive while the run fails closed. `bench/kalari-arm/test-offline.sh` passes. No inference was run.
 
+---
 
+### T4.7c: Wire and rehearse the retry memory path ★
+```yaml
+requires:   [T4.6b, T4.7a, T4.7]
+fixture-ok: no
+size:       M · frontier
+owns:       Kalari/Service.lean, Kalari/Tools/Run.lean (production observer wiring only), bench/kalari-arm/, tests/live/observer.sh
+status:     not-started
+```
+The production service currently rejects observer configuration and constructs `Run.Context` without an observer, so a tool call or an offline observer fixture cannot establish the learning path. Wire the observer only after verifying exclusive guest-source isolation; keep refusing configurations that cannot establish it. Rehearse the real service and sandbox route without inference, using a private Lambo fixture embedder and no external model calls.
+
+Demonstrate the complete cross-upgrade path through the actual dispatcher: a verified payouts run publishes the retry lesson; settlements recalls it as required; the trusted checker is rebound to the settlements artifact rather than retaining the payouts filename; a correct settlements consumer passes; a partial-output skip-on-429 consumer fails the recalled and differential checks. Agent and grading HTTP retry counts remain separate from sandbox runs.
+
+**Done when:** the no-inference transcript shows observe → publish → recall → enforce end to end, including a non-empty published lesson and the failing partial-output case; unproven guest-source isolation still fails closed; every started process and sandbox is removed; the test and sanitized transcript are committed.
 
 ---
 

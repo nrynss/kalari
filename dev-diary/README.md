@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0 done. P1 done. P2 7/7. P3 7/7. P4 11/11. P5 2/6. T3.2b done. T5.1 done. T5.2 done. T5.3 awaits the user’s benchmark pair decision. T4.6 done. T4.5b done. T4.7a done. T4.7b done. T4.7 done. T6.1 done. Live spend is approved, including the pilot (T5.2, about $16) and T3.2b (under $0.01). Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
+**Current status:** P0 done. P1 done. P2 7/7. P3 7/7. P4 11/13. P5 2/9. T3.2b done. T5.1 and T5.2 done. The user chose B5 in both upgrades and the 50-session harder-pair pilot. T5.3 now requires T5.2b; T5.2b is blocked until the user approves its live dollar budget. T5.1a repairs condition 1 before that pilot. T4.6b and T4.7c establish the retry memory path before T5.4. T4.6 done. T4.5b done. T4.7a done. T4.7b done. T4.7 done. T6.1 done. Previous live spend remains approved, including the old pilot (T5.2, about $16) and T3.2b (under $0.01); no T5.2b spend is approved. Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
 
 ---
 
@@ -44,13 +44,14 @@ Do not wait for a whole phase to finish. If a task requires only `T1.1`, start i
 
 ```text
   P0 ──▶ P1 ──┬──▶ P2 containment ──┐
-              └──▶ P3 integrations ─┴──▶ P4 tools ──▶ T4.7 ──┐
-  T0.2 ──▶ T5.1 harness ──▶ T5.2 pilot ──▶ T5.3 freeze ──────┴──▶ T5.4 Kalari arm ──▶ T5.6 results ──┐
-                                           T5.3 ──▶ T5.5 reference arm ───────────────▶ T5.6        ├──▶ P7 ship
-              P4's evidence store ──▶ P6 surfaces ───────────────────────────────────────────────────┘
+              └──▶ P3 integrations ─┴──▶ P4 tools ──▶ T4.7 ───────────────┐
+  T0.2 ──▶ T5.1 ──▶ T5.2 old pilot ──▶ T5.1a ──▶ T5.2a ──▶ T5.2b ──▶ T5.3 ──▶ T5.5 ──┐
+                                                └─▶ T4.6b ──▶ T4.7c ──────────────────────┤
+  T5.3 + T4.7 + T4.7c ──▶ T5.4 ──▶ T5.6 ◀──────────────────────────────────────────────────┘
+  P4's evidence store ──▶ P6 surfaces ──▶ P7 ship ◀── T5.6
 ```
 
-P1 is the serial bottleneck. **The pilot runs beside the whole build**: it needs only the benchmark APIs (done) and the harness, never Kalari's code. That is what the protocol needs: the baseline is measured and the pair frozen before the Kalari arm's first run.
+P1 is the serial bottleneck. The old pilot ran beside the build. The harder-pair reference pilot needs the condition-1 repair and B5 benchmark code, but not Kalari's memory path. The trusted-observation and production-memory tasks branch from the B5 implementation and join the freeze as prerequisites for the Kalari arm.
 
 ---
 
@@ -75,8 +76,9 @@ Vimanam on the specs (T0.3) + recordings (T0.5)
   -> core model (T1.1) -> config (T1.2) -> process runner (T1.3) -> interfaces (T1.4) -> layout (T1.5)
   -> gate (T2.1) -> Microsandbox backend (T2.3)
   -> MCP server (T4.1) + evidence (T4.2) -> run_in_sandbox (T4.5) -> record_lesson (T4.6) -> with OpenCode (T4.7)
-  harness (T5.1) -> pilot (T5.2) -> freeze (T5.3)
-  -> Kalari arm (T5.4) + reference arm (T5.5) -> results (T5.6)
+  harness (T5.1) -> old pilot (T5.2) -> condition-1 repair (T5.1a) -> B5 pair (T5.2a) -> harder pilot (T5.2b) -> freeze (T5.3)
+  B5 pair (T5.2a) -> retry observations (T4.6b) -> memory-path rehearsal (T4.7c)
+  freeze + OpenCode + memory path -> Kalari arm (T5.4); freeze -> reference arm (T5.5); both -> results (T5.6)
   -> web app (T6.2) -> deploy (T6.3) -> README (T7.1) -> video (T7.2) -> public (T7.3) -> submit (T7.4)
 ```
 
@@ -143,14 +145,16 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P1 | 5 / 5 | T1.1 through T1.5 done |
 | P2 | 7 / 7 | T2.1 through T2.6 done. The Microsandbox-only exit line stays open because the Docker fallback exists |
 | P3 | 7 / 7 | T3.1 through T3.4 done, including T3.1a, T3.2b and T3.3b |
-| P4 | 11 / 11 | T4.1 through T4.5 and T4.6a done. T4.6 done. T4.5b done. T4.7a done. T4.7b done. T4.7 done |
-| P5 | 2 / 6 | T5.1 and T5.2 done. All 70 pilot rows captured. T5.3 awaits the user’s benchmark pair decision |
+| P4 | 11 / 13 | T4.1 through T4.7 done as previously recorded. New T4.6b and T4.7c establish the trusted retry observation and production memory path |
+| P5 | 2 / 9 | T5.1 and T5.2 done. New T5.1a, T5.2a and T5.2b precede the freeze. B5-in-both and the 50-session pilot are decided; T5.2b awaits its live budget |
 | P6 | 1 / 3 | T6.1 done. T6.2 ready. HTTP startup and benchmark evidence production still need integration |
 | P7 | 0 / 4 | Waits for P5, P6 |
 
 ---
 
 ## Handoff Log
+
+- **T5.3 pair decision and prerequisite split.** The user chose both fallbacks: B5 in both upgrades, a 50-session harder-pair pilot, and reporting led by cost, attempts and containment with correctness retained. B5-in-both is the final hardness adjustment. Added T5.1a, T5.2a, T5.2b, T4.6b and T4.7c. Condition 1's old settlement failures came from resuming the session in the payouts workspace while grading a separate pristine settlements tree; those five pairs are debug evidence, not frozen reference results. Production observer configuration is currently rejected, so the memory arm needs the demonstrated observe → publish → recall → enforce path, not another tool-call smoke test. T5.2b has no approved live budget yet.
 
 - **T6.1 closed.** Six read-only routes over fixture evidence and automated 4096/4097-byte body-boundary checks passed. Service startup and benchmark evidence production remain integration work.
 

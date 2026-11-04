@@ -34,6 +34,22 @@ What surprised me: both upgrades passed on the first consumer run against v2. Th
 
 ---
 
+### T5.1a: Repair continuous-session benchmarking ★
+```yaml
+requires:   [T5.2]
+fixture-ok: yes
+size:       M · mid
+owns:       bench/harness/, bench/pilot/SUMMARY.md, bench/pilot/summarize.py
+status:     not-started
+```
+Condition 1 resumed the OpenCode session but not its workspace: the agent remained attached to payouts while the harness graded a separate, untouched settlements tree. Save and reuse the original workspace's absolute path, replace its contents with the fresh settlement workspace, and make measures and both grading passes use that same tree. Require continuation state rather than silently starting fresh. Validate snapshot/workspace identity, distinguish consumer crashes from missing output, and never grade stale workspace output after a crash.
+
+Add a no-inference rehearsal that drives the real OpenCode 2.2.5 resume mechanism with a local scripted provider. A fake executable that merely uses its current directory is not evidence that the resume defect is fixed. Preserve the original result JSON unchanged, but label the five old condition-1 pairs as invalid pilot/debug evidence; they cannot count in the frozen reference arm.
+
+**Done when:** the rehearsal proves that the resumed session sees the settlements workspace, runs the intended consumer, and grades newly produced output from that same workspace; first-attempt and final source identity match; a stale JSONL cannot rescue a crashed consumer; missing continuation state fails before the session; the old pairs are labelled invalid; `./tools/check.sh` passes.
+
+---
+
 ### T5.2: The baseline pilot ★
 ```yaml
 requires:   [T5.1, T0.6]
@@ -73,23 +89,59 @@ The first new case cost $0.033182. Including the existing $3.545642, that made $
 
 ---
 
-### T5.3: Choose and freeze the pair
+### T5.2a: Add B5 to both upgrades ★
 ```yaml
-requires:   [T5.2]
+requires:   [T5.1a]
 fixture-ok: yes
-size:       XS · user
-owns:       bench/README.md, bench/FROZEN.md
+size:       M · frontier
+owns:       bench/apis/, bench/workspaces/payout-sync/docs/tallyline-payouts-api.md, bench/workspaces/settlement-reconcile/docs/clearwell-settlements-api.md, bench/tests/quirks.sh, bench/harness/ (B5 retry measures only), bench/pilot/ (runner and validation scripts only; existing results stay unchanged)
 status:     not-started
 ```
-The user chooses the pair from the pilot's numbers, or the fallback (harder real behaviours, or leading with cost, attempts and containment; both, as decided). Then the APIs, the docs, the prompt and the grader are frozen: `bench/FROZEN.md` records the commit and a hash of each file. Nothing in them changes after this.
+The user chose both fallbacks after the old pilot: add the reserved real behaviour B5 to both upgrades, and lead the eventual report with cost, attempts and containment while retaining correctness measures. Payouts becomes B1+B2+B4+B5 and settlements B1+B2+B3+B5. This is the final hardness adjustment, regardless of the new pilot's outcome. Keep the datasets, hidden grader, prompts and specs unchanged. Put the retry contract only in the neutral vendor-style docs shared by every arm.
 
-**Done when:** `FROZEN.md` committed before any Kalari-arm run.
+B5 returns HTTP 429 with `Retry-After: 1` once at a deterministic mid-stream point in every traversal. A fresh random traversal identity lives inside the opaque signed cursor; replaying a saved cursor continues that cursor's lineage. Key one-shot state by traversal identity and incoming cursor digest, under a lock. A trusted fingerprint of the complete canonical request establishes an identical retry; for GraphQL it includes the exact query and every variable, not just `after`. Store no raw requests or tokens in traces or result files.
+
+Add correct bounded-retry, no-retry crash, and partial-output skip-on-429 reference consumers. Preserve the old B1–B4 failure-mode coverage. Add trusted, run-attributed retry measurement: consumer sandbox runs, B5 429 responses, matching HTTP retry attempts and successful matching retries are separate measures, with agent and grading activity separated. Missing or ambiguous attribution is unknown, never zero.
+
+**Done when:** offline tests interleave two fresh traversals and show distinct identities, one 429 per traversal, successful identical retries and no skipped pages; both APIs' tests assert the actual HTTP 429 and `Retry-After` header; a changed GraphQL query or variables is not an identical retry; correct consumers pass, no-retry consumers crash, and partial-output consumers fail with measured record loss; retry counts remain distinct from sandbox runs; `./tools/check.sh` passes.
+
+---
+
+### T5.2b: The harder-pair pilot ★
+```yaml
+requires:   [T5.2a]
+fixture-ok: no
+size:       M · mid
+owns:       bench/pilot/harder/
+status:     blocked
+```
+Run exactly 50 reference sessions on the harder pair: five fresh B5-only sessions for each upgrade, then conditions 1, 2, 3 and 6 on the full pair, five repeats each (40 sessions). The 10 isolated rows diagnose retry alone; the 40 full-pair rows answer the benchmark question after the condition-1 repair. The old 70 rows remain published separately and are never merged into harder-pair counts. B5-in-both remains the pair even if the baseline passes every row.
+
+**No live budget is approved.** The orchestrator must record the user's dollar cap here and change the task to `not-started` before claiming it. The first case's measured cost and the remaining projection must fit that cap before any further session; stop and report otherwise. Usage deltas and cleanup are checked after every session.
+
+**Done when:** all 50 result files and their sanitized transcript are committed under `bench/pilot/harder/`; counts include every existing measure plus HTTP retries reported separately from consumer sandbox runs; the old pilot is unchanged; no process, scope or sandbox started by the pilot remains.
+
+---
+
+### T5.3: Choose and freeze the pair
+```yaml
+requires:   [T5.2b]
+fixture-ok: yes
+size:       XS · user
+owns:       bench/README.md, bench/FROZEN.md, product.md (comparison measures narrative only)
+status:     not-started
+```
+The user has chosen the pair: payouts B1+B2+B4+B5, then settlements B1+B2+B3+B5. The report leads with cost, attempts and containment, retains verdicts and right-first-time, and reports HTTP retry attempts separately from consumer sandbox runs. B5-in-both is the final hardness adjustment; T5.2b measures it rather than triggering further changes.
+
+After T5.2b, freeze the API server and data files, workspace consumers/specs/docs, prompts, hidden grader and grading runner. `bench/FROZEN.md` records the commit and a hash of every frozen file. Nothing in them changes after this. Update the benchmark and product narratives to match the decided reporting emphasis.
+
+**Done when:** `FROZEN.md` is committed before any Kalari-arm run, every listed hash matches, and the benchmark and product narratives agree.
 
 ---
 
 ### T5.4: The Kalari arm ★
 ```yaml
-requires:   [T5.3, T4.7]
+requires:   [T5.3, T4.7, T4.7c]
 fixture-ok: no
 size:       M · mid
 owns:       bench/runs/kalari/
@@ -109,7 +161,7 @@ size:       M · mid
 owns:       bench/runs/reference/
 status:     not-started
 ```
-Conditions 1, 2, 3 and 6, five repeats each, on the frozen pair. Pilot runs on the frozen pair may count if they were made on the frozen files (the hashes decide), so the reference arm may already be partly done.
+Conditions 1, 2, 3 and 6, five repeats each, on the frozen pair. Only T5.2b's harder-pair rows may count, and only if they were made on the frozen files (the hashes decide). The original T5.2 rows belong to the old pair and cannot count.
 
 **Done when:** every run committed; `FROZEN.md`'s hashes still match.
 
@@ -123,7 +175,7 @@ size:       S · frontier
 owns:       bench/RESULTS.md
 status:     not-started
 ```
-The table product.md promises, per condition, as counts: verdicts, right first time, sandbox runs, wall time, time stuck, tokens, records lost or duplicated. What it shows and what it doesn't, plainly: if condition 1 or 6 matches 5, say so. Every number links to its runs.
+The table product.md promises, per condition, as counts, leading with cost, consumer sandbox attempts, wall time, time stuck and containment. Also publish verdicts, right first time, tokens, records lost or duplicated, B5 429 responses and matching HTTP retry attempts. HTTP retries inside one consumer process are never counted as extra sandbox runs. What it shows and what it doesn't, plainly: if condition 1 or 6 matches 5, say so. Every number links to its runs.
 
 **Done when:** `RESULTS.md` committed; every number traces to a result file.
 
