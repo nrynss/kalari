@@ -1,0 +1,139 @@
+{
+  "condition": 6,
+  "upgrade": "payouts",
+  "arm": "reference",
+  "setup": "OpenCode 2.2.5 with microsandbox-mcp, no Kalari tools",
+  "api_base": "the VM's public address",
+  "live_port": 18080,
+  "grading_port": 18090,
+  "prompt": "condition-6.txt",
+  "opencode_version": "opencode v2.2.5",
+  "session_continued": false,
+  "notes_attached": false,
+  "session_cap_s": 1200,
+  "session_capped": false,
+  "measures": {
+    "verdict": "PASS",
+    "right_first_time": true,
+    "sandbox_runs": 2,
+    "wall_time_s": 25.299,
+    "time_stuck_s": 0,
+    "tokens_input": 313614,
+    "tokens_output": 6727,
+    "records_lost": 0,
+    "records_duplicated": 0
+  },
+  "sandbox_runs_against_v1": 0,
+  "sandbox_runs_against_v2": 2,
+  "records_extra": 0,
+  "records_mismatched": 0,
+  "grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "expected": 2431,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "first_v2_grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "expected": 2431,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "right_first_time_basis": "snapshot",
+  "cost_usd": 0.051078,
+  "cost_note": "DeepSeek V4.1 Flash list price, cached input counted as input, no cache discount",
+  "usage_delta": [
+    {
+      "model": "clef",
+      "input": 0,
+      "output": 0
+    },
+    {
+      "model": "deepseek-v4.1-flash-1017",
+      "input": 313614,
+      "output": 6727
+    },
+    {
+      "model": "qwen3-embedding-4b",
+      "input": 0,
+      "output": 0
+    }
+  ],
+  "opencode_tokens": {
+    "steps": 15,
+    "input": 27790,
+    "output": 3171,
+    "reasoning": 3556,
+    "cache_read": 285824
+  },
+  "consumer_runs": [
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 1.269,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 1.002,
+      "timed_out": false,
+      "basis": "snapshot"
+    }
+  ],
+  "event_summary": {
+    "lines": 50,
+    "unparsed_lines": 0,
+    "types": {
+      "step_start": 15,
+      "tool_use": 19,
+      "step_finish": 15,
+      "text": 1
+    },
+    "tools": {
+      "read": 7,
+      "glob": 1,
+      "execute": 10,
+      "edit": 1
+    },
+    "steps": 15,
+    "bash_denied": 0,
+    "sandbox_names": [],
+    "last_reason": "stop",
+    "final_answer": "Updated `payout_sync.py` to use the v2 export endpoint.\n\nWhat changed:\n- Replaced `GET /v1/payouts` with `GET /v2/payouts`.\n- Follows `cursor` windows until `drained` is `true`.\n- Deduplicates by payout `id`, since adjacent windows overlap.\n- Continues correctly even when windows return fewer records than requested.\n- Guards against a missing or non-advancing cursor.\n\nVerification against the live server (`http://the VM's public address:18080`):\n- v1 records: **2,431**\n- v2 records written: **2,431**\n- Missing: **0**\n- Extra: **0**\n- Duplicated: **0**\n- Records differing from v1: **0**\n\nResult: **PASS** \u2014 every v1 payout appears exactly once in the v2 output, with identical record contents.",
+    "stderr_excerpt": "",
+    "diff_stat": "payout_sync.py | 31 +++++++++++++++++++++++++++++--\n 1 file changed, 29 insertions(+), 2 deletions(-)"
+  },
+  "grader_runs": {
+    "final": {
+      "status": "EXIT 0",
+      "log_excerpt": "synced 2431 payouts\n"
+    },
+    "first": {
+      "status": "EXIT 0",
+      "log_excerpt": "synced 2431 payouts\n"
+    }
+  },
+  "cleanup": {
+    "sandboxes_removed": [],
+    "sandboxes_left": [],
+    "processes_left": []
+  },
+  "process_elapsed_s": 27.0,
+  "opencode_exit": 0
+}
