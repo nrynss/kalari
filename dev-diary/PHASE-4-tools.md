@@ -12,7 +12,7 @@ requires:   [T1.5, T0.5]
 fixture-ok: yes
 size:       M · frontier
 owns:       Kalari/Mcp.lean
-status:     not-started
+status:     claimed:gpt-6.1-terra
 ```
 JSON-RPC 2.0 over stdio, meeting what OpenCode 2.2.5 actually sends (T0.5): `initialize`, `notifications/initialized`, `tools/list`, `tools/call`, shutdown. Tool results as MCP content with `isError` for tool failures. Logs to stderr only. Each tool's input schema is small and exact: the agent reads it every step, so its size is a cost.
 
@@ -26,7 +26,7 @@ requires:   [T1.5]
 fixture-ok: yes
 size:       S · mid
 owns:       Kalari/Evidence.lean
-status:     not-started
+status:     claimed:gpt-6.1-terra
 ```
 Every run, every check result, every Clef answer and every lesson written, as JSON Lines in `.kalari/` (append-only, a truncated last line skipped with a warning). The source for the web app and the judges' page: every claim links to a record here.
 
