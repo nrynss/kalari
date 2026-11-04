@@ -445,6 +445,21 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
   unless resolvedRetry.check == truthCheck && resolvedRetry.observation == retryLesson.observation do
     throw <| .userError "recall did not resolve the retry lesson to the truth check"
 
+  -- A run may carry several passing checks. The lesson must take the candidate
+  -- truth check, not the first passing check. The weaker check carries the same
+  -- overlap rule so it would pass the overlap guard if it were selected.
+  let weaker : Check := { id := "weaker-paging", assertion := "Key records by ID; last delivery wins", command := ["check-weaker"] }
+  let weakRunId := "page-weak-first"
+  appendRun weakRunId { pageRun with checks := [weaker, truthCheck], check_results := [
+    { check_id := weaker.id, passed := true }, { check_id := truthCheck.id, passed := true },
+    { check_id := "differential-v1", passed := true }] }
+  Kalari.Evidence.append store { kind := "page-observation", session_id := "s", run_id := weakRunId, change_kinds := ["pagination_changed"], payload := toJson pageSignal }
+  let weakResult ← IO.ofExcept (← record store "s" weakRunId classify write)
+  let some weakLesson := weakResult.head? | throw <| .userError "a run with a weaker passing check first published no lesson"
+  unless weakLesson.check == truthCheck do
+    throw <| .userError "lesson took a weaker passing check instead of the candidate truth check"
+  IO.println "lesson: a weaker passing check first still publishes the candidate truth check"
+
   -- A failed run or a missing differential pass publishes no retry lesson.
   let quietWriter ← IO.mkRef ([] : List String)
   let quiet ← makeWriter fun kind _ _ => do quietWriter.modify (· ++ [kind]); return .ok "unexpected"

@@ -31,13 +31,17 @@ the traversal digest and whether the request was the matching retry. It never ca
 raw cursor, a raw request or a token. A wrong type, an overflow marker or an eviction
 marker reads as unknown, never as zero.
 
-The host trace (`--trace`) holds one event per v2 request, in send order, for a single
-exclusive client. A page event carries the HTTP status, the incoming cursor digest, the
-full-request fingerprint digest, the retry flag and the page the API sent. A 429 event
-carries the status, the incoming cursor digest, the fingerprint digest, the retry flag
-and the `Retry-After` value, and no page. The matching retry repeats the throttled
-request digest and fingerprint and is the only event marked `retry`. The trace never
-carries a raw cursor, a raw request or a token.
+The host trace (`--trace`) holds one event per traced request, in
+response-completion order, for a single exclusive client. A page event carries the
+HTTP status, the incoming cursor digest, the full-request fingerprint digest, the
+retry flag and the page the API sent. A 429 event carries the status, the incoming
+cursor digest, the fingerprint digest, the retry flag and the `Retry-After` value,
+and no page. A request that is not a served v2 page carries its status and the
+incoming cursor digest, and no page. That covers a 400, a 404, a 410 and a status
+the base handler returns, such as 501 for another method. A request from another
+client gets a 403 and leaves no trace event. The matching retry repeats the
+throttled request digest and fingerprint and is the only event marked `retry`.
+The trace never carries a raw cursor, a raw request or a token.
 """
 import argparse
 import base64
@@ -166,7 +170,8 @@ def trace_event(event) -> None:
     """Append one event to the host trace.
 
     The caller holds TRACE_LOCK while it completes the response and calls this, so
-    the host can reject branching or interleaving instead of guessing an order.
+    the trace order is the response-completion order and the host can reject
+    branching or interleaving instead of guessing an order.
     """
     global TRACE_COUNT
     if TRACE_COUNT < TRACE_LIMIT:
@@ -224,6 +229,28 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def traced_reply(self, status, obj, request):
+        """Reply, then trace a request that is not a served v2 page.
+
+        The event carries the status and the incoming cursor digest, and no page.
+        A 403 for another client does not reach this method, so it leaves no event.
+        """
+        if TRACE is None:
+            self.reply(status, obj)
+            return
+        with TRACE_LOCK:
+            self.reply(status, obj)
+            trace_event({"status": status, "request": request})
+
+    def send_error(self, code, message=None, explain=None):
+        """Trace a request the base handler rejects, such as another method."""
+        if TRACE is None or not self.trace_client or self.client_address[0] != self.trace_client:
+            return super().send_error(code, message, explain)
+        cursor = parse_qs(urlparse(getattr(self, "path", "")).query).get("cursor", [""])[-1]
+        with TRACE_LOCK:
+            super().send_error(code, message, explain)
+            trace_event({"status": int(code), "request": digest(cursor)})
+
     def do_GET(self):
         url = urlparse(self.path)
         pairs = [(k, v) for k, vs in parse_qs(url.query, keep_blank_values=True).items() for v in vs]
@@ -232,30 +259,32 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(403, {"error": "forbidden"})
             return self.journal(403, fingerprint, "", api="other")
         q = {k: v[-1] for k, v in parse_qs(url.query).items()}
+        request = digest(q.get("cursor", ""))
         if url.path == "/v1/payouts":
             if not self.v1_enabled:
-                self.reply(410, {"error": "gone", "message": "API v1 has been retired. Use /v2/payouts."})
+                self.traced_reply(410, {"error": "gone", "message": "API v1 has been retired. Use /v2/payouts."}, request)
                 return self.journal(410, fingerprint, "", api="v1")
-            self.reply(200, {"payouts": PAYOUTS})
+            self.traced_reply(200, {"payouts": PAYOUTS}, request)
             return self.journal(200, fingerprint, "", api="v1")
         if url.path == "/v2/payouts":
             return self.v2(q, fingerprint)
-        self.reply(404, {"error": "not_found"})
+        self.traced_reply(404, {"error": "not_found"}, request)
         return self.journal(404, fingerprint, "", api="other")
 
     def v2(self, q, fingerprint):
+        request = digest(q.get("cursor", ""))
         try:
             limit = int(q.get("limit", "100"))
         except ValueError:
-            self.reply(400, {"error": "invalid_limit", "message": "limit must be an integer"})
+            self.traced_reply(400, {"error": "invalid_limit", "message": "limit must be an integer"}, request)
             return self.journal(400, fingerprint, "")
         if not 1 <= limit <= SPEC_MAX_LIMIT:
-            self.reply(400, {"error": "invalid_limit", "message": f"limit must be between 1 and {SPEC_MAX_LIMIT}"})
+            self.traced_reply(400, {"error": "invalid_limit", "message": f"limit must be between 1 and {SPEC_MAX_LIMIT}"}, request)
             return self.journal(400, fingerprint, "")
         if "cursor" in q:
             decoded = read(q["cursor"])
             if decoded is None:
-                self.reply(400, {"error": "invalid_cursor", "message": "cursor is malformed or was not issued by this server"})
+                self.traced_reply(400, {"error": "invalid_cursor", "message": "cursor is malformed or was not issued by this server"}, request)
                 return self.journal(400, fingerprint, "")
             start, traversal = decoded
             cursor_key = digest(q["cursor"])

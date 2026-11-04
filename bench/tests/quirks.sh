@@ -8,9 +8,10 @@
 # changed GraphQL query, variable, operation name or payout parameter stays throttled, that
 # a settlements fragment or a dual `after` document reaches the same field, that an
 # ambiguous document is rejected, and that B5 off changes nothing. The observed trace block
-# checks one 429, its identical retry, the joined cursor chain and digests only. The retry
-# journal block checks phase counts, event types, digest shapes, overflow, evictions and
-# grading isolation.
+# checks one 429, its identical retry, the joined cursor chain and digests only, that a 400
+# and a 501 between the 429 and the retry leave trace events, and that a B5-off trace keeps
+# the old facts. The retry journal block checks phase counts, event types, digest shapes,
+# overflow, evictions and grading isolation.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 fail=0
@@ -112,7 +113,7 @@ python3 -I apis/payouts/server.py --port "$op" --v1 off --trace "$tmp/observed.j
 observer_pid=$!
 pids+=("$observer_pid")
 for _ in $(seq 1 50); do
-  curl -s "http://127.0.0.1:$op/health" >/dev/null 2>&1 && break
+  python3 -I -c "import socket,sys; s=socket.create_connection(('127.0.0.1',int(sys.argv[1])),0.2); s.close()" "$op" 2>/dev/null && break
   sleep 0.1
 done
 if ! timeout 8 python3 -I apis/payouts/reference/correct.py --base-url "http://127.0.0.1:$op" --out "$tmp/observed-output.jsonl" >/dev/null; then
@@ -161,6 +162,112 @@ print(f"ok   payouts observed: {len(pages)} pages, one 429 and its identical ret
 PYTRACE
 then
   echo "FAIL observed payouts trace or grader"; fail=1
+fi
+
+# B5 off on an observed instance. Every page event carries the new fields. The
+# trace still parses to the old facts: one-record overlaps and a final token.
+op18=$((op + 18)); op19=$((op + 19))
+python3 -I apis/payouts/server.py --port "$op18" --v1 off --behaviours B1,B2,B4 --trace "$tmp/b5off-observed.jsonl" --trace-client 127.0.0.1 >"$tmp/b5off-observed.log" 2>&1 &
+off_pid=$!
+pids+=("$off_pid")
+for _ in $(seq 1 50); do
+  python3 -I -c "import socket,sys; s=socket.create_connection(('127.0.0.1',int(sys.argv[1])),0.2); s.close()" "$op18" 2>/dev/null && break
+  sleep 0.1
+done
+if ! timeout 8 python3 -I apis/payouts/reference/correct.py --base-url "http://127.0.0.1:$op18" --out "$tmp/b5off-observed-output.jsonl" >/dev/null; then
+  echo "FAIL observed B5-off reference"; fail=1
+fi
+kill "$off_pid" 2>/dev/null || true
+wait "$off_pid" 2>/dev/null || true
+if ! python3 -I - "$tmp/b5off-observed.jsonl" "$tmp/b5off-observed-output.jsonl" <<'PYB5TRACE'
+import json, re, subprocess, sys
+raw = open(sys.argv[1], "rb").read()
+assert raw.endswith(b"\n") and len(raw) <= 262144
+events = [json.loads(line) for line in raw.splitlines()]
+assert events and all(e.get("status") == 200 for e in events), "B5 off trace holds a non-page event"
+assert len(events) == 25, len(events)
+assert all(p.get("retry") is False for p in events)
+assert not events[0]["request"]
+assert all(a["response"] == b["request"] for a, b in zip(events, events[1:]))
+assert all(not p["drained"] for p in events[:-1]) and events[-1]["drained"]
+assert all(set(a["ids"]) & set(b["ids"]) == {a["last"]} == {b["first"]} for a, b in zip(events, events[1:]))
+DIGEST = re.compile(r"[0-9a-f]{32}")
+assert all(DIGEST.fullmatch(p["response"]) and DIGEST.fullmatch(p["fingerprint"]) for p in events)
+grade = json.loads(subprocess.check_output(["python3", "-I", "graders/grade.py", "payouts", sys.argv[2]]))
+assert grade["verdict"] == "PASS"
+print(f"ok   payouts observed B5 off: {len(events)} pages, no 429, the old facts")
+PYB5TRACE
+then
+  echo "FAIL observed B5-off trace"; fail=1
+fi
+
+# An intervening 400 and a 501 between the 429 and the identical retry must appear
+# in the trace with their status and no page. The parser rejects an unexpected
+# status, so the observation fails closed.
+python3 -I apis/payouts/server.py --port "$op19" --v1 off --trace "$tmp/intervening.jsonl" --trace-client 127.0.0.1 >"$tmp/intervening.log" 2>&1 &
+between_pid=$!
+pids+=("$between_pid")
+for _ in $(seq 1 50); do
+  python3 -I -c "import socket,sys; s=socket.create_connection(('127.0.0.1',int(sys.argv[1])),0.2); s.close()" "$op19" 2>/dev/null && break
+  sleep 0.1
+done
+if ! python3 -I - "$op19" <<'PYDRIVE'
+import http.client, json, sys
+conn = http.client.HTTPConnection("127.0.0.1", int(sys.argv[1]), timeout=10)
+
+
+def get(path):
+    conn.request("GET", path)
+    r = conn.getresponse()
+    return r.status, json.loads(r.read() or b"{}")
+
+
+status, body = get("/v2/payouts?limit=1000")
+assert status == 200, status
+cursor = body["cursor"]
+while True:
+    status, body = get(f"/v2/payouts?limit=1000&cursor={cursor}")
+    if status == 429:
+        break
+    assert status == 200, status
+    cursor = body["cursor"]
+bad, _ = get("/v2/payouts?limit=0")
+assert bad == 400, bad
+conn.request("POST", f"/v2/payouts?limit=1000&cursor={cursor}")
+r = conn.getresponse()
+r.read()
+assert r.status == 501, r.status
+retry, body = get(f"/v2/payouts?limit=1000&cursor={cursor}")
+assert retry == 200, retry
+# One more request, so the server appends the retry event before the kill.
+status, _ = get(f"/v2/payouts?limit=1000&cursor={body['cursor']}")
+assert status == 200, status
+PYDRIVE
+then
+  echo "FAIL intervening request driver"; fail=1
+fi
+kill "$between_pid" 2>/dev/null || true
+wait "$between_pid" 2>/dev/null || true
+if ! python3 -I - "$tmp/intervening.jsonl" <<'PYBETWEEN'
+import json, sys
+events = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
+throttled = [i for i, e in enumerate(events) if e.get("status") == 429]
+assert len(throttled) == 1, throttled
+i = throttled[0]
+between = events[i + 1]
+assert between.get("status") == 400, between
+assert not {"response", "first", "last", "count", "ids", "drained"} & set(between), between
+assert between.get("request") == "", between
+method = events[i + 2]
+assert method.get("status") == 501, method
+assert not {"response", "first", "last", "count", "ids", "drained"} & set(method), method
+after = events[i + 3]
+assert after.get("status") == 200 and after.get("retry") is True, after
+assert after.get("request") == events[i].get("request"), after
+print("ok   payouts observed intervening 400 and 501: both traced with no page, the identical retry follows")
+PYBETWEEN
+then
+  echo "FAIL intervening request trace"; fail=1
 fi
 
 # B5 off: the full paging behaviour of each API, exactly as before B5 existed.
