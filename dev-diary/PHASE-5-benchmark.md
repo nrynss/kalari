@@ -14,7 +14,7 @@ requires:   [T0.2]
 fixture-ok: no
 size:       M · mid
 owns:       bench/harness/
-status:     not-started
+status:     claimed:grok-impl
 ```
 One script that runs one session of one condition on the VM and records everything: a fresh copy of the workspace (committed, so `git diff` shows the change); OpenCode 2.2.5 with `--standalone` and its own `XDG_*` directories; the key over SSH stdin; the 20-minute session cap; `/v1/usage` before and after; the event log; the hidden grader on the final consumer against the grading API; and **every measure** (bench/README.md, Measures), including "right first time" (grade the consumer as it stood at its first run against v2, from the workspace's history or the event log) and time stuck. Then a check that no `opencode`, `microsandbox-mcp` or sandbox is left.
 
