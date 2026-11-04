@@ -26,3 +26,19 @@ the service currently rejects observer configuration and does not wire the
 observer into its run context; an IP probe alone cannot make a page observation
 trusted. `record_lesson` may still be called, but a call is not evidence that a
 lesson was published.
+
+`session.py` prepares separate candidate, baseline, check, and evidence
+workspaces plus a private fixture-embedder Lambo configuration. Provision and
+seed that Lambo store before starting the service, as in `tests/live/run.sh`.
+`grade.sh` runs a final candidate in a uniquely named, network-restricted
+microVM and returns its JSONL for the host-side hidden grader in
+`bench/graders/grade.py`; its trap removes only that sandbox. `summarize.py`
+extracts tool names and token counts from OpenCode events without printing tool
+contents. Raw events may contain private data and must be reviewed and redacted
+before a transcript is published.
+
+A hard session budget must include both OpenCode's model requests and Clef
+requests from Kalari's subprocess. The existing service sends Clef directly to
+its fixed HTTPS endpoint. Counting only OpenCode events or polling the
+account-wide usage endpoint after requests cannot enforce the budget. These
+helpers do not supply a request-time guard for both paths.
