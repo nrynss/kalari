@@ -15,9 +15,10 @@
 # Without --run the selected plan is printed and the process exits 2, except --list,
 # which prints the same plan and exits 0. The whole matrix is the default selection.
 # --run on that matrix refuses too; run-missing.sh handles the isolated variants.
-# Condition rows go to bench/pilot/results unless --root names another directory.
-# The runner refuses an existing destination. T5.2b passes
-# --root bench/pilot/harder/results so the old rows stay untouched.
+# --root routes condition rows and B5 rows only. It defaults to bench/pilot/results,
+# and a B5 row needs bench/pilot/harder/results. The runner refuses an existing
+# destination. T5.2b passes --root bench/pilot/harder/results so the old rows stay
+# untouched.
 #
 # Condition runs are the proposed pair (every behaviour on).
 # Condition 1 is one session across both upgrades: payouts, then settlements on it.
@@ -35,7 +36,7 @@ ROOT="bench/pilot/results"
 ROOT_SET=0
 
 usage() {
-  sed -n '2,24p' "$0" >&2
+  sed -n '2,25p' "$0" >&2
   exit 2
 }
 
@@ -142,6 +143,12 @@ handle_behaviour() { # upgrade behaviour repeat
     dest="bench/pilot/harder/results/behaviour-${upgrade}-${behaviour}-r${rep}.json"
     line="behaviour $upgrade $behaviour repeat $rep: bench/pilot/run-one.sh --behaviour $behaviour --upgrade $upgrade --dest $dest"
   else
+    # --root routes condition rows and B5 rows. A non-B5 behaviour row belongs
+    # to bench/pilot/run-missing.sh, so an explicit root here would be ignored.
+    if [[ $ROOT_SET == 1 ]]; then
+      echo "--root applies to condition rows and B5 rows only" >&2
+      exit 2
+    fi
     line="behaviour $upgrade $behaviour repeat $rep: bench/pilot/run-missing.sh (isolated variant)"
   fi
   if [[ $MODE == list ]]; then

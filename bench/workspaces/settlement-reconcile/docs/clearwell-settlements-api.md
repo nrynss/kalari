@@ -25,6 +25,8 @@ query Settlements($after: String) {
 }
 ```
 
+Send one `settlements` field per request, and a request with more than one `settlements` field that carries `after` is rejected with `400`.
+
 ### When to stop
 
 Keep requesting while `pageInfo.hasNextPage` is `true`. `endCursor` is always set, the last page included, so a later run can resume from where this one finished; its presence doesn't mean more pages remain.

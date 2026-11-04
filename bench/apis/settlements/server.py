@@ -178,6 +178,17 @@ class AmbiguousSettlementsField(Exception):
     """More than one settlements field carries a non-null `after`."""
 
 
+# v2 has one root type, Query. A fragment on any other type cannot contribute a
+# settlements field, so the parser leaves that fragment to the schema.
+QUERY_TYPE = "Query"
+
+
+def fragment_applies(node):
+    """True when a fragment's type condition can apply to the Query root."""
+    condition = getattr(getattr(node, "type_condition", None), "name", None)
+    return condition is None or condition.value == QUERY_TYPE
+
+
 def settlements_arguments(query, variables, operation_name):
     """Resolve the settlements field's arguments, following fragments.
 
@@ -186,7 +197,8 @@ def settlements_arguments(query, variables, operation_name):
     parser cannot resolve it, so the caller rejects the request instead of
     treating it as a fresh traversal. Raises AmbiguousSettlementsField when more
     than one field carries a non-null `after`, because the caller cannot tell
-    which traversal is paging.
+    which traversal is paging. A fragment on a type other than Query stays with
+    the schema, so it never reaches the ambiguity check.
     """
     doc = parse(query)
     ops = [d for d in doc.definitions if getattr(d, "kind", "") == "operation_definition"]
@@ -211,12 +223,15 @@ def settlements_arguments(query, variables, operation_name):
                 if sel.name.value == "settlements":
                     fields.append(sel)
             elif kind == "inline_fragment":
-                walk(getattr(sel, "selection_set", None))
+                if fragment_applies(sel):
+                    walk(getattr(sel, "selection_set", None))
             elif kind == "fragment_spread":
                 name = getattr(getattr(sel, "name", None), "value", None)
                 if name in fragments and name not in seen:
-                    seen.add(name)
-                    walk(fragments[name].selection_set)
+                    definition = fragments[name]
+                    if fragment_applies(definition):
+                        seen.add(name)
+                        walk(definition.selection_set)
 
     if len(ops) == 1:
         walk(ops[0].selection_set)

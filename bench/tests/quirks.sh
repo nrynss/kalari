@@ -654,6 +654,24 @@ def drain(label, query):
 drain("named fragment", NAMED)
 drain("inline fragment", INLINE)
 
+# A fragment on a different type cannot contribute a settlements field. The parser
+# leaves it to the schema, so it never reaches the ambiguity check.
+WRONG_INLINE = ("query Q($a: String, $b: String) { "
+                "settlements(first: 1, after: $a) { nodes { id } pageInfo { hasNextPage } } "
+                "... on Settlement { settlements(first: 1, after: $b) { nodes { id } } } }")
+WRONG_NAMED = ("query Q($a: String, $b: String) { "
+               "settlements(first: 1, after: $a) { nodes { id } pageInfo { hasNextPage } } "
+               "...S } fragment S on Settlement { settlements(first: 1, after: $b) { nodes { id } } }")
+for label, query in (("inline", WRONG_INLINE), ("named", WRONG_NAMED)):
+    open(journal, "w").close()
+    code, body, _headers = send(query, {"a": "cursor-a", "b": "cursor-b"})
+    assert code == 200, (label, code, body)
+    messages = [error["message"] for error in body.get("errors") or []]
+    assert any("cannot be spread here" in message for message in messages), (label, messages)
+    events = [json.loads(line) for line in open(journal) if line.strip()]
+    assert len(events) == 1 and events[0]["status"] == 200, (label, events)
+print("ok   settlements different-type fragments stay with the schema, no ambiguous 400")
+
 # Two settlements fields: the one that carries `after` decides the offset.
 open(journal, "w").close()
 DUAL = ("query Q($f: Int, $a: String) { "
@@ -1045,6 +1063,51 @@ else
   fail=1
 fi
 
+# The grading pass count comes from the harness: one pass, or two when a first-v2
+# source exists. Run each retry_read body against a stub that records its arguments.
+mkdir -p "$tmp/stub"
+cat > "$tmp/stub/retry_journal.py" <<'PYSTUB'
+import json, os, sys
+open(os.environ["KALARI_CAPTURE"], "w").write(json.dumps(sys.argv[1:]))
+PYSTUB
+wire_read() { # <script> <first-v2: 0|1> <capture file>
+  local script=$1 first=$2 capture=$3
+  (
+    export KALARI_CAPTURE=$capture
+    STAGE=$tmp/stub RUN=$tmp/wire-run CONSUMER=payout_sync.py
+    RETRY_JOURNAL=/srv/retry-journal.jsonl UPGRADE=payouts
+    API_LIVE=api-payouts-live API_GRADE=api-payouts-grading
+    rm -rf "$RUN"
+    mkdir -p "$RUN"
+    if [[ $first == 1 ]]; then
+      mkdir -p "$RUN/first-v2-src"
+      : > "$RUN/first-v2-src/$CONSUMER"
+    fi
+    retry_api() { printf 'api-%s-%s\n' "$UPGRADE" "$1"; }
+    eval "$(awk '/^retry_read\(\) \{/{f=1} f{print} f&&/^}$/{exit}' "$script")"
+    retry_read grading
+  )
+}
+wire_read harness/remote.sh 0 "$tmp/wire-h1.json" || true
+wire_read harness/remote.sh 1 "$tmp/wire-h2.json" || true
+wire_read pilot/remote.sh 0 "$tmp/wire-p1.json" || true
+wire_read pilot/remote.sh 1 "$tmp/wire-p2.json" || true
+if python3 -I - "$tmp/wire-h1.json" "$tmp/wire-h2.json" \
+  "$tmp/wire-p1.json" "$tmp/wire-p2.json" <<'PYWIRE'
+import json, sys
+for path, want in zip(sys.argv[1:], ("1", "2", "1", "2")):
+    args = json.load(open(path))
+    assert "--grading-clients" in args, (path, args)
+    got = args[args.index("--grading-clients") + 1]
+    assert got == want, (path, got, want)
+print("ok   retry_read grading: one pass without a first-v2 source, two with")
+PYWIRE
+then
+  :
+else
+  echo "FAIL retry_read grading client count"; fail=1
+fi
+
 # The condition route honours a destination root and never overwrites an old row.
 if out=$(pilot/run.sh --list --condition 3 --upgrade payouts --root bench/pilot/harder/results) &&
   grep -q 'bench/pilot/harder/results/condition-3-payouts-r1.json' <<<"$out"; then
@@ -1076,6 +1139,18 @@ elif grep -q "B5 rows need" "$tmp/pilot-b5-root.err"; then
   echo "ok   pilot B5 rejects an explicit baseline root"
 else
   echo "FAIL pilot B5 root rejection message"; cat "$tmp/pilot-b5-root.err"; fail=1
+fi
+if pilot/run.sh --list --behaviour B1 --upgrade payouts --root bench/pilot/harder/results >/dev/null 2>"$tmp/pilot-b1-root.err"; then
+  echo "FAIL pilot non-B5 accepted --root"; fail=1
+elif grep -q "condition rows and B5 rows" "$tmp/pilot-b1-root.err"; then
+  echo "ok   pilot rejects --root for a non-B5 behaviour"
+else
+  echo "FAIL pilot non-B5 root message"; cat "$tmp/pilot-b1-root.err"; fail=1
+fi
+if pilot/run.sh --list --behaviour B1 --upgrade payouts >/dev/null; then
+  echo "ok   pilot non-B5 listing needs no root"
+else
+  echo "FAIL pilot non-B5 listing"; fail=1
 fi
 if [[ ! -f pilot/results/condition-3-payouts-r1.json ]]; then
   echo "FAIL pilot baseline row missing, refusing the overwrite test"; fail=1
