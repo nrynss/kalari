@@ -43,7 +43,7 @@ requires:   [T3.1, T0.6]
 fixture-ok: yes
 size:       S · mid
 owns:       Kalari/Vimanam.lean, testdata/vimanam/
-status:     in-review
+status:     done
 ```
 Move the runner and its checks from the 2.0.0/`main` recordings to `testdata/vimanam/2.1.0/` (T0.6). Handle `operation_moved` (its old and new paths, with the inner changes attributed to the new path). The checks assert **`pagination_changed` on both benchmark specs**, with the IDs recorded. Then delete the 2.0.0 recordings that nothing replays any more (keep `probes/` as history).
 
