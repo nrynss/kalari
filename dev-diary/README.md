@@ -154,6 +154,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 
 Newest first. One entry per closed task, finding, or split.
 
+- **Push `main` after each landed task and read the CI result.** A red run is fixed and pushed again. A claim commit may go out with the close.
 - **T2.2 closed: the aashaan caps.** `classify` and `firstVerdict` decide one wake. An exit is taken first. When the wall-clock cap and an output cap are both visible, the wall-clock cap wins. Stdout and stderr are one output cap. `clampBytes` keeps both streams at most the cap. `jstr` escapes every code point below U+0020 and keeps non-ASCII. The stripped binary is 3351672 bytes. The seven host cases pass. The eight microVM cases match, including escape with `pipe_held_open` true. The live create is `msb create --no-net --pull never debian`. A missing image is pulled at most three times, then created once. Escape is not a host case.
 - **Live spend is approved.** The pilot (T5.2, about $16) and the other live tasks (T3.2b, T3.3b, each under $0.01, and the later sandbox lives) may run when their `requires` are met. Each one runs one case first and stops if that case would exceed its budget.
 - **After P2, continue through P3, P4, and P5.** One task at a time, in `requires` order. T2.3b is the last P2 task after T2.2.
