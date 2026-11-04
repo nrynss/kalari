@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0 done. P1 done. P2 7/7. P3 7/7. P4 11/11. P5 2/6. T3.2b done. T5.1 done. T5.2 done. T5.3 awaits the user’s benchmark pair decision. T4.6 done. T4.5b done. T4.7a done. T4.7b done. T4.7 done. T6.1 claimed by Terra. Live spend is approved, including the pilot (T5.2, about $16) and T3.2b (under $0.01). Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
+**Current status:** P0 done. P1 done. P2 7/7. P3 7/7. P4 11/11. P5 2/6. T3.2b done. T5.1 done. T5.2 done. T5.3 awaits the user’s benchmark pair decision. T4.6 done. T4.5b done. T4.7a done. T4.7b done. T4.7 done. T6.1 done. Live spend is approved, including the pilot (T5.2, about $16) and T3.2b (under $0.01). Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
 
 ---
 
@@ -145,12 +145,14 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P3 | 7 / 7 | T3.1 through T3.4 done, including T3.1a, T3.2b and T3.3b |
 | P4 | 11 / 11 | T4.1 through T4.5 and T4.6a done. T4.6 done. T4.5b done. T4.7a done. T4.7b done. T4.7 done |
 | P5 | 2 / 6 | T5.1 and T5.2 done. All 70 pilot rows captured. T5.3 awaits the user’s benchmark pair decision |
-| P6 | 0 / 3 | T6.1 claimed by Terra. T6.2 waits for T6.1 |
+| P6 | 1 / 3 | T6.1 done. T6.2 ready. HTTP startup and benchmark evidence production still need integration |
 | P7 | 0 / 4 | Waits for P5, P6 |
 
 ---
 
 ## Handoff Log
+
+- **T6.1 closed.** Six read-only routes over fixture evidence and automated 4096/4097-byte body-boundary checks passed. Service startup and benchmark evidence production remain integration work.
 
 - **T5.2 closed.** All 70 pilot rows were independently validated. The original 40 condition rows are unchanged. All 30 isolated behaviour runs passed, 29 on the first v2 run. Recorded total was $5.032530. The restricted adapter changes comparability, as documented in the pilot summary.
 
