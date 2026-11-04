@@ -95,6 +95,18 @@ assert len(m['tool_calls']) == 5 and all(v == 1 for v in m['tool_calls'].values(
 assert m['grade']['verdict'] == 'FAIL' and m['grader_status'] == 'EXIT 0'
 assert (p/'msb.log').read_text().splitlines() == ['create','remove']
 PY
+touch "$tmp/bin/CLEANUPFAIL"
+rc=0
+python3 "$root/bench/kalari-arm/runner.py" --offline-fixture --tools "$tmp/bin" --opencode "$tmp/bin/opencode" --api-host 127.0.0.1 --result "$tmp/cleanup-failure" >"$tmp/cleanup.stdout" 2>"$tmp/cleanup.stderr" || rc=$?
+[ "$rc" -ne 0 ] || { echo 'cleanup failure unexpectedly succeeded' >&2; exit 1; }
+python3 - "$tmp/cleanup-failure" "$tmp/cleanup.stdout" <<'PYCODE'
+import json, pathlib, sys
+p=pathlib.Path(sys.argv[1]); events=(p/'transcript.jsonl').read_text(); m=json.loads((p/'measures.json').read_text())
+assert len([line for line in events.splitlines() if line.strip()]) == 5
+assert m['tool_calls'] and m['cleanup_error'] == 'fixture cleanup failure'
+assert json.loads(pathlib.Path(sys.argv[2]).read_text())['transcript'] == str(p/'transcript.jsonl')
+PYCODE
+rm "$tmp/bin/CLEANUPFAIL"
 touch "$tmp/bin/HANG"
 python3 "$root/bench/kalari-arm/runner.py" --offline-fixture --tools "$tmp/bin" --opencode "$tmp/bin/opencode" --api-host 127.0.0.1 --result "$tmp/interrupted" >/dev/null 2>&1 &
 runner_pid=$!

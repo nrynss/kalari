@@ -197,6 +197,8 @@ Use one bounded live session with a stated budget, check the first case cost, an
 
 A subsequent bounded retry was interrupted by an unknown SIGTERM source before evidence or usage deltas were written; inference may have started and its cost is unknown. No session process or sandbox remained. See `bench/kalari-arm/results/interrupted-retry.md`. The runner now saves usage-before counts and preserves sanitized partial events and measures on a handled signal; the offline fixture exercises this path. The five-tool transcript, hidden grade and complete measures remain unmet.
 
+**Cleanup evidence fix:** Cleanup command failures and failed post-cleanup verification are now captured in `cleanup.json` and `measures.json`. The runner writes and announces the sanitized transcript and measures before exiting nonzero on cleanup failure. An offline fixture injects a cleanup failure and checks that the five-tool transcript and measures survive while the run fails closed. `bench/kalari-arm/test-offline.sh` passes. No inference was run.
+
 
 
 ---

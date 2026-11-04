@@ -117,17 +117,25 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
         before = execute([real_msb, 'list', '--format', 'json'], capture_output=True, text=True)
         existing = {x['name'] for x in json.loads(before.stdout)}
         def cleanup_sandboxes():
-            if not ledger.exists(): return
+            if not ledger.exists(): return None
+            errors = []
             names = set(ledger.read_text().splitlines()) - existing
             for name in names:
                 if not re.fullmatch(r'kalari-[A-Za-z0-9._-]+', name):
-                    raise RuntimeError('unexpected sandbox name in private ledger')
-                subprocess.run([str(real_msb), 'remove', '-f', name], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            rows = execute([real_msb, 'list', '--format', 'json'], capture_output=True, text=True)
-            left = names & {x['name'] for x in json.loads(rows.stdout)}
-            (result/'cleanup.json').write_text(json.dumps({'left': sorted(left), 'tracked': len(names)}) + '\n')
-            if left: raise RuntimeError('session sandboxes remain')
-        atexit.register(cleanup_sandboxes)
+                    errors.append('invalid sandbox name in private ledger')
+                    continue
+                removed = subprocess.run([str(real_msb), 'remove', '-f', name], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                if removed.returncode: errors.append('sandbox removal command failed')
+            try:
+                rows = execute([real_msb, 'list', '--format', 'json'], capture_output=True, text=True)
+                left = names & {x['name'] for x in json.loads(rows.stdout)}
+            except Exception:
+                left = sorted(names)
+                errors.append('sandbox cleanup verification failed')
+            (result/'cleanup.json').write_text(json.dumps({'left': sorted(left), 'tracked': len(names), 'errors': errors}) + '\n')
+            if left: errors.append('session sandboxes remain')
+            return '; '.join(errors) if errors else None
+        atexit.register(lambda: cleanup_sandboxes())
         tools = guarded
         env['PATH'] = str(tools) + ':/usr/local/bin:/usr/bin:/bin'
     execute([sys.executable, HERE/'session.py', '--directory', session, '--workspace-source', a.workspace_source, '--tools', tools, '--api-host', a.api_host, '--api-port', str(a.api_port)], stdout=subprocess.DEVNULL)
@@ -256,8 +264,7 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
             except ProcessLookupError: pass
             for sig, handler in old_handlers.items(): signal.signal(sig, handler)
     elapsed = time.monotonic() - start
-    if a.live:
-        cleanup_sandboxes()
+    cleanup_error = cleanup_sandboxes() if a.live else ('fixture cleanup failure' if (tools/'CLEANUPFAIL').exists() else None)
     bad = 0
     with (result/'transcript.jsonl').open('w') as out:
         for line in events.open(errors='replace'):
@@ -285,7 +292,7 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
     else:
         measures['grade'] = {'verdict': 'NOT_RUN', 'reason': 'interrupted'}
     if a.live:
-        cleanup_sandboxes()
+        cleanup_error = cleanup_sandboxes() or cleanup_error
         try:
             before = usage_rows(usage_before); after = usage_rows(usage())
             deltas = {model: {'input': int(after.get(model, {}).get('input_tokens') or 0) - int(before.get(model, {}).get('input_tokens') or 0), 'output': int(after.get(model, {}).get('output_tokens') or 0) - int(before.get(model, {}).get('output_tokens') or 0)} for model in set(before) | set(after)}
@@ -294,7 +301,11 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
             measures['usage_delta'] = None
             measures['usage_error'] = 'Usage after session unavailable; actual usage is unknown.'
         measures['cost_note'] = 'Account-wide token deltas may include concurrent sessions; calculate using current model-specific prices.'
+    if cleanup_error:
+        measures['cleanup_error'] = cleanup_error
     (result/'measures.json').write_text(json.dumps(sanitize(measures), indent=2) + '\n')
     print(json.dumps({'transcript': str(result/'transcript.jsonl'), 'measures': str(result/'measures.json')}))
     if interrupted['signal'] is not None:
         raise SystemExit(128 + interrupted['signal'])
+    if cleanup_error:
+        raise SystemExit('sandbox cleanup failed; evidence preserved')
