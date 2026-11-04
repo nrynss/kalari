@@ -98,11 +98,13 @@ requires:   [T4.5, T2.3b]
 fixture-ok: no
 size:       S · mid
 owns:       tests/live/run.sh, Kalari/Service.lean (trusted executable path only)
-status:     claimed:gpt-6.1-terra
+status:     in-review
 ```
 The reference consumers (six for payouts, seven for settlements), through `kalari serve`'s `run_in_sandbox` on the VM against the live APIs.
 
 **Done when:** the transcript is in the report; outcomes as in T4.5; no sandbox left.
+
+**Notes (in review):** The live harness runs each reference consumer through the stdio service, using a private Lambo store with the fixture embedder and seeded change kinds, without inference calls. Candidate and baseline use separate v2-only and v1-capable API endpoints: the live endpoint also serves v1, so an unchanged v1 consumer would otherwise appear to pass. The optional trusted session `tool_path` admits absolute normalized directory components and defaults to the previous fixed path; it lets the VM use privately staged dependencies. Each run checks its own sandbox names are gone. The full transcript and route observations are in the handoff report.
 
 ---
 

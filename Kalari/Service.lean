@@ -20,6 +20,7 @@ structure Setup where
   evidence_workspace : String
   artifact : String
   aashaan : String
+  tool_path : Option String := none
   deriving FromJson
 
 private def validName (s : String) : Bool :=
@@ -30,6 +31,9 @@ private def validArtifact (s : String) : Bool :=
     s.toList.all (fun c => c.isAlphanum || c == '-' || c == '_' || c == '.')
 
 private def validate (cfg : Kalari.Config.Config) (s : Setup) : IO Unit := do
+  if let some path := s.tool_path then
+    unless (path.splitOn ":").all (fun p => Kalari.Gate.workspaceOk p && !p.contains '\x00') do
+      throw <| .userError "tool_path must contain only absolute normalized directories"
   unless validName s.session_id && !s.repo_scope.isEmpty do throw <| .userError "invalid session identity"
   unless [s.workspace, s.baseline.workspace, s.check_workspace, s.evidence_workspace, s.aashaan, s.old_spec, s.new_spec].all Kalari.Gate.workspaceOk do
     throw <| .userError "session paths must be absolute and normalized"
@@ -150,7 +154,7 @@ def serve (configPath setupPath : System.FilePath) : IO Unit := do
   IO.ofExcept (← Kalari.Tools.Lesson.verifyAmendedPolicyProvenance evidence setup.session_id setup.check_workspace)
   let client ← Kalari.Lambo.create cfg.lambo
   let writer ← Kalari.Tools.Lesson.writer client
-  let path := "/usr/local/bin:/usr/bin:/bin"
+  let path := setup.tool_path.getD "/usr/local/bin:/usr/bin:/bin"
   let clef := Kalari.Clef.live path
   let delay : Kalari.Clef.Delay := fun ms => IO.sleep ms.toUInt32
   let source := Kalari.Tools.Recall.sources client evidence clef delay cfg.decisions.api_key_env
@@ -235,8 +239,11 @@ def fixture : IO Unit := IO.FS.withTempDir fun dir => do
     old_spec := oldSpec.toString
     new_spec := newSpec.toString }
   validate cfg validSetup
+  validate cfg { validSetup with tool_path := some "/opt/kalari/bin:/usr/bin:/bin" }
   let rejects (candidate : Setup) : IO Bool := do
     try validate cfg candidate; pure false catch _ => pure true
+  unless ← rejects { validSetup with tool_path := some "/usr/bin::/bin" } do throw <| .userError "empty tool path component accepted"
+  unless ← rejects { validSetup with tool_path := some "relative:/bin" } do throw <| .userError "relative tool path component accepted"
   unless ← rejects { validSetup with artifact := ".hidden" } do throw <| .userError "dot artifact accepted"
   unless ← rejects { validSetup with baseline := { validSetup.baseline with command := [""] } } do throw <| .userError "empty baseline executable accepted"
   unless ← rejects { validSetup with baseline := { validSetup.baseline with command := ["true\x00bad"] } } do throw <| .userError "NUL baseline argument accepted"
