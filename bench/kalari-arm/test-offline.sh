@@ -14,6 +14,23 @@ cat > "$tmp/bin/opencode" <<'SH'
 #!/bin/sh
 if [ "$1" = --version ]; then echo '2.2.5'; exit; fi
 [ "$1" = run ] && [ "$2" = --standalone ] || exit 1
+if [ -e "$(dirname "$0")/MALFORMED" ]; then
+  printf '%s\n' '{"type":"step_finish","part":{"tokens":{"input":"unknown"}}}'
+  sleep 300
+  exit
+fi
+if [ -e "$(dirname "$0")/SPEND" ]; then
+  python3 -u - "$(dirname "$0")/cutoff-child.pid" <<'PYCODE'
+import json, subprocess, sys, time
+child = subprocess.Popen(['sleep', '300'])
+open(sys.argv[1], 'w').write(str(child.pid))
+for n in (100, 1400000):
+ print(json.dumps({'type':'step_finish','part':{'tokens':{'input':n, 'output':0, 'reasoning':0,'cache':{'read':0,'write':0}}}}),flush=True)
+ time.sleep(.3)
+time.sleep(300)
+PYCODE
+  exit
+fi
 if [ -e "$(dirname "$0")/HANG" ]; then
   python3 - "$(dirname "$0")/hung-child.pid" <<'PY'
 import subprocess, sys, time
@@ -72,3 +89,32 @@ if python3 "$root/bench/kalari-arm/runner.py" --live --tools "$tmp/bin" --openco
   echo 'live preflight accepted missing rg' >&2; exit 1
 fi
 grep -q 'needs executable rg' "$tmp/preflight.err"
+
+# A completed step over the soft cutoff stops the process group and is reported.
+touch "$tmp/bin/SPEND"
+python3 "$root/bench/kalari-arm/runner.py" --offline-fixture --tools "$tmp/bin" --opencode "$tmp/bin/opencode" --api-host 127.0.0.1 --result "$tmp/cutoff" >/dev/null
+python3 - "$tmp" <<'PYCODE'
+import json, pathlib, sys
+p=pathlib.Path(sys.argv[1]); m=json.loads((p/'cutoff/measures.json').read_text())
+assert m['cutoff_reason']=='spend_cutoff' and m['completed_steps']==2
+assert m['estimated_step_cost_usd'] >= .20
+PYCODE
+cutoff_child=$(cat "$tmp/bin/cutoff-child.pid")
+if kill -0 "$cutoff_child" 2>/dev/null && [ "$(ps -o stat= -p "$cutoff_child" | tr -d ' ')" != Z ]; then
+ echo 'cutoff left a descendant alive' >&2; exit 1
+fi
+rm "$tmp/bin/SPEND"
+# Silent process hits watchdog, not the spending cutoff.
+python3 "$root/bench/kalari-arm/runner.py" --offline-fixture --tools "$tmp/bin" --opencode "$tmp/bin/opencode" --api-host 127.0.0.1 --result "$tmp/watchdog" --timeout 1 >/dev/null
+python3 - "$tmp/watchdog/measures.json" <<'PYCODE'
+import json,sys
+m=json.load(open(sys.argv[1])); assert m['cutoff_reason']=='watchdog' and m['timed_out']
+PYCODE
+
+rm "$tmp/bin/HANG"
+touch "$tmp/bin/MALFORMED"
+python3 "$root/bench/kalari-arm/runner.py" --offline-fixture --tools "$tmp/bin" --opencode "$tmp/bin/opencode" --api-host 127.0.0.1 --result "$tmp/malformed" >/dev/null
+python3 - "$tmp/malformed/measures.json" <<'PYCODE'
+import json,sys
+assert json.load(open(sys.argv[1]))['cutoff_reason']=='invalid_telemetry'
+PYCODE

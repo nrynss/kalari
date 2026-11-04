@@ -57,3 +57,13 @@ not necessarily attributable to this session. The runner journals its own
 sandbox names and removes them after the session. First-v2 grading is still
 unimplemented. The first live attempt and its sanitized tool transcript are in
 `results/upgrade-one.md` and `results/upgrade-one-tools.jsonl`.
+
+The runner stops OpenCode after 60 seconds or when completed-step telemetry
+reaches an estimated $0.20, whichever happens first. The estimate counts
+uncached input, cache reads and writes at $0.15 per million and counts output
+plus reasoning at $0.60 per million; reasoning may be counted twice. Malformed
+step telemetry also stops the session. These are the project-recorded rates,
+not a verified provider-enforced spending cap. An in-flight request, delayed
+telemetry, Clef, price changes, and concurrent activity can put actual spending
+above the estimate. The runner terminates the process group and then removes
+its journaled sandboxes before grading.

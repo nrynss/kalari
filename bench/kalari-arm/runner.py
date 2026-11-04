@@ -28,7 +28,7 @@ p.add_argument('--api-host', required=True)
 p.add_argument('--api-port', type=int, default=18080)
 p.add_argument('--grade-port', type=int, default=18090)
 p.add_argument('--result', type=Path, required=True, help='new private result directory')
-p.add_argument('--timeout', type=int, default=1200)
+p.add_argument('--timeout', type=int, default=60)
 a = p.parse_args()
 # Fake mode only admits loopback and a fixture marker.
 if a.live == a.offline_fixture:
@@ -47,8 +47,8 @@ if a.offline_fixture and not (tools / '.kalari-offline-fixture').is_file():
     p.error('offline fake tools marker missing')
 if not opencode.is_file() or not os.access(opencode, os.X_OK):
     p.error('OpenCode must be executable')
-if not 1 <= a.timeout <= 1200:
-    p.error('timeout must be 1..1200 seconds')
+if not 1 <= a.timeout <= 60:
+    p.error('timeout must be 1..60 seconds')
 a.result.mkdir(mode=0o700, parents=True, exist_ok=False)
 result = a.result.resolve(strict=True)
 # Fixture subprocesses receive a small, explicit environment. This is not a
@@ -158,19 +158,60 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
             except ProcessLookupError: pass
         for sig in (signal.SIGTERM, signal.SIGINT):
             old_handlers[sig] = signal.signal(sig, stop_group)
+        # Costs are integer hundred-millionths of a dollar. Input, cache
+        # reads and writes cost 15 units/token; output and reasoning cost 60.
+        # Reasoning may already be included in output; double counting is
+        # intentional. This is a soft ceiling: a request already in flight
+        # and Clef spend are not visible in completed OpenCode step events.
+        cutoff_units = 20_000_000  # $0.20 at recorded list rates
+        spent_units = 0
+        cutoff_reason = None
+        steps = 0
+        offset = 0
+        partial = b''
         try:
-            try:
-                rc = proc.wait(timeout=a.timeout)
-            except subprocess.TimeoutExpired:
-                timed_out = True
-                try: os.killpg(proc.pid, signal.SIGTERM)
-                except ProcessLookupError: pass
-                try:
-                    rc = proc.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    try: os.killpg(proc.pid, signal.SIGKILL)
+            while True:
+                with events.open('rb') as stream:
+                    stream.seek(offset)
+                    block = stream.read()
+                    offset = stream.tell()
+                partial += block
+                lines = partial.split(b'\n')
+                partial = lines.pop()
+                for line in lines:
+                    try:
+                        event = json.loads(line)
+                        if event.get('type') != 'step_finish': continue
+                        tokens = event['part']['tokens']
+                        cache = tokens.get('cache') or {}
+                        counts = [tokens.get('input'), cache.get('read', 0), cache.get('write', 0), tokens.get('output'), tokens.get('reasoning', 0)]
+                        if any(type(n) is not int or n < 0 for n in counts):
+                            raise ValueError('invalid token count')
+                        spent_units += 15 * sum(counts[:3]) + 60 * sum(counts[3:])
+                        steps += 1
+                    except (ValueError, KeyError, TypeError, AttributeError):
+                        cutoff_reason = 'invalid_telemetry'
+                        break
+                if cutoff_reason is None and spent_units >= cutoff_units:
+                    cutoff_reason = 'spend_cutoff'
+                if cutoff_reason is None and time.monotonic() - start >= a.timeout:
+                    cutoff_reason = 'watchdog'
+                if cutoff_reason is not None:
+                    timed_out = cutoff_reason == 'watchdog'
+                    try: os.killpg(proc.pid, signal.SIGTERM)
                     except ProcessLookupError: pass
-                    rc = proc.wait()
+                    try: rc = proc.wait(timeout=2)
+                    except subprocess.TimeoutExpired:
+                        try: os.killpg(proc.pid, signal.SIGKILL)
+                        except ProcessLookupError: pass
+                        rc = proc.wait()
+                    break
+                if proc.poll() is not None:
+                    if events.stat().st_size > offset:
+                        continue
+                    rc = proc.returncode
+                    break
+                time.sleep(0.1)
         finally:
             # Reap any descendants still in this session's process group.
             try: os.killpg(proc.pid, signal.SIGKILL)
@@ -179,6 +220,8 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
         if interrupted['signal'] is not None:
             raise SystemExit(128 + interrupted['signal'])
     elapsed = time.monotonic() - start
+    if a.live:
+        cleanup_sandboxes()
     bad = 0
     with (result/'transcript.jsonl').open('w') as out:
         for line in events.open(errors='replace'):
@@ -189,9 +232,7 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
             out.write(json.dumps(sanitize(doc), ensure_ascii=True) + '\n')
     summary = execute([sys.executable, HERE/'summarize.py', result/'transcript.jsonl'], capture_output=True, text=True)
     measures = json.loads(summary.stdout)
-    measures.update({'elapsed_seconds': round(elapsed, 3), 'exit_code': rc, 'timed_out': timed_out, 'invalid_event_lines': bad, 'fixture': not a.live})
-    if a.live:
-        cleanup_sandboxes()
+    measures.update({'elapsed_seconds': round(elapsed, 3), 'exit_code': rc, 'timed_out': timed_out, 'invalid_event_lines': bad, 'fixture': not a.live, 'cutoff_reason': cutoff_reason, 'completed_steps': steps, 'estimated_step_cost_usd': spent_units / 100_000_000})
     grade = temp/'grade'; grade.mkdir()
     execute([HERE/'grade.sh', workspace, ROOT/'bench/harness/grade_runner.py', a.api_host, str(a.grade_port), grade])
     grade_file = grade/'result.jsonl'
