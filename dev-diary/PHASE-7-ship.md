@@ -93,11 +93,11 @@ Build a static Astro and Starlight documentation site in `site/` and serve it on
 
 ### T7.5a: Chaaya re-theme ★
 ```yaml
-requires:   [T5.6a]
+requires:   []
 fixture-ok: yes
 size:       S · mid
 owns:       web/site/, web/fixture/rendered/
-status:     not-started
+status:     claimed:t7-5a
 ```
 Apply the decided visual identity to the live console, ahead of the docs site. Copy SECTION A of `dev-diary/design/kalari-palette.css` (Laterite Pit and Ola Paper `:root` tokens) into `web/site/app.css`. Copy `dev-diary/design/favicon.svg` to `web/site/favicon.svg` and replace the inline header SVG in `web/site/index.html`, `web/site/session.html`, and `web/site/run.html` with the wordmark snippet in `dev-diary/design/README.md`. Regenerate with `node web/fixture/render.mjs`. No new icons, colors, or diagrams. No `/docs/` link here; that ships with T7.5 once `site/` exists.
 
