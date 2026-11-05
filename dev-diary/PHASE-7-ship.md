@@ -4,6 +4,10 @@ Everything the submission needs. Most of it is the user's.
 
 Read first: [`../product.md`](../product.md) (Hackathon rules), [`../bench/RESULTS.md`](../bench/RESULTS.md), [`design/README.md`](design/README.md) (for T7.5).
 
+## Documentation style (all P7 writing)
+
+Keep every sentence within 30 words. Never use an em dash or a semicolon. Prefer active voice. Use plain words. Keep comma-separated phrases to a minimum. These rules cover the README, the video script, the slides, the diary, and every report.
+
 ---
 
 ### T7.1: The README ★
