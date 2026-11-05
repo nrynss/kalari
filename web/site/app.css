@@ -4,28 +4,41 @@
 
 :root {
   color-scheme: light;
+  /* Ola palm-leaf parchment surfaces */
   --paper: #f5f1e8;
   --paper-2: #ece6da;
   --paper-3: #e4ddd0;
+  /* Charcoal soot typography */
   --ink: #171a1c;
   --ink-2: #3f4347;
   --muted: #64615b;
+  /* Architectural rules */
   --rule: #d6d0c4;
   --rule-strong: #b9b1a2;
-  --accent: #8d3b2d;
-  --accent-dark: #6f2c21;
+  /* Laterite earth red (pit perimeter & containment stamp) */
+  --accent: #a63a2b;
+  --accent-dark: #882c20;
+  /* Gold / brass urumi blade (candidate highlights & active indicators) */
+  --brass: #d99b38;
+  /* Semantic pass (Malabar evergreen) & fail (Laterite crimson) */
   --pass: #1f5a46;
-  --fail: #8d2f2f;
-  --dark: #15191c;
-  --dark-2: #1d2226;
+  --fail: #a63a2b;
+  /* Sunken dark training arena panel */
+  --dark: #121514;
+  --dark-2: #1b201e;
   --dark-ink: #f2eee5;
   --dark-muted: #b9b3a8;
   --dark-rule: #3a4045;
+  /* Clef model-opinion callout (distinct from measured verdicts) */
   --opinion-bg: #e9e4ee;
   --opinion-ink: #3b3345;
   --opinion-rule: #c9c0d4;
+  /* Warning callout */
   --warning-bg: #f2e5d3;
   --warning-rule: #c39a6b;
+  /* Hard offset shadow token */
+  --shadow: #090b0c;
+  /* System / editorial font stacks (Chaaya loads no external fonts per CSP) */
   --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;

@@ -65,7 +65,7 @@
     }
   },
   "sha256": {
-    "app.css": "17e23d5d048f7eb123026e5b10c09600f8997c8d0fa4a982345b766325d16e37",
+    "app.css": "13818231f4cdd493d2d93e17fd7278e65701087cbf866a039438f465cffdfe48",
     "app/api.mjs": "1537f7279829b14192541dada9fe456cdc1d92243e69469b43fc174eb9617cd9",
     "app/boot.mjs": "52ed3a653d7826d3d9080c9d50aedee1570a3bce7fba91bd69bb627d9253ce81",
     "app/format.mjs": "d6b60b8861907518dd39cae928b9e13250f61d311f111845d8524b6ca8710975",
@@ -74,10 +74,10 @@
     "app/run.mjs": "714aa943c55dc4244ef1fc1fe8730256cf84e220d3ef3a23226e4a040688c4b1",
     "app/session.mjs": "1ed6aec3c10f3b7fb641c8de9efb3a35b1639d477d09e99e0bb612402dcecc4f",
     "app/views.mjs": "38e2f300163e026a1b56893c0240bcae672a26a68b9744c9a3f139b85c85541c",
-    "favicon.svg": "7a69c115330c1927f6667c41ad4f0bd403e1162d221c7581db98a491fb522b0a",
-    "index.html": "d10fd5ceae2bd6b07fb5fcf7d83218445e47a04b3f2bd282bd46f8c248665aa0",
-    "run.html": "9311bd451a6cfb574a0a5260878a1a5871fe9fbb117f79d454ed61f3dfd4b2a4",
-    "session.html": "d772f9cbc09f0512114df4ad4501e1641c1041291f69b6a20191d07226489e8f"
+    "favicon.svg": "39bc2680150226e985565c8138030fe3dc788427d3b3a04c0ae934c8e6e9f0d2",
+    "index.html": "6bcb7d0247e0ee2b95379540bae751daeed9d9db55e14b0eea81f71cf7156067",
+    "run.html": "bf66a88983e33abdc0616c71c04f7fe331b89202138204b38d88844daf9dc799",
+    "session.html": "c37282953c4788efd4c979aeb5ae99fad9fc86dd5eead87badcc3e24aa2e594d"
   },
   "inputs": {
     "path": "web/fixture/rendered/inputs.json",

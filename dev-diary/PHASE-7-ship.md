@@ -97,11 +97,13 @@ requires:   []
 fixture-ok: yes
 size:       S · mid
 owns:       web/site/, web/fixture/rendered/
-status:     claimed:t7-5a
+status:     in-review:t7-5a
 ```
 Apply the decided visual identity to the live console, ahead of the docs site. Copy SECTION A of `dev-diary/design/kalari-palette.css` (Laterite Pit and Ola Paper `:root` tokens) into `web/site/app.css`. Copy `dev-diary/design/favicon.svg` to `web/site/favicon.svg` and replace the inline header SVG in `web/site/index.html`, `web/site/session.html`, and `web/site/run.html` with the wordmark snippet in `dev-diary/design/README.md`. Regenerate with `node web/fixture/render.mjs`. No new icons, colors, or diagrams. No `/docs/` link here; that ships with T7.5 once `site/` exists.
 
 **Done when:** `./web/check.sh` passes with the new theme; the rendered snapshots match; the privacy scan stays clean. No live spend.
+
+Notes (t7-5a). Replaced the `:root` block in `web/site/app.css` with SECTION A from `dev-diary/design/kalari-palette.css`. Kept every other rule unchanged. Added back `--brass` and `--shadow` tokens from SECTION A. No rule used a removed token, so no rule needed a rewrite. Copied `dev-diary/design/favicon.svg` to `web/site/favicon.svg`. Replaced the inline header mark in `index.html`, `session.html`, and `run.html` with the `24x24` wordmark snippet. Kept the CSP meta tags and the nav unchanged. Added no `/docs/` link. Ran `node web/fixture/render.mjs`. Only `manifest.json` hashes changed. The rendered page output did not change. Ran `./web/check.sh`. It passed. Ran `./tools/check.sh`. It passed. The accent moves from muted rust to laterite red. The fail color now matches the accent. The dark panel turns a touch greener. The header mark shows the pit, the brass coil, and the staff pin. The favicon shows the compact pit emblem.
 
 ---
 
