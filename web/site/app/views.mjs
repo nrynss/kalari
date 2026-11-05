@@ -430,7 +430,6 @@ function detailsTables(records, runIds) {
   return `<details class="more">
     <summary>Tokens, time, cost and the grader</summary>
     <div class="more-body">
-      <h5>Tokens and time</h5>
       <div class="table-wrap"><table class="measures-table">
         <caption class="visually-hidden">Tokens and time, one row per session.</caption>
         <thead><tr><th scope="col">Run</th><th scope="col" class="num">Tokens in</th><th scope="col" class="num">Tokens out</th><th scope="col" class="num">Time stuck</th><th scope="col" class="num">Cost</th><th scope="col" class="num">Session cap</th></tr></thead>
@@ -438,8 +437,7 @@ function detailsTables(records, runIds) {
       </table></div>
       ${
         graded.length
-          ? `<h5>The hidden grader</h5>
-      <div class="table-wrap"><table class="measures-table">
+          ? `<div class="table-wrap"><table class="measures-table">
         <caption class="visually-hidden">The hidden grader, one row per session.</caption>
         <thead><tr><th scope="col">Run</th><th scope="col">Grade</th><th scope="col" class="num">Records</th><th scope="col" class="num">Missing</th><th scope="col" class="num">Extra</th><th scope="col" class="num">Duplicates</th><th scope="col" class="num">Mismatched</th></tr></thead>
         <tbody>${gradeRows(records, runIds)}</tbody>
@@ -475,8 +473,8 @@ function conditionSection(conditionGroup, runIds, tone = "valid") {
             <h4>${h(upgradeLabel(upgrade))} <span class="format">${h(upgradeFormat(upgrade))}</span></h4>
             <p>${h(
               upgrade === "payouts"
-                ? "The REST ledger. The old endpoint returns every payout in one response. The new one is a windowed export."
-                : "The GraphQL batches. The old schema returns a plain list. The new one is a Relay-style connection.",
+                ? "The old endpoint returns every payout in one response. The new one is a windowed export."
+                : "The old schema returns a plain list. The new one is a Relay-style connection.",
             )}</p>
           </div>
           ${runTally(records, runIds)}
@@ -1019,7 +1017,7 @@ function heroSection({ hasBenchmark, hasFrozen, hasFrozenRows, sections }) {
       ? `<p class="status-line"><span class="status-dot is-live" aria-hidden="true"></span>Frozen comparison published</p>`
       : hasFrozenRows
         ? `<p class="status-line"><span class="status-dot is-pilot" aria-hidden="true"></span>Some frozen rows are published. The comparison needs condition five and condition three in one upgrade.</p>`
-        : `<p class="status-line"><span class="status-dot is-pilot" aria-hidden="true"></span>Pilot results published. The frozen comparison is pending.</p>`;
+        : `<p class="status-line"><span class="status-dot is-pilot" aria-hidden="true"></span>Pilot results published. The frozen comparison is not yet published.</p>`;
   return `<header class="judges-hero">
     <h1>For judges: start here.</h1>
     <p class="deck">Kalari rehearses an API upgrade in a contained arena. A proved gate checks each sandbox call. A hidden grader decides whether the upgrade works. Kalari writes a lesson from what the verified run showed.</p>
@@ -1123,7 +1121,7 @@ export function judgesView({
       hasBenchmark
         ? `<section id="baseline" class="section">
             <h2>Every condition in this fixture</h2>
-            <p>Each row is one session in the store. The numbers are the committed measures. The invalid rows stay for the record and cannot count.</p>
+            <p>Each row is one session in the store. The numbers are the committed measures. Right first time means the first run against the new endpoint passed. Sandbox runs count consumer runs, time stuck counts runs ended by a timeout, and lost or duplicated records come from the hidden grade. Invalid rows stay visible for an open record, and they enter no totals.</p>
             ${baseline}
           </section>`
         : ""

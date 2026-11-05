@@ -5,7 +5,7 @@
   "pages": {
     "judges": {
       "path": "web/fixture/rendered/judges.html",
-      "sha256": "861db5efd47da25212d1f66077da68fda2804e8cfea33a1801d1730178686688"
+      "sha256": "a487080c7fb86920b6b6d57a52d6c79664573991cc4184e0acd9a81b349767bf"
     },
     "judges-empty": {
       "path": "web/fixture/rendered/judges-empty.html",
@@ -17,19 +17,19 @@
     },
     "judges-extra-run": {
       "path": "web/fixture/rendered/judges-extra-run.html",
-      "sha256": "bb8c38cea9aefe0f330a78797831c9e20c2487f725bee0047f71148b70f0d623"
+      "sha256": "c1bff2390b2a6eb9d6d50887846cd781647d341acf5c94540de64d03b1b769c6"
     },
     "judges-frozen-after": {
       "path": "web/fixture/rendered/judges-frozen-after.html",
-      "sha256": "23887f00a0c48cdb0ebee8d40f46c52c251ba5e71bf397542f47e6c6fbc600f4"
+      "sha256": "e39ec8a56db9695c1066df452cdcb04d01f7d7c4f3b10a703e8de16abdcbf81a"
     },
     "judges-frozen-pair": {
       "path": "web/fixture/rendered/judges-frozen-pair.html",
-      "sha256": "4ae386aace71cb0863be09b819f969ff78e02e875b2de8cc71a86cc96df38440"
+      "sha256": "dfe6489211affcb5d9b2fb4e14fc3bf3d8b610e955b0eb1677ddf47f36134b85"
     },
     "judges-frozen-split": {
       "path": "web/fixture/rendered/judges-frozen-split.html",
-      "sha256": "8825957c1fe83e3b759b58cfa7f586a456403d94ad4b8987cc2a1a63b8872a4e"
+      "sha256": "31c036c9d1d9b792dd77c3181a941c5a204aa55c2924f479974bf786ced9662d"
     },
     "session": {
       "path": "web/fixture/rendered/session.html",
@@ -37,11 +37,11 @@
     },
     "session-frozen": {
       "path": "web/fixture/rendered/session-frozen.html",
-      "sha256": "8d90e03fb102f81b5074af68e662180425cc0e14be2d8055fdb30affb85f1616"
+      "sha256": "879a885dbdbffa1e98238304b03a9173e6bec86437af28de5049e0eee4e03cb0"
     },
     "session-redaction": {
       "path": "web/fixture/rendered/session-redaction.html",
-      "sha256": "b44e83d89e86990ae8dc3ecb3c71366021fa011c6bc01a3c0914e7049c150841"
+      "sha256": "00c5dde7ea094a9d55c098c25eec6ae7e5fbdfec0c511284d812995d7220e083"
     },
     "run": {
       "path": "web/fixture/rendered/run.html",
@@ -55,33 +55,25 @@
       "path": "web/fixture/rendered/run-illustrative.html",
       "sha256": "40269b4f197e8a47a9f8aad2813d992896b9d417da33cc379eb2c6d07f43c5d2"
     },
-    "run-containment": {
-      "path": "web/fixture/rendered/run-containment.html",
-      "sha256": "b59586916d68629407524c8b3c4f3876a19ea801fa1bba31707fb2155d801cd7"
-    },
-    "run-containment-earlier": {
-      "path": "web/fixture/rendered/run-containment-earlier.html",
-      "sha256": "02af4a81ca0bbc3cdbd49ead76d25d89cce3833c1333de8890ba229916395b52"
-    },
     "run-endpoint": {
       "path": "web/fixture/rendered/run-endpoint.html",
       "sha256": "8df8fcce9bb90da89730e7c52b1bec76f7fc9102a9605cb37e91f3fd323ad1c1"
     },
     "run-redaction": {
       "path": "web/fixture/rendered/run-redaction.html",
-      "sha256": "56b1f9f98f520c34909866368a62e8771718c2224b1a9bf35d6f573b3d90cd55"
+      "sha256": "366b773cf214a0650326304fd7a8f856d89f665b483cd09f5cf02d26665bb766"
     }
   },
   "sha256": {
-    "app.css": "898fcaf61282fc74713e8d266ce39133a36ab1cd543a3539896cde1d893afdaf",
-    "app/api.mjs": "68c537c80f95e39738b6b089ea1a6953558dbd89aef87176e2707001d1050516",
+    "app.css": "32c1c0ad0f7b5296e00c40a03121c84f85372146ac00be989907bcc1d63feeaa",
+    "app/api.mjs": "1537f7279829b14192541dada9fe456cdc1d92243e69469b43fc174eb9617cd9",
     "app/boot.mjs": "52ed3a653d7826d3d9080c9d50aedee1570a3bce7fba91bd69bb627d9253ce81",
     "app/format.mjs": "d6b60b8861907518dd39cae928b9e13250f61d311f111845d8524b6ca8710975",
     "app/judges.mjs": "a130bc07c443a17e3532ad82a40f553e9d9944774b5ac96ddc13deb4d1d9e744",
     "app/labels.mjs": "4352e35e17bc43ef5247269d0b600ac330c97f8955eb49dbae9e462ae6291f4a",
     "app/run.mjs": "714aa943c55dc4244ef1fc1fe8730256cf84e220d3ef3a23226e4a040688c4b1",
     "app/session.mjs": "1ed6aec3c10f3b7fb641c8de9efb3a35b1639d477d09e99e0bb612402dcecc4f",
-    "app/views.mjs": "490841490a2778737f5aefbafc749cd980042bfbb6671ea8caec698c914cf618",
+    "app/views.mjs": "dbf3cfe79687afb16e887d854a599d7c8389d22a0c7ab2f483765fc1c35ef361",
     "favicon.svg": "39bc2680150226e985565c8138030fe3dc788427d3b3a04c0ae934c8e6e9f0d2",
     "index.html": "6bcb7d0247e0ee2b95379540bae751daeed9d9db55e14b0eea81f71cf7156067",
     "run.html": "bf66a88983e33abdc0616c71c04f7fe331b89202138204b38d88844daf9dc799",
@@ -89,10 +81,10 @@
   },
   "inputs": {
     "path": "web/fixture/rendered/inputs.json",
-    "sha256": "7dcf2384527cd3b544fd04439cd7313e2a7c6e21e8e20f601f76adccb7bf089a"
+    "sha256": "824f7eedeeee6479c57b97875c8979ccc6a0bdea1dcdfea245f3d37971c9815e"
   },
   "evidence": {
     "path": "web/fixture/evidence.jsonl",
-    "sha256": "6b653282c3cb27aa10fa86c9291162e7dc40df0e50e92444334c4281f3cb7e5f"
+    "sha256": "d0847b63d95e1637360623c9170e958bef168af01cb507212edf0db6ca5fd59d"
   }
 }

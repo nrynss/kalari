@@ -21,7 +21,7 @@
     </section>
     <section id="baseline" class="section">
             <h2>Every condition in this fixture</h2>
-            <p>Each row is one session in the store. The numbers are the committed measures. The invalid rows stay for the record and cannot count.</p>
+            <p>Each row is one session in the store. The numbers are the committed measures. Right first time means the first run against the new endpoint passed. Sandbox runs count consumer runs, time stuck counts runs ended by a timeout, and lost or duplicated records come from the hidden grade. Invalid rows stay visible for an open record, and they enter no totals.</p>
 
     <h2>Frozen sessions</h2><div class="condition-list"><section class="condition">
     <header class="condition-head">
@@ -31,7 +31,7 @@
     <div class="upgrade-block">
           <div class="upgrade-head">
             <h4>Merchant payout ledger <span class="format">REST</span></h4>
-            <p>The REST ledger. The old endpoint returns every payout in one response. The new one is a windowed export.</p>
+            <p>The old endpoint returns every payout in one response. The new one is a windowed export.</p>
           </div>
           <ul class="tally" aria-label="The sessions in this group"><li><a class="tally-dot is-pass is-first" href="run.html?id=fixture-c5-payouts-r1" data-run-link="fixture-c5-payouts-r1" aria-label="Run one: passed, right first time"><span class="tally-mark" aria-hidden="true"></span><span class="visually-hidden">Run one: passed, right first time</span></a></li></ul>
           <p class="tally-note">Every session passed, and every one was right first time.</p>
@@ -51,7 +51,6 @@
           <details class="more">
     <summary>Tokens, time, cost and the grader</summary>
     <div class="more-body">
-      <h5>Tokens and time</h5>
       <div class="table-wrap"><table class="measures-table">
         <caption class="visually-hidden">Tokens and time, one row per session.</caption>
         <thead><tr><th scope="col">Run</th><th scope="col" class="num">Tokens in</th><th scope="col" class="num">Tokens out</th><th scope="col" class="num">Time stuck</th><th scope="col" class="num">Cost</th><th scope="col" class="num">Session cap</th></tr></thead>
@@ -64,7 +63,6 @@
         <td class="num" data-label="Session cap"><span class="measure-unknown" title="The record does not carry this measure.">unknown</span></td>
       </tr></tbody>
       </table></div>
-      <h5>The hidden grader</h5>
       <div class="table-wrap"><table class="measures-table">
         <caption class="visually-hidden">The hidden grader, one row per session.</caption>
         <thead><tr><th scope="col">Run</th><th scope="col">Grade</th><th scope="col" class="num">Records</th><th scope="col" class="num">Missing</th><th scope="col" class="num">Extra</th><th scope="col" class="num">Duplicates</th><th scope="col" class="num">Mismatched</th></tr></thead>

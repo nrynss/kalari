@@ -596,6 +596,7 @@ p {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   text-align: right;
+  white-space: nowrap;
 }
 
 .loss-grid {
@@ -692,7 +693,8 @@ p {
 }
 
 table {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
   line-height: 1.4;
@@ -724,6 +726,7 @@ th.num,
 td.num {
   text-align: right;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .run-cell code {
@@ -739,6 +742,7 @@ td.num {
   text-decoration-style: dotted;
   text-decoration-color: var(--rule-strong);
   text-decoration-thickness: 1px;
+  white-space: nowrap;
 }
 
 .run-link:hover {
