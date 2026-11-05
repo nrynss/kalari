@@ -163,7 +163,7 @@ requires:   [T5.2b]
 fixture-ok: yes
 size:       XS · user
 owns:       bench/README.md, bench/FROZEN.md, product.md (comparison measures narrative only)
-status:     not-started
+status:     claimed:t5-3
 ```
 The user has chosen the pair: payouts B1+B2+B4+B5, then settlements B1+B2+B3+B5. The report leads with cost, attempts and containment, retains verdicts and right-first-time, and reports HTTP retry attempts separately from consumer sandbox runs. B5-in-both is the final hardness adjustment; T5.2b measures it rather than triggering further changes.
 
