@@ -197,7 +197,7 @@ requires:   [T5.3]
 fixture-ok: no
 size:       M · mid
 owns:       bench/runs/reference/
-status:     in-review:t5-5
+status:     done
 ```
 
 Conditions 1, 2, 3 and 6, five repeats each, on the frozen pair. Only T5.2b's harder-pair rows may count, and only if they were made on the frozen files (the hashes decide). The original T5.2 rows belong to the old pair and cannot count.

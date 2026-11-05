@@ -147,13 +147,15 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P2 | 7 / 7 | T2.1 through T2.6 done. The Microsandbox-only exit line stays open because the Docker fallback exists |
 | P3 | 7 / 7 | T3.1 through T3.4 done, including T3.1a, T3.2b and T3.3b |
 | P4 | 13 / 13 | All done. T4.6b adds the trusted retry trace and lesson. T4.7c closed the production memory path with the observer refused and the harness-only rehearsal |
-| P5 | 6 / 9 | T5.1 through T5.3 done. Pair frozen with 19 hashes. T5.4 and T5.5 arms are next |
+| P5 | 7 / 9 | T5.1 through T5.5 done
 | P6 | 3 / 3 | All done. T6.1 and T6.2 built the API and the judges page. T6.3 put the demo live over HTTPS |
 | P7 | 0 / 5 | Waits for P5, P6 |
 
 ---
 
 ## Handoff Log
+
+- **T5.5 closed.** Reference arm complete: 40 frozen rows under `bench/runs/reference/`, byte-identical to T5.2b's harder-pair condition rows, frozen hashes verified before and after. Zero live spend of the $10 cap — the task permits counting harder-pair rows made on the frozen files, so no re-runs were needed. Old pilot untouched, gate passes. T5.4 Kalari arm still running.
 
 - **T5.3 closed.** The harder pair is frozen (payouts B1+B2+B4+B5, settlements B1+B2+B3+B5) with 19 hashes in `bench/FROZEN.md`, all recomputed clean. The baseline passed all 50 harder-pair sessions first time, so the report leads with cost, attempts, and containment. T5.4 and T5.5 arms are unlocked.
 
