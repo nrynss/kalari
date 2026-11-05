@@ -155,6 +155,8 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 
 ## Handoff Log
 
+- **Hero landed, showcase records shipped.** The judges page now opens with the measured comparison (4.2x cheaper, 3.3x faster per session, zero stuck time on the Kalari side), then the silent-loss reference run and the cap-kill containment runs. All figures render from the records. Containment and reference records were merged into the live store; every hero link resolves on the demo. A duplicate showcase branch and untracked `bench/showcase/` drafts from another session were left untouched.
+
 - **Showcase evidence shipped (no task).** The hero links the cap-kill moment and the reference run, whose records lived only in the fixture store (`tmp.XX*` containment runs, `reference-paging-fix`). Extracted those 9 records to `bench/showcase-evidence.jsonl`, merged them into the live store idempotently (lesson-policy + 60 benchmark preserved), restarted `kalari-api`, and verified all three run links return 200 with the frozen comparison intact. No inference, no spend.
 
 - **Judges page polish landed (no task).** Table values and run links hold one line, tables scroll instead of squeezing, frozen wording unified, right-first-time defined once, invalid rows explained as open record excluded from totals, triple naming and stacked subheads removed, session cap kept as a column (the check requires it), measure legend added. Verified by re-render plus `web/check.sh` and the full gate.
