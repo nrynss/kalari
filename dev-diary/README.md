@@ -16,7 +16,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0 done. P1 done. P2 7/7. P3 7/7. P4 13/13. P5 8/9. P6 3/3. T5.4 done: 20 Kalari-arm rows, all PASS. Only T5.6 remains before P7.
+**Current status:** P0 done. P1 done. P2 7/7. P3 7/7. P4 13/13. P5 10/10. P6 4/4. P7 1/6. Live demo serves the frozen comparison. T7.5 docs site in progress. T7.1 and T7.2 ready.
 
 ---
 
