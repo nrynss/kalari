@@ -1,0 +1,27 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "providers": {
+    "vultr": {
+      "name": "Vultr Serverless Inference",
+      "env": ["VULTR_INFERENCE_API_KEY"],
+      "package": "@opencode/ai/providers/openai-compatible",
+      "settings": { "baseURL": "https://api.vultrinference.com/v1" },
+      "body": { "reasoning_effort": "low" },
+      "models": { "qwen3.8-flash-next": { "name": "Qwen3.8 Flash" } }
+    }
+  },
+  "model": "vultr/qwen3.8-flash-next",
+  "mcp": {
+    "servers": {
+      "microsandbox": { "type": "local", "command": ["npx", "-y", "microsandbox-mcp@0.7.13"] }
+    }
+  },
+  // All code runs in microVMs: no host shell, no web, nothing outside the project.
+  "permissions": [
+    { "action": "shell", "resource": "*", "effect": "deny" },
+    { "action": "webfetch", "resource": "*", "effect": "deny" },
+    { "action": "websearch", "resource": "*", "effect": "deny" },
+    { "action": "external_directory", "resource": "*", "effect": "deny" },
+    { "action": "microsandbox_runtime_install", "resource": "*", "effect": "deny" }
+  ]
+}

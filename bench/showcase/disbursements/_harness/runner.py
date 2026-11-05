@@ -41,6 +41,7 @@ p.add_argument('--timeout', type=int, default=600)
 p.add_argument('--suite', choices=('disbursements',), default='disbursements')
 p.add_argument('--lambo-db', type=Path, required=True)
 p.add_argument('--repo-scope', default='live')
+p.add_argument('--model', required=True)
 a = p.parse_args()
 # Fake mode only admits loopback and a fixture marker.
 if a.live == a.offline_fixture:
@@ -164,14 +165,14 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
         atexit.register(safe_cleanup_sandboxes)
         tools = guarded
         env['PATH'] = str(tools) + ':/usr/local/bin:/usr/bin:/bin'
-    execute([sys.executable, HERE/'session.py', '--directory', session, '--workspace-source', a.workspace_source, '--tools', tools, '--api-host', a.api_host, '--api-port', str(a.api_port), '--suite', a.suite, '--lambo-db', a.lambo_db, '--repo-scope', a.repo_scope], stdout=subprocess.DEVNULL)
+    execute([sys.executable, HERE/'session.py', '--directory', session, '--workspace-source', a.workspace_source, '--tools', tools, '--api-host', a.api_host, '--api-port', str(a.api_port), '--suite', a.suite, '--lambo-db', a.lambo_db, '--repo-scope', a.repo_scope, '--model', a.model], stdout=subprocess.DEVNULL)
     execute([tools/'lambo', 'provision', '--config', session/'lambo.toml'], stdout=subprocess.DEVNULL)
     setup = json.loads((session/'session.json').read_text())
     diff = execute([tools/'vimanam', 'diff', '--format', 'json', setup['old_spec'], setup['new_spec']], capture_output=True, text=True)
     for kind in sorted({item['kind'] for item in json.loads(diff.stdout)['changes']}):
         execute([tools/'lambo', 'derive', '--config', session/'lambo.toml', '--session', 'kalari-live', '--agent', 'kalari-live', '--content', kind, '--kind', 'resource'], stdout=subprocess.DEVNULL)
     xdg = temp/'xdg'
-    execute([sys.executable, HERE/'prepare.py', '--directory', xdg, '--kalari', tools/'kalari', '--config', session/'config.json', '--session', session/'session.json'], stdout=subprocess.DEVNULL)
+    execute([sys.executable, HERE/'prepare.py', '--directory', xdg, '--kalari', tools/'kalari', '--config', session/'config.json', '--session', session/'session.json', '--model', a.model], stdout=subprocess.DEVNULL)
     env.update({'OPENCODE_CONFIG': str(xdg/'opencode.json'), 'XDG_DATA_HOME': str(xdg/'data'), 'XDG_STATE_HOME': str(xdg/'state'), 'XDG_CACHE_HOME': str(xdg/'cache'), 'XDG_CONFIG_HOME': str(xdg/'config')})
     (xdg/'config').mkdir(mode=0o700)
     ver = execute([opencode, '--version'], capture_output=True, text=True).stdout.strip()

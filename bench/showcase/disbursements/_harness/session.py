@@ -30,6 +30,7 @@ p.add_argument('--key-env', default='VULTR_INFERENCE_API_KEY')
 p.add_argument('--suite', choices=sorted(SUITES), default='disbursements')
 p.add_argument('--lambo-db', type=Path, required=True)
 p.add_argument('--repo-scope', default='live')
+p.add_argument('--model', required=True)
 a = p.parse_args()
 import ipaddress
 host = str(ipaddress.IPv4Address(a.api_host))
@@ -55,7 +56,7 @@ lambo_db.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
 (root / 'lambo.toml').write_text('promotion_policy = "Solo"\n[store]\nkind = "sqlite"\npath = '+json.dumps(str(lambo_db))+'\n[embedder]\nkind = "fixture"\n[serve]\ndefault_session = "kalari-live"\n')
 caps = {'timeout_ms': 30000, 'output_cap_bytes': 65536, 'memory_mib': 512}
 net = [{'host': host, 'port': a.api_port}]
-endpoint = {'endpoint': 'https://api.vultrinference.com/v1', 'model': 'deepseek-v4.1-flash-1017', 'api_key_env': a.key_env}
+endpoint = {'endpoint': 'https://api.vultrinference.com/v1', 'model': a.model, 'api_key_env': a.key_env}
 config = {'models': endpoint, 'decisions': dict(endpoint, endpoint='https://api.vultrinference.com/v1/systemone', model='clef'), 'sandbox': {'backend': 'microsandbox', 'caps': caps, 'allowlist': net}, 'lambo': {'command': [str(tools / 'lambo'), 'serve'], 'config_path': str(root / 'lambo.toml')}}
 session = {'session_id': 'live', 'repo_scope': a.repo_scope, 'workspace': str(root / 'candidate'), 'old_spec': str(root / 'candidate' / suite['old_spec']), 'new_spec': str(root / 'candidate' / suite['new_spec']), 'baseline': {'workspace': str(root / 'baseline'), 'command': ['python3', str(root / 'baseline' / suite['consumer']), '--base-url', f'http://{host}:{a.api_port}', '--out', suite['artifact']], 'caps': caps, 'allowlist': net}, 'check_workspace': str(root / 'checks'), 'evidence_workspace': str(root / 'evidence'), 'artifact': suite['artifact'], 'aashaan': str((tools / 'kalari-aashaan').resolve(strict=True)), 'tool_path': str(tools)+':/usr/local/bin:/usr/bin:/bin'}
 for name, doc in (('config.json', config), ('session.json', session)):

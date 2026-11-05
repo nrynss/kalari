@@ -12,13 +12,21 @@ umask 022
 
 REPEAT=""
 TIMEOUT=600
+MODEL=""
+LABEL=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --repeat) REPEAT=${2:?}; shift 2 ;;
     --timeout) TIMEOUT=${2:?}; shift 2 ;;
-    *) echo "usage: run-kalari.sh --repeat N [--timeout S]" >&2; exit 2 ;;
+    --model) MODEL=${2:?}; shift 2 ;;
+    --label) LABEL=${2:?}; shift 2 ;;
+    *) echo "usage: run-kalari.sh --repeat N --model M --label L [--timeout S]" >&2; exit 2 ;;
   esac
 done
+if [[ -z "$MODEL" || -z "$LABEL" ]]; then
+  echo "--model and --label are required" >&2; exit 2
+fi
+case "$LABEL" in *[!a-zA-Z0-9._-]*) echo "bad label" >&2; exit 2 ;; esac
 case "$REPEAT" in 1|2|3|4|5) ;; *) echo "repeat must be 1..5" >&2; exit 2 ;; esac
 
 if [[ ${VULTR_INFERENCE_API_KEY:-} && ${#VULTR_INFERENCE_API_KEY} -ge 8 ]]; then
@@ -32,7 +40,7 @@ if [[ ${#VULTR_INFERENCE_API_KEY} -lt 8 ]]; then
   exit 1
 fi
 
-DEST=bench/showcase/disbursements/runs/kalari/r${REPEAT}.json
+DEST=bench/showcase/disbursements/runs/kalari/${LABEL}.json
 if [[ -e "$DEST" ]]; then
   echo "refusing to overwrite $DEST" >&2
   exit 1
@@ -53,9 +61,11 @@ ssh -o BatchMode=yes kalari 'mkdir -p ~/kalari-showcase/bin ~/kalari-showcase/st
 rsync -a --exclude runs bench/showcase/disbursements/ kalari:kalari-showcase/stage/bench/showcase/disbursements/
 rsync -a bench/prompts/upgrade.txt kalari:kalari-showcase/stage/bench/prompts/
 # The frozen helpers are staged unchanged next to the adapted copies in the showcase _harness.
-rsync -a bench/runs/kalari/_harness/prepare.py bench/runs/kalari/_harness/summarize.py \
+# The showcase _harness rsync above already carries its adapted prepare.py and to_result.py;
+# only the unchanged frozen helpers are staged here.
+rsync -a bench/runs/kalari/_harness/summarize.py \
   bench/runs/kalari/_harness/bootstrap_proxy.py bench/runs/kalari/_harness/grade.sh \
-  bench/runs/kalari/_harness/grade_runner.py bench/runs/kalari/_harness/to_result.py \
+  bench/runs/kalari/_harness/grade_runner.py \
   kalari:kalari-showcase/stage/bench/showcase/disbursements/_harness/
 scp -q .lake/build/bin/kalari .lake/build/bin/kalari-aashaan kalari:kalari-showcase/bin/
 ssh -o BatchMode=yes kalari 'chmod +x ~/kalari-showcase/stage/bench/showcase/disbursements/_harness/remote-kalari.sh ~/kalari-showcase/bin/kalari ~/kalari-showcase/bin/kalari-aashaan
@@ -68,7 +78,7 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"; unset VULTR_INFERENCE_API_KEY' EXIT
 set +e
 printf '%s\n' "$VULTR_INFERENCE_API_KEY" | ssh -o BatchMode=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=80 \
-  kalari 'bash ~/kalari-showcase/stage/bench/showcase/disbursements/_harness/remote-kalari.sh --repeat '"$REPEAT"' --timeout '"$TIMEOUT" \
+  kalari 'bash ~/kalari-showcase/stage/bench/showcase/disbursements/_harness/remote-kalari.sh --repeat '"$REPEAT"' --timeout '"$TIMEOUT"' --model '"$MODEL" \
   > "$tmp/remote.out" 2> "$tmp/remote.err"
 remote_rc=$?
 set -e
@@ -103,7 +113,7 @@ mkdir -p "$tmp/got"
 scp -o BatchMode=yes -r "kalari:kalari-showcase/runs/$run_id/result" "$tmp/got/result"
 scp -o BatchMode=yes "kalari:kalari-showcase/runs/$run_id/cleanup.json" "$tmp/got/cleanup.json" 2>/dev/null || true
 
-python3 bench/runs/kalari/_harness/to_result.py --run-dir "$tmp/got/result" --meta "$tmp/got/result/meta.json" > "$tmp/final.json"
+python3 bench/showcase/disbursements/_harness/to_result.py --run-dir "$tmp/got/result" --meta "$tmp/got/result/meta.json" > "$tmp/final.json"
 python3 - "$tmp/final.json" "$DEST" << 'PY'
 import json, re, sys
 key = None
@@ -133,5 +143,5 @@ print(json.dumps({"result": sys.argv[2], "verdict": doc["measures"]["verdict"],
                   "records_mismatched": doc.get("records_mismatched"),
                   "lessons": len(doc.get("lessons_published") or [])}))
 PY
-cp "$tmp/got/result/transcript.jsonl" "bench/showcase/disbursements/runs/kalari/r${REPEAT}.transcript.jsonl"
-chmod 600 "bench/showcase/disbursements/runs/kalari/r${REPEAT}.transcript.jsonl"
+cp "$tmp/got/result/transcript.jsonl" "bench/showcase/disbursements/runs/kalari/${LABEL}.transcript.jsonl"
+chmod 600 "bench/showcase/disbursements/runs/kalari/${LABEL}.transcript.jsonl"

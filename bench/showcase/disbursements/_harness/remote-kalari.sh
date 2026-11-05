@@ -10,13 +10,18 @@ umask 022
 
 REPEAT=""
 TIMEOUT=600
+MODEL=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --repeat) REPEAT=${2:?}; shift 2 ;;
     --timeout) TIMEOUT=${2:?}; shift 2 ;;
+    --model) MODEL=${2:?}; shift 2 ;;
     *) echo "unknown arg" >&2; exit 2 ;;
   esac
 done
+if [[ -z "$MODEL" ]]; then
+  echo "missing --model" >&2; exit 2
+fi
 case "$REPEAT" in
   1|2|3|4|5) ;;
   *) echo "repeat must be 1..5" >&2; exit 2 ;;
@@ -156,7 +161,7 @@ printf '%s\n' "$VULTR_INFERENCE_API_KEY" | python3 "$HARNESS/runner.py" --live \
   --opencode "$(command -v opencode)" \
   --workspace-source "$STAGE/bench/showcase/disbursements/workspace/$WS_NAME" \
   --api-host "$IP" --api-port "$LIVE_PORT" --grade-port "$GRADE_PORT" \
-  --suite disbursements --lambo-db "$STORE/lambo.db" --repo-scope "showcase-r${REPEAT}" \
+  --suite disbursements --model "$MODEL" --lambo-db "$STORE/lambo.db" --repo-scope "showcase-r${REPEAT}" \
   --result "$RUN/result" --timeout "$TIMEOUT" \
   > "$RUN/runner.out" 2> "$RUN/runner.err"
 runner_rc=$?
@@ -215,13 +220,13 @@ shutil.copyfile(run + "/cleanup.json", run + "/result/cleanup.json")
 PY
 
 # Stdout is the run id only. The address stays on the VM.
-python3 - "$RUN/result" "4" "disbursements" "$REPEAT" "$RUN_ID" "$ver" "$LIVE_PORT" "$GRADE_PORT" "$TIMEOUT" << 'PY'
+python3 - "$RUN/result" "4" "disbursements" "$REPEAT" "$RUN_ID" "$ver" "$LIVE_PORT" "$GRADE_PORT" "$TIMEOUT" "$MODEL" << 'PY'
 import json, sys
-res, cond, upgrade, repeat, run_id, ver, live, grade, cap = sys.argv[1:10]
+res, cond, upgrade, repeat, run_id, ver, live, grade, cap, model = sys.argv[1:11]
 json.dump({"condition": int(cond), "upgrade": upgrade, "repeat": int(repeat),
            "run_id": run_id, "opencode_version": ver.strip(),
            "live_port": int(live), "grading_port": int(grade),
-           "prompt": "upgrade.txt", "repo_scope": f"showcase-r{repeat}",
+           "prompt": "upgrade.txt", "repo_scope": f"showcase-r{repeat}", "model": model,
            "session_cap_s": int(cap)},
           open(res + "/meta.json", "w"), indent=2)
 PY

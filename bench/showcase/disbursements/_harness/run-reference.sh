@@ -9,13 +9,21 @@ cd "$(git rev-parse --show-toplevel)"
 umask 022
 
 REPEAT=""
+MODEL=""
+LABEL=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --repeat) REPEAT=${2:?}; shift 2 ;;
-    *) echo "usage: run-reference.sh --repeat N" >&2; exit 2 ;;
+    --model) MODEL=${2:?}; shift 2 ;;
+    --label) LABEL=${2:?}; shift 2 ;;
+    *) echo "usage: run-reference.sh --repeat N --model M --label L" >&2; exit 2 ;;
   esac
 done
 case "$REPEAT" in 1|2|3|4|5) ;; *) echo "repeat must be 1..5" >&2; exit 2 ;; esac
+if [[ -z "$MODEL" || -z "$LABEL" ]]; then
+  echo "--model and --label are required" >&2; exit 2
+fi
+case "$LABEL" in *[!a-zA-Z0-9._-]*) echo "bad label" >&2; exit 2 ;; esac
 
 if [[ -z ${VULTR_INFERENCE_API_KEY:-} || ${#VULTR_INFERENCE_API_KEY} -lt 8 ]]; then
   VULTR_INFERENCE_API_KEY=$(secret-tool lookup service vultr-inference account kalari || true)
@@ -39,7 +47,7 @@ with urllib.request.urlopen(req, timeout=60) as r:
 PY
 }
 
-DEST=bench/showcase/disbursements/runs/reference/r${REPEAT}.json
+DEST=bench/showcase/disbursements/runs/reference/${LABEL}.json
 if [[ -e "$DEST" ]]; then
   echo "refusing to overwrite $DEST" >&2
   exit 1
@@ -57,7 +65,18 @@ rsync -a bench/harness/grade_runner.py kalari:kalari-showcase-ref/stage/
 rsync -a bench/showcase/disbursements/workspace/disbursement-sync kalari:kalari-showcase-ref/stage/workspaces/
 rsync -a bench/prompts/upgrade.txt kalari:kalari-showcase-ref/stage/prompts/
 rsync -a bench/showcase/disbursements/grader/grade.py bench/showcase/disbursements/data.py kalari:kalari-showcase-ref/stage/grader/
-rsync -a bench/reference-paging/repo/opencode.jsonc kalari:kalari-showcase-ref/stage/opencode.jsonc
+# The per-model OpenCode config is generated from the frozen reference config with the
+# model swapped; the reference setup itself is unchanged.
+MODEL="$MODEL" python3 - << 'PY'
+import json, os, re
+model = os.environ["MODEL"]
+src = open("bench/reference-paging/repo/opencode.jsonc").read()
+src = re.sub(r'"deepseek-v4\.1-flash-1017"', json.dumps(model), src)
+src = src.replace('"name": "DeepSeek V4.1 Flash"', '"name": "%s"' % model)
+open("/tmp/opencode-showcase.jsonc", "w").write(src)
+PY
+rsync -a /tmp/opencode-showcase.jsonc kalari:kalari-showcase-ref/stage/opencode.jsonc
+rm -f /tmp/opencode-showcase.jsonc
 ssh -o BatchMode=yes kalari 'chmod +x ~/kalari-showcase-ref/stage/remote-reference.sh'
 
 echo "status=remote" >&2
@@ -99,7 +118,7 @@ scp -o BatchMode=yes "kalari:kalari-showcase-ref/runs/$run_id/events.jsonl" "$tm
 scp -o BatchMode=yes "kalari:kalari-showcase-ref/runs/$run_id/final.jsonl" "$tmp/final.jsonl" 2>/dev/null || true
 fetch_usage > "$tmp/usage-after.json"
 
-python3 - "$tmp" "$DEST" "bench/showcase/disbursements/runs/reference/r${REPEAT}.transcript.jsonl" << 'PY'
+python3 - "$tmp" "$DEST" "bench/showcase/disbursements/runs/reference/${LABEL}.transcript.jsonl" << 'PY'
 import json, os, re, sys
 tmp, dest, transcript_dest = sys.argv[1:4]
 key = os.environ.get("VULTR_INFERENCE_API_KEY", "")
@@ -119,14 +138,18 @@ for model in sorted(set(before) | set(after)):
         "input": int(a.get("input_tokens") or 0) - int(b.get("input_tokens") or 0),
         "output": int(a.get("output_tokens") or 0) - int(b.get("output_tokens") or 0),
     })
-deep = next((d for d in deltas if d["model"] == "deepseek-v4.1-flash-1017"), {"input": 0, "output": 0})
-# List price, cached input counted as input. No cache discount.
-cost = deep["input"] * 0.15 / 1_000_000 + deep["output"] * 0.60 / 1_000_000
+deep = next((d for d in deltas if d["model"] == os.environ["MODEL"]), {"input": 0, "output": 0})
+# List prices per million tokens (cached input counted as input, no cache discount).
+PRICES = {"mimo-v2.6-flash": (0.10, 0.25), "qwen3.8-27b": (0.15, 1.00), "glm-5.3-flash": (0.10, 0.35),
+          "muse-glimmer-30b": (0.25, 1.00), "qwen3.8-flash-next": (0.10, 0.20), "deepseek-v4.1-flash-1017": (0.15, 0.60)}
+pin, pout = PRICES.get(os.environ["MODEL"], (None, None))
+cost = pin * deep["input"] / 1_000_000 + pout * deep["output"] / 1_000_000 if pin is not None else None
 
 grade = analysis.get("grade") or {}
+analysis["model"] = os.environ["MODEL"]
 analysis["usage_delta"] = deltas
 analysis["cost_usd"] = round(cost, 6)
-analysis["cost_note"] = "DeepSeek V4.1 Flash list price, cached input counted as input, no cache discount"
+analysis["cost_note"] = "List price for the session model, cached input counted as input, no cache discount; null when no price is recorded"
 analysis["records_lost"] = grade.get("missing")
 analysis["records_duplicated"] = grade.get("duplicates")
 analysis["records_extra"] = grade.get("extra")
