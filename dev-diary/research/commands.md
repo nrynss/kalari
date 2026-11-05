@@ -525,7 +525,7 @@ run() { msb run "$@" --script-raw p="$(cat p.py)" python -- /.msb/scripts/p \
 run                                                                         # default: public open, VM public IP open
 run --no-net                                                                # nothing out
 run --no-net --net-rule allow@dns --net-rule allow@api.vultrinference.com:tcp:443   # domain rule: SSLEOFError
-run --no-net --net-rule allow@155.138.237.57/32:tcp:443                     # IP rule: works
+run --no-net --net-rule allow@<resolved-api-ip>/32:tcp:443                     # IP rule: works
 curl -s -m 3 -o /dev/null -w '%{http_code}\n' http://169.254.169.254/v1.json # host: 200; guests get msb's 403
 ```
 
