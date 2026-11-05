@@ -72,7 +72,7 @@ requires:   [T5.6, T6.3]
 fixture-ok: no
 size:       S · mid
 owns:       bench/produce-evidence.py, bench/tests/produce-evidence-check.sh, deploy/vultr/ship-evidence.sh
-status:     in-review
+status:     done
 ```
 
 The live demo serves an empty evidence store: `/api/benchmark` is `[]` and `/api/runs` holds one provenance record, so the judges page cannot show the frozen comparison. Convert the 60 frozen rows (`bench/runs/kalari/*.json`, `bench/runs/reference/*.json`) into `benchmark` evidence records in the `web/README.md` contract and ship them to the VM store at `/var/lib/kalari/evidence/.kalari/evidence.jsonl`. Keep the existing `lesson-policy` provenance record. The ship step is idempotent: it replaces previously shipped benchmark records by run id, never duplicates. No inference calls. No key on the VM beyond what T6.3 provisioned.

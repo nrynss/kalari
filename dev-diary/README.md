@@ -148,12 +148,14 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P3 | 7 / 7 | T3.1 through T3.4 done, including T3.1a, T3.2b and T3.3b |
 | P4 | 13 / 13 | All done. T4.6b adds the trusted retry trace and lesson. T4.7c closed the production memory path with the observer refused and the harness-only rehearsal |
 | P5 | 9 / 9 | All done. T5.6 published the traced comparison: zero learned-memory benefit observed, cost/attempts/containment lead |
-| P6 | 3 / 3 | All done. T6.1 and T6.2 built the API and the judges page. T6.3 put the demo live over HTTPS |
+| P6 | 4 / 4 | All done. Live demo serves the frozen comparison with working run links |
 | P7 | 1 / 6 | T7.5a re-theme done. T5.6a claimed (its live run is filmed for T7.2). T7.1 ready. T7.2 waits for T5.6a. T7.3, T7.4, T7.5 wait |
 
 ---
 
 ## Handoff Log
+
+- **T6.4 closed.** The live demo now serves the frozen comparison: 60 benchmark records shipped idempotently to the VM store (provenance record preserved), judges page renders measured before-and-after with working run links, unknown windows stay null. Producer, check, and ship transcript committed. $0 spent, no inference.
 
 - **Redeploy: re-theme live.** Synced `web/site/` to the VM after T7.5a. The demo serves the Laterite theme (`--accent #a63a2b`), the pit favicon, and the wordmark. Old name still redirects. No restart was needed.
 
