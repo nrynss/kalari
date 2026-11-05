@@ -51,7 +51,7 @@ if ssh -o BatchMode=yes -o ConnectTimeout=10 kalari 'ps -eo args | grep -E "[o]p
 fi
 
 echo "status=stage" >&2
-ssh -o BatchMode=yes kalari 'mkdir -p ~/kalari-t54/bin ~/kalari-t54/stage ~/kalari-t54/runs ~/kalari-t54/stores'
+ssh -o BatchMode=yes kalari 'mkdir -p ~/kalari-t54/bin ~/kalari-t54/stage ~/kalari-t54/runs ~/kalari-t54/stores ~/kalari-t54/stage/bench/apis/payouts ~/kalari-t54/stage/bench/apis/settlements ~/kalari-t54/stage/bench/graders ~/kalari-t54/stage/bench/runs/kalari'
 rsync -a bench/prompts bench/workspaces kalari:kalari-t54/stage/bench/
 rsync -a bench/graders/grade.py kalari:kalari-t54/stage/bench/graders/
 rsync -a bench/apis/payouts/data.py kalari:kalari-t54/stage/bench/apis/payouts/

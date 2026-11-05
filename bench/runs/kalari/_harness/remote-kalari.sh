@@ -58,7 +58,8 @@ done
 [[ -f "$HARNESS/runner.py" ]] || { echo "harness not staged" >&2; exit 1; }
 
 # Mutual exclusion: never start while another benchmark session runs.
-if ps -eo args | grep -E '[o]pencode run|[r]emote\.sh|[r]emote-kalari\.sh' | grep -v "$$" | grep -q .; then
+# (ps prints pid,args so our own line can be dropped by PID.)
+if ps -eo pid=,args= | grep -E '[o]pencode run|[r]emote\.sh|[r]emote-kalari\.sh' | awk -v me="$$" '$1 != me' | grep -q .; then
   echo "another benchmark session is active; refusing to start" >&2
   exit 3
 fi
