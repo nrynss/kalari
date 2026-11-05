@@ -163,7 +163,7 @@ requires:   [T5.2b]
 fixture-ok: yes
 size:       XS · user
 owns:       bench/README.md, bench/FROZEN.md, product.md (comparison measures narrative only)
-status:     in-review
+status:     done
 ```
 The user has chosen the pair: payouts B1+B2+B4+B5, then settlements B1+B2+B3+B5. The report leads with cost, attempts and containment, retains verdicts and right-first-time, and reports HTTP retry attempts separately from consumer sandbox runs. B5-in-both is the final hardness adjustment; T5.2b measures it rather than triggering further changes.
 
@@ -171,7 +171,7 @@ After T5.2b, freeze the API server and data files, workspace consumers/specs/doc
 
 **Done when:** `FROZEN.md` is committed before any Kalari-arm run, every listed hash matches, and the benchmark and product narratives agree.
 
-**Notes (in review):** We froze payouts B1+B2+B4+B5 and settlements B1+B2+B3+B5 at commit 8b8e0f3. We wrote bench/FROZEN.md with 19 SHA-256 hashes and a verify command. We recomputed every hash and all matched. We left frozen code untouched. We updated bench/README.md and product.md to lead with cost and sandbox attempts and wall time and time stuck and containment. We keep verdicts and right first time. We report HTTP retries apart from sandbox runs. We state the baseline passed all 50 harder pair sessions first time. Conditions 1 and 2 and 3 and 6 each passed all rows, so a future condition 5 match would narrow the claim to prompts and enforcement. `./tools/check.sh` passed with HOME/.elan/bin on PATH.
+**Notes:** We froze payouts B1+B2+B4+B5 and settlements B1+B2+B3+B5 at commit 8b8e0f3. We wrote bench/FROZEN.md with 19 SHA-256 hashes and a verify command. We recomputed every hash and all matched. We left frozen code untouched. We updated bench/README.md and product.md to lead with cost and sandbox attempts and wall time and time stuck and containment. We keep verdicts and right first time. We report HTTP retries apart from sandbox runs. We state the baseline passed all 50 harder pair sessions first time. Conditions 1 and 2 and 3 and 6 each passed all rows, so a future condition 5 match would narrow the claim to prompts and enforcement. `./tools/check.sh` passed with HOME/.elan/bin on PATH.
 
 ---
 

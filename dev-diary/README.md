@@ -147,13 +147,15 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P2 | 7 / 7 | T2.1 through T2.6 done. The Microsandbox-only exit line stays open because the Docker fallback exists |
 | P3 | 7 / 7 | T3.1 through T3.4 done, including T3.1a, T3.2b and T3.3b |
 | P4 | 13 / 13 | All done. T4.6b adds the trusted retry trace and lesson. T4.7c closed the production memory path with the observer refused and the harness-only rehearsal |
-| P5 | 5 / 9 | T5.1, T5.1a, T5.2, T5.2a and T5.2b done. T5.3 freeze is next, then the arms. B5-in-both stood: 50/50 PASS right first time |
+| P5 | 6 / 9 | T5.1 through T5.3 done. Pair frozen with 19 hashes. T5.4 and T5.5 arms are next |
 | P6 | 3 / 3 | All done. T6.1 and T6.2 built the API and the judges page. T6.3 put the demo live over HTTPS |
 | P7 | 0 / 5 | Waits for P5, P6 |
 
 ---
 
 ## Handoff Log
+
+- **T5.3 closed.** The harder pair is frozen (payouts B1+B2+B4+B5, settlements B1+B2+B3+B5) with 19 hashes in `bench/FROZEN.md`, all recomputed clean. The baseline passed all 50 harder-pair sessions first time, so the report leads with cost, attempts, and containment. T5.4 and T5.5 arms are unlocked.
 
 - **T5.2b closed.** Harder-pair pilot complete: 50/50 reference sessions PASS right first time on the B5-in-both pair (10 B5-only, 40 full-pair across conditions 1, 2, 3, 6), $3.74 of the $12 cap, validate 50/50, gate passed, old pilot untouched, no leftover processes or sandboxes. One agent ran a duplicate finisher mid-task and the two collided once (mutual opencode kill, two rows discarded and re-run clean). Condition-1 settlements show continued sessions with verified identity on the stable workspace. The unknown retry window reads null, never zero. T5.3 freeze is next.
 
