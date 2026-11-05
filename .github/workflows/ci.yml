@@ -10,6 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The web evidence check pins EVIDENCE_REF to a commit and verifies
+          # its paths with git cat-file. A shallow clone omits that history,
+          # so check out the full repository.
+          fetch-depth: 0
       - name: Install elan (the toolchain comes from lean-toolchain)
         run: |
           curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
