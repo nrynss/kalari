@@ -5,31 +5,31 @@
   "pages": {
     "judges": {
       "path": "web/fixture/rendered/judges.html",
-      "sha256": "f1dbe21a2297ba6d0c2b77ff2732cc6ec5414958ae5ef0d9aaec37b58228d36c"
+      "sha256": "68ba2f96cf1f4e25752580dd6f806270d6232470f058ffb0ce89fea9da04150e"
     },
     "judges-empty": {
       "path": "web/fixture/rendered/judges-empty.html",
-      "sha256": "4c6dbbb04ca0afca01df28c40ec90a6251745a975bb8434af6db57740debb574"
+      "sha256": "00f0d4ea0f2ed9eaf152c51157cdbb2d233311fc2e138f7f20ddde72a552b322"
     },
     "judges-no-store": {
       "path": "web/fixture/rendered/judges-no-store.html",
-      "sha256": "f702405121484e94f920221e6e09f3da1219bb10442af41b7551ef112ed3c189"
+      "sha256": "04bc49f270c808000c9190ed6eed1dc21dda5a4212b06bc7bc56d7b527964b0a"
     },
     "judges-extra-run": {
       "path": "web/fixture/rendered/judges-extra-run.html",
-      "sha256": "835dbd5a88e2d83d13918cbe11f1a2b12c082e3978f8da5821e3a1284afd8e50"
+      "sha256": "645f9e0ae830c336249eefac66ebddddfb087183ff1c8baeafc555b8f6566df0"
     },
     "judges-frozen-after": {
       "path": "web/fixture/rendered/judges-frozen-after.html",
-      "sha256": "aec2518486418ef102fa771b40534265cdd2486ccf3887220c1699bcc3915f1a"
+      "sha256": "6b6ee84a0ef6ed82b0a10ae8092874fe12db45b64e06f89c87ecb3e11b67b000"
     },
     "judges-frozen-pair": {
       "path": "web/fixture/rendered/judges-frozen-pair.html",
-      "sha256": "1961ed6dffe99950dcf158916f6aacae0d73bca7c26e012842a2ec8c4e5dff22"
+      "sha256": "e1b1e60d58500a2cc21eecb073f3576fc66c0e11b8bd404d30de56ae9a2429a9"
     },
     "judges-frozen-split": {
       "path": "web/fixture/rendered/judges-frozen-split.html",
-      "sha256": "235efb98a20d57940e624fc58854941c72ed91165603a81b8797d62379ee7fdd"
+      "sha256": "e72ebc4553b07cc360b4f59f02dac1c584a5c14efcbe621bb5470d10d81244a7"
     },
     "session": {
       "path": "web/fixture/rendered/session.html",
@@ -49,15 +49,15 @@
     },
     "run": {
       "path": "web/fixture/rendered/run.html",
-      "sha256": "8de925019db3643d0e7b4aa29caa4c6cc7b282f1491aee462b3eef110721cb63"
+      "sha256": "76f871b73e0608afed3fd46d930f44b89d6df1d2967743ed40d42c3e8a9109fb"
     },
     "run-showcase": {
       "path": "web/fixture/rendered/run-showcase.html",
-      "sha256": "02e7a678449a0e81835916c518a291ca483de0c92fbe78accfa9057a9abc7a63"
+      "sha256": "c75dc6e1bd1261061c206d0989f00a3d79c78060b75535c1264378f69a508b66"
     },
     "run-frozen": {
       "path": "web/fixture/rendered/run-frozen.html",
-      "sha256": "306fd28c1e5b9fb7bc3ddb8c74ba5a0dfa56533a5d5f50c5552729fa1b42e5c2"
+      "sha256": "974e297a03c166f387bd368422461903de9e7455f32a8b867f3158dc8cc8145f"
     },
     "run-illustrative": {
       "path": "web/fixture/rendered/run-illustrative.html",
@@ -65,11 +65,11 @@
     },
     "run-containment": {
       "path": "web/fixture/rendered/run-containment.html",
-      "sha256": "0129653a9de94d66bb002b011be5ea6497b53a2b0002367436a858cd4ed858cc"
+      "sha256": "9819b38a98c1ee302cf4fce899a2cc9881fb37766a81c7ff0899f0b51aceae1f"
     },
     "run-containment-earlier": {
       "path": "web/fixture/rendered/run-containment-earlier.html",
-      "sha256": "5a7938ef93ddeaded73b6b05f1b90433513c0ea6c66c59fdc7d9b52749537571"
+      "sha256": "f4157a03ca6c2be4c0ba68c809e3ede7729143979fc1aea3ed0c454eadadbb43"
     },
     "run-endpoint": {
       "path": "web/fixture/rendered/run-endpoint.html",
@@ -77,7 +77,7 @@
     },
     "run-reference": {
       "path": "web/fixture/rendered/run-reference.html",
-      "sha256": "bd8d515ddeed0963447c73cf778771fc3f46f10540be64513cbb46d141678103"
+      "sha256": "7631640e1bd56df9775c6466a7ca3bbf43045acebaec5c833fab7c5d35d004dc"
     },
     "run-redaction": {
       "path": "web/fixture/rendered/run-redaction.html",
@@ -93,7 +93,7 @@
     "app/labels.mjs": "4352e35e17bc43ef5247269d0b600ac330c97f8955eb49dbae9e462ae6291f4a",
     "app/run.mjs": "714aa943c55dc4244ef1fc1fe8730256cf84e220d3ef3a23226e4a040688c4b1",
     "app/session.mjs": "1ed6aec3c10f3b7fb641c8de9efb3a35b1639d477d09e99e0bb612402dcecc4f",
-    "app/views.mjs": "61cca349dcfd03b21b27ac2f7c6fc3fdcf7316575da2196cb208c08e1b9f774b",
+    "app/views.mjs": "665d5263a0847442c5358032664fb7096579b748d845dd74c3bd0f20446af9e4",
     "favicon.svg": "39bc2680150226e985565c8138030fe3dc788427d3b3a04c0ae934c8e6e9f0d2",
     "index.html": "eee6c9f72729e71c783fe2b1c27b5a3d6eec67aa4ab88d83a7239e4a826b03d9",
     "run.html": "b290cdfdaa2a68999a6d4659af140dd9850c2bd52074b3e035ba3997e854599f",

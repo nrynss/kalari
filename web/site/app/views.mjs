@@ -43,7 +43,7 @@ const CLEF_OPINION_LABEL = "A model's opinion, not a measurement";
    commit, never at main, so a judge opens the exact files the page cites.
    Set to the evidence commit before publishing. The check verifies the hash
    exists and every linked path exists at it. */
-export const EVIDENCE_REF = "c58d60c6abdb2131bbf16fa6dabf626437d33033";
+export const EVIDENCE_REF = "788ecda667628352cbf2ae07366981fd0c994a46";
 
 const GITHUB_REPO = "https://github.com/nrynss/kalari";
 
