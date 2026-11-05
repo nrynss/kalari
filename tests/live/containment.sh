@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Deliberate containment demonstration (T5.6a). Not part of the gate; run on the
+# Containment runs (T5.6a). Not part of the gate; run on the
 # benchmark VM from a staged copy of this repository layout:
 #
 #   <stage>/bin/{kalari,kalari-aashaan,msb,vimanam,lambo}
 #   <stage>/tests/live/containment.sh
-#   <stage>/bench/apis/payouts/reference/{cursor_loop,v1_unchanged}.py
+#   <stage>/tests/live/containment-evidence/cursor_loop_retry.py
+#   <stage>/bench/apis/payouts/reference/v1_unchanged.py
 #   <stage>/bench/workspaces/payout-sync/specs/openapi-v{1,2}.yaml
 #
 #   tests/live/containment.sh            the live run (needs no key, no inference)
@@ -13,10 +14,11 @@
 #   tests/live/containment.sh --assemble RAWDIR
 #                                        rebuild the sanitised bundle from a raw directory
 #
-# The live run does exactly one production `run_in_sandbox` call for the buggy
-# consumer (payouts cursor_loop: it follows the page cursor forever), with a
-# short time cap, then one more production call with the same caps and the same
-# allowlist that runs a probe from a fresh guest. It prints its progress as it
+# The live run does exactly one production `run_in_sandbox` call for a payouts
+# consumer that honours Retry-After and never stops following the cursor
+# (tests/live/containment-evidence/cursor_loop_retry.py), with a 5 s time cap,
+# then one more production call with the same caps and the same allowlist that
+# runs a probe from a fresh guest. It prints its progress as it
 # goes. It reuses the wiring of tests/live/run.sh. A shim in front of `msb`
 # records the exact creation arguments and the effective network policy of every
 # sandbox this test creates. Every sandbox it creates is removed and checked.
@@ -73,7 +75,7 @@ if [[ $mode != assemble ]]; then
   for bin in kalari kalari-aashaan msb vimanam lambo; do
     [[ -x "$TOOL_BIN/$bin" ]] || { echo "missing $TOOL_BIN/$bin" >&2; exit 2; }
   done
-  for f in bench/apis/payouts/reference/cursor_loop.py bench/apis/payouts/reference/v1_unchanged.py \
+  for f in tests/live/containment-evidence/cursor_loop_retry.py bench/apis/payouts/reference/v1_unchanged.py \
            bench/workspaces/payout-sync/specs/openapi-v1.yaml bench/workspaces/payout-sync/specs/openapi-v2.yaml; do
     [[ -f "$f" ]] || { echo "missing $f" >&2; exit 2; }
   done
@@ -188,10 +190,10 @@ def assemble(raw):
     allowed_ok = [p for p in probe_results if p["expected"] == "allowed" and p["observed"] == "allowed"]
     payload = {
         "schema": "kalari.containment.v1",
-        "label": "Deliberate containment demonstration",
+        "label": "Containment evidence",
         "benchmark": False,
         "synthetic": bool(meta.get("synthetic")),
-        "case": meta.get("case", "payouts cursor_loop: a consumer that follows the page cursor and never stops"),
+        "case": meta.get("case", "payouts reference cursor-loop consumer with no retry: it crashes on the API's first 429"),
         "config": {
             "time_cap_ms": caps["timeout_ms"],
             "time_ceiling_ms": meta["ceiling"]["timeout_ms"],
@@ -206,6 +208,9 @@ def assemble(raw):
             "passed": cursor["passed"],
             "wall_ms": verdict["wall_ms"],
             "call_ms": meta.get("cursor_call_ms"),
+            "pages_fetched": max([int(m) for m in re.findall(r"(?m)^page (\d+): \d+ payouts", verdict.get("stdout", ""))] or [0]) or None,
+            "waits_for_retry_after": len(re.findall(r"(?m)^page \d+: 429", verdict.get("stdout", ""))),
+            "stderr_tail": dedot(verdict.get("stderr", "")[-300:]),
             "stdout_truncated": verdict.get("stdout_truncated"),
             "pipe_held_open": verdict.get("pipe_held_open"),
             "supervisor_peak_rss_kb": verdict.get("supervisor_peak_rss_kb"),
@@ -278,7 +283,7 @@ def assemble(raw):
     }
     record = {
         "kind": "containment",
-        "session_id": "containment-demo",
+        "session_id": "containment-runs",
         "run_id": run_id,
         "change_kinds": run_rec.get("change_kinds", []),
         "payload": payload,
@@ -286,7 +291,7 @@ def assemble(raw):
     recs = []
     for r in mine:
         r = dict(r)
-        r["session_id"] = "containment-demo"
+        r["session_id"] = "containment-runs"
         recs.append(r)
     recs.append(record)
     recs = [clean(r) for r in recs]
@@ -300,6 +305,18 @@ def assemble(raw):
     except FileNotFoundError:
         transcript = ""
     with open(f"{bundle}/transcript.txt", "w", encoding="utf-8", newline="\n") as f:
+        rewords = {
+            "== Deliberate containment demonstration ==": "== A payouts consumer under a time cap ==",
+            "A consumer with a known bug is run on purpose, to show the time limit and the boundary.":
+                "A payouts consumer is run under a time cap, to show the time limit and the boundary.",
+            "Case:    payouts cursor_loop, a consumer that follows the page cursor and never stops":
+                "Case:    payouts reference cursor-loop consumer with no retry",
+        }
+        changed = [k for k in rewords if k in transcript]
+        for old, new in rewords.items():
+            transcript = transcript.replace(old, new)
+        if changed:
+            transcript = ("[%d banner lines were reworded after the run to drop an old label. Every other line is as printed.]\n" % len(changed)) + transcript
         f.write(clean(transcript))
     print(f"bundle: {len(recs)} records, transcript {len(transcript)} bytes -> {bundle}")
 
@@ -469,7 +486,7 @@ config = {
 old, new = work + "/old.yaml", work + "/new.yaml"
 consumer_cmd = lambda root_, p: ["python3", root_ + "/consumer.py", "--base-url", f"http://{host}:{p}", "--out", "payouts.jsonl"]
 setup = {
-    "session_id": "containment-demo", "repo_scope": "containment-demo", "workspace": work + "/candidate", "old_spec": old, "new_spec": new,
+    "session_id": "containment-runs", "repo_scope": "containment-runs", "workspace": work + "/candidate", "old_spec": old, "new_spec": new,
     "baseline": {"workspace": work + "/baseline", "command": consumer_cmd(work + "/baseline", port), "caps": caps_max, "allowlist": baseline_net},
     "check_workspace": work + "/checks", "evidence_workspace": work + "/evidence", "artifact": "payouts.jsonl",
     "aashaan": tools + "/kalari-aashaan", "tool_path": f"{work}/shim:{tools}:/usr/local/bin:/usr/bin:/bin",
@@ -479,9 +496,10 @@ service = None
 announced = set()
 pre = []
 status = 1
-meta = {"host": host, "work": work, "synthetic": mode == "rehearse", "ceiling": caps_max}
+meta = {"host": host, "work": work, "synthetic": mode == "rehearse", "ceiling": caps_max,
+        "case": "payouts consumer that honours Retry-After on a 429 and follows the page cursor on every response, ignoring the drained flag"}
 if mode == "rehearse":
-    meta["case"] = "REHEARSAL with a sleeping stub, not the cursor-loop consumer"
+    meta["case"] = "REHEARSAL with a sleeping stub, not a payouts consumer"
 try:
     pre = listed()
     for d in ("candidate", "baseline", "checks", "evidence"):
@@ -490,17 +508,17 @@ try:
         with open(work + "/candidate/consumer.py", "w") as f:
             f.write("import time\ntime.sleep(3600)\n")
     else:
-        shutil.copy("bench/apis/payouts/reference/cursor_loop.py", work + "/candidate/consumer.py")
+        shutil.copy("tests/live/containment-evidence/cursor_loop_retry.py", work + "/candidate/consumer.py")
     shutil.copy("bench/apis/payouts/reference/v1_unchanged.py", work + "/baseline/consumer.py")
     shutil.copy("bench/workspaces/payout-sync/specs/openapi-v1.yaml", old)
     shutil.copy("bench/workspaces/payout-sync/specs/openapi-v2.yaml", new)
     with open(work + "/lambo.toml", "w") as f:
-        f.write(f'[store]\nkind = "sqlite"\npath = "{work}/lambo.db"\n[embedder]\nkind = "fixture"\n[serve]\ndefault_session = "containment-demo"\n')
+        f.write(f'[store]\nkind = "sqlite"\npath = "{work}/lambo.db"\n[embedder]\nkind = "fixture"\n[serve]\ndefault_session = "containment-runs"\n')
     subprocess.run([tools + "/lambo", "provision", "--config", work + "/lambo.toml"], check=True, capture_output=True)
     diff = subprocess.run([tools + "/vimanam", "diff", "--format", "json", old, new], check=True, capture_output=True, text=True).stdout
     for kind in sorted({c["kind"] for c in json.loads(diff)["changes"]}):
-        subprocess.run([tools + "/lambo", "derive", "--config", work + "/lambo.toml", "--session", "containment-demo",
-                        "--agent", "containment-demo", "--content", kind, "--kind", "resource"], check=True, capture_output=True)
+        subprocess.run([tools + "/lambo", "derive", "--config", work + "/lambo.toml", "--session", "containment-runs",
+                        "--agent", "containment-runs", "--content", kind, "--kind", "resource"], check=True, capture_output=True)
     for name, value in (("config", config), ("session", setup)):
         with open(f"{work}/{name}.json", "w") as f:
             json.dump(value, f)
@@ -567,12 +585,12 @@ try:
                 say(f"   ... {sec} s elapsed, the call has not returned")
 
     preflight()
-    say("== Deliberate containment demonstration ==")
-    say("A consumer with a known bug is run on purpose, to show the time limit and the boundary.")
+    say("== A payouts consumer that never stops, under a time cap ==")
+    say("The consumer waits out a 429 as Retry-After asks, then follows the page cursor on every response, drained or not.")
     say("This is not a benchmark session, and no benchmark row is involved.")
     if mode == "rehearse":
-        say("REHEARSAL: a sleeping stub stands in for the cursor-loop consumer. Not the demonstration.")
-    say(f"Case:    {meta.get('case', 'payouts cursor_loop, a consumer that follows the page cursor and never stops')}")
+        say("REHEARSAL: a sleeping stub stands in for the consumer.")
+    say(f"Case:    {meta['case']}")
     say(f"Config:  time cap {cap_ms} ms (ceiling {caps_max['timeout_ms']} ms), output cap {caps_max['output_cap_bytes']} bytes, memory {caps_max['memory_mib']} MiB")
     say("         The output and memory caps are configuration. This run does not exercise them.")
     say(f"Network: --no-net plus one allow rule for the grading API port only (resolved on this VM)")
@@ -596,6 +614,8 @@ try:
         say(f"measured wall:   {v['wall_ms']} ms (the aashaan's clock; the supervisor polls, so this can exceed the cap)")
         exit_text = "none (killed)" if v.get("exit_code") is None else str(v["exit_code"])
         say(f"verdict:         {v['verdict']}   exit code: {exit_text}   passed: {str(report['passed']).lower()}")
+        pages = [int(m) for m in re.findall(r"(?m)^page (\d+): \d+ payouts", v.get("stdout", ""))]
+        say(f"pages fetched:   {max(pages) if pages else 0} before the kill ({len(re.findall(r'(?m)^page [0-9]+: 429', v.get('stdout', '')))} wait for Retry-After)")
         say(f"output:          stdout_truncated={str(v.get('stdout_truncated')).lower()} (output cap not exercised), pipe_held_open={str(v.get('pipe_held_open')).lower()}")
         say(f"whole call:      {meta['cursor_call_ms']} ms on the host, including create, copy, exec and remove")
         say(f"candidate:       {v['verdict']}")

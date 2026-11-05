@@ -5,7 +5,7 @@
     <p class="hero-copy">This page is the evidence index. Every figure comes from an evidence record, and every benchmark figure links to the run that produced it.</p>
     <p class="status-line"><span class="status-dot is-pilot" aria-hidden="true"></span>Pilot results published. The frozen comparison is pending.</p>
     <nav class="reading-path" aria-label="On this page">
-      <ul><li><a href="#comparison">The pilot baseline</a></li><li><a href="#baseline">Every condition in this fixture</a></li><li><a href="#containment">The deliberate containment demonstration</a></li><li><a href="#runs">Every run</a></li><li><a href="#sessions">Read a session</a></li></ul>
+      <ul><li><a href="#comparison">The pilot baseline</a></li><li><a href="#baseline">Every condition in this fixture</a></li><li><a href="#containment">The containment runs</a></li><li><a href="#runs">Every run</a></li><li><a href="#sessions">Read a session</a></li></ul>
     </nav>
   </header>
 
@@ -1513,18 +1513,18 @@
           </section>
     <section id="containment" class="containment" aria-labelledby="containment-title">
     <div class="containment-inner">
-      <p class="containment-context">Deliberate containment demonstration · not a benchmark session</p>
-      <h2 id="containment-title">A broken consumer, stopped by its time limit.</h2>
-      <p class="containment-lede">Kalari ran a consumer with a known bug on purpose. It follows the page cursor and never stops. It ran in a fresh microVM through the same <code>run_in_sandbox</code> path the agent uses, and the aashaan killed it at the cap this run was given. This is apart from the benchmark: no session in the frozen comparison was stopped by a cap.</p>
+      <p class="containment-context">Two runs through the same sandbox path · not benchmark sessions</p>
+      <h2 id="containment-title">A consumer that never ends, stopped by its time cap.</h2>
+      <p class="containment-lede">A payouts consumer was run in a fresh microVM through the same <code>run_in_sandbox</code> path the agent uses. It waits out a rate-limit reply as <code>Retry-After</code> asks, then follows the page cursor on every response, drained or not, so it never ends. The aashaan killed it at the cap this run was given. This is apart from the benchmark: no session in the frozen comparison was stopped by a cap.</p>
       <h3 class="containment-step">The failure</h3>
       <div class="containment-measures">
         <div class="containment-measure">
           <span class="containment-measure-label">Configured time cap</span>
-          <span class="containment-measure-value"><a class="run-link" href="run.html?id=tmp.XXirNPzP" data-run-link="tmp.XXirNPzP" title="Containment demonstration: configured time cap">5,000 ms</a></span>
+          <span class="containment-measure-value"><a class="run-link" href="run.html?id=tmp.XXirNPzP" data-run-link="tmp.XXirNPzP" title="Containment run: configured time cap">5,000 ms</a></span>
         </div>
         <div class="containment-measure">
           <span class="containment-measure-label">Measured wall time</span>
-          <span class="containment-measure-value"><a class="run-link" href="run.html?id=tmp.XXirNPzP" data-run-link="tmp.XXirNPzP" title="Containment demonstration: measured wall time">5,007 ms</a></span>
+          <span class="containment-measure-value"><a class="run-link" href="run.html?id=tmp.XXirNPzP" data-run-link="tmp.XXirNPzP" title="Containment run: measured wall time">5,007 ms</a></span>
         </div>
         <div class="containment-measure">
           <span class="containment-measure-label">The verdict</span>
@@ -1532,8 +1532,8 @@
           <span class="containment-measure-sub"><code>killed_timeout</code> · passed is false</span>
         </div>
       </div>
-      <p class="containment-note">The supervisor checks the clock by polling, so the measured time can run past the cap. No fixed overshoot bound is promised. The candidate was killed. The baseline guest was never started, because the candidate wrote no output, and the differential check failed. The run page has the exact detail.</p>
-      <p class="containment-note">Output cap <a class="run-link" href="run.html?id=tmp.XXirNPzP" data-run-link="tmp.XXirNPzP" title="Containment demonstration: configured output cap">65,536 bytes</a> and memory <a class="run-link" href="run.html?id=tmp.XXirNPzP" data-run-link="tmp.XXirNPzP" title="Containment demonstration: configured memory">512 MiB</a> are configuration only. Neither fired in this run.</p>
+      <p class="containment-note">It fetched <a class="run-link" href="run.html?id=tmp.XXirNPzP" data-run-link="tmp.XXirNPzP" title="Containment run: pages fetched">78 pages</a> before the kill, one line each in its output, and waited out the rate limit once. The supervisor checks the clock by polling, so the measured time can run past the cap. No fixed overshoot bound is promised. The candidate was killed. The baseline guest was never started, because the candidate wrote no output, and the differential check failed. The run page has the exact detail.</p>
+      <p class="containment-note">Output cap <a class="run-link" href="run.html?id=tmp.XXirNPzP" data-run-link="tmp.XXirNPzP" title="Containment run: configured output cap">65,536 bytes</a> and memory <a class="run-link" href="run.html?id=tmp.XXirNPzP" data-run-link="tmp.XXirNPzP" title="Containment run: configured memory">512 MiB</a> are configuration only. Neither fired in this run.</p>
       <h3 class="containment-step">The boundary</h3>
       <p class="containment-note">Requested: no network, plus one allow rule for the one API port. Effective, read back from <code>msb inspect</code> right after create: default egress deny, default ingress deny, one rule. Observed: a probe in a second guest created with the same arguments and the same allowlist asked for these.</p>
       <ul class="containment-list"><li>A different port on that same host: refused</li><li>The host&#39;s own SSH port: refused</li><li>The cloud metadata address: refused</li><li>A public internet address: refused</li><li>The one API port the allowlist names: answered, as the rule allows</li></ul>
@@ -1541,9 +1541,14 @@
       <h3 class="containment-step">The cleanup</h3>
       <p class="containment-note">This test created two sandboxes. After the run, none of them were still listed, no child process of the run remained (none), and the four sandboxes that existed before were present and unchanged.</p>
       <p class="containment-note containment-caveat">These are observed restrictions for the listed requests, from one guest configuration. This is not a claim of zero blast radius.</p>
+      <div class="containment-earlier">
+        <h3 class="containment-step">The run before it</h3>
+        <p class="containment-note">The first run used the reference cursor-loop consumer, which has no retry. The payouts API throttles every traversal once, with a rate-limit reply. That consumer did not handle it: the program <strong>exited with a non-zero status</strong> after <a class="run-link" href="run.html?id=tmp.XXdrLVOs" data-run-link="tmp.XXdrLVOs" title="Containment run: measured wall time">437 ms</a>, well inside its time cap, and passed is false. The cap never came into play. Its own boundary probe and cleanup came out the same way.</p>
+        <p class="containment-links"><a class="quiet-link quiet-link--light" href="run.html?id=tmp.XXdrLVOs" data-run-link="tmp.XXdrLVOs">Read the run that crashed on the rate limit</a></p>
+      </div>
       <div class="containment-links">
         <a class="button button--light" href="run.html?id=tmp.XXirNPzP" data-run-link="tmp.XXirNPzP">Read the run and its evidence</a>
-        <a class="quiet-link quiet-link--light" href="session.html?id=containment-demo">Open its session</a>
+        <a class="quiet-link quiet-link--light" href="session.html?id=containment-runs">Open the session</a>
       </div>
     </div>
   </section>
@@ -1593,7 +1598,7 @@
           <ul class="run-index-list"><li><a class="run-link" href="run.html?id=pilot-c6-settlements-r1" data-run-link="pilot-c6-settlements-r1" title="Open run pilot-c6-settlements-r1"><code>pilot-c6-settlements-r1</code></a><span class="run-index-verdict is-pass">Passed</span></li><li><a class="run-link" href="run.html?id=pilot-c6-settlements-r2" data-run-link="pilot-c6-settlements-r2" title="Open run pilot-c6-settlements-r2"><code>pilot-c6-settlements-r2</code></a><span class="run-index-verdict is-pass">Passed</span></li><li><a class="run-link" href="run.html?id=pilot-c6-settlements-r3" data-run-link="pilot-c6-settlements-r3" title="Open run pilot-c6-settlements-r3"><code>pilot-c6-settlements-r3</code></a><span class="run-index-verdict is-pass">Passed</span></li><li><a class="run-link" href="run.html?id=pilot-c6-settlements-r4" data-run-link="pilot-c6-settlements-r4" title="Open run pilot-c6-settlements-r4"><code>pilot-c6-settlements-r4</code></a><span class="run-index-verdict is-pass">Passed</span></li><li><a class="run-link" href="run.html?id=pilot-c6-settlements-r5" data-run-link="pilot-c6-settlements-r5" title="Open run pilot-c6-settlements-r5"><code>pilot-c6-settlements-r5</code></a><span class="run-index-verdict is-pass">Passed</span></li></ul>
         </div><div class="run-group">
     <h3>Sandbox runs</h3>
-    <ul class="run-index-list"><li><a class="run-link" href="run.html?id=payouts-attempt-1" data-run-link="payouts-attempt-1" title="Open run payouts-attempt-1"><code>payouts-attempt-1</code></a><span class="badge badge--draft">Illustrative</span><span class="run-index-verdict is-fail">Completed. Checks failed</span></li><li><a class="run-link" href="run.html?id=payouts-attempt-2" data-run-link="payouts-attempt-2" title="Open run payouts-attempt-2"><code>payouts-attempt-2</code></a><span class="badge badge--draft">Illustrative</span><span class="run-index-verdict is-fail">Completed. Checks failed</span></li><li><a class="run-link" href="run.html?id=payouts-attempt-3" data-run-link="payouts-attempt-3" title="Open run payouts-attempt-3"><code>payouts-attempt-3</code></a><span class="badge badge--draft">Illustrative</span><span class="run-index-verdict is-pass">Completed. Checks passed</span></li><li><a class="run-link" href="run.html?id=payouts-earlier-pass" data-run-link="payouts-earlier-pass" title="Open run payouts-earlier-pass"><code>payouts-earlier-pass</code></a><span class="badge badge--draft">Illustrative</span><span class="run-index-verdict is-pass">Completed. Checks passed</span></li><li><a class="run-link" href="run.html?id=tmp.XXirNPzP" data-run-link="tmp.XXirNPzP" title="Open run tmp.XXirNPzP"><code>tmp.XXirNPzP</code></a><span class="run-index-verdict is-fail">Stopped by the time cap. Checks failed</span></li></ul>
+    <ul class="run-index-list"><li><a class="run-link" href="run.html?id=payouts-attempt-1" data-run-link="payouts-attempt-1" title="Open run payouts-attempt-1"><code>payouts-attempt-1</code></a><span class="badge badge--draft">Illustrative</span><span class="run-index-verdict is-fail">Completed. Checks failed</span></li><li><a class="run-link" href="run.html?id=payouts-attempt-2" data-run-link="payouts-attempt-2" title="Open run payouts-attempt-2"><code>payouts-attempt-2</code></a><span class="badge badge--draft">Illustrative</span><span class="run-index-verdict is-fail">Completed. Checks failed</span></li><li><a class="run-link" href="run.html?id=payouts-attempt-3" data-run-link="payouts-attempt-3" title="Open run payouts-attempt-3"><code>payouts-attempt-3</code></a><span class="badge badge--draft">Illustrative</span><span class="run-index-verdict is-pass">Completed. Checks passed</span></li><li><a class="run-link" href="run.html?id=payouts-earlier-pass" data-run-link="payouts-earlier-pass" title="Open run payouts-earlier-pass"><code>payouts-earlier-pass</code></a><span class="badge badge--draft">Illustrative</span><span class="run-index-verdict is-pass">Completed. Checks passed</span></li><li><a class="run-link" href="run.html?id=tmp.XXdrLVOs" data-run-link="tmp.XXdrLVOs" title="Open run tmp.XXdrLVOs"><code>tmp.XXdrLVOs</code></a><span class="run-index-verdict is-fail">Completed. Checks failed</span></li><li><a class="run-link" href="run.html?id=tmp.XXirNPzP" data-run-link="tmp.XXirNPzP" title="Open run tmp.XXirNPzP"><code>tmp.XXirNPzP</code></a><span class="run-index-verdict is-fail">Stopped by the time cap. Checks failed</span></li></ul>
   </div></div></section>
     <section id="sessions" class="section section--sessions">
       <h2>Read a full session</h2>

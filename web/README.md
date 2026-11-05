@@ -15,7 +15,7 @@ sits outside it and has no HTTP route. The fixture server serves `web/site/` and
 
 | File | Address | What it shows |
 |---|---|---|
-| `web/site/index.html` | `/` | For judges: start here. The pilot baseline, every condition in the fixture, the deliberate containment demonstration and every run. |
+| `web/site/index.html` | `/` | For judges: start here. The pilot baseline, every condition in the fixture, the containment runs and every run. |
 | `web/site/session.html` | `/session.html?id=<id>` | One session: the change list, the blast radius, the recalled checks, each run with logs, the retry loop and the lesson written. |
 | `web/site/run.html` | `/run.html?id=<id>` | One run: its verdict, checks, logs, Clef answer and evidence record. |
 
@@ -152,9 +152,9 @@ part of the gate.
 
 `web/fixture/evidence.jsonl` is the append-only store the fixture server reads.
 `web/fixture/build.py` writes it from the committed pilot results and the
-walkthrough records. It also appends the containment demonstration: the
-sanitised evidence under `tests/live/containment-evidence/evidence.jsonl` when
-that file is committed, and otherwise the synthetic sample in
+walkthrough records. It also appends the containment runs: the
+sanitised evidence in `tests/live/containment-evidence/run-*.jsonl`, and, while
+no committed run was stopped by the time cap, the synthetic stand-in in
 `web/fixture/sources/containment-sample.jsonl` (marked `synthetic`). Run the
 build only when the fixture sources change.
 
@@ -200,13 +200,15 @@ condition five and condition three in the same upgrade. The pilot files are in
   baseline until the frozen pair exists.
 - The single-behaviour rows are `diagnostic`. They used a narrower isolated
   adapter, so the page does not compare them with the condition rows.
-- The containment panel is the deliberate containment demonstration, not a
-  benchmark row. No frozen row was capped (`bench/RESULTS.md` section 6), so the
-  panel never shows a session cap. It reads a `containment` record from its own
-  session, `containment-demo`, and shows the aashaan's per-run time cap, the
-  measured wall time, `killed_timeout` and `passed=false`; then the boundary
-  (requested, effective and observed network policy, kept apart) and the cleanup
-  proof. The panel is absent when the store has no such session.
+- The containment panel covers two ordinary runs, not benchmark rows. No frozen
+  row was capped (`bench/RESULTS.md` section 6), so the panel never shows a
+  session cap. It reads the `containment` records of its own session,
+  `containment-runs`. The main moment is the run the aashaan's per-run time cap
+  killed: the cap, the measured wall time, `killed_timeout`, `passed=false` and
+  the pages fetched; then the boundary (requested, effective and observed network
+  policy, kept apart) and the cleanup proof. The run before it, which crashed on
+  the API's rate limit and exited, is shown after them. Each links its run page.
+  The panel is absent when the store has no such session.
 - The walkthrough session is illustrative. The change facts and IDs come from
   `testdata/vimanam/2.1.0/payouts.json`. The call site comes from
   `bench/workspaces/payout-sync/payout_sync.py`. The Clef answer comes from
@@ -406,7 +408,7 @@ reads, and the web check checks it on every record every route returns.
 | `lesson-policy` | `Kalari.Tools.Lesson.PolicyProvenance` | The policy check writes it. |
 | `session` | `{title, summary, arm, illustrative, notes}` | No producer yet. The fixture supplies it. |
 | `change` | `{id, kind, severity, title, summary, endpoint, source}` | No producer yet. The fixture supplies it. |
-| `containment` | `kalari.containment.v1`, written by `tests/live/containment.sh` | The containment demonstration's own summary. It shares the run id of the production `run` record. |
+| `containment` | `kalari.containment.v1`, written by `tests/live/containment.sh` | The containment runs's own summary. It shares the run id of the production `run` record. |
 | `blast-radius` | `Kalari.Model.BlastRadius` | The search tool writes links to Lambo, not the evidence store. |
 | `decision` | `{question, question_set, model, answer}` | No producer yet. The fixture supplies it. |
 

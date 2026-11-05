@@ -655,11 +655,12 @@ function comparisonSection(bench, runIds, hasFrozenPair) {
     ${validPilot.length ? pilotContrast(validPilot, runIds) : ""}`;
 }
 
-/* The deliberate containment demonstration. It is not a benchmark session: no
-   frozen row was ever capped (RESULTS.md section 6). One staged failure, run
-   through the same production sandbox path, stopped by the aashaan's per-run
-   time cap. The records live in their own session, apart from the benchmark. */
-export const CONTAINMENT_SESSION = "containment-demo";
+/* The containment runs. They are not benchmark sessions: no frozen row was ever
+   capped (RESULTS.md section 6). Two ordinary runs through the production
+   sandbox path, both constructed for this test, kept in their own session apart
+   from the benchmark records. The run the time cap stopped is the main moment.
+   The run before it crashed on a 429 and never reached the cap. */
+export const CONTAINMENT_SESSION = "containment-runs";
 
 const CONTAINMENT_ATTEMPTS = {
   allowed: "the one API port the allowlist names",
@@ -669,10 +670,21 @@ const CONTAINMENT_ATTEMPTS = {
   internet: "a public internet address",
 };
 
-function containmentOf(records) {
-  return ofKind(records, "containment").find(
+function containmentRecords(records) {
+  return ofKind(records, "containment").filter(
     (record) => payloadOf(record).schema === "kalari.containment.v1" && isId(record.run_id),
   );
+}
+
+/* The run the time cap stopped, or else the first run. */
+function containmentOf(records) {
+  const all = containmentRecords(records);
+  return all.find((record) => object(payloadOf(record).result)?.verdict === "killed_timeout") || all[0];
+}
+
+function earlierContainment(records) {
+  const main = containmentOf(records);
+  return containmentRecords(records).filter((record) => record !== main);
 }
 
 function msText(value) {
@@ -692,31 +704,25 @@ function containmentSection(records, runIds) {
   const cleanup = object(p.cleanup) || {};
   const runId = record.run_id;
   const hasRun = runIds && runIds.has(runId);
-  const link = (value, label) =>
+  const link = (id, value, label, text = msText) =>
     Number.isFinite(value)
-      ? hasRun
-        ? runLink(runId, h(msText(value)), runIds, label)
+      ? runIds && runIds.has(id)
+        ? runLink(id, h(text(value)), runIds, label)
         : h("evidence missing")
       : h("not recorded");
   const attempts = Array.isArray(observed.attempts) ? observed.attempts : [];
-  const refusedLines = attempts
-    .filter((item) => item && item.expected === "refused")
-    .map(
-      (item) =>
-        `<li>${h(capitalise(CONTAINMENT_ATTEMPTS[item.label] || "another destination"))}: ${
-          item.observed === "refused" ? "refused" : "<strong>answered</strong>"
-        }</li>`,
-    )
-    .join("");
-  const allowedLines = attempts
-    .filter((item) => item && item.expected === "allowed")
-    .map(
-      (item) =>
-        `<li>${h(capitalise(CONTAINMENT_ATTEMPTS[item.label] || "the allowed destination"))}: ${
-          item.observed === "allowed" ? "answered, as the rule allows" : "<strong>did not answer</strong>"
-        }</li>`,
-    )
-    .join("");
+  const lines = (expected, good, bad, fallback) =>
+    attempts
+      .filter((item) => item && item.expected === expected)
+      .map(
+        (item) =>
+          `<li>${h(capitalise(CONTAINMENT_ATTEMPTS[item.label] || fallback))}: ${
+            item.observed === expected ? good : `<strong>${bad}</strong>`
+          }</li>`,
+      )
+      .join("");
+  const refusedLines = lines("refused", "refused", "answered", "another destination");
+  const allowedLines = lines("allowed", "answered, as the rule allows", "did not answer", "the allowed destination");
   const breaches = Number(observed.breaches) || 0;
   const rules = Array.isArray(effective.rules) ? effective.rules : [];
   const created = Array.isArray(cleanup.sandboxes_created) ? cleanup.sandboxes_created : [];
@@ -724,20 +730,40 @@ function containmentSection(records, runIds) {
   const children = Array.isArray(cleanup.child_processes_remaining) ? cleanup.child_processes_remaining : [];
   const before = Array.isArray(cleanup.pre_existing_before) ? cleanup.pre_existing_before : [];
   const cleanOk = cleanup.ok === true;
+  const earlier = earlierContainment(records).map((item) => {
+    const q = payloadOf(item);
+    const r = object(q.result) || {};
+    const ok = object(object(q.network)?.observed)?.breaches === 0 && object(q.cleanup)?.ok === true;
+    return `<div class="containment-earlier">
+        <h3 class="containment-step">The run before it</h3>
+        <p class="containment-note">The first run used the reference cursor-loop consumer, which has no retry. The payouts API throttles every traversal once, with a rate-limit reply. That consumer did not handle it: the program <strong>exited with a non-zero status</strong> after ${link(
+          item.run_id,
+          r.wall_ms,
+          "Containment run: measured wall time",
+        )}, well inside its time cap, and passed is ${h(r.passed === false ? "false" : String(r.passed))}. The cap never came into play. ${
+          ok
+            ? "Its own boundary probe and cleanup came out the same way."
+            : "<strong>Its boundary probe or cleanup did not verify.</strong> See its page."
+        }</p>
+        <p class="containment-links"><a class="quiet-link quiet-link--light" href="${attr(runHref(item.run_id))}" data-run-link="${attr(
+          item.run_id,
+        )}">Read the run that crashed on the rate limit</a></p>
+      </div>`;
+  });
   return `<section id="containment" class="containment" aria-labelledby="containment-title">
     <div class="containment-inner">
-      <p class="containment-context">Deliberate containment demonstration · not a benchmark session</p>
-      <h2 id="containment-title">A broken consumer, stopped by its time limit.</h2>
-      <p class="containment-lede">Kalari ran a consumer with a known bug on purpose. It follows the page cursor and never stops. It ran in a fresh microVM through the same <code>run_in_sandbox</code> path the agent uses, and the aashaan killed it at the cap this run was given. This is apart from the benchmark: no session in the frozen comparison was stopped by a cap.</p>
+      <p class="containment-context">Two runs through the same sandbox path · not benchmark sessions</p>
+      <h2 id="containment-title">A consumer that never ends, stopped by its time cap.</h2>
+      <p class="containment-lede">A payouts consumer was run in a fresh microVM through the same <code>run_in_sandbox</code> path the agent uses. It waits out a rate-limit reply as <code>Retry-After</code> asks, then follows the page cursor on every response, drained or not, so it never ends. The aashaan killed it at the cap this run was given. This is apart from the benchmark: no session in the frozen comparison was stopped by a cap.</p>
       <h3 class="containment-step">The failure</h3>
       <div class="containment-measures">
         <div class="containment-measure">
           <span class="containment-measure-label">Configured time cap</span>
-          <span class="containment-measure-value">${link(config.time_cap_ms, "Containment demonstration: configured time cap")}</span>
+          <span class="containment-measure-value">${link(runId, config.time_cap_ms, "Containment run: configured time cap")}</span>
         </div>
         <div class="containment-measure">
           <span class="containment-measure-label">Measured wall time</span>
-          <span class="containment-measure-value">${link(result.wall_ms, "Containment demonstration: measured wall time")}</span>
+          <span class="containment-measure-value">${link(runId, result.wall_ms, "Containment run: measured wall time")}</span>
         </div>
         <div class="containment-measure">
           <span class="containment-measure-label">The verdict</span>
@@ -747,14 +773,18 @@ function containmentSection(records, runIds) {
           )}</span>
         </div>
       </div>
-      <p class="containment-note">The supervisor checks the clock by polling, so the measured time can run past the cap. No fixed overshoot bound is promised. The candidate was killed. The baseline guest was never started, because the candidate wrote no output, and the differential check failed. The run page has the exact detail.</p>
+      <p class="containment-note">${
+        Number.isFinite(result.pages_fetched)
+          ? `It fetched ${link(runId, result.pages_fetched, "Containment run: pages fetched", (value) => `${count(value)} pages`)} before the kill, one line each in its output, and waited out the rate limit once. `
+          : ""
+      }The supervisor checks the clock by polling, so the measured time can run past the cap. No fixed overshoot bound is promised. The candidate was killed. The baseline guest was never started, because the candidate wrote no output, and the differential check failed. The run page has the exact detail.</p>
       <p class="containment-note">Output cap ${
         Number.isFinite(config.output_cap_bytes) && hasRun
-          ? runLink(runId, h(`${count(config.output_cap_bytes)} bytes`), runIds, "Containment demonstration: configured output cap")
+          ? runLink(runId, h(`${count(config.output_cap_bytes)} bytes`), runIds, "Containment run: configured output cap")
           : h("not recorded")
       } and memory ${
         Number.isFinite(config.memory_mib) && hasRun
-          ? runLink(runId, h(`${count(config.memory_mib)} MiB`), runIds, "Containment demonstration: configured memory")
+          ? runLink(runId, h(`${count(config.memory_mib)} MiB`), runIds, "Containment run: configured memory")
           : h("not recorded")
       } are configuration only. Neither fired in this run.</p>
       <h3 class="containment-step">The boundary</h3>
@@ -780,6 +810,7 @@ function containmentSection(records, runIds) {
           : "<strong>The cleanup did not verify.</strong> See the run page."
       }</p>
       <p class="containment-note containment-caveat">These are observed restrictions for the listed requests, from one guest configuration. This is not a claim of zero blast radius.</p>
+      ${earlier.join("")}
       <div class="containment-links">
         ${
           hasRun
@@ -788,7 +819,7 @@ function containmentSection(records, runIds) {
               )}">Read the run and its evidence</a>`
             : ""
         }
-        <a class="quiet-link quiet-link--light" href="${attr(sessionHref(CONTAINMENT_SESSION))}">Open its session</a>
+        <a class="quiet-link quiet-link--light" href="${attr(sessionHref(CONTAINMENT_SESSION))}">Open the session</a>
       </div>
     </div>
   </section>`;
@@ -1057,7 +1088,7 @@ export function judgesView({
     sections.push({ id: "baseline", label: "Every condition in this fixture" });
   }
   if (containmentOf(containment)) {
-    sections.push({ id: "containment", label: "The deliberate containment demonstration" });
+    sections.push({ id: "containment", label: "The containment runs" });
   }
   if (hasBenchmark) {
     sections.push({ id: "runs", label: "Every run" });
@@ -1818,8 +1849,8 @@ function containmentRunDetail(record) {
       .join(", ");
   return `<section class="panel" id="containment-evidence" aria-labelledby="containment-evidence-title">
     <div class="panel-head">
-      <div><h2 id="containment-evidence-title">Deliberate containment demonstration</h2>
-      <p class="quiet-line">A staged failure, apart from the benchmark records. No benchmark row is involved.</p></div>
+      <div><h2 id="containment-evidence-title">Containment evidence</h2>
+      <p class="quiet-line">A run constructed for this test, apart from the benchmark records. No benchmark row is involved.</p></div>
       <div class="badge-row">${badge("Not a benchmark run", "neutral")}${p.synthetic ? badge("Synthetic fixture", "draft") : ""}</div>
     </div>
     <p class="caveat">${text(p.case)}</p>
@@ -1834,7 +1865,10 @@ function containmentRunDetail(record) {
       ${fact("Passed", h(boolWord(result.passed)))}
       ${fact("Stdout truncated", h(boolWord(result.stdout_truncated)))}
       ${fact("Pipe held open", h(boolWord(result.pipe_held_open)))}
+      ${fact("Pages fetched before the end", plain(result.pages_fetched, count, "not applicable"))}
+      ${fact("Waits for Retry-After", plain(result.waits_for_retry_after, count))}
     </dl>
+    ${result.stderr_tail ? `<p class="muted">Last of its standard error:</p><pre class="log">${text(result.stderr_tail)}</pre>` : ""}
     <p class="muted">${text(result.enforcement_note)}</p>
     <ul class="plain-list">
       <li><strong>Candidate</strong>: ${text(object(outcomes.candidate)?.verdict)}, passed is ${h(
@@ -1934,7 +1968,7 @@ export function runView({ runId = "", records = [], runs = null, warnings = [] }
   const title = bench.length
     ? `${provenanceTitle} run: ${upgradeLabel(firstPayload.upgrade)}`
     : containmentOf(records)
-      ? "Deliberate containment demonstration"
+      ? "Containment evidence"
       : runRecords.length
       ? "Sandbox run"
       : "Run evidence";
@@ -1945,7 +1979,7 @@ export function runView({ runId = "", records = [], runs = null, warnings = [] }
       : benchStatus === "diagnostic"
         ? badge("Diagnostic session", "pilot")
         : badge(provenance === "frozen" ? "Frozen comparison run" : "Measured pilot run", "live");
-  const demo = containmentOf(records);
+  const shown = containmentOf(records);
   const illustrativeBadge = runRecords.some((record) => payloadOf(record).illustrative === true)
     ? badge("Illustrative", "draft")
     : "";
@@ -1965,7 +1999,7 @@ export function runView({ runId = "", records = [], runs = null, warnings = [] }
     </header>
     ${warningsSection(warnings)}
     ${bench.map((record) => benchmarkRunDetail(payloadOf(record), sessionId)).join("")}
-    ${demo ? containmentRunDetail(demo) : ""}
+    ${shown ? containmentRunDetail(shown) : ""}
     ${runRecords.map((record) => sandboxRunDetail(record, records, runIds)).join("")}
     ${!bench.length && !runRecords.length ? `<div class="notice notice--quiet"><h2>No readable run record</h2><p>The store returned records for this run, but none is a run or benchmark record.</p></div>` : ""}
     ${recordsTable(records)}

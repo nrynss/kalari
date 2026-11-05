@@ -531,20 +531,31 @@ def illustrative_records() -> list[dict[str, Any]]:
     return records
 
 
-CONTAINMENT_EVIDENCE = REPO / "tests" / "live" / "containment-evidence" / "evidence.jsonl"
+CONTAINMENT_DIR = REPO / "tests" / "live" / "containment-evidence"
 CONTAINMENT_SAMPLE = HERE / "sources" / "containment-sample.jsonl"
 
 
 def containment_records() -> list[dict[str, Any]]:
-    """The deliberate containment demonstration, in its own session.
+    """The containment runs, in its own session.
 
     The real, sanitised evidence from the live run is used when it is
     committed. Until then the fixture carries a synthetic sample with the same
     shape, marked `synthetic` in the containment payload.
     """
-    path = CONTAINMENT_EVIDENCE if CONTAINMENT_EVIDENCE.is_file() else CONTAINMENT_SAMPLE
-    with path.open(encoding="utf-8") as handle:
-        return [json.loads(line) for line in handle if line.strip()]
+    paths = sorted(CONTAINMENT_DIR.glob("run-*.jsonl"))
+    records: list[dict[str, Any]] = []
+    for path in paths:
+        with path.open(encoding="utf-8") as handle:
+            records += [json.loads(line) for line in handle if line.strip()]
+    stopped = [
+        r
+        for r in records
+        if r.get("kind") == "containment" and r["payload"]["result"]["verdict"] == "killed_timeout"
+    ]
+    if not stopped:
+        with CONTAINMENT_SAMPLE.open(encoding="utf-8") as handle:
+            records += [json.loads(line) for line in handle if line.strip()]
+    return records
 
 
 def main() -> None:

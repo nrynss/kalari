@@ -57,12 +57,13 @@ PAGES = (
     "run-frozen",
     "run-illustrative",
     "run-containment",
+    "run-containment-earlier",
     "run-endpoint",
     "run-redaction",
 )
 JUDGES_PAGES = tuple(name for name in PAGES if name.startswith("judges"))
 SESSION_PAGES = ("session", "session-frozen", "session-redaction")
-RUN_PAGES = ("run", "run-frozen", "run-illustrative", "run-containment", "run-endpoint", "run-redaction")
+RUN_PAGES = ("run", "run-frozen", "run-illustrative", "run-containment", "run-containment-earlier", "run-endpoint", "run-redaction")
 SHELLS = ("index.html", "session.html", "run.html")
 
 ID_RE = re.compile(r"^[A-Za-z0-9._-]+$")
@@ -1211,38 +1212,53 @@ def assert_anchor_containers(name: str, html: str) -> None:
         raise Failure(f"on {name}, the anchor {text!r} shows a number but is not a measure or a run id")
 
 
-CONTAINMENT_SESSION = "containment-demo"
-CONTAINMENT_PREFIX = "Containment demonstration: "
+CONTAINMENT_SESSION = "containment-runs"
+CONTAINMENT_PREFIX = "Containment run: "
 CONTAINMENT_TITLES = {
     CONTAINMENT_PREFIX + "configured time cap": (("config", "time_cap_ms"), lambda v: f"{format_count(v)} ms"),
     CONTAINMENT_PREFIX + "measured wall time": (("result", "wall_ms"), lambda v: f"{format_count(v)} ms"),
+    CONTAINMENT_PREFIX + "pages fetched": (("result", "pages_fetched"), lambda v: f"{format_count(v)} pages"),
     CONTAINMENT_PREFIX + "configured output cap": (("config", "output_cap_bytes"), lambda v: f"{format_count(v)} bytes"),
     CONTAINMENT_PREFIX + "configured memory": (("config", "memory_mib"), lambda v: f"{format_count(v)} MiB"),
 }
 
 
+def containment_records_of(records: list[dict]) -> list[dict]:
+    return [
+        record
+        for record in records or []
+        if isinstance(record, dict)
+        and record.get("kind") == "containment"
+        and payload_of(record).get("schema") == "kalari.containment.v1"
+    ]
+
+
 def containment_record_of(records: list[dict]) -> dict | None:
-    for record in records or []:
-        if (
-            isinstance(record, dict)
-            and record.get("kind") == "containment"
-            and payload_of(record).get("schema") == "kalari.containment.v1"
-        ):
+    """The run the time cap stopped, else the first run."""
+    found = containment_records_of(records)
+    for record in found:
+        if (payload_of(record).get("result") or {}).get("verdict") == "killed_timeout":
             return record
-    return None
+    return found[0] if found else None
 
 
 def containment_expected(records: list[dict], run_ids: set[str]) -> list[tuple]:
-    """The measure links the containment panel draws for these records."""
-    record = containment_record_of(records)
-    if record is None or record.get("run_id") not in run_ids:
+    """The measure links the containment panel draws for these records: the
+    main run's figures, then the earlier run's wall time."""
+    main = containment_record_of(records)
+    if main is None:
         return []
     expected = []
-    for title, (path, formatter) in CONTAINMENT_TITLES.items():
-        section, key = path
-        value = (payload_of(record).get(section) or {}).get(key)
-        if finite(value):
-            expected.append((title, record["run_id"], formatter(value)))
+    for record in [main] + [r for r in containment_records_of(records) if r is not main]:
+        if record.get("run_id") not in run_ids:
+            continue
+        for title, (path, formatter) in CONTAINMENT_TITLES.items():
+            if record is not main and title != CONTAINMENT_PREFIX + "measured wall time":
+                continue
+            section, key = path
+            value = (payload_of(record).get(section) or {}).get(key)
+            if finite(value) and not (title.endswith("pages fetched") and value == 0):
+                expected.append((title, record["run_id"], formatter(value)))
     return expected
 
 
@@ -1251,14 +1267,14 @@ def plain_text(fragment: str) -> str:
 
 
 def assert_containment(name: str, html: str, records: list[dict], run_ids: set[str]) -> None:
-    """The judges containment panel matches its record, links its run and its
+    """The judges containment panel matches its records, links each run and the
     session, and keeps its claims qualified."""
     record = containment_record_of(records)
     has_section = 'id="containment"' in html
     if record is None:
         check(not has_section, f"on {name}, a containment panel is drawn with no containment record")
         return
-    check(has_section, f"on {name}, the containment record has no panel")
+    check(has_section, f"on {name}, the containment records have no panel")
     start = html.index('<section id="containment"')
     section = html[start : html.index("</section>", start)]
     parser = JudgesParser()
@@ -1275,17 +1291,27 @@ def assert_containment(name: str, html: str, records: list[dict], run_ids: set[s
     p = payload_of(record)
     run_id = record["run_id"]
     text = plain_text(section)
-    # the run and the session, reachable from the panel
-    links = [
+    # every run is reachable from the panel, and the session too
+    main_links = [
         anchor
         for anchor in parser.anchors
         if anchor["attrs"].get("data-run-link") == run_id and anchor["text"] == "Read the run and its evidence"
     ]
-    check(len(links) == 1 and links[0]["href"] == f"run.html?id={run_id}", f"on {name}, the panel does not link its run page")
+    check(len(main_links) == 1 and main_links[0]["href"] == f"run.html?id={run_id}", f"on {name}, the panel does not link its main run page")
+    for other in containment_records_of(records):
+        if other is record:
+            continue
+        links = [
+            anchor
+            for anchor in parser.anchors
+            if anchor["attrs"].get("data-run-link") == other["run_id"] and anchor["text"] == "Read the run that crashed on the rate limit"
+        ]
+        check(len(links) == 1 and links[0]["href"] == f"run.html?id={other['run_id']}", f"on {name}, the panel does not link the earlier run page")
+        check("The run before it" in text and "exited with a non-zero status" in text, f"on {name}, the panel does not describe the earlier run")
     check(f'href="session.html?id={CONTAINMENT_SESSION}"' in section, f"on {name}, the panel does not link its session")
     # the failure
     result = p.get("result") or {}
-    check(result.get("verdict") == "killed_timeout" and result.get("passed") is False, f"on {name}, the record is not a killed_timeout with passed=false")
+    check(result.get("verdict") == "killed_timeout" and result.get("passed") is False, f"on {name}, the main run is not a killed_timeout with passed=false")
     check("killed_timeout" in text and "passed is false" in text, f"on {name}, the panel does not show killed_timeout and passed=false")
     check("Configured time cap" in text and "Measured wall time" in text, f"on {name}, the panel lacks the time cap or the wall time")
     check("polling" in text and "No fixed overshoot bound" in text, f"on {name}, the panel does not explain polling or disclaims an overshoot bound badly")
@@ -1312,84 +1338,97 @@ def assert_containment(name: str, html: str, records: list[dict], run_ids: set[s
         f"This test created {count_word(len(cleanup.get('sandboxes_created') or []))} sandboxes" in text,
         f"on {name}, the panel does not state how many sandboxes were created",
     )
-    # claims stay qualified, and the old session-cap story is gone
+    # claims stay qualified, labels stay plain, and the old session-cap story is gone
     for match in re.finditer(r"zero blast radius", text, re.IGNORECASE):
         check(text[max(0, match.start() - 24) : match.start()].lower().endswith("not a claim of "), f"on {name}, an unqualified zero-blast-radius claim")
     check("not a claim of zero blast radius" in text, f"on {name}, the panel lacks the blast-radius qualification")
-    check("Not a benchmark session" in text or "not a benchmark session" in text, f"on {name}, the panel is not labelled apart from the benchmark")
+    check("not benchmark sessions" in text, f"on {name}, the panel is not labelled apart from the benchmark")
     for phrase in ("session cap", "The cap fired", "harness"):
         check(phrase not in text, f"on {name}, the panel keeps the old story: {phrase!r}")
-    check("Deliberate containment demonstration" in text, f"on {name}, the panel lacks its label")
+    for word in ("demonstration", "deliberate", "demo "):
+        check(word not in text.lower(), f"on {name}, the panel carries the label {word!r}")
+    check("agent wrote" not in text.lower() and "agent-written" not in text.lower(), f"on {name}, the panel implies an agent wrote a consumer")
 
 
 def validate_containment_records(records: list[dict]) -> list[str]:
-    """The containment evidence contract: the record is honest about what it shows."""
+    """The containment evidence contract: every record is honest about what it shows."""
     errors: list[str] = []
-    record = containment_record_of(records)
-    if record is None:
+    found = containment_records_of(records)
+    if not found:
         return ["no containment record"]
-    p = payload_of(record)
-    run_id = record.get("run_id")
-    if record.get("session_id") != CONTAINMENT_SESSION:
-        errors.append("containment session id is not containment-demo")
-    if not isinstance(run_id, str) or not ID_RE.match(run_id):
-        errors.append("containment run id is not a valid id")
-    if p.get("benchmark") is not False:
-        errors.append("containment payload does not say it is not a benchmark")
-    if p.get("label") != "Deliberate containment demonstration":
-        errors.append("containment payload lacks its label")
-    config, result = p.get("config") or {}, p.get("result") or {}
-    for key in ("time_cap_ms", "output_cap_bytes", "memory_mib"):
-        if not (finite(config.get(key)) and config[key] > 0):
-            errors.append(f"config.{key} is not a positive number")
-    if not (finite(result.get("wall_ms")) and result["wall_ms"] >= 0):
-        errors.append("result.wall_ms is not a number")
-    if result.get("verdict") != "killed_timeout" or result.get("passed") is not False:
-        errors.append("result is not killed_timeout with passed=false")
-    if result.get("stdout_truncated") is not False:
-        errors.append("result.stdout_truncated must be false: the output cap is not claimed to fire")
-    if result.get("run_id") != run_id:
-        errors.append("result.run_id differs from the envelope run id")
-    outcomes = p.get("outcomes") or {}
-    for key in ("candidate", "baseline", "differential"):
-        if not isinstance(outcomes.get(key), dict):
-            errors.append(f"outcomes.{key} is missing")
-    if (outcomes.get("differential") or {}).get("passed") is not False:
-        errors.append("the differential check must have failed")
-    creation = p.get("creation") or {}
-    argv = creation.get("argv")
-    if not (isinstance(argv, list) and argv[:2] == ["msb", "create"] and "--no-net" in argv):
-        errors.append("creation.argv is not an msb create with --no-net")
-    network = p.get("network") or {}
-    for key in ("requested", "effective", "observed"):
-        if not isinstance(network.get(key), dict):
-            errors.append(f"network.{key} is missing")
-    observed = network.get("observed") or {}
-    if observed.get("same_guest") is not False:
-        errors.append("network.observed.same_guest must be false")
-    if observed.get("breaches") != 0:
-        errors.append("network.observed.breaches is not zero")
-    if not (observed.get("attempts") and observed.get("denied_attempts", 0) > 0):
-        errors.append("no denied probe attempts recorded")
-    if (p.get("cleanup") or {}).get("ok") is not True:
-        errors.append("cleanup.ok is not true")
-    limits = " ".join(p.get("limits") or [])
-    if "zero blast radius" not in limits:
-        errors.append("limits do not disclaim zero blast radius")
-    # it traces to the production run and check records of the same run
-    runs = [r for r in records if r.get("kind") == "run" and r.get("run_id") == run_id]
-    if len(runs) != 1:
-        errors.append("the containment run has no single run record")
-    else:
-        rp = payload_of(runs[0])
-        if (rp.get("request") or {}).get("caps", {}).get("timeout_ms") != config.get("time_cap_ms"):
-            errors.append("run record time cap differs from the containment config")
-        if (rp.get("verdict") or {}).get("wall_ms") != result.get("wall_ms"):
-            errors.append("run record wall_ms differs from the containment result")
-        if (rp.get("verdict") or {}).get("verdict") != "killed_timeout":
-            errors.append("run record verdict is not killed_timeout")
-    if not [r for r in records if r.get("kind") == "check" and r.get("run_id") == run_id]:
-        errors.append("the containment run has no check records")
+    if not any((payload_of(r).get("result") or {}).get("verdict") == "killed_timeout" for r in found):
+        errors.append("no containment run was stopped by the time cap")
+    seen: set[str] = set()
+    for record in found:
+        run_id = record.get("run_id")
+        tag = f"run {run_id}: "
+        p = payload_of(record)
+        if run_id in seen:
+            errors.append(tag + "two containment records share a run id")
+        seen.add(run_id)
+        if record.get("session_id") != CONTAINMENT_SESSION:
+            errors.append(tag + "session id is not containment-runs")
+        if not isinstance(run_id, str) or not ID_RE.match(run_id):
+            errors.append(tag + "run id is not a valid id")
+        if p.get("benchmark") is not False:
+            errors.append(tag + "payload does not say it is not a benchmark")
+        if re.search(r"(?i)demonstration|deliberate|\bdemo\b", json.dumps(p)):
+            errors.append(tag + "payload carries a label this test does not use")
+        config, result = p.get("config") or {}, p.get("result") or {}
+        for key in ("time_cap_ms", "output_cap_bytes", "memory_mib"):
+            if not (finite(config.get(key)) and config[key] > 0):
+                errors.append(tag + f"config.{key} is not a positive number")
+        if not (finite(result.get("wall_ms")) and result["wall_ms"] >= 0):
+            errors.append(tag + "result.wall_ms is not a number")
+        verdict = result.get("verdict")
+        if verdict not in ("killed_timeout", "exited") or result.get("passed") is not False:
+            errors.append(tag + "result is not killed_timeout or exited with passed=false")
+        if verdict == "exited" and result.get("exit_code") in (None, 0):
+            errors.append(tag + "an exited run that failed must have a non-zero exit code")
+        if verdict == "killed_timeout" and not (finite(result.get("pages_fetched")) and result["pages_fetched"] > 0):
+            errors.append(tag + "a killed run must record the pages it fetched")
+        if result.get("stdout_truncated") is not False:
+            errors.append(tag + "result.stdout_truncated must be false: the output cap is not claimed to fire")
+        if result.get("run_id") != run_id:
+            errors.append(tag + "result.run_id differs from the envelope run id")
+        outcomes = p.get("outcomes") or {}
+        for key in ("candidate", "baseline", "differential"):
+            if not isinstance(outcomes.get(key), dict):
+                errors.append(tag + f"outcomes.{key} is missing")
+        if (outcomes.get("differential") or {}).get("passed") is not False:
+            errors.append(tag + "the differential check must have failed")
+        argv = (p.get("creation") or {}).get("argv")
+        if not (isinstance(argv, list) and argv[:2] == ["msb", "create"] and "--no-net" in argv):
+            errors.append(tag + "creation.argv is not an msb create with --no-net")
+        network = p.get("network") or {}
+        for key in ("requested", "effective", "observed"):
+            if not isinstance(network.get(key), dict):
+                errors.append(tag + f"network.{key} is missing")
+        observed = network.get("observed") or {}
+        if observed.get("same_guest") is not False:
+            errors.append(tag + "network.observed.same_guest must be false")
+        if observed.get("breaches") != 0:
+            errors.append(tag + "network.observed.breaches is not zero")
+        if not (observed.get("attempts") and observed.get("denied_attempts", 0) > 0):
+            errors.append(tag + "no denied probe attempts recorded")
+        if (p.get("cleanup") or {}).get("ok") is not True:
+            errors.append(tag + "cleanup.ok is not true")
+        if "zero blast radius" not in " ".join(p.get("limits") or []):
+            errors.append(tag + "limits do not disclaim zero blast radius")
+        # it traces to the production run and check records of the same run
+        runs = [r for r in records if r.get("kind") == "run" and r.get("run_id") == run_id]
+        if len(runs) != 1:
+            errors.append(tag + "no single run record")
+        else:
+            rp = payload_of(runs[0])
+            if (rp.get("request") or {}).get("caps", {}).get("timeout_ms") != config.get("time_cap_ms"):
+                errors.append(tag + "run record time cap differs from the containment config")
+            if (rp.get("verdict") or {}).get("wall_ms") != result.get("wall_ms"):
+                errors.append(tag + "run record wall_ms differs from the containment result")
+            if (rp.get("verdict") or {}).get("verdict") != verdict:
+                errors.append(tag + "run record verdict differs from the containment result")
+        if not [r for r in records if r.get("kind") == "check" and r.get("run_id") == run_id]:
+            errors.append(tag + "no check records")
     return errors
 
 
@@ -1399,7 +1438,7 @@ def assert_containment_run_page(name: str, html: str, records: list[dict]) -> No
     p = payload_of(record)
     text = plain_text(html)
     for needle in (
-        "Deliberate containment demonstration",
+        "Containment evidence",
         "Not a benchmark run",
         "Configured time cap",
         "Measured wall time (supervisor clock)",
@@ -1414,7 +1453,9 @@ def assert_containment_run_page(name: str, html: str, records: list[dict]) -> No
         check(needle in text, f"on {name}, the containment evidence lacks {needle!r}")
     for attempt in (p.get("network") or {}).get("observed", {}).get("attempts", []):
         check(attempt["label"] in text, f"on {name}, the probe attempt {attempt['label']!r} is missing")
-    check(not (re.findall(r"<table", html) and html.count("<table") > 1), f"on {name}, the containment evidence added a table")
+    check(html.count("<table") <= 1, f"on {name}, the containment evidence added a table")
+    for word in ("demonstration", "deliberate"):
+        check(word not in text.lower(), f"on {name}, the run page carries the label {word!r}")
 
 
 def table_measure_links(html: str, benchmark: list[dict], run_ids: set[str]) -> int:
@@ -2333,7 +2374,7 @@ def assert_page_shapes(inputs: dict) -> None:
         assert_cell_counts(name, html, Counter({None: 3 * len(records)}))
         assert_anchor_containers(name, html)
         assert_measure_link_count(name, html, [], set(inputs[name]["runs"]), "run")
-        if name == "run-containment":
+        if name in ("run-containment", "run-containment-earlier"):
             assert_containment_run_page(name, html, records)
     say("every page carries the table cells and links its records require")
 

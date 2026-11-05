@@ -410,10 +410,13 @@ try {
   if (!runs.includes("pilot-c3-payouts-r5")) {
     throw new Error("the fixture has no pilot-c3-payouts-r5 run");
   }
-  const containment = await getJson(base, "api/sessions/containment-demo");
-  const containmentRunId = containment.find((record) => record.kind === "containment")?.run_id;
-  if (!containmentRunId) throw new Error("the fixture has no containment demonstration");
+  const containment = await getJson(base, "api/sessions/containment-runs");
+  const containmentRuns = containment.filter((record) => record.kind === "containment");
+  const containmentRunId = containmentRuns.find((record) => record.payload.result.verdict === "killed_timeout")?.run_id;
+  const earlierRunId = containmentRuns.find((record) => record.run_id !== containmentRunId)?.run_id;
+  if (!containmentRunId || !earlierRunId) throw new Error("the fixture needs a capped containment run and an earlier one");
   const containmentRunRecords = await getJson(base, `api/runs/${containmentRunId}`);
+  const earlierRunRecords = await getJson(base, `api/runs/${earlierRunId}`);
   const sessionRecords = await getJson(base, "api/sessions/payouts-upgrade");
   const runRecords = await getJson(base, "api/runs/pilot-c3-payouts-r5");
   const illustrativeRunRecords = await getJson(base, "api/runs/payouts-attempt-1");
@@ -502,6 +505,11 @@ try {
       view: "run",
       args: { runId: containmentRunId, records: containmentRunRecords, runs },
       inputs: { runId: containmentRunId, records: containmentRunRecords, runs },
+    },
+    "run-containment-earlier": {
+      view: "run",
+      args: { runId: earlierRunId, records: earlierRunRecords, runs },
+      inputs: { runId: earlierRunId, records: earlierRunRecords, runs },
     },
     "run-endpoint": {
       view: "run",
