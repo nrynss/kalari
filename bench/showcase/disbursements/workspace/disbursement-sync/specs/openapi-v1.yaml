@@ -1,0 +1,34 @@
+openapi: 3.0.3
+info:
+  title: Meridian Disbursements API
+  version: 1.4.0
+servers:
+  - url: https://disbursements.example.test
+paths:
+  /v1/disbursements:
+    get:
+      operationId: listDisbursements
+      summary: List all disbursements
+      responses:
+        "200":
+          description: Every disbursement on the ledger.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [disbursements]
+                properties:
+                  disbursements:
+                    type: array
+                    items: { $ref: "#/components/schemas/Disbursement" }
+components:
+  schemas:
+    Disbursement:
+      type: object
+      required: [id, merchant_id, amount_cents, currency, created_at]
+      properties:
+        id: { type: string, example: ds_00042 }
+        merchant_id: { type: string, example: m_017 }
+        amount_cents: { type: integer, minimum: 1 }
+        currency: { type: string, example: USD }
+        created_at: { type: string, format: date-time }
