@@ -48,6 +48,7 @@ api_pids=()
 sandbox_before="$work/sandboxes-before.json"
 sandbox_after="$work/sandboxes-after.json"
 sandbox_before_failed=0
+known_sandboxes=(probe-a probe-b peer-a peer-b peer-c kalari-observer-probe-a kalari-observer-probe-b)
 
 say() {
   printf '%s\n' "$*"
@@ -97,6 +98,15 @@ start_api() {
 # can leave one behind, so kill by its unique arguments and fail if one remains.
 observer_pids() {
   ps -eo pid,args | awk '$2 ~ /python/ && index($0, "bench/apis/payouts/server.py") && index($0, "--trace-client 127.0.0.1") { print $1 }'
+}
+
+# Known observer test names from this test and earlier reproductions. Remove
+# them by name so a clean before-list is possible.
+remove_known_sandboxes() {
+  local name
+  for name in "${known_sandboxes[@]}"; do
+    "$TOOL_BIN/msb" remove -f "$name" >/dev/null 2>&1 || true
+  done
 }
 
 cleanup() {
@@ -149,13 +159,15 @@ cleanup() {
     echo "cleanup: initial msb list failed; sandbox cleanup is unproven" >&2
     status=1
   elif [[ -f "$sandbox_before" ]]; then
+    remove_known_sandboxes
     if ! "$TOOL_BIN/msb" list --format json >"$sandbox_after" 2>"$work/msb-list-after.err"; then
       echo "cleanup: msb list failed; sandbox cleanup is unproven" >&2
       status=1
     else
-      python3 -I - "$sandbox_before" "$sandbox_after" "$TOOL_BIN/msb" "$work/sandboxes-left.json" <<'PY'
+      python3 -I - "$sandbox_before" "$sandbox_after" "$TOOL_BIN/msb" "$work/sandboxes-left.json" "${known_sandboxes[@]}" <<'PY'
 import json, subprocess, sys
-before_path, after_path, msb, left_path = sys.argv[1:]
+before_path, after_path, msb, left_path = sys.argv[1:5]
+known = set(sys.argv[5:])
 def names(path):
     try:
         with open(path) as stream:
@@ -164,7 +176,7 @@ def names(path):
         print(f"cleanup: cannot read {path}: {exc}", file=sys.stderr)
         raise SystemExit(1)
 removed = sorted(name for name in names(after_path) - names(before_path)
-                 if name.startswith("kalari-"))
+                 if name.startswith("kalari-") or name in known)
 for name in removed:
     subprocess.run([msb, "remove", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 json.dump(removed, open(left_path, "w"))
@@ -175,8 +187,9 @@ PY
         echo "cleanup: msb list failed; sandbox cleanup is unproven" >&2
         status=1
       else
-        left=$(python3 -I - "$sandbox_before" "$sandbox_after" <<'PY'
+        left=$(python3 -I - "$sandbox_before" "$sandbox_after" "${known_sandboxes[@]}" <<'PY'
 import json, sys
+known = set(sys.argv[3:])
 def names(path):
     try:
         with open(path) as stream:
@@ -185,7 +198,7 @@ def names(path):
         print(f"cleanup: cannot read {path}: {exc}", file=sys.stderr)
         raise SystemExit(1)
 print(len({name for name in names(sys.argv[2]) - names(sys.argv[1])
-           if name.startswith("kalari-")}))
+           if name.startswith("kalari-") or name in known}))
 PY
 )
         if [[ "$left" != 0 ]]; then
@@ -235,10 +248,21 @@ if ! "$TOOL_BIN/lambo" provision --config "$preflight/lambo.toml" >/dev/null 2>"
 fi
 say "preflight: lambo fixture embedder provisioned and derived one concept"
 
+remove_known_sandboxes
 if ! "$TOOL_BIN/msb" list --format json >"$sandbox_before" 2>"$work/msb-list-before.err"; then
   echo "observer rehearsal: initial msb list failed; sandbox cleanup is unproven" >&2
   sandbox_before_failed=1
   echo '[]' >"$sandbox_before"
+else
+  python3 -I - "$sandbox_before" "${known_sandboxes[@]}" <<'PY'
+import json, sys
+names = {row.get("name", "") for row in json.load(open(sys.argv[1]))}
+known = set(sys.argv[2:])
+left = sorted(names & known)
+if left:
+    raise SystemExit("observer test sandboxes remain: " + ",".join(left))
+PY
+  say "sandboxes: before list has no observer test sandboxes"
 fi
 
 payouts_live=$(free_port)
@@ -312,6 +336,8 @@ repo = Path(sys.argv[3])
 payouts_live, observer_port, settlements_live, settlements_grading = map(int, sys.argv[4:8])
 lake = sys.argv[8]
 msb = str(tools / "msb")
+known_sandboxes = ["probe-a", "probe-b", "peer-a", "peer-b", "peer-c",
+                   "kalari-observer-probe-a", "kalari-observer-probe-b"]
 caps = {"timeout_ms": 30000, "output_cap_bytes": 65536, "memory_mib": 512}
 alias = "host.microsandbox.internal"
 endpoint = lambda port: {"host": alias, "port": port}
@@ -529,7 +555,7 @@ class H(http.server.BaseHTTPRequestHandler):
 http.server.ThreadingHTTPServer(("127.0.0.1", int(sys.argv[1])), H).serve_forever()
 """
 
-PROBE = r"""
+HEADER_PROBE = r"""
 import http.server, json, sys
 class H(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
@@ -552,65 +578,126 @@ def apply_firewall(port, gateway):
     allow = ["iptables", "-w", "-I", "INPUT", "-p", "tcp", "--dport", str(port),
              "-s", gateway, "-j", "ACCEPT"]
     rules = [drop, allow]
+    installed = []
     try:
         for rule in rules:
             result = subprocess.run(rule, capture_output=True, text=True)
             if result.returncode != 0:
+                for done in reversed(installed):
+                    subprocess.run(["iptables", "-w", "-D"] + done[3:], capture_output=True, text=True)
                 detail = (result.stderr or result.stdout).strip().splitlines()
                 reason = detail[-1] if detail else f"exit {result.returncode}"
                 return rules, f"unavailable: {reason}"
+            installed.append(rule)
     except FileNotFoundError:
+        for done in reversed(installed):
+            subprocess.run(["iptables", "-w", "-D"] + done[3:], capture_output=True, text=True)
         return rules, "unavailable: iptables not found"
     return rules, "installed"
 
+def sandbox_names():
+    result = subprocess.run([msb, "list", "--format", "json"], capture_output=True, text=True)
+    if result.returncode != 0:
+        raise SystemExit("msb list failed")
+    return {row.get("name", "") for row in json.loads(result.stdout)}
+
+def sandbox_request(name, port, limit):
+    run = subprocess.run([msb, "exec", name, "--", "python3", "-c",
+        f"import urllib.request; print(urllib.request.urlopen('http://host.microsandbox.internal:{port}/v2/payouts?limit={limit}', timeout=5).status)"],
+        capture_output=True, text=True)
+    return run.stdout.strip() or f"exit={run.returncode}"
+
+def header_request(name, port):
+    run = subprocess.run([msb, "exec", name, "--", "python3", "-c",
+        f"import urllib.request; print(urllib.request.urlopen('http://host.microsandbox.internal:{port}/x', timeout=5).status)"],
+        capture_output=True, text=True)
+    return run.stdout.strip() or f"exit={run.returncode}"
+
+def process_args(pid):
+    result = subprocess.run(["ps", "-o", "args=", "-p", str(pid)], capture_output=True, text=True)
+    return result.stdout.strip()
+
+def lean_child(parent):
+    listing = subprocess.run(["ps", "-eo", "pid,ppid,args"], capture_output=True, text=True).stdout
+    for row in listing.splitlines():
+        fields = row.split(None, 2)
+        if len(fields) == 3 and fields[1] == str(parent) and "lean" in fields[2]:
+            return int(fields[0])
+    return None
+
 def second_sandbox_test():
-    port = free_port()
-    log = work / "observer-peers.jsonl"
-    probe = subprocess.Popen(["python3", "-I", "-c", PROBE, str(port), str(log)],
+    observer_probe = free_port()
+    header_port = free_port()
+    trace = work / "observer-probe-trace.jsonl"
+    header_log = work / "observer-probe-headers.jsonl"
+    observer = subprocess.Popen(["python3", "-I", str(repo / "bench/apis/payouts/server.py"),
+        "--bind", "127.0.0.1", "--port", str(observer_probe), "--v1", "off",
+        "--trace", str(trace), "--trace-client", "127.0.0.1"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    header = subprocess.Popen(["python3", "-I", "-c", HEADER_PROBE, str(header_port), str(header_log)],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     names = ["kalari-observer-probe-a", "kalari-observer-probe-b"]
+    before = sandbox_names()
     rules, firewall = [], "not attempted"
     try:
-        wait_port(port)
+        wait_port(observer_probe)
+        wait_port(header_port)
         for name in names:
             subprocess.run([msb, "remove", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run([msb, "create", "--name", name, "--cpus", "1", "--memory", "256M", "--no-net",
-                "--net-rule", f"allow@172.16.0.0/12:tcp:{port}", "--pull", "never", "python:3.13-slim"],
+                "--net-rule", f"allow@172.16.0.0/12:tcp:{observer_probe}",
+                "--net-rule", f"allow@172.16.0.0/12:tcp:{header_port}",
+                "--pull", "never", "python:3.13-slim"],
                 check=True, stdout=subprocess.DEVNULL)
         gateway = subprocess.run([msb, "exec", names[0], "--", "sh", "-c",
             "grep 'host.microsandbox' /etc/hosts | head -1 | cut -f1"],
             capture_output=True, text=True, check=True).stdout.strip()
         if not gateway:
             raise SystemExit("probe sandbox has no host gateway")
-        results = []
-        for name in names:
-            run = subprocess.run([msb, "exec", name, "--", "python3", "-c",
-                f"import urllib.request; print(urllib.request.urlopen('http://host.microsandbox.internal:{port}/x', timeout=5).status)"],
-                capture_output=True, text=True)
-            results.append(run.stdout.strip() or f"exit={run.returncode}")
-        peers = []
-        if log.exists():
-            peers = [json.loads(row)["peer"] for row in log.read_text().splitlines() if row.strip()]
-        rules, firewall = apply_firewall(port, gateway)
-        rule_text = f"INPUT -p tcp --dport {port} -s {gateway} -j ACCEPT, INPUT -p tcp --dport {port} -s 172.16.0.0/12 -j DROP"
-        line(f"egress: alias_rule=allow@172.16.0.0/12:tcp:{port} observed_gateway={gateway}")
-        line(f"firewall: rules=\"{rule_text}\" result={firewall}")
-        line(f"second sandbox: probe_a={results[0]} probe_b={results[1]} peers={','.join(peers)} xff=absent isolation=not-established")
-        if results != ["200", "200"]:
-            raise SystemExit("second sandbox probe did not reach the observer")
-        if set(peers) != {"127.0.0.1"}:
-            raise SystemExit(f"unexpected observer peer: {peers}")
+        first = sandbox_request(names[0], observer_probe, 1)
+        header_request(names[0], header_port)
+        rules, firewall = apply_firewall(observer_probe, gateway)
+        second = sandbox_request(names[1], observer_probe, 2)
+        header_request(names[1], header_port)
+        counts = [json.loads(row).get("count") for row in trace.read_text().splitlines() if row.strip()]
+        headers = [json.loads(row) for row in header_log.read_text().splitlines() if row.strip()]
+        xff = [row.get("xff") for row in headers]
+        blocked = second != "200"
+        rule_text = f"INPUT -p tcp --dport {observer_probe} -s {gateway} -j ACCEPT, INPUT -p tcp --dport {observer_probe} -s 172.16.0.0/12 -j DROP"
+        line(f"egress: alias_rule=allow@172.16.0.0/12:tcp:{observer_probe} observed_gateway={gateway}")
+        line(f"firewall: rules=\"{rule_text}\" result={firewall} applied_before_second=1")
+        line(f"second sandbox: probe_a={first} probe_b={second} trace_counts={counts} xff={xff} firewall_blocked={1 if blocked else 0}")
+        if first != "200":
+            raise SystemExit("first sandbox probe did not reach the observer")
+        if second == "200":
+            if 2 not in counts:
+                raise SystemExit("second sandbox request is not in the observer trace")
+            line("second sandbox: second_event=present isolation=not-established")
+        else:
+            if firewall != "installed":
+                raise SystemExit("the second sandbox failed without a firewall")
+            if 2 in counts:
+                raise SystemExit("the blocked second request is still in the trace")
+            line("second sandbox: second_event=absent isolation=firewall-blocked")
+        if len(xff) != 2:
+            raise SystemExit(f"expected two header probes: {xff}")
+        if any(value is not None for value in xff):
+            raise SystemExit(f"unexpected X-Forwarded-For: {xff}")
     finally:
         if firewall == "installed":
             for rule in reversed(rules):
                 subprocess.run(["iptables", "-w", "-D"] + rule[3:], capture_output=True, text=True)
         for name in names:
             subprocess.run([msb, "remove", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        try:
-            os.killpg(os.getpgid(probe.pid), signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-        probe.wait()
+        for name in sorted(sandbox_names() - before):
+            if name.startswith("kalari-"):
+                subprocess.run([msb, "remove", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        for proc in (header, observer):
+            try:
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            proc.wait()
 
 def mid_run_kill_test():
     root = work / "kill"
@@ -624,6 +711,7 @@ def mid_run_kill_test():
     setup["baseline"]["command"] = ["python3", str(root / "baseline/consumer.py")]
     setup["artifact"] = "kill.jsonl"
     (work / "kill-session.json").write_text(json.dumps(setup, indent=2) + "\n")
+    before = sandbox_names()
     service = Service("kill", work / "kill-session.json", harness=True)
     try:
         service.call("what_changed", {"old_spec": setup["old_spec"], "new_spec": setup["new_spec"]})
@@ -642,8 +730,20 @@ def mid_run_kill_test():
             raise SystemExit("mid-run kill test did not start an observer")
         line("mid-run kill: observer_started=1")
         pgid = os.getpgid(service.proc.pid)
-        os.kill(service.proc.pid, signal.SIGKILL)
-        service.proc.wait(timeout=10)
+        child = lean_child(service.proc.pid)
+        if child is not None:
+            os.kill(child, signal.SIGKILL)
+            line("mid-run kill: killed=lean")
+        elif "lean" in process_args(service.proc.pid):
+            os.kill(service.proc.pid, signal.SIGKILL)
+            line("mid-run kill: killed=lean")
+        else:
+            os.kill(service.proc.pid, signal.SIGKILL)
+            line("mid-run kill: killed=lake-wrapper")
+        try:
+            service.proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            pass
         service.stderr.close()
         time.sleep(0.5)
         leaked = observer_pids(observer_port)
@@ -659,6 +759,9 @@ def mid_run_kill_test():
             raise SystemExit(f"observer survived its process group: {remaining}")
         line("mid-run kill: after_group_cleanup observer_remaining=0")
     finally:
+        for name in sorted(sandbox_names() - before):
+            if name.startswith("kalari-"):
+                subprocess.run([msb, "remove", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if service.proc.poll() is None:
             service.kill()
         service.stderr.close()
@@ -671,6 +774,8 @@ fake = subprocess.Popen(["python3", "-I", "-c", FAKE_DECISIONS, str(fake_port), 
 fake_url = f"http://127.0.0.1:{fake_port}/v1/systemone"
 try:
     wait_port(fake_port)
+    if set(known_sandboxes) & sandbox_names():
+        raise SystemExit("observer test sandboxes remain before the run")
     line(f"decisions: local_fake=loopback:{fake_port} real_endpoint=blocked")
 
     # 1. Production refuses every observer configuration.
@@ -826,8 +931,13 @@ try:
         raise SystemExit("harness process remains")
     if lambo_children():
         raise SystemExit("lambo child remains")
+    if set(known_sandboxes) & sandbox_names():
+        raise SystemExit("observer test sandbox remains")
+    line("sandboxes: observer_test_remaining=0")
     line("processes: observer_remaining=0 service_remaining=0 lambo_remaining=0")
 finally:
+    for name in known_sandboxes:
+        subprocess.run([msb, "remove", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for item in services:
         if item.proc.poll() is None:
             item.kill()

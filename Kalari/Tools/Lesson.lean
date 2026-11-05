@@ -118,10 +118,11 @@ def attachLessonBootstrapChecks (ctx : Kalari.Tools.Run.Context) : IO Kalari.Too
   let checks := ctx.checks.filter (·.id != candidateTruthCheckId)
   return { ctx with checks := checks ++ [truth] }
 
-private def isCandidateTruthCheck (check : Check) : Bool :=
+private def isCandidateTruthCheck (artifact : String) (check : Check) : Bool :=
   check.id == candidateTruthCheckId && check.assertion == candidateTruthCheckAssertion &&
   check.command.length == 4 && check.command[0]? == some "python3" &&
   check.command[1]? == some candidateTruthCheckProgram &&
+  check.command[2]? == some artifact &&
   check.command[3]? == some trustedTruthArtifactName
 
 /-- Run the independent policy fixture once per session and record its result.
@@ -210,7 +211,7 @@ private def reference (lesson : Lesson) : String :=
 append verified-behavior evidence. Missing observations produce no lesson.
 Failure-only lessons additionally require Clef's api_change answer and a
 subsequent passing fix identified in that evidence. -/
-private def recordUnlocked (store : Kalari.Evidence.Store) (session runId : String)
+private def recordUnlocked (store : Kalari.Evidence.Store) (session runId artifact : String)
     (classify : Classify) (write : Write) : IO (Except String (List Lesson)) := do
   if !validId runId then return .error "invalid run ID"
   let loaded ← Kalari.Evidence.load store
@@ -247,7 +248,7 @@ private def recordUnlocked (store : Kalari.Evidence.Store) (session runId : Stri
             policy.assertion != amendedCheckAssertion || !policy.passed then
           return .error "invalid amended-record policy provenance"
         let truth := run.checks.find? fun candidate =>
-          isCandidateTruthCheck candidate &&
+          isCandidateTruthCheck artifact candidate &&
           run.check_results.any fun result => result.check_id == candidate.id && result.passed
         let some check := truth | return .error "candidate artifact did not match the trusted final truth artifact"
         pure (changeKind, check, observed.behaviors ++ ["amended_policy_fixture"], none)
@@ -330,10 +331,10 @@ private def recordUnlocked (store : Kalari.Evidence.Store) (session runId : Stri
 Retrying repeats the same content and dependency writes; the Lambo derive API
 matches identical concepts, while a previously appended typed evidence record
 is reused after validating it against the trusted producer payload. -/
-def record (store : Kalari.Evidence.Store) (session runId : String)
+def record (store : Kalari.Evidence.Store) (session runId artifact : String)
     (classify : Classify) (write : Write) : IO (Except String (List Lesson)) :=
   write.lane.atomically do
-    recordUnlocked store session runId classify write
+    recordUnlocked store session runId artifact classify write
 
 private def tests : IO Unit := IO.FS.withTempDir fun dir => do
   let store ← Kalari.Evidence.openStore dir
@@ -360,7 +361,7 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
   }
   let checkedContext ← attachLessonBootstrapChecks runContext
   let some truthCheck := checkedContext.checks.find? (·.id == candidateTruthCheckId) | throw <| .userError "candidate truth check missing from Run Context"
-  unless isCandidateTruthCheck truthCheck do throw <| .userError "wrong candidate truth check"
+  unless isCandidateTruthCheck checkedContext.artifact truthCheck do throw <| .userError "wrong candidate truth check"
   let checkWorkspace : System.FilePath := checkedContext.checkWorkspace
   let policyResult ← verifyAmendedPolicyProvenance store "s" checkedContext.checkWorkspace
   unless (match policyResult with | .ok () => true | .error _ => false) do
@@ -390,11 +391,11 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
   addSignal "payouts-pass" signal
   addSignal "flaky-fix" { signal with behaviors := [], failed_run_id := some "flaky-fail" }
   let classify : Classify := fun _ _ => pure (.ok (.label "flaky" [] 0.6))
-  let noneResult ← IO.ofExcept (← record store "s" "empty-pass" classify write)
-  let flakyResult ← IO.ofExcept (← record store "s" "flaky-fix" classify write)
+  let noneResult ← IO.ofExcept (← record store "s" "empty-pass" checkedContext.artifact classify write)
+  let flakyResult ← IO.ofExcept (← record store "s" "flaky-fix" checkedContext.artifact classify write)
   unless noneResult.isEmpty && flakyResult.isEmpty && (← writes.get).isEmpty do
     throw <| .userError "flaky or empty pass wrote a lesson"
-  let lessons ← IO.ofExcept (← record store "s" "payouts-pass" classify write)
+  let lessons ← IO.ofExcept (← record store "s" "payouts-pass" checkedContext.artifact classify write)
   let [lesson] := lessons | throw <| .userError "expected one payouts lesson"
   unless lesson.observation.contains "one payout" && lesson.observation.contains "final page" && lesson.check.assertion.contains "last delivery wins" do
     throw <| .userError "payouts observation or rule missing"
@@ -408,7 +409,7 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
   appendRun "api-fix" run
   addSignal "api-fix" emptySignal
   let api : Classify := fun _ _ => pure (.ok (.label "api_change" [] 0.8))
-  let apiResult ← IO.ofExcept (← record store "s" "api-fix" api write)
+  let apiResult ← IO.ofExcept (← record store "s" "api-fix" checkedContext.artifact api write)
   unless apiResult.any (fun l => l.observation.contains "flaky-fail") do throw <| .userError "API failure fix was not recorded"
 
   -- The differential result is provenance for the passing run, while the
@@ -419,7 +420,7 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
   let pageSignal : PageObservation := { source := "payouts-api", behaviors := ["boundary_overlap_one", "final_page_token"] }
   let pageRecord : Kalari.Evidence.Record := { kind := "page-observation", session_id := "s", run_id := "page-pass", change_kinds := ["pagination_changed"], payload := toJson pageSignal }
   Kalari.Evidence.append store pageRecord
-  let pageResult ← IO.ofExcept (← record store "s" "page-pass" classify write)
+  let pageResult ← IO.ofExcept (← record store "s" "page-pass" checkedContext.artifact classify write)
   unless pageResult.any (fun l => l.check == truthCheck && l.observation.contains "one payout" && l.observation.contains "first value loses final truth") do
     throw <| .userError "page observation did not bootstrap from the passing runnable check"
   let some pageLesson := pageResult.head? | throw <| .userError "page lesson missing"
@@ -435,7 +436,7 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
   appendRun retryRunId pageRun
   let retrySignal : PageObservation := { source := "payouts-api", behaviors := ["boundary_overlap_one", "rate_limit_retry"] }
   Kalari.Evidence.append store { kind := "page-observation", session_id := "s", run_id := retryRunId, change_kinds := ["pagination_changed"], payload := toJson retrySignal }
-  let retryResult ← IO.ofExcept (← record store "s" retryRunId classify write)
+  let retryResult ← IO.ofExcept (← record store "s" retryRunId checkedContext.artifact classify write)
   let some retryLesson := retryResult.head? | throw <| .userError "retry observation published no lesson"
   unless retryLesson.check == truthCheck && retryLesson.observation.contains "429" &&
       retryLesson.observation.contains "identical request" do
@@ -454,7 +455,7 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
     { check_id := weaker.id, passed := true }, { check_id := truthCheck.id, passed := true },
     { check_id := "differential-v1", passed := true }] }
   Kalari.Evidence.append store { kind := "page-observation", session_id := "s", run_id := weakRunId, change_kinds := ["pagination_changed"], payload := toJson pageSignal }
-  let weakResult ← IO.ofExcept (← record store "s" weakRunId classify write)
+  let weakResult ← IO.ofExcept (← record store "s" weakRunId checkedContext.artifact classify write)
   let some weakLesson := weakResult.head? | throw <| .userError "a run with a weaker passing check first published no lesson"
   unless weakLesson.check == truthCheck do
     throw <| .userError "lesson took a weaker passing check instead of the candidate truth check"
@@ -466,11 +467,11 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
   let failedRetryId := "page-retry-failed"
   appendRun failedRetryId { pageRun with verdict := { verdict with exit_code := some 1 } }
   Kalari.Evidence.append store { kind := "page-observation", session_id := "s", run_id := failedRetryId, change_kinds := ["pagination_changed"], payload := toJson retrySignal }
-  let failedRetry ← IO.ofExcept (← record store "s" failedRetryId classify quiet)
+  let failedRetry ← IO.ofExcept (← record store "s" failedRetryId checkedContext.artifact classify quiet)
   let noDiffId := "page-retry-nodiff"
   appendRun noDiffId { pageRun with check_results := [{ check_id := truthCheck.id, passed := true }] }
   Kalari.Evidence.append store { kind := "page-observation", session_id := "s", run_id := noDiffId, change_kinds := ["pagination_changed"], payload := toJson retrySignal }
-  let noDiff ← IO.ofExcept (← record store "s" noDiffId classify quiet)
+  let noDiff ← IO.ofExcept (← record store "s" noDiffId checkedContext.artifact classify quiet)
   unless failedRetry.isEmpty && noDiff.isEmpty && (← quietWriter.get).isEmpty &&
       !(← Kalari.Evidence.load store).records.any (fun r => r.kind == "lesson" &&
         (r.run_id == failedRetryId || r.run_id == noDiffId)) do
@@ -483,7 +484,7 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
   let emptyPageRecord : Kalari.Evidence.Record := { kind := "page-observation", session_id := "s", run_id := "page-empty-pass", change_kinds := ["pagination_changed"], payload := toJson ({ source := "payouts-api", behaviors := [] } : PageObservation) }
   Kalari.Evidence.append store emptyPageRecord
   let writesBeforeEmptyPage ← writes.get
-  let emptyPageResult ← IO.ofExcept (← record store "s" "page-empty-pass" classify write)
+  let emptyPageResult ← IO.ofExcept (← record store "s" "page-empty-pass" checkedContext.artifact classify write)
   let afterEmptyPage ← Kalari.Evidence.load store
   unless emptyPageResult.isEmpty && (← writes.get) == writesBeforeEmptyPage &&
       !(afterEmptyPage.records.any fun r => r.kind == "lesson" && r.run_id == "page-empty-pass") do
@@ -499,7 +500,7 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
   let staleWriter ← makeWriter fun kind _ _ => do
     staleWrites.modify fun xs => xs ++ [kind]
     return .ok "unexpected"
-  let staleLesson ← IO.ofExcept (← record staleStore "s" "stale-first" classify staleWriter)
+  let staleLesson ← IO.ofExcept (← record staleStore "s" "stale-first" checkedContext.artifact classify staleWriter)
   unless staleLesson.isEmpty && (← staleWrites.get).isEmpty &&
       (← Kalari.Evidence.load staleStore).records.all (·.kind != "lesson") do
     throw <| .userError "stale-first output produced a recalled lesson"
@@ -519,13 +520,13 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
       failOnce.set false
       return .error "simulated receipt failure"
     return .ok (if kind == "resource" then "retry-anchor" else if kind == "constraint" then "retry-lesson" else "retry-run")
-  let firstAttempt ← record retryStore "s" "retry-pass" classify retryWriter
+  let firstAttempt ← record retryStore "s" "retry-pass" checkedContext.artifact classify retryWriter
   unless (match firstAttempt with | .error _ => true | .ok _ => false) do
     throw <| .userError "simulated first graph failure was not returned"
   let afterFailure ← Kalari.Evidence.load retryStore
   unless (afterFailure.records.filter (·.kind == "lesson")).length == 1 do
     throw <| .userError "first attempt did not preserve one recovery record"
-  let retried ← IO.ofExcept (← record retryStore "s" "retry-pass" classify retryWriter)
+  let retried ← IO.ofExcept (← record retryStore "s" "retry-pass" checkedContext.artifact classify retryWriter)
   unless retried.length == 1 && (← retryWrites.get) ==
       ["resource", "constraint", "resource", "constraint", "observation"] do
     throw <| .userError "retry did not resume idempotently from typed evidence"
@@ -549,8 +550,8 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
     IO.sleep 2
     concurrentWrites.modify fun xs => xs ++ [kind]
     return .ok (if kind == "resource" then "parallel-anchor" else if kind == "constraint" then "parallel-lesson" else "parallel-run")
-  let firstTask ← IO.asTask (record concurrentStore "s" "parallel-pass" classify concurrentWriter)
-  let secondTask ← IO.asTask (record concurrentStore "s" "parallel-pass" classify concurrentWriter)
+  let firstTask ← IO.asTask (record concurrentStore "s" "parallel-pass" checkedContext.artifact classify concurrentWriter)
+  let secondTask ← IO.asTask (record concurrentStore "s" "parallel-pass" checkedContext.artifact classify concurrentWriter)
   let firstCall ← IO.ofExcept firstTask.get
   let secondCall ← IO.ofExcept secondTask.get
   unless (match firstCall, secondCall with
@@ -574,7 +575,7 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
   Kalari.Evidence.append orderStore laterFailure
   Kalari.Evidence.append orderStore reverseEvidence
   let orderWriter ← makeWriter fun _ _ _ => pure (.ok "unexpected")
-  let orderResult ← record orderStore "s" "ordered-pass" api orderWriter
+  let orderResult ← record orderStore "s" "ordered-pass" checkedContext.artifact api orderWriter
   unless (match orderResult with | .error e => e.contains "precede" | .ok _ => false) do
     throw <| .userError "failure-to-fix link accepted reverse evidence order"
 
@@ -586,7 +587,7 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
   Kalari.Evidence.append kindStore differentFailure
   Kalari.Evidence.append kindStore sameKindFix
   Kalari.Evidence.append kindStore wrongKindEvidence
-  let kindResult ← record kindStore "s" "same-kind-fix" api orderWriter
+  let kindResult ← record kindStore "s" "same-kind-fix" checkedContext.artifact api orderWriter
   unless (match kindResult with | .error e => e.contains "share a change kind" | .ok _ => false) do
     throw <| .userError "failure-to-fix link accepted different change kinds"
 

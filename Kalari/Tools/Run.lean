@@ -18,6 +18,11 @@ private def artifactCap := 4 * 1024 * 1024
 same run's differential comparison. -/
 def trustedTruthArtifactName : String := "kalari-v1-truth.jsonl"
 
+/-- The candidate truth check identity. The lesson writer binds the same ID,
+program and artifact. -/
+private def candidateTruthCheckId : String := "candidate-v1-truth-v1"
+private def candidateTruthCheckProgram : String := "kalari_candidate_truth_check.py"
+
 /-- The guest-visible name of the msb host gateway. Every observed endpoint
 uses this name so the trusted service, not the caller, fixes the destination. -/
 def guestAlias : String := "host.microsandbox.internal"
@@ -366,7 +371,9 @@ that run names the session's trusted artifact. The check program and the truth
 artifact are fixed, so the artifact argument is the remaining binding. -/
 def verifyCandidateTruthArtifact (record : RunRecord) (artifact : String) : Except String Unit := do
   let checks := record.checks.filter fun check =>
+    check.id == candidateTruthCheckId &&
     check.command.length == 4 && check.command[0]? == some "python3" &&
+    check.command[1]? == some candidateTruthCheckProgram &&
     check.command[3]? == some trustedTruthArtifactName
   if checks.isEmpty then throw "run has no candidate truth check"
   for check in checks do
@@ -1240,14 +1247,20 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
   IO.println "run inspect: a second rule, a published port, a stopped sandbox and an empty or non-tcp protocol list all fail closed"
   let goodCheck : Check := { id := "candidate-v1-truth-v1", assertion := "candidate matches trusted v1", command := ["python3", "kalari_candidate_truth_check.py", "payouts.jsonl", trustedTruthArtifactName] }
   let badCheck := { goodCheck with command := ["python3", "kalari_candidate_truth_check.py", "other.jsonl", trustedTruthArtifactName] }
+  let wrongId := { goodCheck with id := "other-check" }
+  let wrongProgram := { goodCheck with command := ["python3", "other.py", "payouts.jsonl", trustedTruthArtifactName] }
   let baseRecord : RunRecord := { request := req, verdict := fixtureVerdict "exited" (some 0), checks := [goodCheck], check_results := [], timings := { wall_ms := 0 } }
   verify ((verifyCandidateTruthArtifact baseRecord "payouts.jsonl").isOk)
     "the trusted artifact check was rejected"
   verify (!((verifyCandidateTruthArtifact { baseRecord with checks := [badCheck] } "payouts.jsonl").isOk))
     "a candidate truth check for another artifact was accepted"
+  verify (!((verifyCandidateTruthArtifact { baseRecord with checks := [wrongId] } "payouts.jsonl").isOk))
+    "a check with another ID was accepted as the candidate truth check"
+  verify (!((verifyCandidateTruthArtifact { baseRecord with checks := [wrongProgram] } "payouts.jsonl").isOk))
+    "a check with another program was accepted as the candidate truth check"
   verify (!((verifyCandidateTruthArtifact { baseRecord with checks := [] } "payouts.jsonl").isOk))
     "a run without a candidate truth check was accepted"
-  IO.println "run artifact: the candidate truth check must name the trusted artifact"
+  IO.println "run artifact: the candidate truth check must have its ID, program and trusted artifact"
 
 #guard (compareRecords
   "{\"id\":\"A\",\"amount\":2}\n{\"id\":\"B\",\"amount\":4}\n"

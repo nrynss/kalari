@@ -181,7 +181,7 @@ def dispatcher (cfg : Kalari.Config.Config) (setup : Setup) (deps : Dependencies
       | .error error => return .error error
       | .ok () => pure ()
       let classify := deps.classify changes
-      return (← Kalari.Tools.Lesson.record evidence setup.session_id runId classify writer).map fun x => (toJson x).compress
+      return (← Kalari.Tools.Lesson.record evidence setup.session_id runId setup.artifact classify writer).map fun x => (toJson x).compress
     | _ => return .error "unknown tool"
 
 def withLamboCleanup (client : Kalari.Lambo.Client) (action : IO α) : IO α := do
