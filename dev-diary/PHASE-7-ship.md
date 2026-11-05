@@ -36,7 +36,7 @@ The user records it. As for Doyle (user decision), the script, shot list, cut ta
 
 Use T5.6a's cursor-loop failure as the central scene. Show the configured cap, measured elapsed time, timeout verdict, and failed consumer outcome. Follow with the observed network boundary and verified cleanup.
 
-Then show T5.6's measured comparison and its zero-lesson limitation. Link the demonstration separately from benchmark rows. Record output and memory caps as configuration.
+Then show T5.6's measured comparison and its zero-lesson limitation. Show the containment runs as runs, apart from the benchmark rows. Record output and memory caps as configuration.
 
 **Done when:** the user has the recording.
 

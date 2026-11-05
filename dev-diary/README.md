@@ -149,7 +149,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P4 | 13 / 13 | All done. T4.6b adds the trusted retry trace and lesson. T4.7c closed the production memory path with the observer refused and the harness-only rehearsal |
 | P5 | 9 / 9 | All done. T5.6 published the traced comparison: zero learned-memory benefit observed, cost/attempts/containment lead |
 | P6 | 4 / 4 | All done. Live demo serves the frozen comparison with working run links |
-| P7 | 1 / 6 | T7.5a re-theme done. T5.6a claimed (its live run is filmed for T7.2). T7.1 ready. T7.2 waits for T5.6a. T7.3, T7.4, T7.5 wait |
+| P7 | 1 / 6 | T7.5a re-theme done. T5.6a claimed: first filmed run crashed on a 429; second run (a retrying cursor loop) next. T7.1 ready. T7.2 waits for T5.6a. T7.3, T7.4, T7.5 wait |
 
 ---
 

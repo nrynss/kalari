@@ -232,7 +232,7 @@ The table product.md promises, per condition, as counts, leading with cost, cons
 
 ---
 
-### T5.6a: Deliberate containment demonstration ★
+### T5.6a: The containment runs ★
 ```yaml
 requires:   [T5.6]
 fixture-ok: no
@@ -250,7 +250,9 @@ Capture the run's sandbox creation arguments and effective network policy where 
 
 Commit sanitized evidence under `tests/live/containment-evidence/` and a transcript under `tests/live/`. Wire that evidence into the existing web publication path. The judges panel must link to a reachable run detail with its supporting evidence. Show the migration failure, the enforced time limit, then boundary and cleanup evidence. Describe observed restrictions precisely. Avoid an unqualified zero-blast-radius claim.
 
-Label the run as a deliberate containment demonstration in `bench/RESULTS.md`. Keep it separate from frozen condition tallies. Any reference networking contrast must cite its own evidence and state that no exploitation was observed.
+**The runs are ordinary runs (user decision).** Both containment runs go on the judges page and in `bench/RESULTS.md` as runs like any other, described by what they did, with no "demo" or "deliberate" label: every scenario here is constructed. They are not benchmark rows: they never enter the frozen table, its tallies or its counts, and nothing implies an agent wrote their consumers. Any reference networking contrast must cite its own evidence and state that no exploitation was observed.
+
+**The first filmed run crashed on a 429 (finding).** The reference `cursor_loop.py` predates B5: it has no retry, so against the frozen payouts API it died on the first `429` after 437 ms (`exited`, exit code 1, `passed=false`), and the cap never fired. Its boundary probe and cleanup were as expected. That run is real and is published as the first of the two runs. The second run uses a cursor-loop consumer that honours `Retry-After` on a 429 and keeps the B1 bug (it follows the cursor and ignores the end flag), so it never ends and the aashaan's time cap kills it. It prints one line per page fetched, so the loop shows in its output; the cap stays at 5000 ms. Before filming, confirm from the API code that following the last page's cursor really keeps the loop going.
 
 **The live run is filmed (user decision).** It is the central scene of the video (T7.2), so the take and the committed transcript come from the same run, never a staged re-run. Build and verify everything without the live run, stage it on the VM, then stop and hand the orchestrator one command line that runs it on the VM from the staged directory, needs no key, and prints its progress to the terminal as it goes. The orchestrator films that command with the demo-shoot rig and hands back the run's output and files. Complete the task from that run. If the filmed run fails for a reason other than the cap, report it before any second run.
 
