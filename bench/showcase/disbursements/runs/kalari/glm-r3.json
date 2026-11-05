@@ -1,0 +1,199 @@
+{
+  "condition": 4,
+  "upgrade": "disbursements",
+  "repeat": 3,
+  "arm": "kalari",
+  "setup": "OpenCode 2.2.5 with kalari serve MCP (5 tools), no shell, no microsandbox-mcp",
+  "api_base": "the VM's public address",
+  "live_port": 18082,
+  "grading_port": 18092,
+  "prompt": "upgrade.txt",
+  "opencode_version": "opencode v2.2.5",
+  "run_id": "dfc9fe44f2e1",
+  "repo_scope": "showcase-r3",
+  "session_cap_s": 600,
+  "session_capped": false,
+  "cutoff_reason": null,
+  "consumer_exit": null,
+  "output_present": true,
+  "measures": {
+    "verdict": "PASS",
+    "right_first_time": false,
+    "sandbox_runs": 8,
+    "wall_time_s": 56.879,
+    "time_stuck_s": 0.0,
+    "tokens_input": 10265,
+    "tokens_output": 3631,
+    "containment": "kalari-aashaan microsandbox guests, --no-net with allow rules for the live API only during the agent phase and the grading API only during grading; host shell and web access denied; the key never enters a guest"
+  },
+  "sandbox_runs_against_v2": null,
+  "sandbox_runs_detail": "two consumer runs per trusted run record (candidate against v2 plus baseline against v1); trusted check and grading guests excluded",
+  "evidence_runs": 4,
+  "evidence_first_run_id": "tmp.XXhPyhgJ",
+  "evidence_run_verdicts": [
+    "exited",
+    "exited",
+    "exited",
+    "exited"
+  ],
+  "evidence_run_passed": [
+    false,
+    false,
+    false,
+    true
+  ],
+  "evidence_run_wall_ms": [
+    446,
+    466,
+    448,
+    408
+  ],
+  "evidence_run_checks": [
+    [
+      [
+        "candidate-v1-truth-v1",
+        false
+      ],
+      [
+        "differential-v1",
+        false
+      ]
+    ],
+    [
+      [
+        "candidate-v1-truth-v1",
+        false
+      ],
+      [
+        "differential-v1",
+        false
+      ]
+    ],
+    [
+      [
+        "candidate-v1-truth-v1",
+        false
+      ],
+      [
+        "differential-v1",
+        false
+      ]
+    ],
+    [
+      [
+        "candidate-v1-truth-v1",
+        true
+      ],
+      [
+        "differential-v1",
+        true
+      ]
+    ]
+  ],
+  "evidence_request_allowlist": [
+    {
+      "host": "the VM's public address",
+      "port": 18082
+    }
+  ],
+  "evidence_request_caps": {
+    "memory_mib": 512,
+    "output_cap_bytes": 65536,
+    "timeout_ms": 30000
+  },
+  "killed_timeout_runs": 0,
+  "http_retries": {
+    "agent": {
+      "phase": "agent",
+      "status": "unknown",
+      "reason": "no retry summary",
+      "b5_429_responses": null,
+      "matching_retry_attempts": null,
+      "successful_matching_retries": null
+    },
+    "grading": {
+      "phase": "grading",
+      "status": "unknown",
+      "reason": "no retry summary",
+      "b5_429_responses": null,
+      "matching_retry_attempts": null,
+      "successful_matching_retries": null
+    }
+  },
+  "retry_measure": {
+    "source": "API retry journals, truncated at each phase start and read at each phase end",
+    "note": "an HTTP retry inside one consumer process is not a sandbox run"
+  },
+  "records_lost": 0,
+  "records_duplicated": 0,
+  "records_extra": 0,
+  "records_mismatched": 0,
+  "grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 2341,
+    "unique": 2341,
+    "expected": 2341,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "grader_status": "EXIT 0",
+  "right_first_time_basis": "first trusted run did not pass",
+  "lessons_published": [],
+  "page_observations": [],
+  "recall_required_checks": [],
+  "recall_advice_checks": [],
+  "cost_usd": 0.014646,
+  "cost_note": "List price for the session model, cached input counted as input, no cache discount; null when no price is recorded",
+  "usage_delta": {
+    "clef": {
+      "input": 0,
+      "output": 0
+    },
+    "deepseek-v4.1-flash-1017": {
+      "input": 0,
+      "output": 0
+    },
+    "glm-5.3-flash": {
+      "input": 132377,
+      "output": 4025
+    },
+    "mimo-v2.6-flash": {
+      "input": 0,
+      "output": 0
+    },
+    "qwen3-embedding-4b": {
+      "input": 0,
+      "output": 0
+    }
+  },
+  "usage_error": null,
+  "opencode_tokens": {
+    "input": 10265,
+    "output": 3631,
+    "reasoning": 394
+  },
+  "tool_calls": {
+    "kalari_blast_radius": 2,
+    "kalari_recall_lessons": 1,
+    "kalari_record_lesson": 1,
+    "kalari_run_in_sandbox": 4,
+    "kalari_what_changed": 1
+  },
+  "completed_steps": 14,
+  "estimated_step_cost_usd": 0.02227155,
+  "exit_code": 0,
+  "invalid_event_lines": 0,
+  "interrupted_signal": null,
+  "cleanup": {
+    "sandboxes_removed": [],
+    "sandboxes_left": [],
+    "processes_left": []
+  },
+  "cleanup_error": null,
+  "process_elapsed_s": 56.879,
+  "opencode_exit": 0
+}

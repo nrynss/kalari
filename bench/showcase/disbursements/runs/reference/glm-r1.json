@@ -1,0 +1,67 @@
+{
+  "arm": "reference",
+  "upgrade": "disbursements",
+  "repeat": 1,
+  "setup": "OpenCode 2.2.5 with Microsandbox through microsandbox-mcp (the frozen reference setup), no Kalari",
+  "api_base": "the VM's public address",
+  "live_port": 18082,
+  "grading_port": 18092,
+  "prompt": "upgrade.txt",
+  "opencode_version": "opencode v2.2.5",
+  "session_cap_s": 1200,
+  "wall_time_s": 65,
+  "opencode_exit": 0,
+  "grade": {
+    "verdict": "FAIL",
+    "output_present": true,
+    "records": 2341,
+    "unique": 2341,
+    "expected": 2341,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 23,
+    "unreadable_lines": 0
+  },
+  "grader_status": "EXIT 0",
+  "consumer_log_excerpt": "synced 2341 disbursements\n",
+  "cleanup": {
+    "sandboxes_removed": [],
+    "sandboxes_left": [],
+    "processes_left": []
+  },
+  "model": "glm-5.3-flash",
+  "usage_delta": [
+    {
+      "model": "clef",
+      "input": 0,
+      "output": 0
+    },
+    {
+      "model": "deepseek-v4.1-flash-1017",
+      "input": 0,
+      "output": 0
+    },
+    {
+      "model": "glm-5.3-flash",
+      "input": 274012,
+      "output": 2255
+    },
+    {
+      "model": "mimo-v2.6-flash",
+      "input": 0,
+      "output": 0
+    },
+    {
+      "model": "qwen3-embedding-4b",
+      "input": 0,
+      "output": 0
+    }
+  ],
+  "cost_usd": 0.02819,
+  "cost_note": "List price for the session model, cached input counted as input, no cache discount; null when no price is recorded",
+  "records_lost": 0,
+  "records_duplicated": 0,
+  "records_extra": 0,
+  "records_mismatched": 23
+}

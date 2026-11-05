@@ -57,7 +57,7 @@ if ssh -o BatchMode=yes -o ConnectTimeout=10 kalari 'ps -eo args | grep -E "[o]p
 fi
 
 echo "status=stage" >&2
-ssh -o BatchMode=yes kalari 'mkdir -p ~/kalari-showcase/bin ~/kalari-showcase/stage ~/kalari-showcase/runs ~/kalari-showcase/stores ~/kalari-showcase/stage/bench/prompts'
+ssh -o BatchMode=yes kalari 'mkdir -p ~/kalari-showcase/bin ~/kalari-showcase/runs ~/kalari-showcase/stores ~/kalari-showcase/stage/bench/prompts ~/kalari-showcase/stage/bench/showcase/disbursements/_harness'
 rsync -a --exclude runs bench/showcase/disbursements/ kalari:kalari-showcase/stage/bench/showcase/disbursements/
 rsync -a bench/prompts/upgrade.txt kalari:kalari-showcase/stage/bench/prompts/
 # The frozen helpers are staged unchanged next to the adapted copies in the showcase _harness.

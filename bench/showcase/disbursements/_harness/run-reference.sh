@@ -23,6 +23,7 @@ case "$REPEAT" in 1|2|3|4|5) ;; *) echo "repeat must be 1..5" >&2; exit 2 ;; esa
 if [[ -z "$MODEL" || -z "$LABEL" ]]; then
   echo "--model and --label are required" >&2; exit 2
 fi
+export MODEL
 case "$LABEL" in *[!a-zA-Z0-9._-]*) echo "bad label" >&2; exit 2 ;; esac
 
 if [[ -z ${VULTR_INFERENCE_API_KEY:-} || ${#VULTR_INFERENCE_API_KEY} -lt 8 ]]; then
@@ -68,10 +69,11 @@ rsync -a bench/showcase/disbursements/grader/grade.py bench/showcase/disbursemen
 # The per-model OpenCode config is generated from the frozen reference config with the
 # model swapped; the reference setup itself is unchanged.
 MODEL="$MODEL" python3 - << 'PY'
-import json, os, re
+import os
 model = os.environ["MODEL"]
 src = open("bench/reference-paging/repo/opencode.jsonc").read()
-src = re.sub(r'"deepseek-v4\.1-flash-1017"', json.dumps(model), src)
+# The bare id appears twice: as the provider models key and in "vultr/<id>".
+src = src.replace("deepseek-v4.1-flash-1017", model)
 src = src.replace('"name": "DeepSeek V4.1 Flash"', '"name": "%s"' % model)
 open("/tmp/opencode-showcase.jsonc", "w").write(src)
 PY
