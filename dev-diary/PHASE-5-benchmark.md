@@ -238,7 +238,7 @@ requires:   [T5.6]
 fixture-ok: no
 size:       S · mid
 owns:       tests/live/containment.sh, tests/live/containment-transcript.txt, tests/live/containment-evidence/, web/ (judges containment panel, evidence loading and checks only), bench/RESULTS.md (containment label only)
-status:     not-started
+status:     claimed:claude-sonnet-5.5
 ```
 Capture one real cursor-loop migration failure through production `run_in_sandbox`. Reuse the wiring in `tests/live/run.sh`. Keep the candidate, baseline and differential results in the evidence.
 
@@ -251,6 +251,12 @@ Capture the run's sandbox creation arguments and effective network policy where 
 Commit sanitized evidence under `tests/live/containment-evidence/` and a transcript under `tests/live/`. Wire that evidence into the existing web publication path. The judges panel must link to a reachable run detail with its supporting evidence. Show the migration failure, the enforced time limit, then boundary and cleanup evidence. Describe observed restrictions precisely. Avoid an unqualified zero-blast-radius claim.
 
 Label the run as a deliberate containment demonstration in `bench/RESULTS.md`. Keep it separate from frozen condition tallies. Any reference networking contrast must cite its own evidence and state that no exploitation was observed.
+
+**The live run is filmed (user decision).** It is the central scene of the video (T7.2), so the take and the committed transcript come from the same run, never a staged re-run. Build and verify everything without the live run, stage it on the VM, then stop and hand the orchestrator one command line that runs it on the VM from the staged directory, needs no key, and prints its progress to the terminal as it goes. The orchestrator films that command with the demo-shoot rig and hands back the run's output and files. Complete the task from that run. If the filmed run fails for a reason other than the cap, report it before any second run.
+
+**The current panel is not this.** `containmentSection` in `web/site/app/views.mjs` shows a benchmark session stopped by the harness's session cap. No frozen row has one: `RESULTS.md` §6 records zero capped sessions. The T5.6a panel shows the aashaan's per-run cap from this run, apart from the benchmark records. Don't leave a panel that implies a benchmark session was capped.
+
+**Publication goes through a deploy.** The live evidence API at the demo host currently serves no benchmark records and one run. Getting this run's evidence onto the VM's store and the new pages onto the site is a change to the public deployment: prepare it (the steps or a script inside `owns`) and verify it against the fixture server. The orchestrator applies it, with the user's approval, and then checks that the run page is reachable.
 
 **Live budget: $1.** One run plus verification. No inference calls are expected. Stop and report if any appear.
 

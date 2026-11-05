@@ -29,10 +29,10 @@ Setup docs for both presets; which Vultr services are used and how they power th
 requires:   [T6.3, T5.6, T5.6a]
 fixture-ok: no
 size:       M · user
-owns:       docs/video.md
+owns:       (none)
 status:     not-started
 ```
-The user records it. The orchestrator drafts the script in `docs/video.md`.
+The user records it. As for Doyle (user decision), the script, shot list, cut table, takes and capture rig live in the demo-shoot folder outside the repository, never committed; the repository links to the finished video. The orchestrator drafts the script there. Sessions are filmed on the VM, where the benchmark ran; host names and IPs are blurred in post (user decision). T5.6a's live run is filmed as it happens.
 
 Use T5.6a's cursor-loop failure as the central scene. Show the configured cap, measured elapsed time, timeout verdict, and failed consumer outcome. Follow with the observed network boundary and verified cleanup.
 
