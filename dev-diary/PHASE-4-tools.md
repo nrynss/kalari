@@ -238,8 +238,8 @@ A diagnostic retry with identity encoding called all five Kalari tools and the h
 requires:   [T4.6b, T4.7a, T4.7]
 fixture-ok: no
 size:       M · frontier
-owns:       Kalari/Service.lean, Kalari/Tools/Run.lean (production observer wiring only), bench/kalari-arm/, tests/live/observer.sh
-status:     not-started
+owns:       Kalari/Service.lean, Kalari/Tools/Run.lean (production observer wiring and candidate-truth artifact binding only), Kalari/Tools/Lesson.lean (isCandidateTruthCheck artifact binding and recordUnlocked plumbing only), bench/kalari-arm/, tests/live/observer.sh, tests/live/observer-harness.lean
+status:     in-review
 ```
 The production service currently rejects observer configuration and constructs `Run.Context` without an observer, so a tool call or an offline observer fixture cannot establish the learning path. Wire the observer only after verifying exclusive guest-source isolation; keep refusing configurations that cannot establish it. Rehearse the real service and sandbox route without inference, using a private Lambo fixture embedder and no external model calls.
 
