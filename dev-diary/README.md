@@ -155,6 +155,8 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 
 ## Handoff Log
 
+- **Snippet panel fixed.** The MCP config block in section 1 was a dark panel with light-on-light chips. It is now a light paper panel with ink text and no chip backgrounds, matching the quiet panels. Re-rendered, both checks green.
+
 - **Showcase evidence live.** Synced the reworked `web/site/` to the demo and merged 15 records (14 showcase + 1 reference run) into the live store idempotently; frozen 60 intact. All new run pages and the home page return 200.
 
 - **Hero landed, showcase records shipped.** The judges page now opens with the measured comparison (4.2x cheaper, 3.3x faster per session, zero stuck time on the Kalari side), then the silent-loss reference run and the cap-kill containment runs. All figures render from the records. Containment and reference records were merged into the live store; every hero link resolves on the demo. A duplicate showcase branch and untracked `bench/showcase/` drafts from another session were left untouched.
