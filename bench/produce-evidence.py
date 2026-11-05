@@ -99,6 +99,8 @@ def build_record(path: Path, data: dict) -> dict:
         "provenance": "frozen",
         "status": "valid",
         "arm": arm,
+        "model": "DeepSeek V4.1 Flash",
+        "model_id": "deepseek-v4.1-flash-1017",
         "condition": condition,
         "upgrade": upgrade,
         "repeat": repeat,
@@ -112,7 +114,12 @@ def build_record(path: Path, data: dict) -> dict:
     payload["grade"] = copy.deepcopy(data.get("grade"))
     payload["first_v2_grade"] = copy.deepcopy(data.get("first_v2_grade"))
     payload["grader_runs"] = copy.deepcopy(data.get("grader_runs"))
-    payload["source"] = str(path.relative_to(REPO))
+    source = str(path.relative_to(REPO))
+    payload["source"] = source
+    transcript = source[:-5] + ".transcript.jsonl" if source.endswith(".json") else None
+    if transcript is not None and not (REPO / transcript).is_file():
+        transcript = None
+    payload["transcript"] = transcript
     payload["notes"] = "Frozen comparison run."
 
     return {

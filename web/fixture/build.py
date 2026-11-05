@@ -533,6 +533,8 @@ def illustrative_records() -> list[dict[str, Any]]:
 
 CONTAINMENT_DIR = REPO / "tests" / "live" / "containment-evidence"
 
+SHOWCASE_EVIDENCE = REPO / "bench" / "showcase" / "disbursements" / "showcase-evidence.jsonl"
+
 
 REFERENCE_SESSION = "reference-paging"
 REFERENCE_RUN = "reference-paging-fix"
@@ -594,8 +596,18 @@ def containment_records() -> list[dict[str, Any]]:
     return records
 
 
+def showcase_records() -> list[dict[str, Any]]:
+    """The showcase disbursement runs, in their own session apart from the
+    benchmark records. Built by bench/showcase/disbursements/produce-showcase.py
+    from the committed result files. They never enter a benchmark tally."""
+    if not SHOWCASE_EVIDENCE.is_file():
+        return []
+    with SHOWCASE_EVIDENCE.open(encoding="utf-8") as handle:
+        return [json.loads(line) for line in handle if line.strip()]
+
+
 def main() -> None:
-    records = pilot_records() + illustrative_records() + containment_records() + reference_records()
+    records = pilot_records() + illustrative_records() + containment_records() + reference_records() + showcase_records()
     with OUT.open("w", encoding="utf-8", newline="\n") as handle:
         for item in records:
             handle.write(json.dumps(item, ensure_ascii=False, separators=(",", ":")))
