@@ -247,6 +247,8 @@ for n in removed:
         seen.append(n)
 json.dump({"sandboxes_removed": seen, "sandboxes_left": left, "processes_left": procs},
           open(run + "/cleanup.json", "w"))
+import shutil
+shutil.copyfile(run + "/cleanup.json", run + "/result/cleanup.json")
 PY
 
 # Stdout is the run id only. The address stays on the VM.

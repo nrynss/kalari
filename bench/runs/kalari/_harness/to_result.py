@@ -86,11 +86,37 @@ if first_run_passed is None:
         first_run_passed = False
         first_run_id = None
 
-killed = sum(1 for r in run_records
-             if ((r.get('payload') or {}).get('verdict') or {}).get('verdict') == 'killed_timeout')
+def run_passed(payload):
+    if not isinstance(payload, dict):
+        return False
+    verdict = payload.get('verdict') or {}
+    if verdict.get('verdict') != 'exited' or verdict.get('exit_code') != 0:
+        return False
+    checks = payload.get('check_results') or []
+    return bool(checks) and all(c.get('passed') for c in checks if isinstance(c, dict))
+
+run_payloads = [r.get('payload') or {} for r in run_records]
+run_pass_list = [run_passed(p) for p in run_payloads]
+if first_run_passed is None:
+    if run_records:
+        first_run_passed = run_pass_list[0]
+        first_run_id = run_records[0].get('run_id')
+    else:
+        first_run_passed = False
+        first_run_id = None
+
+def verdict_name(payload):
+    return ((payload or {}).get('verdict') or {}).get('verdict')
+
+killed = sum(1 for p in run_payloads if verdict_name(p) == 'killed_timeout')
+stuck_ms = sum(int((p.get('timings') or {}).get('wall_ms') or 0) for p in run_payloads
+               if verdict_name(p) == 'killed_timeout')
 n_evidence_runs = len(run_records)
 sandbox_runs = 2 * n_evidence_runs
-time_stuck_s = round(killed * 30.0, 3)
+time_stuck_s = round(stuck_ms / 1000.0, 3)
+first_request = (run_payloads[0].get('request') or {}) if run_payloads else {}
+first_allowlist = (first_request.get('allowlist') or [])
+first_caps = (first_request.get('caps') or {})
 
 grade = measures.get('grade') or {'verdict': 'NOT_RUN'}
 verdict = grade.get('verdict')
@@ -144,6 +170,13 @@ else:
     right, basis = False, 'final grade did not pass'
 
 tokens = (measures.get('tokens') or {})
+cleanup_doc = None
+cleanup_path = run / 'cleanup.json'
+if cleanup_path.exists():
+    try:
+        cleanup_doc = json.loads(cleanup_path.read_text())
+    except ValueError:
+        cleanup_doc = {'error': 'unreadable cleanup.json'}
 result = {
     'condition': meta['condition'],
     'upgrade': meta['upgrade'],
@@ -176,8 +209,12 @@ result = {
     'sandbox_runs_detail': 'two consumer runs per trusted run record (candidate against v2 plus baseline against v1); trusted check and grading guests excluded',
     'evidence_runs': n_evidence_runs,
     'evidence_first_run_id': first_run_id,
-    'evidence_run_verdicts': [((r.get('payload') or {}).get('verdict') or {}).get('verdict') for r in run_records],
-    'evidence_run_passed': [(r.get('payload') or {}).get('passed') for r in run_records],
+    'evidence_run_verdicts': [verdict_name(p) for p in run_payloads],
+    'evidence_run_passed': run_pass_list,
+    'evidence_run_wall_ms': [((p.get('timings') or {}).get('wall_ms')) for p in run_payloads],
+    'evidence_run_checks': [[(c.get('check_id'), c.get('passed')) for c in (p.get('check_results') or [])] for p in run_payloads],
+    'evidence_request_allowlist': first_allowlist,
+    'evidence_request_caps': first_caps,
     'killed_timeout_runs': killed,
     'http_retries': {'agent': retry_agent, 'grading': retry_grading},
     'retry_measure': {
@@ -206,7 +243,8 @@ result = {
     'exit_code': measures.get('exit_code'),
     'invalid_event_lines': measures.get('invalid_event_lines'),
     'interrupted_signal': measures.get('interrupted_signal'),
-    'cleanup': measures.get('cleanup_error'),
+    'cleanup': cleanup_doc,
+    'cleanup_error': measures.get('cleanup_error'),
     'process_elapsed_s': measures.get('elapsed_seconds'),
     'opencode_exit': measures.get('exit_code'),
 }
