@@ -135,7 +135,7 @@ requires:   [T5.2a]
 fixture-ok: no
 size:       M · mid
 owns:       bench/pilot/harder/
-status:     not-started
+status:     claimed:t5-2b
 ```
 Run exactly 50 reference sessions on the harder pair: five fresh B5-only sessions for each upgrade, then conditions 1, 2, 3 and 6 on the full pair, five repeats each (40 sessions). The 10 isolated rows diagnose retry alone; the 40 full-pair rows answer the benchmark question after the condition-1 repair. The old 70 rows remain published separately and are never merged into harder-pair counts. B5-in-both remains the pair even if the baseline passes every row.
 
