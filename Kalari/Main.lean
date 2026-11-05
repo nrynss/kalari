@@ -7,7 +7,7 @@ import Kalari.Fake
 import Kalari
 /-! kalari: the main service. A stub until P1; see product.md and docs/architecture.md. -/
 
-def version : String := "0.1.0"
+def version : String := "0.1.1"
 
 def usage : String :=
   "usage: kalari <command>\n\n" ++
