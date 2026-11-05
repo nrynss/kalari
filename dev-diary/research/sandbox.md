@@ -83,3 +83,11 @@ Staying on 6.8: KVM works, and nftables, cgroup v2 and Landlock's network rules 
 ## `microsandbox-mcp` (the reference arm's tools)
 
 0.7.13, `npx -y microsandbox-mcp`: **70 tools, ~67 KB of schemas (~17k tokens).** `sandbox_create` and `sandbox_run` take a `network` object; **the agent decides it**, and in the reference run it passed none. Host copy tools work only on allowlisted host paths.
+
+## Network policy and cleanup, read back (T5.6a)
+
+- **The effective policy is readable.** `msb inspect <name> --format json` reports it under `active_config.network.policy`: `default_egress`, `default_ingress`, and rules with action, direction, CIDR, protocols and port ranges. For `--no-net --net-rule allow@<ip>/32:tcp:<port>` it reads default egress deny, default ingress deny, and one allow-egress tcp rule on the `/32` and port.
+- **What a denied request looks like from the guest.** With one allow rule, a different port on the allowed host and the host's own SSH port give an immediate `ConnectionRefusedError`; the cloud metadata address and a public internet address on port 80 give HTTP 403 `network_policy_denied`. The allowed port answers.
+- **Stage `msb` as a symlink, never a copy.** It finds `libkrunfw` relative to its own path; a copied binary fails with "installation is incomplete".
+- **`run_in_sandbox` removes its own sandboxes**, so a forced `msb remove -f` afterwards finds nothing, and `msb remove -f` on an already-removed sandbox returns non-zero.
+- **A runaway consumer can hit the output cap before the time cap.** Against the frozen payouts API, an unpaced cursor-following loop made about 8,400 requests in 10 s from the VM; printing a line per page would pass 64 KiB within about 5 s.

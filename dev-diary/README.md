@@ -147,13 +147,15 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P2 | 7 / 7 | T2.1 through T2.6 done. The Microsandbox-only exit line stays open because the Docker fallback exists |
 | P3 | 7 / 7 | T3.1 through T3.4 done, including T3.1a, T3.2b and T3.3b |
 | P4 | 13 / 13 | All done. T4.6b adds the trusted retry trace and lesson. T4.7c closed the production memory path with the observer refused and the harness-only rehearsal |
-| P5 | 9 / 9 | All done. T5.6 published the traced comparison: zero learned-memory benefit observed, cost/attempts/containment lead |
+| P5 | 10 / 10 | All done. T5.6 published the traced comparison: zero learned-memory benefit observed, cost/attempts/containment lead. T5.6a added two containment runs outside it (live publication held) |
 | P6 | 4 / 4 | All done. Live demo serves the frozen comparison with working run links |
-| P7 | 1 / 6 | T7.5a re-theme done. T5.6a claimed: first filmed run crashed on a 429; second run (a retrying cursor loop) next. T7.1 ready. T7.2 waits for T5.6a. T7.3, T7.4, T7.5 wait |
+| P7 | 1 / 6 | T7.5a re-theme done. A judges-page polish is in progress (user's agent). T7.1 and T7.2 ready. T7.3, T7.4, T7.5 wait |
 
 ---
 
 ## Handoff Log
+
+- **T5.6a closed.** Two ordinary runs through production `run_in_sandbox`, outside the frozen comparison, both filmed for the video. Run 1, the reference `cursor_loop.py`, crashed on the frozen API's first 429 after 437 ms (`exited`, exit 1): it predates B5 and has no retry. Run 2, a consumer that honours `Retry-After` and never stops following the cursor, was killed by the aashaan at 5009 ms against the 5000 ms cap (`killed_timeout`, `passed=false`) after 68 pages. In both, the boundary probe answered 200 on the allowed port and refused four others, and every sandbox the test created was removed. Evidence in `tests/live/containment-evidence/`, transcripts verbatim in `tests/live/containment-transcript.txt`, `bench/RESULTS.md` §6a. The judges panel shows run 2 with run 1 before it. Live publication (`tests/live/containment-evidence/publish.sh --apply`) is held for the user's approval, after the judges-page polish lands: it also refreshes the site from `web/site/`, and it must never run at the same moment as `deploy/vultr/ship-evidence.sh`. Validated by the orchestrator: both transcripts match the VM's logs line for line, run 2's evidence matches the VM bundle byte for byte, the gate passes in the worktree and on `main`, and no tracked file holds the VM's address or the key.
 
 - **T6.4 closed.** The live demo now serves the frozen comparison: 60 benchmark records shipped idempotently to the VM store (provenance record preserved), judges page renders measured before-and-after with working run links, unknown windows stay null. Producer, check, and ship transcript committed. $0 spent, no inference.
 

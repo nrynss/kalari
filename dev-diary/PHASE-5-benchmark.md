@@ -238,7 +238,7 @@ requires:   [T5.6]
 fixture-ok: no
 size:       S · mid
 owns:       tests/live/containment.sh, tests/live/containment-transcript.txt, tests/live/containment-evidence/, web/ (judges containment panel, evidence loading and checks only), bench/RESULTS.md (containment label only)
-status:     in-review
+status:     done
 ```
 Capture one real cursor-loop migration failure through production `run_in_sandbox`. Reuse the wiring in `tests/live/run.sh`. Keep the candidate, baseline and differential results in the evidence.
 
