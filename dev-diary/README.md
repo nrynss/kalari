@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0 done. P1 done. P2 7/7. P3 7/7. P4 11/13. P5 4/9. P6 2/3. T3.2b done. T5.1, T5.1a, T5.2 and T5.2a done. T6.2 done. The user chose B5 in both upgrades and the 50-session harder-pair pilot. T5.3 now requires T5.2b. T5.2b has a $12 cap and starts after T5.2a. T5.1a repaired condition 1 before that pilot. T4.6b and T4.7c establish the retry memory path before T5.4. T4.6 done. T4.5b done. T4.7a done. T4.7b done. T4.7 done. T6.1 done. Previous live spend remains approved, including the old pilot (T5.2, about $16) and T3.2b (under $0.01). New live caps are approved: T5.2b $12, T5.5 $10 and T5.4 $8, $30 in total. T6.3 reuses the current VM only. Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
+**Current status:** P0 done. P1 done. P2 7/7. P3 7/7. P4 12/13. P5 4/9. P6 2/3. T3.2b done. T5.1, T5.1a, T5.2 and T5.2a done. T6.2 done. T4.6b done. The user chose B5 in both upgrades and the 50-session harder-pair pilot. T5.3 now requires T5.2b. T5.2b has a $12 cap and starts after T5.2a. T5.1a repaired condition 1 before that pilot. T4.7c establishes the production retry memory path before T5.4. T4.6 done. T4.5b done. T4.7a done. T4.7b done. T4.7 done. T6.1 done. Previous live spend remains approved, including the old pilot (T5.2, about $16) and T3.2b (under $0.01). New live caps are approved: T5.2b $12, T5.5 $10 and T5.4 $8, $30 in total. T6.3 reuses the current VM only. Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
 
 ---
 
@@ -145,7 +145,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P1 | 5 / 5 | T1.1 through T1.5 done |
 | P2 | 7 / 7 | T2.1 through T2.6 done. The Microsandbox-only exit line stays open because the Docker fallback exists |
 | P3 | 7 / 7 | T3.1 through T3.4 done, including T3.1a, T3.2b and T3.3b |
-| P4 | 11 / 13 | T4.1 through T4.7 done as previously recorded. New T4.6b and T4.7c establish the trusted retry observation and production memory path |
+| P4 | 12 / 13 | T4.1 through T4.7 done. T4.6b adds the trusted retry trace and lesson. T4.7c closes the production memory path |
 | P5 | 4 / 9 | T5.1, T5.1a, T5.2 and T5.2a done. T5.2b follows with a $12 cap, then the freeze. B5-in-both and the 50-session pilot are decided |
 | P6 | 2 / 3 | T6.1 and T6.2 done. HTTP startup and benchmark evidence production still need integration |
 | P7 | 0 / 4 | Waits for P5, P6 |
@@ -153,6 +153,8 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 ---
 
 ## Handoff Log
+
+- **T4.6b closed.** The payouts observer trace now holds one event per traced request in response-completion order. A 429 carries its cursor digest, fingerprint digest and `Retry-After` value, with no page. The next event must be the identical retry, matched by the full request fingerprint. A traced 400, 404, 410 or 501 fails the parse, and the append runs in a `finally` so a reset reply cannot hide it. The parser validates digest shapes, caps a page at 100 records, and still accepts a trace with no 429 and the old line shape. A valid retry adds `rate_limit_retry`. The lesson says the identical request succeeded and keeps the candidate-truth check. Real B5 and B5-off observer runs and the real grader pass. The single chain through the production service is T4.7c.
 
 - **T5.2a closed.** B5 is now in both upgrades. Each traversal gets one 429 with `Retry-After: 1`, keyed by a signed traversal id and the incoming cursor. Only a full canonical request fingerprint clears it. GraphQL covers the query text, every variable and the operation name. The parser handles named and inline fragments and rejects two non-null `after` fields with a distinct 400. With B5 off the old error path and page output return unchanged. New correct, no-retry and partial-output consumers show the crash and the measured shortfall. A host-owned journal counts 429s and matching retries per phase, separate from sandbox runs. A missing, malformed or evicted journal is unknown. The grading read expects one or two guests. The 70 old rows are unchanged and the gate passes. The API microVMs need a redeploy before the pilot so the journal flag takes effect.
 

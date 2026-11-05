@@ -154,7 +154,7 @@ requires:   [T4.6, T5.2a]
 fixture-ok: yes
 size:       M · frontier
 owns:       Kalari/Tools/Run.lean (observer and trace validation), Kalari/Tools/Lesson.lean, bench/apis/payouts/server.py (trusted trace only), bench/tests/quirks.sh (observed trace case)
-status:     in-review
+status:     done
 ```
 Extend the trusted payouts observer for B5 without weakening the existing complete-chain validation. The evidence sequence is a 429, the immediately subsequent request with the same trusted full-request fingerprint, a successful response, a complete cursor chain, and a passing candidate with every check and the differential comparison passing. The fingerprint, not the cursor alone, establishes request identity. Traces carry no raw request or token. A changed request, ambiguous sequence, failed run or missing differential pass cannot emit a retry observation.
 
@@ -162,7 +162,7 @@ Keep the observed fact separate from the transferred lesson and its runnable che
 
 **Done when:** the real payouts reference consumer and grader produce a verified B5 trace and `record_lesson` publishes a non-empty typed retry lesson; a mismatched fingerprint or unverified traversal publishes nothing; malformed and branched traces fail closed; `./tools/check.sh` passes.
 
-**Notes (in review):** The trusted trace holds one event per traced request, in response-completion order. A page event carries `status`, the incoming cursor digest, the full-request fingerprint digest, a `retry` flag and the page. A 429 event carries `status`, the incoming cursor digest, the fingerprint digest, `retry: false` and `retry_after`, and no page. A traced request that is not a served v2 page carries its status and the incoming cursor digest, and no page. That covers a 400, a 404, a 410 and a base-handler status such as 501 for another method. A v1 reply carries `api: "v1"` and no page. A request from another client gets a 403 and leaves no trace event. Every reply and trace append pair runs under the same lock, and the append runs in a `finally`. A client reset that makes the reply raise still leaves the event. The bound and the overflow marker are unchanged, and the retry journal is untouched.
+**Notes:** The trusted trace holds one event per traced request, in response-completion order. A page event carries `status`, the incoming cursor digest, the full-request fingerprint digest, a `retry` flag and the page. A 429 event carries `status`, the incoming cursor digest, the fingerprint digest, `retry: false` and `retry_after`, and no page. A traced request that is not a served v2 page carries its status and the incoming cursor digest, and no page. That covers a 400, a 404, a 410 and a base-handler status such as 501 for another method. A v1 reply carries `api: "v1"` and no page. A request from another client gets a 403 and leaves no trace event. Every reply and trace append pair runs under the same lock, and the append runs in a `finally`. A client reset that makes the reply raise still leaves the event. The bound and the overflow marker are unchanged, and the retry journal is untouched.
 
 The B5-off raw trace lines changed. Every page event now carries `status`, `fingerprint` and `retry`, with B5 on or off. The raw bytes differ from the old trace. The parsed facts do not. Old-shape lines, without those fields, still parse to the old facts. `realObserver` starts a real B5-off server in the gate, runs the reference consumer, and parses its trace with `pageObservations` to the old facts. `bench/tests/quirks.sh` also checks the real B5-off shape.
 
