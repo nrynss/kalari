@@ -34,7 +34,7 @@ requires:   [T6.3, T5.6, T5.6a]
 fixture-ok: no
 size:       M · user
 owns:       (none)
-status:     not-started
+status:     done
 ```
 The user records it. As for Doyle (user decision), the script, shot list, cut table, takes and capture rig live in the demo-shoot folder outside the repository, never committed; the repository links to the finished video. The orchestrator drafts the script there. Sessions are filmed on the VM, where the benchmark ran; host names and IPs are blurred in post (user decision). T5.6a's live run is filmed as it happens.
 
