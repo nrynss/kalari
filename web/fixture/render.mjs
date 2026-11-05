@@ -412,6 +412,7 @@ try {
   }
   const containment = await getJson(base, "api/sessions/containment-runs");
   const reference = await getJson(base, "api/sessions/reference-paging");
+  const showcase = await getJson(base, "api/sessions/showcase-disbursements");
   const containmentRuns = containment.filter((record) => record.kind === "containment");
   const containmentRunId = containmentRuns.find((record) => record.payload.result.verdict === "killed_timeout")?.run_id;
   const earlierRunId = containmentRuns.find((record) => record.run_id !== containmentRunId)?.run_id;
@@ -420,6 +421,8 @@ try {
   const earlierRunRecords = await getJson(base, `api/runs/${earlierRunId}`);
   const sessionRecords = await getJson(base, "api/sessions/payouts-upgrade");
   const runRecords = await getJson(base, "api/runs/pilot-c3-payouts-r5");
+  const showcaseRecords = await getJson(base, "api/sessions/showcase-disbursements");
+  const leadRunRecords = await getJson(base, "api/runs/showcase-kalari-glm-r3");
   const illustrativeRunRecords = await getJson(base, "api/runs/payouts-attempt-1");
   const runDetails = await runDetailsFor(base, runs, benchmark);
 
@@ -439,13 +442,13 @@ try {
   const snapshots = {
     judges: {
       view: "judges",
-      args: { benchmark, runs, sessions, lessons, runDetails, containment, reference },
-      inputs: { benchmark, runs, sessions, lessons, containment, reference },
+      args: { benchmark, runs, sessions, lessons, runDetails, containment, reference, showcase },
+      inputs: { benchmark, runs, sessions, lessons, containment, reference, showcase },
     },
     "judges-empty": {
       view: "judges",
-      args: { benchmark: [], runs, sessions, lessons },
-      inputs: { benchmark: [], runs, sessions, lessons },
+      args: { benchmark: [], runs, sessions, lessons, runDetails, showcase },
+      inputs: { benchmark: [], runs, sessions, lessons, runDetails, showcase },
     },
     "judges-no-store": {
       view: "judges",
@@ -454,8 +457,8 @@ try {
     },
     "judges-extra-run": {
       view: "judges",
-      args: { benchmark: benchmarkWithExtra, runs: runsWithExtra, sessions, lessons, containment, reference },
-      inputs: { benchmark: benchmarkWithExtra, runs: runsWithExtra, sessions, lessons, containment, reference },
+      args: { benchmark: benchmarkWithExtra, runs: runsWithExtra, sessions, lessons, containment, reference, showcase },
+      inputs: { benchmark: benchmarkWithExtra, runs: runsWithExtra, sessions, lessons, containment, reference, showcase },
     },
     "judges-frozen-after": {
       view: "judges",
@@ -477,6 +480,11 @@ try {
       args: { sessionId: "payouts-upgrade", records: sessionRecords, lessons, runs },
       inputs: { sessionId: "payouts-upgrade", records: sessionRecords, lessons, runs },
     },
+    "session-showcase": {
+      view: "session",
+      args: { sessionId: "showcase-disbursements", records: showcaseRecords, lessons: [], runs },
+      inputs: { sessionId: "showcase-disbursements", records: showcaseRecords, lessons: [], runs },
+    },
     "session-frozen": {
       view: "session",
       args: { sessionId: "fixture-c5-payouts", records: [frozenAfter], lessons: [], runs: frozenRuns },
@@ -491,6 +499,11 @@ try {
       view: "run",
       args: { runId: "pilot-c3-payouts-r5", records: runRecords, runs },
       inputs: { runId: "pilot-c3-payouts-r5", records: runRecords, runs },
+    },
+    "run-showcase": {
+      view: "run",
+      args: { runId: "showcase-kalari-glm-r3", records: leadRunRecords, runs },
+      inputs: { runId: "showcase-kalari-glm-r3", records: leadRunRecords, runs },
     },
     "run-frozen": {
       view: "run",

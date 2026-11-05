@@ -5,35 +5,39 @@
   "pages": {
     "judges": {
       "path": "web/fixture/rendered/judges.html",
-      "sha256": "11941e1c1f3d4a37170f0503dc5b95f0214d1d76b6885c4a824d842e457e5729"
+      "sha256": "f1dbe21a2297ba6d0c2b77ff2732cc6ec5414958ae5ef0d9aaec37b58228d36c"
     },
     "judges-empty": {
       "path": "web/fixture/rendered/judges-empty.html",
-      "sha256": "cc005b2a7b5bb6d4e96b614da8ee7b4a7697705c16a2913043f5e9ee2b3694d3"
+      "sha256": "4c6dbbb04ca0afca01df28c40ec90a6251745a975bb8434af6db57740debb574"
     },
     "judges-no-store": {
       "path": "web/fixture/rendered/judges-no-store.html",
-      "sha256": "e514899bcc63c42f4c5b3f6dc49c669779fa4e0d531dcce696f59982d6479828"
+      "sha256": "f702405121484e94f920221e6e09f3da1219bb10442af41b7551ef112ed3c189"
     },
     "judges-extra-run": {
       "path": "web/fixture/rendered/judges-extra-run.html",
-      "sha256": "3e9ba64cd939f2073910052757fe6b660684b240ca8fa0fc5808bd1269be0aaf"
+      "sha256": "835dbd5a88e2d83d13918cbe11f1a2b12c082e3978f8da5821e3a1284afd8e50"
     },
     "judges-frozen-after": {
       "path": "web/fixture/rendered/judges-frozen-after.html",
-      "sha256": "8f338d8d3a7f26de5c2bed4fdca0ab0e7479201656b0fec421521ecc334325e2"
+      "sha256": "aec2518486418ef102fa771b40534265cdd2486ccf3887220c1699bcc3915f1a"
     },
     "judges-frozen-pair": {
       "path": "web/fixture/rendered/judges-frozen-pair.html",
-      "sha256": "4cdf185b6dbe4c381b4300b1050df39bc5e8fd844b0aef0f41c8ff1bffde442c"
+      "sha256": "1961ed6dffe99950dcf158916f6aacae0d73bca7c26e012842a2ec8c4e5dff22"
     },
     "judges-frozen-split": {
       "path": "web/fixture/rendered/judges-frozen-split.html",
-      "sha256": "c4a197341ec6dd0a018288e7ecdd4cb2299c6405950f6e68f804c87ce8119422"
+      "sha256": "235efb98a20d57940e624fc58854941c72ed91165603a81b8797d62379ee7fdd"
     },
     "session": {
       "path": "web/fixture/rendered/session.html",
-      "sha256": "5800396c3a983cbe4aa3cb8c128ae565e6bded7e35db1155396a633fe2d27623"
+      "sha256": "6847e316cd1c873959de3c3e30b5deee209f96c234415cb1388647367737365e"
+    },
+    "session-showcase": {
+      "path": "web/fixture/rendered/session-showcase.html",
+      "sha256": "eb5cb3a31a753fc756a4a5c09aa0ace51990df92d6dd4140bc0e81b13eafc0a5"
     },
     "session-frozen": {
       "path": "web/fixture/rendered/session-frozen.html",
@@ -41,15 +45,19 @@
     },
     "session-redaction": {
       "path": "web/fixture/rendered/session-redaction.html",
-      "sha256": "00c5dde7ea094a9d55c098c25eec6ae7e5fbdfec0c511284d812995d7220e083"
+      "sha256": "341175a029aed135e81c7b4250dc811ebd0ded3ba0b73ece1618ef480795aa46"
     },
     "run": {
       "path": "web/fixture/rendered/run.html",
-      "sha256": "1c35499404f163fadee5bade8c71c64d91da809bce4ad8fb13166f171c0929ab"
+      "sha256": "8de925019db3643d0e7b4aa29caa4c6cc7b282f1491aee462b3eef110721cb63"
+    },
+    "run-showcase": {
+      "path": "web/fixture/rendered/run-showcase.html",
+      "sha256": "02e7a678449a0e81835916c518a291ca483de0c92fbe78accfa9057a9abc7a63"
     },
     "run-frozen": {
       "path": "web/fixture/rendered/run-frozen.html",
-      "sha256": "9031ededb7a6a1794cf8987e75e55bde73c93c023ed948dfb3c6e2836b31a866"
+      "sha256": "306fd28c1e5b9fb7bc3ddb8c74ba5a0dfa56533a5d5f50c5552729fa1b42e5c2"
     },
     "run-illustrative": {
       "path": "web/fixture/rendered/run-illustrative.html",
@@ -57,11 +65,11 @@
     },
     "run-containment": {
       "path": "web/fixture/rendered/run-containment.html",
-      "sha256": "f3607ada2816951eea2d9d0be099b8011377dcd8dcc399ebefe70a76656157e2"
+      "sha256": "0129653a9de94d66bb002b011be5ea6497b53a2b0002367436a858cd4ed858cc"
     },
     "run-containment-earlier": {
       "path": "web/fixture/rendered/run-containment-earlier.html",
-      "sha256": "800c5a65896d431e124fd831053ebea5229a9b77a8a15e5ea3b300c832cbcb24"
+      "sha256": "5a7938ef93ddeaded73b6b05f1b90433513c0ea6c66c59fdc7d9b52749537571"
     },
     "run-endpoint": {
       "path": "web/fixture/rendered/run-endpoint.html",
@@ -69,23 +77,23 @@
     },
     "run-reference": {
       "path": "web/fixture/rendered/run-reference.html",
-      "sha256": "4354cff6f595033d7f2d1c83d1d5b96eed991feb8f6079c5e42440af6a8e5405"
+      "sha256": "bd8d515ddeed0963447c73cf778771fc3f46f10540be64513cbb46d141678103"
     },
     "run-redaction": {
       "path": "web/fixture/rendered/run-redaction.html",
-      "sha256": "56b1f9f98f520c34909866368a62e8771718c2224b1a9bf35d6f573b3d90cd55"
+      "sha256": "906a947d3689bbb43e98a8fa28cbe05b6094ba09fefe7429ceabd554ef12a63c"
     }
   },
   "sha256": {
-    "app.css": "5a20cbf9d1927b9866fc7d104f2689164f22a69ecccf96fdc7d85e5f7ef8b8f4",
-    "app/api.mjs": "22e6f77ad671862df74f0b80afe463167ea8108ab293a83546b61e4024362f83",
+    "app.css": "67fc21f38c27b07cb65e41332971cca872ca13d3d69d3ec763b7666b24ce4783",
+    "app/api.mjs": "182cc3c997d46f2fa157f2d935675b92fa6f9f49d61b612dde16cf43f1c9247e",
     "app/boot.mjs": "52ed3a653d7826d3d9080c9d50aedee1570a3bce7fba91bd69bb627d9253ce81",
     "app/format.mjs": "d6b60b8861907518dd39cae928b9e13250f61d311f111845d8524b6ca8710975",
     "app/judges.mjs": "a130bc07c443a17e3532ad82a40f553e9d9944774b5ac96ddc13deb4d1d9e744",
     "app/labels.mjs": "4352e35e17bc43ef5247269d0b600ac330c97f8955eb49dbae9e462ae6291f4a",
     "app/run.mjs": "714aa943c55dc4244ef1fc1fe8730256cf84e220d3ef3a23226e4a040688c4b1",
     "app/session.mjs": "1ed6aec3c10f3b7fb641c8de9efb3a35b1639d477d09e99e0bb612402dcecc4f",
-    "app/views.mjs": "66c35ace4691ed3c9f2863f63967293e69ea9afd3824d0071b2ed74bf42f422e",
+    "app/views.mjs": "61cca349dcfd03b21b27ac2f7c6fc3fdcf7316575da2196cb208c08e1b9f774b",
     "favicon.svg": "39bc2680150226e985565c8138030fe3dc788427d3b3a04c0ae934c8e6e9f0d2",
     "index.html": "eee6c9f72729e71c783fe2b1c27b5a3d6eec67aa4ab88d83a7239e4a826b03d9",
     "run.html": "b290cdfdaa2a68999a6d4659af140dd9850c2bd52074b3e035ba3997e854599f",
@@ -93,10 +101,10 @@
   },
   "inputs": {
     "path": "web/fixture/rendered/inputs.json",
-    "sha256": "99eab4ef65ee2288936b41e9b6c6744d69ee3a75fc6126112ef1c527edfd1452"
+    "sha256": "6eeddf1e0fec6c9720b3c71c7eba432be6f2ddac7fccd61bfd48bd2fdac55d28"
   },
   "evidence": {
     "path": "web/fixture/evidence.jsonl",
-    "sha256": "eaf36e7a72d91d98c82c771346fa10f3127af31cb5ceb55b71c7693b312d5e8b"
+    "sha256": "6b5abaefef9b580a311d4fc8aff35e3df6348b86a5233e0c5c27ad2deeaeb853"
   }
 }

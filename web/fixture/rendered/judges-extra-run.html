@@ -5,14 +5,45 @@
     <p class="hero-copy">This page is the evidence index. Every figure comes from an evidence record, and every benchmark figure links to the run that produced it.</p>
     <p class="status-line"><span class="status-dot is-pilot" aria-hidden="true"></span>Pilot results published. The frozen comparison is not yet published.</p>
     <nav class="reading-path" aria-label="On this page">
-      <ul><li><a href="#problem">The problem</a></li><li><a href="#containment">The containment runs</a></li><li><a href="#comparison">The pilot baseline</a></li><li><a href="#baseline">Every condition in this fixture</a></li><li><a href="#runs">Every run</a></li><li><a href="#sessions">Read a session</a></li></ul>
+      <ul><li><a href="#what-is">What Kalari is</a></li><li><a href="#problem">The problem</a></li><li><a href="#containment">The containment runs</a></li><li><a href="#models">Across models</a></li><li><a href="#comparison">The pilot baseline</a></li><li><a href="#baseline">Every condition in this fixture</a></li><li><a href="#runs">Every run</a></li><li><a href="#sessions">Read a session</a></li></ul>
     </nav>
   </header>
+
+    <section id="what-is" class="section section--whatis" aria-labelledby="what-is-title">
+    <p class="hero-kicker">What Kalari is</p>
+    <h2 id="what-is-title">A rehearsal arena for API upgrades.</h2>
+    <p>Kalari plugs into the coding agent you already use over MCP and rehearses an API upgrade in a contained arena. It works out what changed and what it touches. It runs the new code in a throwaway microVM against the real API, with the old version as the reference. It records what the run proved.</p>
+    <p>The agent writes the code, and Kalari decides what has to be checked and whether it passed.</p>
+    <ul class="tools-row" aria-label="The five Kalari tools">
+      <li><code>what_changed</code><span>Lists the changes between two API versions, with stable change IDs.</span></li><li><code>blast_radius</code><span>Finds the callers and tests each change touches.</span></li><li><code>recall_lessons</code><span>Returns lessons for these change kinds as checks that must pass.</span></li><li><code>run_in_sandbox</code><span>Runs the new code in a throwaway microVM behind the proved gate. It returns the verdict and logs.</span></li><li><code>record_lesson</code><span>Stores what a verified run showed about the API, keyed by change kind.</span></li>
+    </ul>
+    <p class="fine-print tools-proof">The five tools live in <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/c58d60c6abdb2131bbf16fa6dabf626437d33033/Kalari/Mcp.lean">Kalari/Mcp.lean on GitHub</a>. The gate is proved, not just tested. Four theorems cover the workspace, the network, the caps and the secrets: <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/c58d60c6abdb2131bbf16fa6dabf626437d33033/Kalari/Gate.lean#L189">decide_workspace</a>, <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/c58d60c6abdb2131bbf16fa6dabf626437d33033/Kalari/Gate.lean#L201">decide_network</a>, <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/c58d60c6abdb2131bbf16fa6dabf626437d33033/Kalari/Gate.lean#L211">decide_caps</a>, <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/c58d60c6abdb2131bbf16fa6dabf626437d33033/Kalari/Gate.lean#L222">decide_secrets</a>.</p>
+    <h3>Use it in three steps.</h3>
+    <ol class="steps">
+      <li>Run <code>kalari serve</code> with a config file and a session file.</li>
+      <li>Add Kalari to your agent as an MCP server:
+        <pre class="config-snippet"><code>{
+  "mcp": {
+    "servers": {
+      "kalari": {
+        "type": "local",
+        "command": ["kalari", "serve", "kalari.json", "session.json"]
+      }
+    }
+  }
+}</code></pre>
+      </li>
+      <li>Ask your agent to upgrade the consumer. Kalari checks each run and records the evidence.</li>
+    </ol>
+    <p><a class="button" href="/docs/">Read the docs</a></p>
+  </section>
 
     <section id="problem" class="section section--problem" aria-labelledby="problem-title">
     <p class="hero-kicker">The problem</p>
     <h2 id="problem-title">The export looked fine and lost <a class="run-link" href="run.html?id=reference-paging-fix" data-run-link="reference-paging-fix" title="Reference loss: missing records">2,331</a> records.</h2>
     <p class="hero-lede">The v1 consumer exits clean and prints a neat total. The hidden grader counts what arrived. This silent loss is why Kalari rehearses each upgrade in a contained arena.</p>
+    <p class="hero-models">The reference setup ran <span class="model-tag">OpenCode 2.2.5</span> with <span class="model-tag">DeepSeek V4.1 Flash</span> on Vultr Serverless Inference.</p>
+    <p class="evidence-row">Evidence on GitHub: <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/c58d60c6abdb2131bbf16fa6dabf626437d33033/bench/reference-paging/README.md">The reference notes</a></p>
     <div class="problem-grid">
       <div class="problem-card problem-card--loss">
         <h3>The silent loss</h3>
@@ -37,6 +68,8 @@
       <p class="containment-context">Two runs through the same sandbox path · not benchmark sessions</p>
       <h2 id="containment-title">A consumer that never ends, stopped by its time cap.</h2>
       <p class="containment-lede">A payouts consumer was run in a fresh microVM through the same <code>run_in_sandbox</code> path the agent uses. It waits out a rate-limit reply as <code>Retry-After</code> asks, then follows the page cursor on every response, drained or not, so it never ends. The aashaan killed it at the cap this run was given. This is apart from the benchmark: no session in the frozen comparison was stopped by a cap.</p>
+      <p class="containment-note">No model. A fixed consumer ran through <code>run_in_sandbox</code>.</p>
+      <p class="evidence-row evidence-row--light">Evidence on GitHub: <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/c58d60c6abdb2131bbf16fa6dabf626437d33033/tests/live/containment-transcript.txt">The containment log</a> · <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/c58d60c6abdb2131bbf16fa6dabf626437d33033/tests/live/containment-evidence/run-1.jsonl">The first run record</a> · <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/c58d60c6abdb2131bbf16fa6dabf626437d33033/tests/live/containment-evidence/run-2.jsonl">The second run record</a> · <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/c58d60c6abdb2131bbf16fa6dabf626437d33033/bench/RESULTS.md#6a-two-sandbox-runs-outside-the-comparison">The comparison notes</a></p>
       <h3 class="containment-step">The failure</h3>
       <div class="containment-measures">
         <div class="containment-measure">
@@ -73,8 +106,42 @@
       </div>
     </div>
   </section>
+    <section id="models" class="section section--models" aria-labelledby="models-title">
+    <p class="hero-kicker">Across models</p>
+    <h2 id="models-title">Without Kalari, the corruption shipped silently. With Kalari, every session that had it was flagged with the evidence.</h2>
+    <p class="models-lede">One manufactured upgrade, five models, fourteen sessions. Each cell names its runs and links each run page. Counts come from the hidden grader.</p>
+    <div class="models-grid">
+      <div class="models-row models-head" aria-hidden="true"><div></div><div>OpenCode alone</div><div>OpenCode with Kalari</div></div>
+      <div class="models-row">
+      <div class="models-model"><h3><span class="model-tag">GLM 5.3 Flash</span></h3></div>
+      <div class="models-cell models-cell--reference"><h4>OpenCode alone</h4><ul class="models-runs"><li><a class="run-link" href="run.html?id=showcase-reference-glm-r1" data-run-link="showcase-reference-glm-r1" title="Showcase run">glm-r1: Failed, 23 changed</a></li><li><a class="run-link" href="run.html?id=showcase-reference-glm-r2" data-run-link="showcase-reference-glm-r2" title="Showcase run">glm-r2: Passed</a></li><li><a class="run-link" href="run.html?id=showcase-reference-glm-r3" data-run-link="showcase-reference-glm-r3" title="Showcase run">glm-r3: Failed, 23 changed</a></li></ul></div>
+      <div class="models-cell models-cell--kalari"><h4>OpenCode with Kalari</h4><ul class="models-runs"><li><a class="run-link" href="run.html?id=showcase-kalari-glm-r1" data-run-link="showcase-kalari-glm-r1" title="Showcase run">glm-r1: Passed</a></li><li><a class="run-link" href="run.html?id=showcase-kalari-glm-r2" data-run-link="showcase-kalari-glm-r2" title="Showcase run">glm-r2: Failed, 23 changed, flagged</a></li><li><a class="run-link" href="run.html?id=showcase-kalari-glm-r3" data-run-link="showcase-kalari-glm-r3" title="Showcase run">glm-r3: Passed, fixed after 23 changed</a></li></ul></div>
+    </div><div class="models-row">
+      <div class="models-model"><h3><span class="model-tag">Qwen3.8 27B</span></h3></div>
+      <div class="models-cell models-cell--reference"><h4>OpenCode alone</h4><ul class="models-runs"><li><a class="run-link" href="run.html?id=showcase-reference-qwen27b-r1" data-run-link="showcase-reference-qwen27b-r1" title="Showcase run">qwen27b-r1: Failed, 23 changed</a></li></ul></div>
+      <div class="models-cell models-cell--kalari"><h4>OpenCode with Kalari</h4><ul class="models-runs"><li><a class="run-link" href="run.html?id=showcase-kalari-qwen27b-r1" data-run-link="showcase-kalari-qwen27b-r1" title="Showcase run">qwen27b-r1: Failed, 23 changed, flagged</a></li></ul></div>
+    </div><div class="models-row">
+      <div class="models-model"><h3><span class="model-tag">Muse Glimmer 30B</span></h3></div>
+      <div class="models-cell models-cell--reference"><h4>OpenCode alone</h4><ul class="models-runs"><li><a class="run-link" href="run.html?id=showcase-reference-muse-r1" data-run-link="showcase-reference-muse-r1" title="Showcase run">muse-r1: Failed, 23 changed</a></li></ul></div>
+      <div class="models-cell models-cell--kalari"><h4>OpenCode with Kalari</h4><ul class="models-runs"><li><a class="run-link" href="run.html?id=showcase-kalari-muse-r1" data-run-link="showcase-kalari-muse-r1" title="Showcase run">muse-r1: Failed, 23 changed, flagged</a></li></ul></div>
+    </div><div class="models-row">
+      <div class="models-model"><h3><span class="model-tag">MiMo V2.6 Flash</span></h3></div>
+      <div class="models-cell models-cell--reference"><h4>OpenCode alone</h4><ul class="models-runs"><li><a class="run-link" href="run.html?id=showcase-reference-mimo-r1" data-run-link="showcase-reference-mimo-r1" title="Showcase run">mimo-r1: Failed, 2,341 lost</a></li></ul></div>
+      <div class="models-cell models-cell--kalari"><h4>OpenCode with Kalari</h4><p class="muted">No session for this model.</p></div>
+    </div><div class="models-row">
+      <div class="models-model"><h3><span class="model-tag">DeepSeek V4.1 Flash</span></h3></div>
+      <div class="models-cell models-cell--reference"><h4>OpenCode alone</h4><ul class="models-runs"><li><a class="run-link" href="run.html?id=showcase-reference-deepseek-r1" data-run-link="showcase-reference-deepseek-r1" title="Showcase run">deepseek-r1: Passed</a></li><li><a class="run-link" href="run.html?id=showcase-reference-deepseek-r2" data-run-link="showcase-reference-deepseek-r2" title="Showcase run">deepseek-r2: Passed</a></li><li><a class="run-link" href="run.html?id=showcase-reference-deepseek-r3" data-run-link="showcase-reference-deepseek-r3" title="Showcase run">deepseek-r3: Passed</a></li></ul></div>
+      <div class="models-cell models-cell--kalari"><h4>OpenCode with Kalari</h4><p class="muted">No session for this model.</p></div>
+    </div>
+    </div>
+    <p>GLM alone shipped twenty-three wrong records in two of three sessions. Kalari flagged both GLM sessions that had the fault and fixed one. Qwen and Muse alone shipped the fault, and Kalari flagged both without fixing them. MiMo failed loudly. DeepSeek alone passed all three sessions.</p>
+    <p>This scenario is manufactured. It is not part of the frozen comparison.</p>
+    <p class="evidence-row">Evidence on GitHub: <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/c58d60c6abdb2131bbf16fa6dabf626437d33033/bench/showcase/disbursements/README.md">The showcase readme</a> · <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/c58d60c6abdb2131bbf16fa6dabf626437d33033/bench/showcase/disbursements/QUIRKS.md">The quirks file</a></p>
+  </section>
     <section id="comparison" class="section section--comparison">
       <h2>The pilot baseline</h2>
+    <p class="comparison-models">Both arms ran <span class="model-tag">OpenCode 2.2.5</span> with <span class="model-tag">DeepSeek V4.1 Flash</span> on Vultr Serverless Inference.</p>
+    <p class="evidence-row">Evidence on GitHub: <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/c58d60c6abdb2131bbf16fa6dabf626437d33033/bench/RESULTS.md#2-the-comparison-table">The comparison table</a> · <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/c58d60c6abdb2131bbf16fa6dabf626437d33033/bench/RESULTS.md#4-the-basis-of-cost-and-token-figures">Cost and token basis</a> · <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/c58d60c6abdb2131bbf16fa6dabf626437d33033/bench/RESULTS.md#6-containment-configured-policy-versus-observed-outcome">Containment policy</a> · <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/c58d60c6abdb2131bbf16fa6dabf626437d33033/bench/FROZEN.md">The frozen pair</a></p>
     <div class="notice notice--pending" role="status">
     <h3>The frozen comparison is not yet published.</h3>
     <p>The pilot below is the reference arm. The Kalari arm has not run on the frozen pair.</p>
@@ -1628,17 +1695,26 @@
           <ul class="run-index-list"><li><a class="run-link" href="run.html?id=pilot-c6-settlements-r1" data-run-link="pilot-c6-settlements-r1" title="Open run pilot-c6-settlements-r1"><code>pilot-c6-settlements-r1</code></a><span class="run-index-verdict is-pass">Passed</span></li><li><a class="run-link" href="run.html?id=pilot-c6-settlements-r2" data-run-link="pilot-c6-settlements-r2" title="Open run pilot-c6-settlements-r2"><code>pilot-c6-settlements-r2</code></a><span class="run-index-verdict is-pass">Passed</span></li><li><a class="run-link" href="run.html?id=pilot-c6-settlements-r3" data-run-link="pilot-c6-settlements-r3" title="Open run pilot-c6-settlements-r3"><code>pilot-c6-settlements-r3</code></a><span class="run-index-verdict is-pass">Passed</span></li><li><a class="run-link" href="run.html?id=pilot-c6-settlements-r4" data-run-link="pilot-c6-settlements-r4" title="Open run pilot-c6-settlements-r4"><code>pilot-c6-settlements-r4</code></a><span class="run-index-verdict is-pass">Passed</span></li><li><a class="run-link" href="run.html?id=pilot-c6-settlements-r5" data-run-link="pilot-c6-settlements-r5" title="Open run pilot-c6-settlements-r5"><code>pilot-c6-settlements-r5</code></a><span class="run-index-verdict is-pass">Passed</span></li></ul>
         </div><div class="run-group">
     <h3>Sandbox runs</h3>
-    <ul class="run-index-list"><li><a class="run-link" href="run.html?id=payouts-attempt-1" data-run-link="payouts-attempt-1" title="Open run payouts-attempt-1"><code>payouts-attempt-1</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=payouts-attempt-2" data-run-link="payouts-attempt-2" title="Open run payouts-attempt-2"><code>payouts-attempt-2</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=payouts-attempt-3" data-run-link="payouts-attempt-3" title="Open run payouts-attempt-3"><code>payouts-attempt-3</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=payouts-earlier-pass" data-run-link="payouts-earlier-pass" title="Open run payouts-earlier-pass"><code>payouts-earlier-pass</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=reference-paging-fix" data-run-link="reference-paging-fix" title="Open run reference-paging-fix"><code>reference-paging-fix</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=tmp.XXSQOmhn" data-run-link="tmp.XXSQOmhn" title="Open run tmp.XXSQOmhn"><code>tmp.XXSQOmhn</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=tmp.XXdrLVOs" data-run-link="tmp.XXdrLVOs" title="Open run tmp.XXdrLVOs"><code>tmp.XXdrLVOs</code></a><span class="run-index-verdict ">Run record not loaded</span></li></ul>
+    <ul class="run-index-list"><li><a class="run-link" href="run.html?id=payouts-attempt-1" data-run-link="payouts-attempt-1" title="Open run payouts-attempt-1"><code>payouts-attempt-1</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=payouts-attempt-2" data-run-link="payouts-attempt-2" title="Open run payouts-attempt-2"><code>payouts-attempt-2</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=payouts-attempt-3" data-run-link="payouts-attempt-3" title="Open run payouts-attempt-3"><code>payouts-attempt-3</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=payouts-earlier-pass" data-run-link="payouts-earlier-pass" title="Open run payouts-earlier-pass"><code>payouts-earlier-pass</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=reference-paging-fix" data-run-link="reference-paging-fix" title="Open run reference-paging-fix"><code>reference-paging-fix</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=showcase-kalari-glm-r1" data-run-link="showcase-kalari-glm-r1" title="Open run showcase-kalari-glm-r1"><code>showcase-kalari-glm-r1</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=showcase-kalari-glm-r2" data-run-link="showcase-kalari-glm-r2" title="Open run showcase-kalari-glm-r2"><code>showcase-kalari-glm-r2</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=showcase-kalari-glm-r3" data-run-link="showcase-kalari-glm-r3" title="Open run showcase-kalari-glm-r3"><code>showcase-kalari-glm-r3</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=showcase-kalari-muse-r1" data-run-link="showcase-kalari-muse-r1" title="Open run showcase-kalari-muse-r1"><code>showcase-kalari-muse-r1</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=showcase-kalari-qwen27b-r1" data-run-link="showcase-kalari-qwen27b-r1" title="Open run showcase-kalari-qwen27b-r1"><code>showcase-kalari-qwen27b-r1</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=showcase-reference-deepseek-r1" data-run-link="showcase-reference-deepseek-r1" title="Open run showcase-reference-deepseek-r1"><code>showcase-reference-deepseek-r1</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=showcase-reference-deepseek-r2" data-run-link="showcase-reference-deepseek-r2" title="Open run showcase-reference-deepseek-r2"><code>showcase-reference-deepseek-r2</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=showcase-reference-deepseek-r3" data-run-link="showcase-reference-deepseek-r3" title="Open run showcase-reference-deepseek-r3"><code>showcase-reference-deepseek-r3</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=showcase-reference-glm-r1" data-run-link="showcase-reference-glm-r1" title="Open run showcase-reference-glm-r1"><code>showcase-reference-glm-r1</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=showcase-reference-glm-r2" data-run-link="showcase-reference-glm-r2" title="Open run showcase-reference-glm-r2"><code>showcase-reference-glm-r2</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=showcase-reference-glm-r3" data-run-link="showcase-reference-glm-r3" title="Open run showcase-reference-glm-r3"><code>showcase-reference-glm-r3</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=showcase-reference-mimo-r1" data-run-link="showcase-reference-mimo-r1" title="Open run showcase-reference-mimo-r1"><code>showcase-reference-mimo-r1</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=showcase-reference-muse-r1" data-run-link="showcase-reference-muse-r1" title="Open run showcase-reference-muse-r1"><code>showcase-reference-muse-r1</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=showcase-reference-qwen27b-r1" data-run-link="showcase-reference-qwen27b-r1" title="Open run showcase-reference-qwen27b-r1"><code>showcase-reference-qwen27b-r1</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=tmp.XXSQOmhn" data-run-link="tmp.XXSQOmhn" title="Open run tmp.XXSQOmhn"><code>tmp.XXSQOmhn</code></a><span class="run-index-verdict ">Run record not loaded</span></li><li><a class="run-link" href="run.html?id=tmp.XXdrLVOs" data-run-link="tmp.XXdrLVOs" title="Open run tmp.XXdrLVOs"><code>tmp.XXdrLVOs</code></a><span class="run-index-verdict ">Run record not loaded</span></li></ul>
   </div></div></section>
     <section id="sessions" class="section section--sessions">
       <h2>Read a full session</h2>
     <p>The run pages show one measurement each. A session page shows the whole trail. It has the change list, the blast radius, the recalled check, each attempt with its logs, and the lesson written.</p>
-    <a class="session-card" href="session.html?id=payouts-upgrade">
+    <div class="session-cards"><div class="session-card session-card--lead">
+      <span class="badge badge--live">Showcase session</span>
+      <h3>Showcase disbursements</h3>
+      <p>Fourteen sessions across five models on one manufactured upgrade. Lead run: <span class="model-tag">GLM 5.3 Flash</span>, <a class="run-link" href="run.html?id=showcase-kalari-glm-r3" data-run-link="showcase-kalari-glm-r3" title="Showcase run">glm-r3: Passed, fixed after 23 changed</a>.</p>
+      <p class="session-card-cta"><a href="session.html?id=showcase-disbursements">Open the showcase session</a></p>
+    </div><div class="session-card">
+      <span class="badge badge--live">Contained runs</span>
+      <h3>Containment runs</h3>
+      <p>Two fixed consumers through run_in_sandbox. The time cap stopped one.</p>
+      <p class="session-card-cta"><a href="session.html?id=containment-runs">Open the containment session</a></p>
+    </div><div class="session-card">
       <span class="badge badge--draft">Illustrative walkthrough</span>
       <h3>Upgrading the payout ledger</h3>
       <p>Follow the change facts, the call site, the recalled check, three attempts and the lesson. The change facts and the Clef answer are recorded. The run timings and log excerpts are illustrative.</p>
-      <span class="session-card-cta">Open the walkthrough</span>
-    </a>
-    <p class="quiet-line"><a href="session.html?id=payouts-earlier">The earlier session that left the recalled lesson</a></p>
+      <p class="session-card-cta"><a href="session.html?id=payouts-upgrade">Open the walkthrough</a></p>
+    </div></div>
     </section>
   </article>

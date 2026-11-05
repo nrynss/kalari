@@ -51,9 +51,11 @@ PAGES = (
     "judges-frozen-pair",
     "judges-frozen-split",
     "session",
+    "session-showcase",
     "session-frozen",
     "session-redaction",
     "run",
+    "run-showcase",
     "run-frozen",
     "run-illustrative",
     "run-containment",
@@ -63,8 +65,8 @@ PAGES = (
     "run-reference",
 )
 JUDGES_PAGES = tuple(name for name in PAGES if name.startswith("judges"))
-SESSION_PAGES = ("session", "session-frozen", "session-redaction")
-RUN_PAGES = ("run", "run-frozen", "run-illustrative", "run-containment", "run-containment-earlier", "run-endpoint", "run-redaction", "run-reference")
+SESSION_PAGES = ("session", "session-showcase", "session-frozen", "session-redaction")
+RUN_PAGES = ("run", "run-showcase", "run-frozen", "run-illustrative", "run-containment", "run-containment-earlier", "run-endpoint", "run-redaction", "run-reference")
 SHELLS = ("index.html", "session.html", "run.html")
 
 ID_RE = re.compile(r"^[A-Za-z0-9._-]+$")
@@ -101,6 +103,25 @@ SECRET_RES = [
     re.compile(r"ssh-(?:rsa|ed25519)"),
     re.compile(r"(?i)vultr[_-]?inference[_-]?api[_-]?key"),
 ]
+# The single external prefix the judges page may link. Every evidence figure
+# links its raw file on GitHub, pinned to EVIDENCE_REF. Top-level navigation
+# stays on the page origin, so default-src 'self' does not change.
+GITHUB_PREFIX = "https://github.com/nrynss/kalari/"
+GITHUB_LINK_RE = re.compile(r"https://github\.com/nrynss/kalari/[^\s<>\"']+")
+
+
+def github_allowed(token: str) -> bool:
+    return token == GITHUB_PREFIX.rstrip("/") or token.startswith(GITHUB_PREFIX)
+EVIDENCE_REF_RE = re.compile(r'export const EVIDENCE_REF = "([0-9a-f]{40})"')
+MODEL_TAGS = {
+    "OpenCode 2.2.5",
+    "DeepSeek V4.1 Flash",
+    "GLM 5.3 Flash",
+    "Qwen3.8 27B",
+    "Muse Glimmer 30B",
+    "MiMo V2.6 Flash",
+}
+SHOWCASE_MODELS = ["GLM 5.3 Flash", "Qwen3.8 27B", "Muse Glimmer 30B", "MiMo V2.6 Flash", "DeepSeek V4.1 Flash"]
 CSP_REQUIRED = ("default-src 'self'", "connect-src 'self'")
 HEADINGS = {"h1", "h2", "h3", "h4", "h5", "h6"}
 # A served module must not open, assign or navigate a browsing context. None of
@@ -261,6 +282,8 @@ class ExternalHTMLParser(HTMLParser):
         value = html_module.unescape(value).strip()
         if not value or value.startswith("#"):
             return
+        if value.startswith(GITHUB_PREFIX):
+            return
         if value.startswith("//"):
             self.problems.append(f"{name} is protocol relative: {value}")
             return
@@ -320,8 +343,13 @@ class ExternalHTMLParser(HTMLParser):
         if "style" in self.stack:
             self.problems.extend(scan_css(data))
             return
-        if HTTP_RE.search(data):
+        for match in HTTP_RE.finditer(data):
+            tail = data[match.start():]
+            token = re.split(r'[\s<>"\'()]+', tail, maxsplit=1)[0]
+            if github_allowed(token):
+                continue
             self.problems.append(f"text is external: {data.strip()[:120]}")
+            break
         if PROTOCOL_RELATIVE_TEXT_RE.search(data):
             self.problems.append(f"text is protocol relative: {data.strip()[:120]}")
 
@@ -341,11 +369,16 @@ def scan_svg(text: str) -> list[str]:
             continue
         if value.startswith("#"):
             continue
+        if value.startswith(GITHUB_PREFIX):
+            continue
         if value.startswith("//") or HTTP_RE.search(value):
             problems.append(f"{name} is external: {value}")
     for match in HTTP_RE.finditer(text):
         tail = text[match.start() : match.start() + len(SVG_NAMESPACE)]
         if tail != SVG_NAMESPACE:
+            token = re.split(r'[\s<>"\'()]+', text[match.start():], maxsplit=1)[0]
+            if github_allowed(token):
+                continue
             problems.append("raw external URL in SVG")
     return problems
 
@@ -356,9 +389,14 @@ def scan_css(text: str) -> list[str]:
         value = match.group(2).strip()
         if value.startswith("#"):
             continue
+        if value.startswith(GITHUB_PREFIX):
+            continue
         if value.startswith("//") or HTTP_RE.search(value):
             problems.append(f"css url is external: {value}")
     for match in HTTP_RE.finditer(text):
+        token = re.split(r'[\s<>"\'()]+', text[match.start():], maxsplit=1)[0]
+        if github_allowed(token):
+            continue
         problems.append(f"raw external URL in CSS near: {text[max(0, match.start() - 20) : match.start() + 80]}")
     return problems
 
@@ -417,8 +455,14 @@ def call_argument_is_local(argument: str) -> bool:
 def scan_javascript(text: str) -> list[str]:
     problems: list[str] = []
     for match in HTTP_RE.finditer(text):
+        token = re.split(r'[\s<>"\'()`]+', text[match.start():], maxsplit=1)[0]
+        if github_allowed(token):
+            continue
         problems.append(f"external URL in script near: {text[max(0, match.start() - 20) : match.start() + 80]}")
     for match in QUOTED_PROTOCOL_RELATIVE_RE.finditer(text):
+        token = text[match.start() + 1 :].split('"', 1)[0].split("'", 1)[0].split("`", 1)[0]
+        if github_allowed(token):
+            continue
         problems.append(f"quoted protocol-relative URL in script near: {text[match.start() : match.start() + 80]}")
     if "String.fromCharCode" in text:
         problems.append("script assembles a string with String.fromCharCode")
@@ -469,6 +513,66 @@ def assert_no_external_urls() -> None:
         for problem in scan_file(path):
             raise Failure(f"{problem} in served file {path.relative_to(REPO)}")
     say(f"no external URL and no runtime request outside the relative paths in {len(files)} files and snapshots")
+
+
+def evidence_ref() -> str:
+    text = (SITE / "app/views.mjs").read_text(encoding="utf-8")
+    match = EVIDENCE_REF_RE.search(text)
+    check(match is not None, "views.mjs has no pinned EVIDENCE_REF hash")
+    ref = match.group(1)
+    result = subprocess.run(
+        ["git", "cat-file", "-e", ref],
+        cwd=REPO,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    check(result.returncode == 0, f"EVIDENCE_REF {ref} is not a commit in this repository")
+    return ref
+
+
+def github_links() -> list[tuple[str, str]]:
+    """Every GitHub link in the served files and snapshots, with its file."""
+    found: list[tuple[str, str]] = []
+    files = walk_files(SITE) + walk_files(RENDERED)
+    files = [path for path in files if path != INPUTS]
+    for path in files:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for match in GITHUB_LINK_RE.finditer(text):
+            url = match.group(0).rstrip("\"'`)>.,;")
+            found.append((path.relative_to(REPO).as_posix(), url))
+    return found
+
+
+def assert_github_pins() -> None:
+    """Only the pinned GitHub prefix may appear, and every path exists at it."""
+    ref = evidence_ref()
+    links = github_links()
+    check(links, "the page cites no GitHub evidence link")
+    for name, url in links:
+        match = re.fullmatch(
+            r"https://github\.com/nrynss/kalari/(blob|tree)/([0-9a-f]{40})/(\S+)",
+            url,
+        )
+        check(
+            match is not None,
+            f"the link {url} in {name} is not a pinned blob or tree path",
+        )
+        assert match is not None
+        pinned = match.group(2)
+        target = match.group(3).split("#", 1)[0]
+        check(pinned == ref, f"the link {url} in {name} does not pin EVIDENCE_REF")
+        check(target, f"the link {url} in {name} names no path")
+        result = subprocess.run(
+            ["git", "cat-file", "-e", f"{ref}:{target}"],
+            cwd=REPO,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        check(result.returncode == 0, f"the link {url} in {name} names a path missing at EVIDENCE_REF: {target}")
+    say(f"{len(links)} GitHub evidence links, all pinned to {ref[:12]} with paths that exist there")
 
 
 def assert_private_data_is_absent() -> None:
@@ -767,6 +871,9 @@ class JudgesParser(HTMLParser):
         self.numbers: list[tuple[str, str, str | None]] = []
         self.anchors: list[dict[str, object]] = []
         self.anchor: dict[str, object] | None = None
+        self.model_depth = 0
+        self.model_texts: list[str] = []
+        self.model_buffer: list[str] = []
 
     def _context(self) -> dict[str, object]:
         cell = next((attributes.get("data-label") for _, attributes in reversed(self.stack) if "data-label" in attributes), None)
@@ -781,8 +888,15 @@ class JudgesParser(HTMLParser):
             "containment": "containment-measure-value" in classes,
         }
 
+    def _in_model(self) -> bool:
+        return self.model_depth > 0
+
     def handle_starttag(self, tag: str, attrs) -> None:
         attributes = {key: value for key, value in attrs}
+        if "model-tag" in (attributes.get("class") or "").split():
+            self.model_depth += 1
+            if self.model_depth == 1:
+                self.model_buffer = []
         if tag == "a":
             self.anchor = {
                 "attrs": attributes,
@@ -804,22 +918,30 @@ class JudgesParser(HTMLParser):
             self.anchors.append(self.anchor)
             self.anchor = None
         for index in range(len(self.stack) - 1, -1, -1):
+            attributes = self.stack[index][1]
             if self.stack[index][0] == tag:
+                if "model-tag" in (attributes.get("class") or "").split() and self.model_depth:
+                    self.model_depth -= 1
+                    if self.model_depth == 0:
+                        self.model_texts.append("".join(self.model_buffer).strip())
+                        self.model_buffer = []
                 del self.stack[index:]
                 return
 
     def handle_data(self, data: str) -> None:
         if any(tag in ("script", "style", "noscript", "template") for tag, _ in self.stack):
             return
+        if self._in_model():
+            self.model_buffer.append(data)
         if self.anchor is not None:
             self.anchor["text"].append(data)
         for match in NUMBER_RE.finditer(data):
             anchor = next((attributes for tag, attributes in reversed(self.stack) if tag == "a"), None)
             if anchor is None:
-                self.numbers.append((match.group(0), data.strip()[:120], None))
+                self.numbers.append((match.group(0), data.strip()[:120], None, self._in_model()))
             else:
                 self.numbers.append(
-                    (match.group(0), data.strip()[:120], run_id_from_href(anchor.get("href", "")))
+                    (match.group(0), data.strip()[:120], run_id_from_href(anchor.get("href", "")), self._in_model())
                 )
 
 
@@ -841,11 +963,27 @@ CELL_MEASURE_TITLES = {
 }
 
 
+SHOWCASE_TITLE = "Showcase run"
+
+
+def assert_model_tags(name: str, html: str) -> None:
+    """Model names carry digits, but they are names, not figures. Only known
+    names may use the marker."""
+    parser = JudgesParser()
+    parser.feed(html)
+    for text in parser.model_texts:
+        check(text in MODEL_TAGS, f"on {name}, the model marker names an unknown model: {text!r}")
+    if parser.model_texts:
+        say(f"{name}: {len(parser.model_texts)} model names marked, all known")
+
+
 def assert_numbers_link_to_runs(base: str, judges_html: str, run_ids: set[str], benchmark_run_ids: set[str]) -> None:
     parser = JudgesParser()
     parser.feed(judges_html)
-    check(parser.numbers, "the judges page displays no numbers at all")
-    for number, context, run_id in parser.numbers:
+    figures = [item for item in parser.numbers if len(item) < 4 or not item[3]]
+    check(figures, "the judges page displays no numbers at all")
+    for item in figures:
+        number, context, run_id = item[0], item[1], item[2]
         check(run_id is not None, f"the number {number!r} is outside a run link (near {context!r})")
         check(run_id in run_ids, f"the number {number!r} links to run {run_id!r}, which is not in /api/runs")
 
@@ -874,7 +1012,7 @@ def assert_numbers_link_to_runs(base: str, judges_html: str, run_ids: set[str], 
                 f"an anchor shows a number but data-run-link {data_id!r} does not equal href id {run_id!r}",
             )
             check(
-                title in TITLE_FIELDS or title in CONTAINMENT_TITLES or title in HERO_TITLES or title in REFERENCE_TITLES or title == f"Open run {run_id}",
+                title in TITLE_FIELDS or title in CONTAINMENT_TITLES or title in HERO_TITLES or title in REFERENCE_TITLES or title == SHOWCASE_TITLE or title == f"Open run {run_id}",
                 f"an anchor shows a number with an unknown title: {title!r}",
             )
 
@@ -1174,6 +1312,8 @@ def assert_values_match_records(name: str, html: str, benchmark: list[dict], run
             pass  # assert_containment checks these against the containment record
         elif title in HERO_TITLES or title in REFERENCE_TITLES:
             pass  # assert_hero and assert_reference_panel check these against their records
+        elif title == SHOWCASE_TITLE:
+            pass  # assert_showcase checks these against the showcase records
         elif title:
             raise Failure(f"an anchor with data-run-link has an unknown title: {title!r}")
     say(f"{name}: {checked} table values match their records")
@@ -1216,6 +1356,12 @@ def assert_anchor_containers(name: str, html: str) -> None:
             check(
                 anchor["cell"] or anchor["median"] or anchor["containment"],
                 f"on {name}, the measure {title!r} is outside a measure cell, a median line or the containment panel",
+            )
+            continue
+        if run_id is not None and title == SHOWCASE_TITLE:
+            check(
+                anchor["attrs"].get("data-run-link") == run_id,
+                f"on {name}, the showcase figure has no data-run-link for {run_id!r}",
             )
             continue
         raise Failure(f"on {name}, the anchor {text!r} shows a number but is not a measure or a run id")
@@ -1295,7 +1441,10 @@ def assert_containment(name: str, html: str, records: list[dict], run_ids: set[s
     ]
     expected = containment_expected(records, run_ids)
     check(sorted(actual) == sorted(expected), f"on {name}, the containment figures are {actual}, expected {expected}")
-    for number, context, run_id in parser.numbers:
+    for item in parser.numbers:
+        number, context, run_id = item[0], item[1], item[2]
+        if len(item) > 3 and item[3]:
+            continue
         check(run_id is not None, f"on {name}, the containment panel shows {number!r} outside a run link ({context!r})")
     p = payload_of(record)
     run_id = record["run_id"]
@@ -1307,6 +1456,15 @@ def assert_containment(name: str, html: str, records: list[dict], run_ids: set[s
         if anchor["attrs"].get("data-run-link") == run_id and anchor["text"] == "Read the run and its evidence"
     ]
     check(len(main_links) == 1 and main_links[0]["href"] == f"run.html?id={run_id}", f"on {name}, the panel does not link its main run page")
+    for phrase in ("No model", "fixed consumer", "run_in_sandbox"):
+        check(phrase in text, f"on {name}, the panel does not say the run used no model")
+    for needle in (
+        "tests/live/containment-transcript.txt",
+        "tests/live/containment-evidence/run-1.jsonl",
+        "tests/live/containment-evidence/run-2.jsonl",
+        "bench/RESULTS.md",
+    ):
+        check(needle in section, f"on {name}, the panel does not link {needle}")
     for other in containment_records_of(records):
         if other is record:
             continue
@@ -1701,7 +1859,10 @@ def assert_hero(name: str, html: str, benchmark: list[dict], run_ids: set[str], 
             check(run_id in ref_runs, f"on {name}, the hero figure {title!r} links a run outside the reference arm")
         else:
             check(run_id in kal_runs, f"on {name}, the hero figure {title!r} links a run outside the Kalari arm")
-    for number, context, run_id in parser.numbers:
+    for item in parser.numbers:
+        number, context, run_id = item[0], item[1], item[2]
+        if len(item) > 3 and item[3]:
+            continue
         check(run_id is not None, f"on {name}, the hero shows {number!r} outside a run link ({context!r})")
     widths = re.findall(r'style="width: ([0-9.]+%)"', section)
     check(
@@ -1719,8 +1880,13 @@ def assert_hero(name: str, html: str, benchmark: list[dict], run_ids: set[str], 
         "reached the internet",
         "cannot switch off",
         hero_stuck_note(kalari, reference, kal["stuck"]),
+        "Both arms:",
+        "The only difference is Kalari.",
+        "DeepSeek",
     ):
         check(phrase in text, f"on {name}, the hero lacks {phrase!r}")
+    for needle in ("bench/RESULTS.md", "bench/FROZEN.md"):
+        check(needle in section, f"on {name}, the hero does not link {needle}")
     if main is not None:
         check("killed_timeout" in text, f"on {name}, the hero cap-kill line lacks the verdict")
         check("See the cap-kill run" in text, f"on {name}, the hero cap-kill line lacks its run link")
@@ -1778,7 +1944,10 @@ def assert_reference_panel(name: str, html: str, reference: list[dict], run_ids:
     for _title, run_id, _text in actual:
         check(run_id == REFERENCE_RUN, f"on {name}, a problem figure links {run_id!r}, expected {REFERENCE_RUN!r}")
         check(run_id in run_ids, f"on {name}, the problem figure links {run_id!r}, which is not in /api/runs")
-    for number, context, run_id in parser.numbers:
+    for item in parser.numbers:
+        number, context, run_id = item[0], item[1], item[2]
+        if len(item) > 3 and item[3]:
+            continue
         check(run_id is not None, f"on {name}, the problem panel shows {number!r} outside a run link ({context!r})")
     text = plain_text(section)
     for phrase in (
@@ -1789,6 +1958,7 @@ def assert_reference_panel(name: str, html: str, reference: list[dict], run_ids:
         "This run is not a benchmark session",
         "never enters the tallies",
         "bench/reference-paging/README.md",
+        "DeepSeek",
     ):
         check(phrase in text, f"on {name}, the problem panel lacks {phrase!r}")
     check(
@@ -1838,6 +2008,181 @@ def assert_reference_run_page(name: str, html: str, records: list[dict]) -> None
         check(needle in text, f"on {name}, the reference evidence lacks {needle!r}")
     check(html.count("<table") <= 1, f"on {name}, the reference evidence added a table")
     check("benchmark session" in text.lower(), f"on {name}, the run page does not say what the run is not")
+
+
+SHOWCASE_SESSION = "showcase-disbursements"
+LEAD_SHOWCASE_RUN = "showcase-kalari-glm-r3"
+
+
+def showcase_records_of(records: list[dict]) -> list[dict]:
+    """The showcase records, in their own session apart from the benchmark."""
+    return [
+        record
+        for record in records or []
+        if isinstance(record, dict)
+        and record.get("kind") == "showcase"
+        and isinstance(record.get("payload"), dict)
+        and record["payload"].get("schema") == "kalari.showcase.v1"
+    ]
+
+
+def showcase_text(record: dict) -> str:
+    """The grid and card anchor text for one showcase run. Mirrors the view."""
+    p = payload_of(record)
+    label = p.get("label") or record.get("run_id", "")
+    verdict = "Passed" if p.get("verdict") == "PASS" else "Failed" if p.get("verdict") == "FAIL" else "Unknown"
+    extras: list[str] = []
+    for key, word in (("records_lost", "lost"), ("records_duplicated", "duplicated"), ("records_changed", "changed")):
+        value = p.get(key)
+        if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+            extras.append(f"{format_count(value)} {word}")
+    differential = p.get("differential")
+    if p.get("fixed") is True and isinstance(differential, list) and differential:
+        extras.append(f"fixed after {differential[0]}")
+    elif p.get("flagged") is True and p.get("verdict") == "FAIL":
+        extras.append("flagged")
+    return f"{label}: {verdict}" + (f", {', '.join(extras)}" if extras else "")
+
+
+def showcase_expected(records: list[dict], run_ids: set[str], sessions: list) -> list[tuple] | None:
+    """Every showcase anchor as (title, run id, text). The lead run links its
+    grid cell and the session card, so it appears twice."""
+    found = [record for record in showcase_records_of(records) if record.get("run_id") in run_ids]
+    if not found:
+        return None
+    expected = [(SHOWCASE_TITLE, record["run_id"], showcase_text(record)) for record in found]
+    lead = next((record for record in found if record.get("run_id") == LEAD_SHOWCASE_RUN), None)
+    if lead is not None and SHOWCASE_SESSION in (sessions or []):
+        expected.append((SHOWCASE_TITLE, LEAD_SHOWCASE_RUN, showcase_text(lead)))
+    return expected
+
+
+def assert_showcase(name: str, html: str, records: list[dict], run_ids: set[str], sessions: list) -> None:
+    """The models grid matches its records, names every model, and keeps the
+    manufactured scenario apart from the benchmark."""
+    expected = showcase_expected(records, run_ids, sessions)
+    has_section = 'id="models"' in html
+    if expected is None:
+        check(not has_section, f"on {name}, a models grid is drawn with no showcase record")
+        return
+    check(has_section, f"on {name}, the showcase records have no models grid")
+    start = html.index('<section id="models"')
+    section = html[start : html.index("</section>", start)]
+    parser = JudgesParser()
+    parser.feed(html)
+    actual = [
+        (anchor["attrs"].get("title"), anchor["attrs"].get("data-run-link"), anchor["text"])
+        for anchor in parser.anchors
+        if str(anchor["attrs"].get("title", "")) == SHOWCASE_TITLE
+    ]
+    check(
+        Counter(actual) == Counter(expected),
+        f"on {name}, the showcase figures are {actual}, expected {expected}",
+    )
+    for _title, run_id, _text in actual:
+        check(run_id in run_ids, f"on {name}, a showcase figure links {run_id!r}, which is not in /api/runs")
+    text = plain_text(section)
+    for phrase in (
+        "Across models",
+        "the corruption shipped silently",
+        "flagged with the evidence",
+        "manufactured",
+        "not part of the frozen comparison",
+    ):
+        check(phrase in text, f"on {name}, the models grid lacks {phrase!r}")
+    for model in SHOWCASE_MODELS:
+        check(model.split()[0] in text, f"on {name}, the models grid names no {model!r} row")
+    for arm in ("OpenCode alone", "OpenCode with Kalari"):
+        check(arm in text, f"on {name}, the models grid lacks the {arm!r} column")
+    for needle in ("bench/showcase/disbursements/README.md", "bench/showcase/disbursements/QUIRKS.md"):
+        check(needle in section, f"on {name}, the models grid does not link {needle}")
+    say(f"{name}: {len(actual)} showcase figures match their records")
+
+
+def assert_showcase_excluded(name: str, benchmark: list[dict], records: list[dict]) -> None:
+    """The showcase runs never enter the benchmark sums or the hero arms."""
+    kinds = {record.get("kind") for record in benchmark or [] if isinstance(record, dict)}
+    check("showcase" not in kinds, f"on {name}, a showcase record is in the benchmark route")
+    bench_runs = {record.get("run_id") for record in benchmark or [] if isinstance(record, dict)}
+    showcase_runs = {record.get("run_id") for record in showcase_records_of(records)}
+    check(not (bench_runs & showcase_runs), f"on {name}, a showcase run enters the benchmark sums")
+    kalari, reference = hero_sets(benchmark)
+    hero_runs = {record["run_id"] for record in kalari + reference}
+    check(not (hero_runs & showcase_runs), f"on {name}, a showcase run enters a hero arm")
+    say(f"{name}: the showcase runs are outside the benchmark sums")
+
+
+def assert_sessions(name: str, html: str, sessions: list, showcase: list[dict], run_ids: set[str]) -> None:
+    """The session cards name the sessions in the store, and never a missing
+    session line."""
+    text = plain_text(html)
+    check("not in the current evidence store" not in text, f"on {name}, a card claims a session the store does not have")
+    ids = list(sessions or [])
+    expected_cards = [session for session in (SHOWCASE_SESSION, CONTAINMENT_SESSION, "frozen-c4-payouts", "payouts-upgrade") if session in ids]
+    if not expected_cards:
+        check("Read a full session" not in text, f"on {name}, the sessions section is drawn with no session card")
+        return
+    check("Read a full session" in text, f"on {name}, the sessions section has no heading")
+    for needle, session in (
+        ("Showcase disbursements", SHOWCASE_SESSION),
+        ("Containment runs", CONTAINMENT_SESSION),
+        ("Frozen payouts, Kalari arm", "frozen-c4-payouts"),
+        ("Upgrading the payout ledger", "payouts-upgrade"),
+    ):
+        if session in ids:
+            check(needle in text, f"on {name}, the {session} card is missing")
+            check(f'href="session.html?id={session}"' in html, f"on {name}, the {session} card does not link its session")
+    if SHOWCASE_SESSION in ids:
+        lead = next((record for record in showcase_records_of(showcase) if record.get("run_id") == LEAD_SHOWCASE_RUN), None)
+        check(lead is not None, f"on {name}, the showcase session has no lead run")
+    say(f"{name}: {len(expected_cards)} session cards match the store")
+
+
+def assert_showcase_session(name: str, html: str, records: list[dict]) -> None:
+    found = showcase_records_of(records)
+    check(found, f"{name} has no showcase record")
+    text = plain_text(html)
+    for needle in (
+        "Showcase runs",
+        "manufactured",
+        "Not part of the frozen comparison",
+    ):
+        check(needle in text, f"on {name}, the showcase session lacks {needle!r}")
+    for record in found:
+        p = payload_of(record)
+        check((p.get("label") or "") in text, f"on {name}, the showcase session omits {record.get('run_id')!r}")
+    check(html.count("<table") <= 1, f"on {name}, the showcase session added a table")
+
+
+def assert_showcase_run_page(name: str, html: str, records: list[dict]) -> None:
+    found = showcase_records_of(records)
+    check(len(found) == 1, f"{name} does not hold one showcase record")
+    p = payload_of(found[0])
+    text = plain_text(html)
+    for needle in (
+        "Showcase run",
+        "Not part of the frozen comparison",
+        str(p.get("model") or ""),
+        verdict_word(p.get("verdict")),
+        format_count(p.get("records")),
+        format_count(p.get("records_lost")),
+        format_count(p.get("records_duplicated")),
+        format_count(p.get("records_changed")),
+        str(p.get("source") or ""),
+        str(p.get("transcript") or ""),
+    ):
+        check(needle in text, f"on {name}, the showcase run page lacks {needle!r}")
+    for needle in (
+        "bench/showcase/disbursements/README.md",
+        "bench/showcase/disbursements/QUIRKS.md",
+    ):
+        check(needle in html, f"on {name}, the showcase run page does not link {needle}")
+    if p.get("arm") == "kalari":
+        sequence = p.get("differential") or []
+        check(sequence, f"on {name}, the Kalari run page shows no differential sequence")
+        for item in sequence:
+            check(item in text, f"on {name}, the Kalari run page omits the differential {item!r}")
+    check(html.count("<table") <= 1, f"on {name}, the showcase evidence added a table")
 
 
 def table_measure_links(html: str, benchmark: list[dict], run_ids: set[str]) -> int:
@@ -2513,6 +2858,9 @@ def assert_comparison_copy(name: str, html: str, benchmark: list[dict]) -> None:
         return
     check("Every condition in this fixture" in text, f"the page {name} does not name the fixture conditions")
     check("Every condition, run by run" not in text, f"the page {name} keeps the old every-condition heading")
+    check("Both arms ran" in text, f"the page {name} names no model for the comparison arms")
+    for needle in ("bench/RESULTS.md", "bench/FROZEN.md"):
+        check(needle in html, f"the page {name} does not link {needle}")
     if has_frozen_pair(benchmark):
         check("The measured before and after" in text, f"the page {name} has a frozen pair and no measured heading")
     else:
@@ -2652,7 +3000,8 @@ def assert_absent_store(base_empty: str) -> None:
     page = read_page("judges-no-store")
     text = text_of(page).lower()
     check("not yet published" in text, "the absent-store page has no empty state")
-    check("not in the current evidence store" in text, "the absent-store page claims a session it does not have")
+    check("not in the current evidence store" not in text, "the absent-store page claims a session it does not have")
+    check("read a full session" not in text, "the absent-store page draws a session section with no session")
     say("an absent store returns empty arrays on every list route")
 
 
@@ -2682,6 +3031,11 @@ def assert_inputs_match_api(base: str, inputs: dict) -> None:
         judges.get("containment") == get_json(base, f"/api/sessions/{CONTAINMENT_SESSION}"),
         "the judges snapshot input 'containment' does not match the containment session. run `node web/fixture/render.mjs`",
     )
+    if "showcase" in judges:
+        check(
+            judges.get("showcase") == get_json(base, "/api/sessions/showcase-disbursements"),
+            "the judges snapshot input 'showcase' does not match the showcase session. run `node web/fixture/render.mjs`",
+        )
     if "reference" in judges:
         check(
             judges.get("reference") == get_json(base, f"/api/sessions/{REFERENCE_SESSION}"),
@@ -2703,7 +3057,7 @@ def assert_inputs_valid(inputs: dict) -> None:
     for name in PAGES:
         data = inputs[name]
         if name in JUDGES_PAGES:
-            records = list(data["benchmark"]) + list(data.get("lessons") or []) + list(data.get("containment") or []) + list(data.get("reference") or [])
+            records = list(data["benchmark"]) + list(data.get("lessons") or []) + list(data.get("containment") or []) + list(data.get("reference") or []) + list(data.get("showcase") or [])
             if data.get("containment"):
                 errors = validate_containment_records(data["containment"])
                 check(not errors, f"the snapshot input {name} has a bad containment record: " + "; ".join(errors[:4]))
@@ -2740,6 +3094,9 @@ def assert_page_shapes(inputs: dict) -> None:
         assert_hero(name, html, benchmark, run_ids, data.get("containment") or [])
         assert_reference_panel(name, html, data.get("reference") or [], run_ids)
         assert_reference_excluded(name, benchmark, data.get("reference") or [])
+        assert_showcase(name, html, data.get("showcase") or [], run_ids, data.get("sessions") or [])
+        assert_showcase_excluded(name, benchmark, data.get("showcase") or [])
+        assert_model_tags(name, html)
         if benchmark:
             assert_medians(name, html, benchmark)
             assert_comparison_copy(name, html, benchmark)
@@ -2747,6 +3104,7 @@ def assert_page_shapes(inputs: dict) -> None:
             assert_diagnostics_copy(name, html, benchmark)
         assert_not_run_rows(name, html, benchmark)
         assert_anchor_containers(name, html)
+        assert_sessions(name, html, data.get("sessions") or [], data.get("showcase") or [], run_ids)
         assert_measure_link_count(name, html, benchmark, run_ids, "judges")
     for name in SESSION_PAGES:
         data = inputs[name]
@@ -2757,23 +3115,30 @@ def assert_page_shapes(inputs: dict) -> None:
         benchmark = [record for record in records if isinstance(record, dict) and record.get("kind") == "benchmark"]
         assert_values_match_records(name, html, benchmark, run_ids)
         assert_anchor_containers(name, html)
+        assert_model_tags(name, html)
+        if name == "session-showcase":
+            assert_showcase_session(name, html, records)
         assert_measure_link_count(name, html, benchmark, run_ids, "session")
     for name in RUN_PAGES:
         records = inputs[name]["records"]
         html = read_page(name)
         assert_cell_counts(name, html, Counter({None: 3 * len(records)}))
         assert_anchor_containers(name, html)
+        assert_model_tags(name, html)
         assert_measure_link_count(name, html, [], set(inputs[name]["runs"]), "run")
         if name in ("run-containment", "run-containment-earlier"):
             assert_containment_run_page(name, html, records)
         if name == "run-reference":
             assert_reference_run_page(name, html, records)
+        if name == "run-showcase":
+            assert_showcase_run_page(name, html, records)
     say("every page carries the table cells and links its records require")
 
 
 def main() -> int:
     print("web check")
     assert_no_external_urls()
+    assert_github_pins()
     assert_private_data_is_absent()
     assert_rendered_pages_private()
     assert_published_has_no_banner()

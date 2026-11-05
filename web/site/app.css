@@ -2188,3 +2188,223 @@ td.num {
     color: #000;
   }
 }
+
+/* What Kalari is -------------------------------------------------------- */
+
+.section--whatis {
+  max-width: var(--measure);
+}
+
+.section--whatis h3 {
+  font-size: 1.05rem;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.tools-row {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.tools-row li {
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.92rem;
+}
+
+.tools-row code {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 0.15rem;
+}
+
+.tools-row span {
+  color: var(--ink-2);
+}
+
+.tools-proof {
+  margin-top: 1rem;
+}
+
+.steps {
+  margin: 0.5rem 0 0;
+  padding-left: 1.4rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.config-snippet {
+  margin-top: 0.5rem;
+  background: var(--dark);
+  color: var(--dark-ink);
+  border-radius: 2px;
+  padding: 0.8rem 1rem;
+  overflow-x: auto;
+  font-size: 0.85rem;
+}
+
+/* Model names and evidence links ---------------------------------------- */
+
+.model-tag {
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.hero-models,
+.comparison-models {
+  font-weight: 600;
+}
+
+.evidence-row {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.evidence-link {
+  color: var(--muted);
+  text-decoration-thickness: 1px;
+}
+
+.evidence-link:hover {
+  color: var(--accent-dark);
+}
+
+.evidence-row--light .evidence-link {
+  color: var(--dark-muted);
+}
+
+.session-model {
+  font-weight: 600;
+}
+
+/* Session cards ---------------------------------------------------------- */
+
+.session-cards {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  margin-top: 1rem;
+}
+
+.session-cards .session-card {
+  margin-top: 0;
+  max-width: none;
+  padding: 1.4rem;
+}
+
+.session-card--lead {
+  border-left: 4px solid var(--pass);
+}
+
+/* Across models ---------------------------------------------------------- */
+
+.section--models {
+  max-width: 100%;
+}
+
+.models-lede {
+  max-width: var(--measure);
+}
+
+.models-grid {
+  display: grid;
+  gap: 0.6rem;
+  margin: 1rem 0;
+}
+
+.models-row {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: 11rem 1fr 1fr;
+  align-items: stretch;
+}
+
+.models-head {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.models-model h3 {
+  margin: 0;
+  font-size: 1rem;
+  padding-top: 0.6rem;
+}
+
+.models-cell {
+  border: 1px solid var(--rule);
+  border-top-width: 4px;
+  border-radius: 2px;
+  background: var(--paper-2);
+  padding: 0.6rem 0.8rem;
+}
+
+.models-cell h4 {
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+}
+
+.models-cell--reference {
+  border-top-color: var(--fail);
+}
+
+.models-cell--kalari {
+  border-top-color: var(--pass);
+}
+
+.models-runs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+/* Showcase session and run pages ----------------------------------------- */
+
+.showcase-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+}
+
+.showcase-item {
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 1rem 1.2rem;
+}
+
+.showcase-item h3 {
+  margin: 0 0 0.3rem;
+  font-size: 1.05rem;
+}
+
+.showcase-item p {
+  margin: 0.3rem 0;
+}
+
+@media (max-width: 56rem) {
+  .models-row {
+    grid-template-columns: 1fr;
+  }
+
+  .models-model h3 {
+    padding-top: 0;
+  }
+
+  .models-head {
+    display: none;
+  }
+}

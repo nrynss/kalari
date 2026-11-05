@@ -5,11 +5,13 @@ There is no build step, no npm, no bundler, no framework and no CDN.
 Caddy serves `web/site/` and proxies `/api` to the Kalari service.
 
 The app reads the evidence API in the browser. Every link is relative.
-No host and no port appear in the app.
+No host and no port appear in the app. The only exception is the pinned
+GitHub evidence prefix below.
 
 `web/site/` is the published static root. Caddy serves it at `/`. `web/fixture/`
 sits outside it and has no HTTP route. The fixture server serves `web/site/` and
-`/api/*` only.
+`/api/*` only. The docs site is served at `/docs/`; judges links there are
+same-origin top-level navigation.
 
 ## Pages
 
@@ -64,10 +66,18 @@ loopback and stops it on exit. It reads the rendered snapshots from
 1. Every file under `web/site/` is hashed in the manifest, and every rendered
    page has a hash. The snapshot inputs have a hash too.
 2. Every served file and snapshot has no external URL, no `meta refresh` and no
-   navigation sink. A `fetch`, `import`, `WebSocket`, `EventSource` or `Worker`
+   navigation sink. The single exception is the pinned GitHub evidence prefix:
+   `https://github.com/nrynss/kalari/` with a `blob/` or `tree/` path pinned
+   to `EVIDENCE_REF` in `web/site/app/views.mjs`. Every other external URL
+   fails. A `fetch`, `import`, `WebSocket`, `EventSource` or `Worker`
    call must take a relative literal or pass through the `localPath` guard. A
    `window.open`, a `location` assignment, `location.assign`, `location.replace`,
-   `eval`, `window.eval`, `document.write` and `document.writeln` fail.
+   `eval`, `window.eval`, `document.write` and `document.writeln` fail. Evidence
+   links are plain `<a>` navigation with no `target`, so `default-src 'self'`
+   does not change. The check verifies `EVIDENCE_REF` is a 40-character hash
+   that exists (`git cat-file -e`) and that every linked path exists at it.
+   The docs link targets the same-origin path `/docs/`, which the relative-path
+   rule already allows.
 3. The fixture store and every rendered page have no IP address, email or key
    pattern.
 4. The published shells and the rendered pages carry no fixture banner, and
@@ -81,10 +91,14 @@ loopback and stops it on exit. It reads the rendered snapshots from
 8. The API returns 400, 404 and 413 as expected. Every record on every route
    passes the envelope contract. The benchmark records pass the contract
    validator.
-9. Every number on the judges page is inside a working run link. Every anchor
-   whose text contains a digit carries a `data-run-link` that equals its href
-   id and a known title. Every distinct run link answers 200 at
-   `/api/runs/<id>`.
+9. Every number on the judges page is inside a working run link. Model and
+   version names are the exception: they sit inside a `model-tag` marker and
+   only name a known model (`OpenCode 2.2.5`, `DeepSeek V4.1 Flash`,
+   `GLM 5.3 Flash`, `Qwen3.8 27B`, `Muse Glimmer 30B`, `MiMo V2.6 Flash`).
+   Every anchor whose text contains a digit carries a `data-run-link` that
+   equals its href id and a known title. Showcase anchors use the title
+   `Showcase run` and are checked against the showcase records. Every distinct
+   run link answers 200 at `/api/runs/<id>`.
 10. Every run id in `/api/runs` appears in a link on the judges page.
 11. Every table value matches the record named by its run link. Every table
     cell with a number is a known measure. A measure cell links its run exactly
@@ -95,11 +109,15 @@ loopback and stops it on exit. It reads the rendered snapshots from
     lines. The containment panel has its own links, checked against its own
     record (item 21). The hero figures are recomputed from the frozen benchmark
     records and must match what the page shows. The problem panel figures must
-    match the reference record. A new record changes the page and the
+    match the reference record. The models grid is recomputed from the showcase
+    records and must match what the page shows: one anchor per run plus a lead
+    card anchor for the showcase session. Showcase records never enter a
+    benchmark tally or a hero sum. A new record changes the page and the
     expectation together. The snapshots cover a second pilot row for one
     condition, a single frozen condition-five record, a complete frozen pair and
     a split frozen store. The reference record is excluded from every benchmark
-    tally and hero sum.
+    tally and hero sum. Model names on the hero, the comparison, the panels
+    and the run and session pages are checked against the known list.
 13. Every median is computed from the benchmark records and compared with the
     displayed text and its run link. Each median line holds exactly one link,
     and that link sits inside the value span.
@@ -124,7 +142,8 @@ loopback and stops it on exit. It reads the rendered snapshots from
     endpoint. It also covers a call site, a radius note, the workspace and the
     decision question. It covers a full URL and a scheme-relative URL.
 19. An empty `/api/benchmark` renders the not-yet-published state.
-20. An absent store returns empty arrays and shows a clear state.
+20. An absent store returns empty arrays and shows a clear state. No session
+    card is drawn, and no line claims a session the store does not have.
 21. The containment panel matches its record: the four figures link the run, every
     number sits inside a run link, the failure, the polling note, the
     configuration-only caps, the separate requested, effective and observed
@@ -154,8 +173,9 @@ part of the gate.
 ## How the pages render from the fixture
 
 `web/fixture/evidence.jsonl` is the append-only store the fixture server reads.
-`web/fixture/build.py` writes it from the committed pilot results and the
-walkthrough records. It also appends the containment runs: the
+`web/fixture/build.py` writes it from the committed pilot results, the
+walkthrough records, and the showcase records built by
+`bench/showcase/disbursements/produce-showcase.py`. It also appends the containment runs: the
 sanitised evidence of the two runs in
 `tests/live/containment-evidence/run-*.jsonl`. Run the
 build only when the fixture sources change.
@@ -402,6 +422,7 @@ reads, and the web check checks it on every record every route returns.
 
 | Kind | Shape | Producer |
 |---|---|---|
+| `showcase` | `kalari.showcase.v1`, built by `bench/showcase/disbursements/produce-showcase.py` from the committed result files | One manufactured disbursement upgrade across models, in session `showcase-disbursements`. Apart from the benchmark records, never in a tally. Carries the model, the label, the verdict, the grader counts, the wall time, the cost, the result and transcript paths, and the Kalari differential sequence with whether the session fixed it. |
 | `run` | `Kalari.Model.RunRecord` | The sandbox runner writes it. |
 | `check` | `Kalari.Model.CheckResult` | The sandbox runner writes one per check. |
 | `lesson` | `Kalari.Model.Lesson` | `record_lesson` writes it. |

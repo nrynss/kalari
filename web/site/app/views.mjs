@@ -39,6 +39,29 @@ import {
 
 const CLEF_OPINION_LABEL = "A model's opinion, not a measurement";
 
+/* Pinned evidence commit. Every "Evidence on GitHub" link points at this
+   commit, never at main, so a judge opens the exact files the page cites.
+   Set to the evidence commit before publishing. The check verifies the hash
+   exists and every linked path exists at it. */
+export const EVIDENCE_REF = "c58d60c6abdb2131bbf16fa6dabf626437d33033";
+
+const GITHUB_REPO = "https://github.com/nrynss/kalari";
+
+function githubUrl(path, fragment = "") {
+  return `${GITHUB_REPO}/blob/${EVIDENCE_REF}/${path}${fragment ? `#${fragment}` : ""}`;
+}
+
+function evidenceLink(url, label) {
+  return `<a class="evidence-link" href="${attr(url)}">${h(label)}</a>`;
+}
+
+/* A model or tool version string. Versions carry digits, but they are names,
+   not figures, so they never link to a run. The check allows only known
+   names inside this marker. */
+function modelTag(name) {
+  return `<span class="model-tag">${h(name)}</span>`;
+}
+
 function object(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : null;
 }
@@ -92,6 +115,52 @@ function warningsSection(warnings) {
     <ul>${warnings.map((warning) => `<li>${h(warning)}</li>`).join("")}</ul>
     <p>The page shows the records it could read. A figure that cannot link to its run is not shown.</p>
   </div>`;
+}
+
+/* ------------------------------------------------------------------ */
+/* What Kalari is, and how to use it                                    */
+/* ------------------------------------------------------------------ */
+
+const TOOL_JOBS = [
+  ["what_changed", "Lists the changes between two API versions, with stable change IDs."],
+  ["blast_radius", "Finds the callers and tests each change touches."],
+  ["recall_lessons", "Returns lessons for these change kinds as checks that must pass."],
+  ["run_in_sandbox", "Runs the new code in a throwaway microVM behind the proved gate. It returns the verdict and logs."],
+  ["record_lesson", "Stores what a verified run showed about the API, keyed by change kind."],
+];
+
+function whatIsSection() {
+  return `<section id="what-is" class="section section--whatis" aria-labelledby="what-is-title">
+    <p class="hero-kicker">What Kalari is</p>
+    <h2 id="what-is-title">A rehearsal arena for API upgrades.</h2>
+    <p>Kalari plugs into the coding agent you already use over MCP and rehearses an API upgrade in a contained arena. It works out what changed and what it touches. It runs the new code in a throwaway microVM against the real API, with the old version as the reference. It records what the run proved.</p>
+    <p>The agent writes the code, and Kalari decides what has to be checked and whether it passed.</p>
+    <ul class="tools-row" aria-label="The five Kalari tools">
+      ${TOOL_JOBS.map(
+        ([name, job]) =>
+          `<li><code>${h(name)}</code><span>${h(job)}</span></li>`,
+      ).join("")}
+    </ul>
+    <p class="fine-print tools-proof">The five tools live in ${evidenceLink(githubUrl("Kalari/Mcp.lean"), "Kalari/Mcp.lean on GitHub")}. The gate is proved, not just tested. Four theorems cover the workspace, the network, the caps and the secrets: ${evidenceLink(githubUrl("Kalari/Gate.lean", "L189"), "decide_workspace")}, ${evidenceLink(githubUrl("Kalari/Gate.lean", "L201"), "decide_network")}, ${evidenceLink(githubUrl("Kalari/Gate.lean", "L211"), "decide_caps")}, ${evidenceLink(githubUrl("Kalari/Gate.lean", "L222"), "decide_secrets")}.</p>
+    <h3>Use it in three steps.</h3>
+    <ol class="steps">
+      <li>Run <code>kalari serve</code> with a config file and a session file.</li>
+      <li>Add Kalari to your agent as an MCP server:
+        <pre class="config-snippet"><code>{
+  "mcp": {
+    "servers": {
+      "kalari": {
+        "type": "local",
+        "command": ["kalari", "serve", "kalari.json", "session.json"]
+      }
+    }
+  }
+}</code></pre>
+      </li>
+      <li>Ask your agent to upgrade the consumer. Kalari checks each run and records the evidence.</li>
+    </ol>
+    <p><a class="button" href="/docs/">Read the docs</a></p>
+  </section>`;
 }
 
 function groupBy(records, keyOf) {
@@ -649,6 +718,16 @@ function comparisonSection(bench, runIds, hasFrozenPair) {
   );
   const heading = hasFrozenPair ? "The measured before and after" : "The pilot baseline";
   return `<h2>${heading}</h2>
+    <p class="comparison-models">Both arms ran ${modelTag("OpenCode 2.2.5")} with ${modelTag(
+      "DeepSeek V4.1 Flash",
+    )} on Vultr Serverless Inference.</p>
+    <p class="evidence-row">Evidence on GitHub: ${evidenceLink(
+      githubUrl("bench/RESULTS.md", "2-the-comparison-table"),
+      "The comparison table",
+    )} · ${evidenceLink(githubUrl("bench/RESULTS.md", "4-the-basis-of-cost-and-token-figures"), "Cost and token basis")} · ${evidenceLink(
+      githubUrl("bench/RESULTS.md", "6-containment-configured-policy-versus-observed-outcome"),
+      "Containment policy",
+    )} · ${evidenceLink(githubUrl("bench/FROZEN.md"), "The frozen pair")}</p>
     ${hasFrozenPair ? frozenContrast(frozen, runIds) : notPublishedPanel(frozen.length > 0)}
     ${validPilot.length ? pilotContrast(validPilot, runIds) : ""}`;
 }
@@ -753,6 +832,20 @@ function containmentSection(records, runIds) {
       <p class="containment-context">Two runs through the same sandbox path · not benchmark sessions</p>
       <h2 id="containment-title">A consumer that never ends, stopped by its time cap.</h2>
       <p class="containment-lede">A payouts consumer was run in a fresh microVM through the same <code>run_in_sandbox</code> path the agent uses. It waits out a rate-limit reply as <code>Retry-After</code> asks, then follows the page cursor on every response, drained or not, so it never ends. The aashaan killed it at the cap this run was given. This is apart from the benchmark: no session in the frozen comparison was stopped by a cap.</p>
+      <p class="containment-note">No model. A fixed consumer ran through <code>run_in_sandbox</code>.</p>
+      <p class="evidence-row evidence-row--light">Evidence on GitHub: ${evidenceLink(
+        githubUrl("tests/live/containment-transcript.txt"),
+        "The containment log",
+      )} · ${evidenceLink(
+        githubUrl("tests/live/containment-evidence/run-1.jsonl"),
+        "The first run record",
+      )} · ${evidenceLink(
+        githubUrl("tests/live/containment-evidence/run-2.jsonl"),
+        "The second run record",
+      )} · ${evidenceLink(
+        githubUrl("bench/RESULTS.md", "6a-two-sandbox-runs-outside-the-comparison"),
+        "The comparison notes",
+      )}</p>
       <h3 class="containment-step">The failure</h3>
       <div class="containment-measures">
         <div class="containment-measure">
@@ -820,6 +913,76 @@ function containmentSection(records, runIds) {
         <a class="quiet-link quiet-link--light" href="${attr(sessionHref(CONTAINMENT_SESSION))}">Open the session</a>
       </div>
     </div>
+  </section>`;
+}
+
+/* ------------------------------------------------------------------ */
+/* Across models: the showcase disbursements                            */
+/* ------------------------------------------------------------------ */
+
+export const SHOWCASE_SESSION = "showcase-disbursements";
+export const LEAD_SHOWCASE_RUN = "showcase-kalari-glm-r3";
+
+const SHOWCASE_MODELS = ["GLM 5.3 Flash", "Qwen3.8 27B", "Muse Glimmer 30B", "MiMo V2.6 Flash", "DeepSeek V4.1 Flash"];
+
+function showcaseRecords(records) {
+  return ofKind(records, "showcase").filter(
+    (record) => object(record?.payload)?.schema === "kalari.showcase.v1" && isId(record.run_id),
+  );
+}
+
+function showcaseRunText(record) {
+  const p = payloadOf(record);
+  const label = p.label || record.run_id;
+  const verdict = p.verdict === "PASS" ? "Passed" : p.verdict === "FAIL" ? "Failed" : "Unknown";
+  const extras = [];
+  if (Number.isFinite(p.records_lost) && p.records_lost > 0) extras.push(`${count(p.records_lost)} lost`);
+  if (Number.isFinite(p.records_duplicated) && p.records_duplicated > 0) extras.push(`${count(p.records_duplicated)} duplicated`);
+  if (Number.isFinite(p.records_changed) && p.records_changed > 0) extras.push(`${count(p.records_changed)} changed`);
+  if (p.fixed === true && Array.isArray(p.differential) && p.differential.length) {
+    extras.push(`fixed after ${p.differential[0]}`);
+  } else if (p.flagged === true && p.verdict === "FAIL") {
+    extras.push("flagged");
+  }
+  return `${label}: ${verdict}${extras.length ? `, ${extras.join(", ")}` : ""}`;
+}
+
+function showcaseCell(list, runIds) {
+  if (!list.length) return `<p class="muted">No session for this model.</p>`;
+  return `<ul class="models-runs">${list
+    .map(
+      (record) =>
+        `<li>${runLink(record.run_id, h(showcaseRunText(record)), runIds, "Showcase run")}</li>`,
+    )
+    .join("")}</ul>`;
+}
+
+function modelsSection(records, runIds) {
+  const all = showcaseRecords(records);
+  if (!all.length) return "";
+  const rows = SHOWCASE_MODELS.map((model) => {
+    const ref = all.filter((record) => payloadOf(record).model === model && payloadOf(record).arm === "reference");
+    const kal = all.filter((record) => payloadOf(record).model === model && payloadOf(record).arm === "kalari");
+    return `<div class="models-row">
+      <div class="models-model"><h3>${modelTag(model)}</h3></div>
+      <div class="models-cell models-cell--reference"><h4>OpenCode alone</h4>${showcaseCell(ref, runIds)}</div>
+      <div class="models-cell models-cell--kalari"><h4>OpenCode with Kalari</h4>${showcaseCell(kal, runIds)}</div>
+    </div>`;
+  }).join("");
+  return `<section id="models" class="section section--models" aria-labelledby="models-title">
+    <p class="hero-kicker">Across models</p>
+    <h2 id="models-title">Without Kalari, the corruption shipped silently. With Kalari, every session that had it was flagged with the evidence.</h2>
+    <p class="models-lede">One manufactured upgrade, five models, fourteen sessions. Each cell names its runs and links each run page. Counts come from the hidden grader.</p>
+    <div class="models-grid">
+      <div class="models-row models-head" aria-hidden="true"><div></div><div>OpenCode alone</div><div>OpenCode with Kalari</div></div>
+      ${rows}
+    </div>
+    <p>GLM alone shipped twenty-three wrong records in two of three sessions. Kalari flagged both GLM sessions that had the fault and fixed one. Qwen and Muse alone shipped the fault, and Kalari flagged both without fixing them. MiMo failed loudly. DeepSeek alone passed all three sessions.</p>
+    <p>This scenario is manufactured. It is not part of the frozen comparison.</p>
+    <p class="evidence-row">Evidence on GitHub: ${evidenceLink(
+      githubUrl("bench/showcase/disbursements/README.md"),
+      "The showcase readme",
+    )} · ${evidenceLink(githubUrl("bench/showcase/disbursements/QUIRKS.md"), "The quirks file")}</p>
   </section>`;
 }
 
@@ -974,29 +1137,52 @@ function everyRunSection(bench, runs, runDetails, runIds) {
       .join("")}${otherRunsGroup(runs, bench, runDetails, runIds)}</div>`;
 }
 
-function sessionLinksSection(sessions) {
+function sessionLinksSection(sessions, showcase, runIds) {
   const ids = Array.isArray(sessions) ? sessions : [];
-  const hasWalkthrough = ids.includes("payouts-upgrade");
-  const hasEarlier = ids.includes("payouts-earlier");
-  return `<h2>Read a full session</h2>
-    <p>The run pages show one measurement each. A session page shows the whole trail. It has the change list, the blast radius, the recalled check, each attempt with its logs, and the lesson written.</p>
-    ${
-      hasWalkthrough
-        ? `<a class="session-card" href="${attr(sessionHref("payouts-upgrade"))}">
+  const cards = [];
+  if (ids.includes(SHOWCASE_SESSION)) {
+    const lead = (showcase || []).find((record) => record.run_id === LEAD_SHOWCASE_RUN);
+    cards.push(`<div class="session-card session-card--lead">
+      <span class="badge badge--live">Showcase session</span>
+      <h3>Showcase disbursements</h3>
+      <p>Fourteen sessions across five models on one manufactured upgrade. Lead run: ${modelTag(
+        "GLM 5.3 Flash",
+      )}, ${
+        lead
+          ? runLink(lead.run_id, h(showcaseRunText(lead)), runIds, "Showcase run")
+          : "the fix after the flag"
+      }.</p>
+      <p class="session-card-cta"><a href="${attr(sessionHref(SHOWCASE_SESSION))}">Open the showcase session</a></p>
+    </div>`);
+  }
+  if (ids.includes(CONTAINMENT_SESSION)) {
+    cards.push(`<div class="session-card">
+      <span class="badge badge--live">Contained runs</span>
+      <h3>Containment runs</h3>
+      <p>Two fixed consumers through run_in_sandbox. The time cap stopped one.</p>
+      <p class="session-card-cta"><a href="${attr(sessionHref(CONTAINMENT_SESSION))}">Open the containment session</a></p>
+    </div>`);
+  }
+  if (ids.includes("frozen-c4-payouts")) {
+    cards.push(`<div class="session-card">
+      <span class="badge badge--live">Frozen benchmark session</span>
+      <h3>Frozen payouts, Kalari arm</h3>
+      <p>Five sessions with the lesson from upgrade one.</p>
+      <p class="session-card-cta"><a href="${attr(sessionHref("frozen-c4-payouts"))}">Open the frozen session</a></p>
+    </div>`);
+  }
+  if (ids.includes("payouts-upgrade")) {
+    cards.push(`<div class="session-card">
       <span class="badge badge--draft">Illustrative walkthrough</span>
       <h3>Upgrading the payout ledger</h3>
       <p>Follow the change facts, the call site, the recalled check, three attempts and the lesson. The change facts and the Clef answer are recorded. The run timings and log excerpts are illustrative.</p>
-      <span class="session-card-cta">Open the walkthrough</span>
-    </a>`
-        : `<p class="muted">The walkthrough session is not in the current evidence store.</p>`
-    }
-    ${
-      hasEarlier
-        ? `<p class="quiet-line"><a href="${attr(
-            sessionHref("payouts-earlier"),
-          )}">The earlier session that left the recalled lesson</a></p>`
-        : ""
-    }`;
+      <p class="session-card-cta"><a href="${attr(sessionHref("payouts-upgrade"))}">Open the walkthrough</a></p>
+    </div>`);
+  }
+  if (!cards.length) return "";
+  return `<h2>Read a full session</h2>
+    <p>The run pages show one measurement each. A session page shows the whole trail. It has the change list, the blast radius, the recalled check, each attempt with its logs, and the lesson written.</p>
+    <div class="session-cards">${cards.join("")}</div>`;
 }
 
 function frozenPairUpgrades(frozen) {
@@ -1188,6 +1374,14 @@ function heroChangedSection(bench, runIds, containment) {
     <p class="hero-kicker">What Kalari changed</p>
     <h2 id="changed-title">Cheaper is good. Faster is good. Both at once is the headline.</h2>
     <p class="hero-lede">OpenCode alone against OpenCode with Kalari, on the frozen pair. Both arms passed the hidden grader in every session. Kalari cost less and finished sooner, inside a boundary the agent cannot switch off.</p>
+    <p class="hero-models">Both arms: ${modelTag("OpenCode 2.2.5")} with ${modelTag("DeepSeek V4.1 Flash")} on Vultr Serverless Inference. The only difference is Kalari.</p>
+    <p class="evidence-row">Evidence on GitHub: ${evidenceLink(
+      githubUrl("bench/RESULTS.md", "2-the-comparison-table"),
+      "The comparison table",
+    )} · ${evidenceLink(githubUrl("bench/RESULTS.md", "4-the-basis-of-cost-and-token-figures"), "Cost and token basis")} · ${evidenceLink(
+      githubUrl("bench/RESULTS.md", "6-containment-configured-policy-versus-observed-outcome"),
+      "Containment policy",
+    )} · ${evidenceLink(githubUrl("bench/FROZEN.md"), "The frozen pair")}</p>
     <div class="hero-grid">
       ${row({
         heading: "Cost per session",
@@ -1281,6 +1475,11 @@ function problemSection(records, runIds) {
       "Reference loss: missing records",
     )} records.</h2>
     <p class="hero-lede">The v1 consumer exits clean and prints a neat total. The hidden grader counts what arrived. This silent loss is why Kalari rehearses each upgrade in a contained arena.</p>
+    <p class="hero-models">The reference setup ran ${modelTag("OpenCode 2.2.5")} with ${modelTag("DeepSeek V4.1 Flash")} on Vultr Serverless Inference.</p>
+    <p class="evidence-row">Evidence on GitHub: ${evidenceLink(
+      githubUrl("bench/reference-paging/README.md"),
+      "The reference notes",
+    )}</p>
     <div class="problem-grid">
       <div class="problem-card problem-card--loss">
         <h3>The silent loss</h3>
@@ -1391,6 +1590,7 @@ export function judgesView({
   runDetails = {},
   containment = null,
   reference = null,
+  showcase = null,
   warnings = [],
 } = {}) {
   const bench = benchmarkRecords(benchmark);
@@ -1414,6 +1614,7 @@ export function judgesView({
   const hasProblem = referenceOf(reference || []) !== undefined;
 
   const sections = [];
+  sections.push({ id: "what-is", label: "What Kalari is" });
   if (hasChanged) {
     sections.push({ id: "changed", label: "What Kalari changed" });
   }
@@ -1422,6 +1623,9 @@ export function judgesView({
   }
   if (containmentOf(containment)) {
     sections.push({ id: "containment", label: "The containment runs" });
+  }
+  if (showcaseRecords(showcase || []).length) {
+    sections.push({ id: "models", label: "Across models" });
   }
   sections.push({ id: "comparison", label: comparisonHeading });
   if (hasBenchmark) {
@@ -1453,9 +1657,11 @@ export function judgesView({
   return `<article class="judges">
     ${heroSection({ hasBenchmark, hasFrozen, hasFrozenRows: frozen.length > 0, sections })}
     ${warningsSection(warnings)}
+    ${whatIsSection()}
     ${heroChangedSection(bench, runIds, containment)}
     ${problemSection(reference, runIds)}
     ${containmentSection(containment, runIds)}
+    ${modelsSection(showcase || [], runIds)}
     <section id="comparison" class="section section--comparison">
       ${comparisonSection(bench, runIds, hasFrozen)}
     </section>
@@ -1470,7 +1676,7 @@ export function judgesView({
     }
     ${hasBenchmark ? `<section id="runs" class="section">${everyRunSection(bench, runs, runDetails, runIds)}</section>` : ""}
     <section id="sessions" class="section section--sessions">
-      ${sessionLinksSection(sessions)}
+      ${sessionLinksSection(sessions, showcase || [], runIds)}
     </section>
   </article>`;
 }
@@ -1754,6 +1960,57 @@ function lessonList(records, { runIds, title, empty, observations, verified }) {
   </section>`;
 }
 
+function sessionModelLine(bench) {
+  const models = unique(
+    bench.map((record) => payloadOf(record).model).filter((value) => typeof value === "string" && value),
+  );
+  if (models.length !== 1) return "";
+  return `<p class="session-model">Model: ${modelTag(models[0])}</p>`;
+}
+
+function showcaseSection(records, runIds) {
+  const list = showcaseRecords(records);
+  if (!list.length) return "";
+  return `<section class="subsection">
+    <h2>Showcase runs</h2>
+    <p>One manufactured upgrade across five models. Each run links its run page. Counts come from the hidden grader. Not part of the frozen comparison.</p>
+    <ul class="showcase-list">
+      ${list
+        .map((record) => {
+          const p = payloadOf(record);
+          const sequence = Array.isArray(p.differential) ? p.differential : [];
+          return `<li class="showcase-item">
+          <h3>${h(p.label || record.run_id)}</h3>
+          <p>${modelTag(p.model || "unknown")} · <span class="verdict ${
+            p.verdict === "PASS" ? "is-pass" : "is-fail"
+          }">${h(verdictWord(p.verdict))}</span> · ${h(p.arm === "kalari" ? "Kalari arm" : "reference arm")}</p>
+          <p>Lost ${plain(p.records_lost, count)}, duplicated ${plain(
+            p.records_duplicated,
+            count,
+          )}, changed ${plain(p.records_changed, count)}. Wall time ${plain(p.wall_time_s, seconds)}, cost ${plain(
+            p.cost_usd,
+            money,
+          )}.</p>
+          ${
+            p.arm === "kalari"
+              ? `<p>Differential: ${h(sequence.length ? sequence.join(" → ") : "not recorded")}. Fixed: ${h(
+                  p.fixed === true ? "Yes" : p.fixed === false ? "No" : "not recorded",
+                )}.</p>`
+              : ""
+          }
+          <p>${runLink(
+            record.run_id,
+            `<code>${h(record.run_id)}</code>`,
+            runIds,
+            `Open run ${record.run_id}`,
+          )}</p>
+        </li>`;
+        })
+        .join("")}
+    </ul>
+  </section>`;
+}
+
 function benchmarkTable(records, runIds) {
   const allFrozen = records.every((record) => payloadOf(record).provenance === "frozen");
   const anyFrozen = records.some((record) => payloadOf(record).provenance === "frozen");
@@ -1860,12 +2117,14 @@ export function sessionView({ sessionId = "", records = [], lessons = [], runs =
       <div class="page-title"><h1>${h(redactUrls(title))}</h1>${badges.join("")}</div>
       <p class="page-summary">${h(redactUrls(summary))}</p>
       <p class="session-id">Session <code>${h(sessionId)}</code></p>
+      ${sessionModelLine(bench)}
       ${meta?.notes ? `<p class="caveat">${h(redactUrls(meta.notes))}</p>` : ""}
       <p class="quiet-line"><a href="index.html">Back to the evidence index</a></p>
     </header>
 
     ${warningsSection(warnings)}
     ${bench.length ? benchmarkTable(bench, runIds) : ""}
+    ${showcaseSection(records, runIds)}
 
     ${
       changes.length
@@ -2024,6 +2283,7 @@ function benchmarkRunDetail(payload, sessionId) {
       ${fact("Verdict", h(verdictWord(payload.verdict)))}
       ${fact("Right first time", h(boolWord(payload.right_first_time)))}
       ${fact("Basis", h(payload.right_first_time_basis || "not recorded"))}
+      ${payload.model ? fact("Model", modelTag(payload.model)) : ""}
       ${fact("Sandbox runs", plain(payload.sandbox_runs, count))}
       ${fact("Against the old endpoint", plain(payload.sandbox_runs_against_v1, count))}
       ${fact("Against the new endpoint", plain(payload.sandbox_runs_against_v2, count))}
@@ -2052,7 +2312,21 @@ function benchmarkRunDetail(payload, sessionId) {
         : ""
     }
     <p class="source-line">Source: <code>${h(redactUrls(payload.source || "not recorded"))}</code></p>
+    ${benchmarkEvidenceLinks(payload)}
   </section>`;
+}
+
+function isRepoPath(value) {
+  return typeof value === "string" && value && !value.includes("://") && !value.startsWith("/");
+}
+
+function benchmarkEvidenceLinks(payload) {
+  if (!isRepoPath(payload.source)) return "";
+  const links = [evidenceLink(githubUrl(payload.source), "The row file")];
+  if (isRepoPath(payload.transcript)) {
+    links.push(evidenceLink(githubUrl(payload.transcript), "The transcript"));
+  }
+  return `<p class="evidence-row">Evidence on GitHub: ${links.join(" · ")}</p>`;
 }
 
 function sandboxRunDetail(record, records, runIds) {
@@ -2293,6 +2567,19 @@ function containmentRunDetail(record) {
         ? `<p class="muted">Tools: ${text(Object.values(p.versions).join(", "))}</p>`
         : ""
     }
+    <p class="evidence-row">Evidence on GitHub: ${evidenceLink(
+      githubUrl("tests/live/containment-transcript.txt"),
+      "The containment log",
+    )} · ${evidenceLink(
+      githubUrl("tests/live/containment-evidence/run-1.jsonl"),
+      "The first run record",
+    )} · ${evidenceLink(
+      githubUrl("tests/live/containment-evidence/run-2.jsonl"),
+      "The second run record",
+    )} · ${evidenceLink(
+      githubUrl("bench/RESULTS.md", "6a-two-sandbox-runs-outside-the-comparison"),
+      "The comparison notes",
+    )}</p>
   </section>`;
 }
 
@@ -2333,6 +2620,53 @@ function referenceRunDetail(record) {
     </dl>
     <h3>What this run is not</h3>
     <p class="muted">This run is not a benchmark session. It never enters the frozen tallies, the medians, or the hero sums. It shows the silent loss that motivates the comparison.</p>
+    <p class="evidence-row">Evidence on GitHub: ${evidenceLink(
+      githubUrl(typeof p.source === "string" && p.source ? p.source : "bench/reference-paging/README.md"),
+      "The reference notes",
+    )}</p>
+  </section>`;
+}
+
+/* One showcase run: the model, the verdict, the grader counts and, for the
+   Kalari arm, the differential sequence. Lists and definition lists only:
+   the run page's only table is the record index. */
+function showcaseRunDetail(record) {
+  const p = payloadOf(record);
+  const grade = object(p.grade);
+  const sequence = Array.isArray(p.differential) ? p.differential : [];
+  return `<section class="panel" id="showcase-evidence" aria-labelledby="showcase-evidence-title">
+    <div class="panel-head">
+      <div><h2 id="showcase-evidence-title">Showcase run: ${h(p.label || record.run_id)}</h2>
+      <p class="quiet-line">A manufactured disbursement session. Not part of the frozen comparison.</p></div>
+      <div class="badge-row">${badge("Showcase run", "pilot")}${badge(
+        p.arm === "kalari" ? "Kalari arm" : "reference arm",
+        "neutral",
+      )}</div>
+    </div>
+    <dl class="facts facts--wide">
+      ${fact("Model", modelTag(p.model || "unknown"))}
+      ${fact("Verdict", h(verdictWord(p.verdict)))}
+      ${fact("Graded records", plain(p.records, count))}
+      ${fact("Records lost", plain(p.records_lost, count))}
+      ${fact("Records duplicated", plain(p.records_duplicated, count))}
+      ${fact("Records changed", plain(p.records_changed, count))}
+      ${fact("Wall time", plain(p.wall_time_s, seconds))}
+      ${fact("List-price cost", plain(p.cost_usd, money))}
+      ${p.arm === "kalari" ? fact("Differential", h(sequence.length ? sequence.join(" → ") : "not recorded")) : ""}
+      ${p.arm === "kalari" ? fact("Fixed", h(p.fixed === true ? "Yes" : p.fixed === false ? "No" : "not recorded")) : ""}
+    </dl>
+    <p class="source-line">Result: <code>${h(redactUrls(p.source || "not recorded"))}</code></p>
+    <p class="source-line">Transcript: <code>${h(redactUrls(p.transcript || "not recorded"))}</code></p>
+    <p class="evidence-row">Evidence on GitHub: ${evidenceLink(
+      githubUrl("bench/showcase/disbursements/README.md"),
+      "The showcase readme",
+    )} · ${evidenceLink(githubUrl("bench/showcase/disbursements/QUIRKS.md"), "The quirks file")}${
+      isRepoPath(p.source) ? ` · ${evidenceLink(githubUrl(p.source), "The row file")}` : ""
+    }${
+      isRepoPath(p.transcript)
+        ? ` · ${evidenceLink(githubUrl(p.transcript), "The transcript")}`
+        : ""
+    }</p>
   </section>`;
 }
 
@@ -2342,6 +2676,7 @@ export function runView({ runId = "", records = [], runs = null, warnings = [] }
   const runRecords = ofKind(records, "run");
   const shown = containmentOf(records);
   const reference = referenceOf(records);
+  const showcase = showcaseRecords(records);
   const sessionId = records[0]?.session_id || "";
   const firstPayload = bench.length ? payloadOf(bench[0]) : {};
   const provenance = firstPayload.provenance === "frozen" ? "frozen" : "pilot";
@@ -2352,9 +2687,11 @@ export function runView({ runId = "", records = [], runs = null, warnings = [] }
       ? "Containment evidence"
       : reference
         ? "Reference evidence"
-        : runRecords.length
-          ? "Sandbox run"
-          : "Run evidence";
+        : showcase.length
+          ? `Showcase run: ${payloadOf(showcase[0]).label || runId}`
+          : runRecords.length
+            ? "Sandbox run"
+            : "Run evidence";
   const benchStatus = bench.length ? firstPayload.status : "";
   const benchBadge =
     benchStatus === "invalid"
@@ -2383,8 +2720,9 @@ export function runView({ runId = "", records = [], runs = null, warnings = [] }
     ${bench.map((record) => benchmarkRunDetail(payloadOf(record), sessionId)).join("")}
     ${shown ? containmentRunDetail(shown) : ""}
     ${reference ? referenceRunDetail(reference) : ""}
+    ${showcase.map((record) => showcaseRunDetail(record)).join("")}
     ${runRecords.map((record) => sandboxRunDetail(record, records, runIds)).join("")}
-    ${!bench.length && !runRecords.length && !reference ? `<div class="notice notice--quiet"><h2>No readable run record</h2><p>The store returned records for this run, but none is a run or benchmark record.</p></div>` : ""}
+    ${!bench.length && !runRecords.length && !reference && !showcase.length ? `<div class="notice notice--quiet"><h2>No readable run record</h2><p>The store returned records for this run, but none is a run or benchmark record.</p></div>` : ""}
     ${recordsTable(records)}
   </article>`;
 }

@@ -5318,7 +5318,21 @@
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
         "tmp.XXSQOmhn",
-        "reference-paging-fix"
+        "reference-paging-fix",
+        "showcase-reference-deepseek-r1",
+        "showcase-reference-deepseek-r2",
+        "showcase-reference-deepseek-r3",
+        "showcase-reference-glm-r1",
+        "showcase-reference-glm-r2",
+        "showcase-reference-glm-r3",
+        "showcase-reference-mimo-r1",
+        "showcase-reference-muse-r1",
+        "showcase-reference-qwen27b-r1",
+        "showcase-kalari-glm-r1",
+        "showcase-kalari-glm-r2",
+        "showcase-kalari-glm-r3",
+        "showcase-kalari-muse-r1",
+        "showcase-kalari-qwen27b-r1"
       ],
       "sessions": [
         "pilot-c1-payouts",
@@ -5338,7 +5352,8 @@
         "payouts-upgrade",
         "payouts-earlier",
         "containment-runs",
-        "reference-paging"
+        "reference-paging",
+        "showcase-disbursements"
       ],
       "lessons": [
         {
@@ -6059,6 +6074,413 @@
             "source": "bench/reference-paging/README.md"
           }
         }
+      ],
+      "showcase": [
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-deepseek-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "DeepSeek V4.1 Flash",
+            "model_id": "deepseek-v4.1-flash-1017",
+            "label": "deepseek-r1",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 61,
+            "cost_usd": null,
+            "source": "bench/showcase/disbursements/runs/reference/deepseek-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/deepseek-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-deepseek-r2",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "DeepSeek V4.1 Flash",
+            "model_id": "deepseek-v4.1-flash-1017",
+            "label": "deepseek-r2",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 221,
+            "cost_usd": 0.107389,
+            "source": "bench/showcase/disbursements/runs/reference/deepseek-r2.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/deepseek-r2.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-deepseek-r3",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "DeepSeek V4.1 Flash",
+            "model_id": "deepseek-v4.1-flash-1017",
+            "label": "deepseek-r3",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 37,
+            "cost_usd": 0.056516,
+            "source": "bench/showcase/disbursements/runs/reference/deepseek-r3.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/deepseek-r3.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-glm-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r1",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 65,
+            "cost_usd": 0.02819,
+            "source": "bench/showcase/disbursements/runs/reference/glm-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/glm-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-glm-r2",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r2",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 47,
+            "cost_usd": 0.016175,
+            "source": "bench/showcase/disbursements/runs/reference/glm-r2.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/glm-r2.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-glm-r3",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r3",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 139,
+            "cost_usd": 0.035607,
+            "source": "bench/showcase/disbursements/runs/reference/glm-r3.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/glm-r3.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-mimo-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "MiMo V2.6 Flash",
+            "model_id": "mimo-v2.6-flash",
+            "label": "mimo-r1",
+            "verdict": "FAIL",
+            "records": 0,
+            "records_lost": 2341,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 10,
+            "cost_usd": 0.00457,
+            "source": "bench/showcase/disbursements/runs/reference/mimo-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/mimo-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-muse-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "Muse Glimmer 30B",
+            "model_id": "muse-glimmer-30b",
+            "label": "muse-r1",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 26,
+            "cost_usd": 0.082224,
+            "source": "bench/showcase/disbursements/runs/reference/muse-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/muse-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-qwen27b-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "Qwen3.8 27B",
+            "model_id": "qwen3.8-27b",
+            "label": "qwen27b-r1",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 38,
+            "cost_usd": 0.064113,
+            "source": "bench/showcase/disbursements/runs/reference/qwen27b-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/qwen27b-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-kalari-glm-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "kalari",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r1",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 36.251,
+            "cost_usd": 0.008561,
+            "source": "bench/showcase/disbursements/runs/kalari/glm-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/kalari/glm-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": [
+              "0 changed"
+            ],
+            "flagged": false,
+            "fixed": false
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-kalari-glm-r2",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "kalari",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r2",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 61.587,
+            "cost_usd": 0.019734,
+            "source": "bench/showcase/disbursements/runs/kalari/glm-r2.json",
+            "transcript": "bench/showcase/disbursements/runs/kalari/glm-r2.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": [
+              "23 changed",
+              "23 changed"
+            ],
+            "flagged": true,
+            "fixed": false
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-kalari-glm-r3",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "kalari",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r3",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 56.879,
+            "cost_usd": 0.014646,
+            "source": "bench/showcase/disbursements/runs/kalari/glm-r3.json",
+            "transcript": "bench/showcase/disbursements/runs/kalari/glm-r3.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": [
+              "23 changed",
+              "0 changed"
+            ],
+            "flagged": true,
+            "fixed": true
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-kalari-muse-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "kalari",
+            "model": "Muse Glimmer 30B",
+            "model_id": "muse-glimmer-30b",
+            "label": "muse-r1",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 35.756,
+            "cost_usd": 0.088541,
+            "source": "bench/showcase/disbursements/runs/kalari/muse-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/kalari/muse-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": [
+              "23 changed"
+            ],
+            "flagged": true,
+            "fixed": false
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-kalari-qwen27b-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "kalari",
+            "model": "Qwen3.8 27B",
+            "model_id": "qwen3.8-27b",
+            "label": "qwen27b-r1",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 71.907,
+            "cost_usd": 0.077535,
+            "source": "bench/showcase/disbursements/runs/kalari/qwen27b-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/kalari/qwen27b-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": [
+              "23 changed",
+              "23 changed"
+            ],
+            "flagged": true,
+            "fixed": false
+          }
+        }
       ]
     },
     "judges-empty": {
@@ -6141,7 +6563,21 @@
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
         "tmp.XXSQOmhn",
-        "reference-paging-fix"
+        "reference-paging-fix",
+        "showcase-reference-deepseek-r1",
+        "showcase-reference-deepseek-r2",
+        "showcase-reference-deepseek-r3",
+        "showcase-reference-glm-r1",
+        "showcase-reference-glm-r2",
+        "showcase-reference-glm-r3",
+        "showcase-reference-mimo-r1",
+        "showcase-reference-muse-r1",
+        "showcase-reference-qwen27b-r1",
+        "showcase-kalari-glm-r1",
+        "showcase-kalari-glm-r2",
+        "showcase-kalari-glm-r3",
+        "showcase-kalari-muse-r1",
+        "showcase-kalari-qwen27b-r1"
       ],
       "sessions": [
         "pilot-c1-payouts",
@@ -6161,7 +6597,8 @@
         "payouts-upgrade",
         "payouts-earlier",
         "containment-runs",
-        "reference-paging"
+        "reference-paging",
+        "showcase-disbursements"
       ],
       "lessons": [
         {
@@ -6208,6 +6645,2117 @@
               ]
             },
             "memory_concept_id": "concept-payout-exactly-once"
+          }
+        }
+      ],
+      "runDetails": {
+        "payouts-attempt-3": [
+          {
+            "kind": "session",
+            "session_id": "payouts-upgrade",
+            "run_id": "payouts-attempt-3",
+            "change_kinds": [
+              "pagination_changed",
+              "operation_moved",
+              "operation_renamed",
+              "argument_added"
+            ],
+            "payload": {
+              "title": "Upgrading the payout ledger",
+              "summary": "A coding agent moves the payout consumer from the old list endpoint to the windowed export. The first two attempts fail their checks. The third passes, and the lesson is written.",
+              "arm": "kalari",
+              "illustrative": true,
+              "notes": "Assembled from recorded change facts, the recorded Clef answer, and the benchmark workspaces. Run timings and log excerpts are illustrative."
+            }
+          },
+          {
+            "kind": "run",
+            "session_id": "payouts-upgrade",
+            "run_id": "payouts-attempt-3",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "request": {
+                "workspace": "bench/workspaces/payout-sync",
+                "command": [
+                  "python3",
+                  "payout_sync.py",
+                  "--base-url",
+                  "ENDPOINT",
+                  "--out",
+                  "payouts.jsonl"
+                ],
+                "caps": {
+                  "timeout_ms": 120000,
+                  "output_cap_bytes": 65536,
+                  "memory_mib": 512
+                },
+                "allowlist": [
+                  {
+                    "host": "api.test",
+                    "port": 18080
+                  }
+                ]
+              },
+              "verdict": {
+                "verdict": "exited",
+                "exit_code": 0,
+                "wall_ms": 1699,
+                "stdout": "synced 2431 payouts\n",
+                "stdout_truncated": false,
+                "stderr": "",
+                "pipe_held_open": false,
+                "supervisor_peak_rss_kb": 5488,
+                "cgroup_memory_limit": 536870912
+              },
+              "checks": [
+                {
+                  "id": "exact-once",
+                  "assertion": "Every payout exactly once, none missing, none extra, each equal to its old version.",
+                  "command": [
+                    "python3",
+                    "check_exact_once.py",
+                    "payouts.jsonl"
+                  ]
+                }
+              ],
+              "check_results": [
+                {
+                  "check_id": "exact-once",
+                  "passed": true,
+                  "detail": "2431 records. 0 missing. 0 extra. 0 duplicated. Every record equal to v1."
+                }
+              ],
+              "timings": {
+                "wall_ms": 1699
+              },
+              "tokens": null,
+              "illustrative": true
+            }
+          },
+          {
+            "kind": "check",
+            "session_id": "payouts-upgrade",
+            "run_id": "payouts-attempt-3",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "check_id": "exact-once",
+              "passed": true,
+              "detail": "2431 records. 0 missing. 0 extra. 0 duplicated. Every record equal to v1."
+            }
+          },
+          {
+            "kind": "page-observation",
+            "session_id": "payouts-upgrade",
+            "run_id": "payouts-attempt-3",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "source": "payouts-api",
+              "behaviors": [
+                "boundary_overlap_one",
+                "final_page_token"
+              ]
+            }
+          },
+          {
+            "kind": "verified-behavior",
+            "session_id": "payouts-upgrade",
+            "run_id": "payouts-attempt-3",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "change_kind": "pagination_changed",
+              "check": {
+                "id": "exact-once",
+                "assertion": "Every payout exactly once, none missing, none extra, each equal to its old version.",
+                "command": [
+                  "python3",
+                  "check_exact_once.py",
+                  "payouts.jsonl"
+                ]
+              },
+              "behaviors": [
+                "boundary_overlap_one",
+                "final_page_token"
+              ],
+              "failed_run_id": "payouts-attempt-2"
+            }
+          },
+          {
+            "kind": "lesson",
+            "session_id": "payouts-upgrade",
+            "run_id": "payouts-attempt-3",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "change_kind": "pagination_changed",
+              "observation": "The stream carried a cursor on its last page and repeated records at window boundaries. The passing loop followed the end flag, keyed records by id, and kept the last delivery. The check compares the output with the old endpoint.",
+              "run_id": "payouts-attempt-3",
+              "check": {
+                "id": "exact-once",
+                "assertion": "Every payout exactly once, none missing, none extra, each equal to its old version.",
+                "command": [
+                  "python3",
+                  "check_exact_once.py",
+                  "payouts.jsonl"
+                ]
+              },
+              "memory_concept_id": "concept-payout-exactly-once"
+            }
+          }
+        ],
+        "payouts-earlier-pass": [
+          {
+            "kind": "session",
+            "session_id": "payouts-earlier",
+            "run_id": "payouts-earlier-pass",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "title": "The lesson that came before",
+              "summary": "An earlier payout upgrade left the lesson this session recalls.",
+              "arm": "kalari",
+              "illustrative": true,
+              "notes": "Illustrative. The lesson text is the rule the product records."
+            }
+          },
+          {
+            "kind": "run",
+            "session_id": "payouts-earlier",
+            "run_id": "payouts-earlier-pass",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "request": {
+                "workspace": "bench/workspaces/payout-sync",
+                "command": [
+                  "python3",
+                  "payout_sync.py",
+                  "--base-url",
+                  "ENDPOINT",
+                  "--out",
+                  "payouts.jsonl"
+                ],
+                "caps": {
+                  "timeout_ms": 120000,
+                  "output_cap_bytes": 65536,
+                  "memory_mib": 512
+                },
+                "allowlist": [
+                  {
+                    "host": "api.test",
+                    "port": 18080
+                  }
+                ]
+              },
+              "verdict": {
+                "verdict": "exited",
+                "exit_code": 0,
+                "wall_ms": 1640,
+                "stdout": "synced 2431 payouts\n",
+                "stdout_truncated": false,
+                "stderr": "",
+                "pipe_held_open": false,
+                "supervisor_peak_rss_kb": 5488,
+                "cgroup_memory_limit": 536870912
+              },
+              "checks": [
+                {
+                  "id": "exact-once",
+                  "assertion": "Every payout exactly once, none missing, none extra, each equal to its old version.",
+                  "command": [
+                    "python3",
+                    "check_exact_once.py",
+                    "payouts.jsonl"
+                  ]
+                }
+              ],
+              "check_results": [
+                {
+                  "check_id": "exact-once",
+                  "passed": true,
+                  "detail": "2431 records. 0 missing. 0 extra. 0 duplicated. Every record equal to v1."
+                }
+              ],
+              "timings": {
+                "wall_ms": 1640
+              },
+              "tokens": null,
+              "illustrative": true
+            }
+          },
+          {
+            "kind": "check",
+            "session_id": "payouts-earlier",
+            "run_id": "payouts-earlier-pass",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "check_id": "exact-once",
+              "passed": true,
+              "detail": "2431 records. 0 missing. 0 extra. 0 duplicated. Every record equal to v1."
+            }
+          },
+          {
+            "kind": "lesson",
+            "session_id": "payouts-earlier",
+            "run_id": "payouts-earlier-pass",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "change_kind": "pagination_changed",
+              "observation": "The stream carried a cursor on its last page and repeated records at window boundaries. The passing loop followed the end flag, keyed records by id, and kept the last delivery. The check compares the output with the old endpoint.",
+              "run_id": "payouts-earlier-pass",
+              "check": {
+                "id": "exact-once",
+                "assertion": "Every payout exactly once, none missing, none extra, each equal to its old version.",
+                "command": [
+                  "python3",
+                  "check_exact_once.py",
+                  "payouts.jsonl"
+                ]
+              },
+              "memory_concept_id": "concept-payout-exactly-once"
+            }
+          }
+        ],
+        "payouts-attempt-1": [
+          {
+            "kind": "change",
+            "session_id": "payouts-upgrade",
+            "run_id": "payouts-attempt-1",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "id": "vc2_ff47bb628a187fbe4f28e53ef03a6231e2b22188bc0e84446306104ba37029d8",
+              "kind": "pagination_changed",
+              "severity": "review",
+              "title": "Pagination changed",
+              "summary": "The export returns a window with a cursor and a drained flag. The cursor is still present on the last page.",
+              "endpoint": "GET /v2/payouts",
+              "source": "testdata/vimanam/2.1.0/payouts.json"
+            }
+          },
+          {
+            "kind": "change",
+            "session_id": "payouts-upgrade",
+            "run_id": "payouts-attempt-1",
+            "change_kinds": [
+              "operation_moved"
+            ],
+            "payload": {
+              "id": "vc2_a604d335c9ac1b47b192a9f46eca61773f4ccd1db93a772f71808fbdb36b933c",
+              "kind": "operation_moved",
+              "severity": "breaking",
+              "title": "The payout operation moved",
+              "summary": "The list endpoint moved from the old path to the export path.",
+              "endpoint": "GET /v2/payouts",
+              "source": "testdata/vimanam/2.1.0/payouts.json"
+            }
+          },
+          {
+            "kind": "change",
+            "session_id": "payouts-upgrade",
+            "run_id": "payouts-attempt-1",
+            "change_kinds": [
+              "operation_renamed"
+            ],
+            "payload": {
+              "id": "vc2_d8282cabd333c4d00b5de7fbe69a338b833da23fa89718141a662b13382b0d1f",
+              "kind": "operation_renamed",
+              "severity": "breaking",
+              "title": "The operation ID changed",
+              "summary": "The operation ID changed from listPayouts to exportPayouts.",
+              "endpoint": "GET /v2/payouts",
+              "source": "testdata/vimanam/2.1.0/payouts.json"
+            }
+          },
+          {
+            "kind": "change",
+            "session_id": "payouts-upgrade",
+            "run_id": "payouts-attempt-1",
+            "change_kinds": [
+              "argument_added"
+            ],
+            "payload": {
+              "id": "vc2_150d90fdebc8ce0aa01c80cd471367977988f70b0562b06ccafc56abd0012c52",
+              "kind": "argument_added",
+              "severity": "non_breaking",
+              "title": "Two query arguments were added",
+              "summary": "The export accepts a cursor and a limit. Both are optional.",
+              "endpoint": "GET /v2/payouts",
+              "source": "testdata/vimanam/2.1.0/payouts.json"
+            }
+          },
+          {
+            "kind": "blast-radius",
+            "session_id": "payouts-upgrade",
+            "run_id": "payouts-attempt-1",
+            "change_kinds": [
+              "operation_moved"
+            ],
+            "payload": {
+              "change_id": "vc2_a604d335c9ac1b47b192a9f46eca61773f4ccd1db93a772f71808fbdb36b933c",
+              "call_sites": [
+                {
+                  "path": "bench/workspaces/payout-sync/payout_sync.py",
+                  "detail": "8:     with urllib.request.urlopen(f\"{base_url}/v1/payouts\", timeout=30) as resp:"
+                }
+              ]
+            }
+          },
+          {
+            "kind": "blast-radius",
+            "session_id": "payouts-upgrade",
+            "run_id": "payouts-attempt-1",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "change_id": "vc2_ff47bb628a187fbe4f28e53ef03a6231e2b22188bc0e84446306104ba37029d8",
+              "call_sites": [
+                {
+                  "path": "bench/workspaces/payout-sync/payout_sync.py",
+                  "detail": "9:         return json.load(resp)[\"payouts\"]"
+                }
+              ]
+            }
+          },
+          {
+            "kind": "blast-radius",
+            "session_id": "payouts-upgrade",
+            "run_id": "payouts-attempt-1",
+            "change_kinds": [
+              "operation_renamed"
+            ],
+            "payload": {
+              "change_id": "vc2_d8282cabd333c4d00b5de7fbe69a338b833da23fa89718141a662b13382b0d1f",
+              "call_sites": [],
+              "note": "The consumer uses the path, not the operation ID."
+            }
+          },
+          {
+            "kind": "blast-radius",
+            "session_id": "payouts-upgrade",
+            "run_id": "payouts-attempt-1",
+            "change_kinds": [
+              "argument_added"
+            ],
+            "payload": {
+              "change_id": "vc2_150d90fdebc8ce0aa01c80cd471367977988f70b0562b06ccafc56abd0012c52",
+              "call_sites": [],
+              "note": "The consumer does not pass either argument."
+            }
+          },
+          {
+            "kind": "run",
+            "session_id": "payouts-upgrade",
+            "run_id": "payouts-attempt-1",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "request": {
+                "workspace": "bench/workspaces/payout-sync",
+                "command": [
+                  "python3",
+                  "payout_sync.py",
+                  "--base-url",
+                  "ENDPOINT",
+                  "--out",
+                  "payouts.jsonl"
+                ],
+                "caps": {
+                  "timeout_ms": 120000,
+                  "output_cap_bytes": 65536,
+                  "memory_mib": 512
+                },
+                "allowlist": [
+                  {
+                    "host": "api.test",
+                    "port": 18080
+                  }
+                ]
+              },
+              "verdict": {
+                "verdict": "exited",
+                "exit_code": 0,
+                "wall_ms": 1500,
+                "stdout": "synced 100 payouts\n",
+                "stdout_truncated": false,
+                "stderr": "",
+                "pipe_held_open": false,
+                "supervisor_peak_rss_kb": 5488,
+                "cgroup_memory_limit": 536870912
+              },
+              "checks": [
+                {
+                  "id": "exact-once",
+                  "assertion": "Every payout exactly once, none missing, none extra, each equal to its old version.",
+                  "command": [
+                    "python3",
+                    "check_exact_once.py",
+                    "payouts.jsonl"
+                  ]
+                }
+              ],
+              "check_results": [
+                {
+                  "check_id": "exact-once",
+                  "passed": false,
+                  "detail": "100 of 2431 records. 2331 missing. 0 duplicated."
+                }
+              ],
+              "timings": {
+                "wall_ms": 1500
+              },
+              "tokens": null,
+              "illustrative": true
+            }
+          },
+          {
+            "kind": "check",
+            "session_id": "payouts-upgrade",
+            "run_id": "payouts-attempt-1",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "check_id": "exact-once",
+              "passed": false,
+              "detail": "100 of 2431 records. 2331 missing. 0 duplicated."
+            }
+          },
+          {
+            "kind": "decision",
+            "session_id": "payouts-upgrade",
+            "run_id": "payouts-attempt-1",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "question": "Why did the first run fail?",
+              "question_set": "failure-api-change-truncated",
+              "model": "clef",
+              "answer": {
+                "type": "choice",
+                "choice": "api_change",
+                "probabilities": {
+                  "api_change": 0.9785093665122986,
+                  "test_setup": 0.004290240351110697,
+                  "flaky": 0.004786109551787376,
+                  "unrelated_bug": 0.012414224445819855
+                },
+                "confidence": 0.9713458220163981
+              }
+            }
+          }
+        ],
+        "payouts-attempt-2": [
+          {
+            "kind": "run",
+            "session_id": "payouts-upgrade",
+            "run_id": "payouts-attempt-2",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "request": {
+                "workspace": "bench/workspaces/payout-sync",
+                "command": [
+                  "python3",
+                  "payout_sync.py",
+                  "--base-url",
+                  "ENDPOINT",
+                  "--out",
+                  "payouts.jsonl"
+                ],
+                "caps": {
+                  "timeout_ms": 120000,
+                  "output_cap_bytes": 65536,
+                  "memory_mib": 512
+                },
+                "allowlist": [
+                  {
+                    "host": "api.test",
+                    "port": 18080
+                  }
+                ]
+              },
+              "verdict": {
+                "verdict": "exited",
+                "exit_code": 0,
+                "wall_ms": 1810,
+                "stdout": "synced 2455 payouts\n",
+                "stdout_truncated": false,
+                "stderr": "",
+                "pipe_held_open": false,
+                "supervisor_peak_rss_kb": 5488,
+                "cgroup_memory_limit": 536870912
+              },
+              "checks": [
+                {
+                  "id": "exact-once",
+                  "assertion": "Every payout exactly once, none missing, none extra, each equal to its old version.",
+                  "command": [
+                    "python3",
+                    "check_exact_once.py",
+                    "payouts.jsonl"
+                  ]
+                }
+              ],
+              "check_results": [
+                {
+                  "check_id": "exact-once",
+                  "passed": false,
+                  "detail": "2455 records. 0 missing. 24 duplicated."
+                }
+              ],
+              "timings": {
+                "wall_ms": 1810
+              },
+              "tokens": null,
+              "illustrative": true
+            }
+          },
+          {
+            "kind": "check",
+            "session_id": "payouts-upgrade",
+            "run_id": "payouts-attempt-2",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "check_id": "exact-once",
+              "passed": false,
+              "detail": "2455 records. 0 missing. 24 duplicated."
+            }
+          }
+        ],
+        "tmp.XXdrLVOs": [
+          {
+            "change_kinds": [
+              "operation_moved",
+              "operation_renamed",
+              "argument_added",
+              "field_added",
+              "field_required_changed",
+              "result_added",
+              "type_added",
+              "pagination_changed"
+            ],
+            "kind": "run",
+            "payload": {
+              "check_results": [
+                {
+                  "check_id": "candidate-v1-truth-v1",
+                  "detail": "Skipped because no successful artifact was available: consumer did not complete successfully",
+                  "passed": false
+                },
+                {
+                  "check_id": "differential-v1",
+                  "detail": "consumer did not complete successfully",
+                  "passed": false
+                }
+              ],
+              "checks": [
+                {
+                  "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+                  "command": [
+                    "python3",
+                    "kalari_candidate_truth_check.py",
+                    "payouts.jsonl",
+                    "kalari-v1-truth.jsonl"
+                  ],
+                  "id": "candidate-v1-truth-v1"
+                }
+              ],
+              "request": {
+                "allowlist": [
+                  {
+                    "host": "<vm-public-ip>",
+                    "port": 18090
+                  }
+                ],
+                "caps": {
+                  "memory_mib": 512,
+                  "output_cap_bytes": 65536,
+                  "timeout_ms": 5000
+                },
+                "command": [
+                  "python3",
+                  "<work>/candidate/consumer.py",
+                  "--base-url",
+                  "ENDPOINT",
+                  "--out",
+                  "payouts.jsonl"
+                ],
+                "workspace": "<work>/candidate"
+              },
+              "timings": {
+                "wall_ms": 437
+              },
+              "tokens": null,
+              "verdict": {
+                "cgroup_memory_limit": 0,
+                "exit_code": 1,
+                "pipe_held_open": false,
+                "stderr": "Traceback (most recent call last):\n  File \"/workspace/consumer.py\", line 18, in <module>\n    r = get(f\"{B}/v2/payouts\" + (f\"?cursor={cursor}\" if cursor else \"\"))\n  File \"/workspace/consumer.py\", line 5, in get\n    with urllib.request.urlopen(url, timeout=30) as r:\n         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.13/urllib/request.py\", line 189, in urlopen\n    return opener.open(url, data, timeout)\n           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.13/urllib/request.py\", line 495, in open\n    response = meth(req, response)\n  File \"/usr/local/lib/python3.13/urllib/request.py\", line 604, in http_response\n    response = self.parent.error(\n        'http', request, response, code, msg, hdrs)\n  File \"/usr/local/lib/python3.13/urllib/request.py\", line 533, in error\n    return self._call_chain(*args)\n           ~~~~~~~~~~~~~~~~^^^^^^^\n  File \"/usr/local/lib/python3.13/urllib/request.py\", line 466, in _call_chain\n    result = func(*args)\n  File \"/usr/local/lib/python3.13/urllib/request.py\", line 613, in http_error_default\n    raise HTTPError(req.full_url, code, msg, hdrs, fp)\nurllib.error.HTTPError: HTTP Error 429: Too Many Requests\n",
+                "stdout": "",
+                "stdout_truncated": false,
+                "supervisor_peak_rss_kb": 9136,
+                "verdict": "exited",
+                "wall_ms": 437
+              }
+            },
+            "run_id": "tmp.XXdrLVOs",
+            "session_id": "containment-runs"
+          },
+          {
+            "change_kinds": [
+              "operation_moved",
+              "operation_renamed",
+              "argument_added",
+              "field_added",
+              "field_required_changed",
+              "result_added",
+              "type_added",
+              "pagination_changed"
+            ],
+            "kind": "check",
+            "payload": {
+              "check_id": "candidate-v1-truth-v1",
+              "detail": "Skipped because no successful artifact was available: consumer did not complete successfully",
+              "passed": false
+            },
+            "run_id": "tmp.XXdrLVOs",
+            "session_id": "containment-runs"
+          },
+          {
+            "change_kinds": [
+              "operation_moved",
+              "operation_renamed",
+              "argument_added",
+              "field_added",
+              "field_required_changed",
+              "result_added",
+              "type_added",
+              "pagination_changed"
+            ],
+            "kind": "check",
+            "payload": {
+              "check_id": "differential-v1",
+              "detail": "consumer did not complete successfully",
+              "passed": false
+            },
+            "run_id": "tmp.XXdrLVOs",
+            "session_id": "containment-runs"
+          },
+          {
+            "kind": "containment",
+            "session_id": "containment-runs",
+            "run_id": "tmp.XXdrLVOs",
+            "change_kinds": [
+              "operation_moved",
+              "operation_renamed",
+              "argument_added",
+              "field_added",
+              "field_required_changed",
+              "result_added",
+              "type_added",
+              "pagination_changed"
+            ],
+            "payload": {
+              "schema": "kalari.containment.v1",
+              "label": "Containment evidence",
+              "benchmark": false,
+              "synthetic": false,
+              "case": "payouts reference cursor-loop consumer with no retry: it crashes on the API's first 429",
+              "config": {
+                "time_cap_ms": 5000,
+                "time_ceiling_ms": 30000,
+                "output_cap_bytes": 65536,
+                "memory_mib": 512,
+                "note": "The output and memory caps are configuration only. Neither is claimed to have fired in this run."
+              },
+              "result": {
+                "run_id": "tmp.XXdrLVOs",
+                "verdict": "exited",
+                "exit_code": 1,
+                "passed": false,
+                "wall_ms": 437,
+                "call_ms": 1343,
+                "pages_fetched": null,
+                "waits_for_retry_after": 0,
+                "stderr_tail": "ile \"/usr/local/lib/python3.13/urllib/request.py\", line 466, in _call_chain\n    result = func(*args)\n  File \"/usr/local/lib/python3.13/urllib/request.py\", line 613, in http_error_default\n    raise HTTPError(req.full_url, code, msg, hdrs, fp)\nurllib.error.HTTPError: HTTP Error 429: Too Many Requests\n",
+                "stdout_truncated": false,
+                "pipe_held_open": false,
+                "supervisor_peak_rss_kb": 9136,
+                "enforcement_note": "The supervisor polls, so the measured elapsed time can exceed the configured cap. No fixed bound is promised."
+              },
+              "outcomes": {
+                "candidate": {
+                  "verdict": "exited",
+                  "exit_code": 1,
+                  "passed": false
+                },
+                "baseline": {
+                  "executed": false,
+                  "note": "The v1 baseline runs only after the candidate has produced an output file. This candidate never wrote one, so the production pipeline did not start a baseline guest."
+                },
+                "differential": {
+                  "check_id": "differential-v1",
+                  "passed": false,
+                  "detail": "consumer did not complete successfully"
+                }
+              },
+              "creation": {
+                "argv": [
+                  "msb",
+                  "create",
+                  "--name",
+                  "kalari-tmp.XXdrLVOs",
+                  "--cpus",
+                  "1",
+                  "--memory",
+                  "512M",
+                  "--no-net",
+                  "--net-rule",
+                  "allow@<vm-public-ip>/32:tcp:18090",
+                  "--pull",
+                  "never",
+                  "python:3.13-slim"
+                ],
+                "source": "an msb shim on the service's PATH recorded the argument list at the moment of the call",
+                "image": "python:3.13-slim",
+                "cpus": 1,
+                "memory_mib": 512
+              },
+              "network": {
+                "requested": {
+                  "mode": "msb create --no-net plus one --net-rule",
+                  "rules": [
+                    "allow@<vm-public-ip>/32:tcp:18090"
+                  ]
+                },
+                "effective": {
+                  "source": "msb inspect --format json, read right after create",
+                  "enabled": true,
+                  "default_egress": "deny",
+                  "default_ingress": "deny",
+                  "rules": [
+                    {
+                      "action": "allow",
+                      "direction": "egress",
+                      "destination": {
+                        "cidr": "<vm-public-ip>/32"
+                      },
+                      "protocols": [
+                        "tcp"
+                      ],
+                      "ports": [
+                        {
+                          "end": 18090,
+                          "start": 18090
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "observed": {
+                  "source": "a probe run through the same production run_in_sandbox path, with the same caps and the same allowlist",
+                  "same_guest": false,
+                  "probe_policy_matches_candidate": true,
+                  "same_configuration": true,
+                  "probe_run_id": "tmp.XX13bjtF",
+                  "probe_verdict": "exited",
+                  "probe_exit_code": 0,
+                  "attempts": [
+                    {
+                      "label": "allowed",
+                      "port": 18090,
+                      "expected": "allowed",
+                      "observed": "allowed",
+                      "detail": "http-200"
+                    },
+                    {
+                      "label": "other-port-same-host",
+                      "port": 18080,
+                      "expected": "refused",
+                      "observed": "refused",
+                      "detail": "ConnectionRefusedError"
+                    },
+                    {
+                      "label": "host-ssh",
+                      "port": 22,
+                      "expected": "refused",
+                      "observed": "refused",
+                      "detail": "ConnectionRefusedError"
+                    },
+                    {
+                      "label": "metadata-link-local",
+                      "port": 80,
+                      "expected": "refused",
+                      "observed": "refused",
+                      "detail": "network_policy_denied"
+                    },
+                    {
+                      "label": "internet",
+                      "port": 80,
+                      "expected": "refused",
+                      "observed": "refused",
+                      "detail": "network_policy_denied"
+                    }
+                  ],
+                  "denied_attempts": 4,
+                  "denied_and_refused": 4,
+                  "allowed_attempts": 1,
+                  "allowed_and_answered": 1,
+                  "breaches": 0
+                }
+              },
+              "cleanup": {
+                "sandboxes_created": [
+                  "kalari-tmp.XXdrLVOs",
+                  "kalari-tmp.XX13bjtF"
+                ],
+                "removed_by_run_in_sandbox": [
+                  "kalari-tmp.XXdrLVOs",
+                  "kalari-tmp.XX13bjtF"
+                ],
+                "removed_by_forced_cleanup": [],
+                "still_listed": [],
+                "pre_existing_before": [
+                  "api-payouts-grading",
+                  "api-payouts-live",
+                  "api-settlements-grading",
+                  "api-settlements-live"
+                ],
+                "pre_existing_unchanged": true,
+                "other_kalari_sandboxes_listed_untouched": [],
+                "child_processes_remaining": [],
+                "service_exited": true,
+                "ok": true
+              },
+              "limits": [
+                "Observed restrictions only: the listed requests from one guest configuration, on this host, with this msb and this guest kernel.",
+                "This is not a claim of zero blast radius, and not a security audit.",
+                "The probe ran in a second guest created with the same arguments, not inside the guest that ran the consumer.",
+                "The output cap and the memory cap are recorded as configuration. This run did not exercise either."
+              ],
+              "versions": {
+                "msb": "msb 0.7.13",
+                "kalari": "kalari 0.1.0",
+                "image": "python:3.13-slim"
+              }
+            }
+          }
+        ],
+        "tmp.XXSQOmhn": [
+          {
+            "change_kinds": [
+              "operation_moved",
+              "operation_renamed",
+              "argument_added",
+              "field_added",
+              "field_required_changed",
+              "result_added",
+              "type_added",
+              "pagination_changed"
+            ],
+            "kind": "run",
+            "payload": {
+              "check_results": [
+                {
+                  "check_id": "candidate-v1-truth-v1",
+                  "detail": "Skipped because no successful artifact was available: consumer did not complete successfully",
+                  "passed": false
+                },
+                {
+                  "check_id": "differential-v1",
+                  "detail": "consumer did not complete successfully",
+                  "passed": false
+                }
+              ],
+              "checks": [
+                {
+                  "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+                  "command": [
+                    "python3",
+                    "kalari_candidate_truth_check.py",
+                    "payouts.jsonl",
+                    "kalari-v1-truth.jsonl"
+                  ],
+                  "id": "candidate-v1-truth-v1"
+                }
+              ],
+              "request": {
+                "allowlist": [
+                  {
+                    "host": "<vm-public-ip>",
+                    "port": 18090
+                  }
+                ],
+                "caps": {
+                  "memory_mib": 512,
+                  "output_cap_bytes": 65536,
+                  "timeout_ms": 5000
+                },
+                "command": [
+                  "python3",
+                  "<work>/candidate/consumer.py",
+                  "--base-url",
+                  "ENDPOINT",
+                  "--out",
+                  "payouts.jsonl"
+                ],
+                "workspace": "<work>/candidate"
+              },
+              "timings": {
+                "wall_ms": 5009
+              },
+              "tokens": null,
+              "verdict": {
+                "cgroup_memory_limit": 0,
+                "exit_code": null,
+                "pipe_held_open": false,
+                "stderr": "",
+                "stdout": "page 1: 100 payouts, drained false, cursor cdd853d2\npage 2: 100 payouts, drained false, cursor af94b027\npage 3: 100 payouts, drained false, cursor 8ef0e4c2\npage 4: 100 payouts, drained false, cursor 40d498c9\npage 5: 100 payouts, drained false, cursor 61f2b665\npage 6: 100 payouts, drained false, cursor fe74c2ec\npage 7: 100 payouts, drained false, cursor b23bb73a\npage 8: 100 payouts, drained false, cursor 693ec4fe\npage 9: 100 payouts, drained false, cursor 91f0c980\npage 10: 100 payouts, drained false, cursor 0237ef1d\npage 11: 100 payouts, drained false, cursor 9e8aeb81\npage 12: 100 payouts, drained false, cursor f145130e\npage 13: 100 payouts, drained false, cursor 775464e3\npage 14: 100 payouts, drained false, cursor aa49f09e\npage 15: 100 payouts, drained false, cursor 0f3b3846\npage 16: 100 payouts, drained false, cursor b7a732dc\npage 17: 429 too many requests, waiting 1 s then repeating it\npage 17: 100 payouts, drained false, cursor 069bc030\npage 18: 100 payouts, drained false, cursor 8a225bac\npage 19: 100 payouts, drained false, cursor b25edd11\npage 20: 100 payouts, drained false, cursor 30c0a3a1\npage 21: 100 payouts, drained false, cursor bfc3400f\npage 22: 100 payouts, drained false, cursor cda8149d\npage 23: 100 payouts, drained false, cursor 77bab16e\npage 24: 100 payouts, drained false, cursor c76c1393\npage 25: 55 payouts, drained true, cursor c15daa5e\npage 26: 1 payouts, drained true, cursor 39ec073f\npage 27: 1 payouts, drained true, cursor c38322aa\npage 28: 1 payouts, drained true, cursor f1b3ee80\npage 29: 1 payouts, drained true, cursor 3d93cb22\npage 30: 1 payouts, drained true, cursor 8c19016d\npage 31: 1 payouts, drained true, cursor f3f9dfb1\npage 32: 1 payouts, drained true, cursor d44d7ea1\npage 33: 1 payouts, drained true, cursor c6a9a51b\npage 34: 1 payouts, drained true, cursor 1013b116\npage 35: 1 payouts, drained true, cursor 49158656\npage 36: 1 payouts, drained true, cursor cbe623e5\npage 37: 1 payouts, drained true, cursor a7fc6099\npage 38: 1 payouts, drained true, cursor b55df822\npage 39: 1 payouts, drained true, cursor 1e6a5d72\npage 40: 1 payouts, drained true, cursor 575858ac\npage 41: 1 payouts, drained true, cursor 485f97f8\npage 42: 1 payouts, drained true, cursor a01166a5\npage 43: 1 payouts, drained true, cursor 51d1665c\npage 44: 1 payouts, drained true, cursor 42ca83e3\npage 45: 1 payouts, drained true, cursor cc626ed1\npage 46: 1 payouts, drained true, cursor 835583af\npage 47: 1 payouts, drained true, cursor 981f260a\npage 48: 1 payouts, drained true, cursor 9ea6dce5\npage 49: 1 payouts, drained true, cursor 5e96aba5\npage 50: 1 payouts, drained true, cursor 139f28a1\npage 51: 1 payouts, drained true, cursor a7692ec8\npage 52: 1 payouts, drained true, cursor 23f0cfc8\npage 53: 1 payouts, drained true, cursor c5972591\npage 54: 1 payouts, drained true, cursor c16e98bf\npage 55: 1 payouts, drained true, cursor 1ad27a57\npage 56: 1 payouts, drained true, cursor 05c1e805\npage 57: 1 payouts, drained true, cursor 58c71f6a\npage 58: 1 payouts, drained true, cursor 73b80053\npage 59: 1 payouts, drained true, cursor 2c264220\npage 60: 1 payouts, drained true, cursor 2cd9c485\npage 61: 1 payouts, drained true, cursor 70766a28\npage 62: 1 payouts, drained true, cursor 27e7f7f1\npage 63: 1 payouts, drained true, cursor 76f22492\npage 64: 1 payouts, drained true, cursor 22fff3fc\npage 65: 1 payouts, drained true, cursor 6fe623b6\npage 66: 1 payouts, drained true, cursor ad2516b1\npage 67: 1 payouts, drained true, cursor b530d5db\npage 68: 1 payouts, drained true, cursor d43aa853\n",
+                "stdout_truncated": false,
+                "supervisor_peak_rss_kb": 9100,
+                "verdict": "killed_timeout",
+                "wall_ms": 5009
+              }
+            },
+            "run_id": "tmp.XXSQOmhn",
+            "session_id": "containment-runs"
+          },
+          {
+            "change_kinds": [
+              "operation_moved",
+              "operation_renamed",
+              "argument_added",
+              "field_added",
+              "field_required_changed",
+              "result_added",
+              "type_added",
+              "pagination_changed"
+            ],
+            "kind": "check",
+            "payload": {
+              "check_id": "candidate-v1-truth-v1",
+              "detail": "Skipped because no successful artifact was available: consumer did not complete successfully",
+              "passed": false
+            },
+            "run_id": "tmp.XXSQOmhn",
+            "session_id": "containment-runs"
+          },
+          {
+            "change_kinds": [
+              "operation_moved",
+              "operation_renamed",
+              "argument_added",
+              "field_added",
+              "field_required_changed",
+              "result_added",
+              "type_added",
+              "pagination_changed"
+            ],
+            "kind": "check",
+            "payload": {
+              "check_id": "differential-v1",
+              "detail": "consumer did not complete successfully",
+              "passed": false
+            },
+            "run_id": "tmp.XXSQOmhn",
+            "session_id": "containment-runs"
+          },
+          {
+            "kind": "containment",
+            "session_id": "containment-runs",
+            "run_id": "tmp.XXSQOmhn",
+            "change_kinds": [
+              "operation_moved",
+              "operation_renamed",
+              "argument_added",
+              "field_added",
+              "field_required_changed",
+              "result_added",
+              "type_added",
+              "pagination_changed"
+            ],
+            "payload": {
+              "schema": "kalari.containment.v1",
+              "label": "Containment evidence",
+              "benchmark": false,
+              "synthetic": false,
+              "case": "payouts consumer that honours Retry-After on a 429 and follows the page cursor on every response, ignoring the drained flag",
+              "config": {
+                "time_cap_ms": 5000,
+                "time_ceiling_ms": 30000,
+                "output_cap_bytes": 65536,
+                "memory_mib": 512,
+                "note": "The output and memory caps are configuration only. Neither is claimed to have fired in this run."
+              },
+              "result": {
+                "run_id": "tmp.XXSQOmhn",
+                "verdict": "killed_timeout",
+                "exit_code": null,
+                "passed": false,
+                "wall_ms": 5009,
+                "call_ms": 5881,
+                "pages_fetched": 68,
+                "waits_for_retry_after": 1,
+                "stderr_tail": "",
+                "stdout_truncated": false,
+                "pipe_held_open": false,
+                "supervisor_peak_rss_kb": 9100,
+                "enforcement_note": "The supervisor polls, so the measured elapsed time can exceed the configured cap. No fixed bound is promised."
+              },
+              "outcomes": {
+                "candidate": {
+                  "verdict": "killed_timeout",
+                  "exit_code": null,
+                  "passed": false
+                },
+                "baseline": {
+                  "executed": false,
+                  "note": "The v1 baseline runs only after the candidate has produced an output file. This candidate never wrote one, so the production pipeline did not start a baseline guest."
+                },
+                "differential": {
+                  "check_id": "differential-v1",
+                  "passed": false,
+                  "detail": "consumer did not complete successfully"
+                }
+              },
+              "creation": {
+                "argv": [
+                  "msb",
+                  "create",
+                  "--name",
+                  "kalari-tmp.XXSQOmhn",
+                  "--cpus",
+                  "1",
+                  "--memory",
+                  "512M",
+                  "--no-net",
+                  "--net-rule",
+                  "allow@<vm-public-ip>/32:tcp:18090",
+                  "--pull",
+                  "never",
+                  "python:3.13-slim"
+                ],
+                "source": "an msb shim on the service's PATH recorded the argument list at the moment of the call",
+                "image": "python:3.13-slim",
+                "cpus": 1,
+                "memory_mib": 512
+              },
+              "network": {
+                "requested": {
+                  "mode": "msb create --no-net plus one --net-rule",
+                  "rules": [
+                    "allow@<vm-public-ip>/32:tcp:18090"
+                  ]
+                },
+                "effective": {
+                  "source": "msb inspect --format json, read right after create",
+                  "enabled": true,
+                  "default_egress": "deny",
+                  "default_ingress": "deny",
+                  "rules": [
+                    {
+                      "action": "allow",
+                      "direction": "egress",
+                      "destination": {
+                        "cidr": "<vm-public-ip>/32"
+                      },
+                      "protocols": [
+                        "tcp"
+                      ],
+                      "ports": [
+                        {
+                          "end": 18090,
+                          "start": 18090
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "observed": {
+                  "source": "a probe run through the same production run_in_sandbox path, with the same caps and the same allowlist",
+                  "same_guest": false,
+                  "probe_policy_matches_candidate": true,
+                  "same_configuration": true,
+                  "probe_run_id": "tmp.XXdT7o7W",
+                  "probe_verdict": "exited",
+                  "probe_exit_code": 0,
+                  "attempts": [
+                    {
+                      "label": "allowed",
+                      "port": 18090,
+                      "expected": "allowed",
+                      "observed": "allowed",
+                      "detail": "http-200"
+                    },
+                    {
+                      "label": "other-port-same-host",
+                      "port": 18080,
+                      "expected": "refused",
+                      "observed": "refused",
+                      "detail": "ConnectionRefusedError"
+                    },
+                    {
+                      "label": "host-ssh",
+                      "port": 22,
+                      "expected": "refused",
+                      "observed": "refused",
+                      "detail": "ConnectionRefusedError"
+                    },
+                    {
+                      "label": "metadata-link-local",
+                      "port": 80,
+                      "expected": "refused",
+                      "observed": "refused",
+                      "detail": "network_policy_denied"
+                    },
+                    {
+                      "label": "internet",
+                      "port": 80,
+                      "expected": "refused",
+                      "observed": "refused",
+                      "detail": "network_policy_denied"
+                    }
+                  ],
+                  "denied_attempts": 4,
+                  "denied_and_refused": 4,
+                  "allowed_attempts": 1,
+                  "allowed_and_answered": 1,
+                  "breaches": 0
+                }
+              },
+              "cleanup": {
+                "sandboxes_created": [
+                  "kalari-tmp.XXSQOmhn",
+                  "kalari-tmp.XXdT7o7W"
+                ],
+                "removed_by_run_in_sandbox": [
+                  "kalari-tmp.XXSQOmhn",
+                  "kalari-tmp.XXdT7o7W"
+                ],
+                "removed_by_forced_cleanup": [],
+                "still_listed": [],
+                "pre_existing_before": [
+                  "api-payouts-grading",
+                  "api-payouts-live",
+                  "api-settlements-grading",
+                  "api-settlements-live"
+                ],
+                "pre_existing_unchanged": true,
+                "other_kalari_sandboxes_listed_untouched": [],
+                "child_processes_remaining": [],
+                "service_exited": true,
+                "ok": true
+              },
+              "limits": [
+                "Observed restrictions only: the listed requests from one guest configuration, on this host, with this msb and this guest kernel.",
+                "This is not a claim of zero blast radius, and not a security audit.",
+                "The probe ran in a second guest created with the same arguments, not inside the guest that ran the consumer.",
+                "The output cap and the memory cap are recorded as configuration. This run did not exercise either."
+              ],
+              "versions": {
+                "msb": "msb 0.7.13",
+                "kalari": "kalari 0.1.0",
+                "image": "python:3.13-slim"
+              }
+            }
+          }
+        ],
+        "reference-paging-fix": [
+          {
+            "kind": "reference",
+            "session_id": "reference-paging",
+            "run_id": "reference-paging-fix",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "schema": "kalari.reference.v1",
+              "benchmark": false,
+              "case": "The v1 consumer meets a paging API. It reads one page and stops.",
+              "consumer": "import_items.py",
+              "before": {
+                "exit_code": 0,
+                "stdout": "imported 100 items",
+                "records": 100,
+                "expected": 2431,
+                "missing": 2331,
+                "verdict": "FAIL"
+              },
+              "after": {
+                "setup": "OpenCode with microsandbox-mcp and DeepSeek V4.1 Flash",
+                "attempt": 1,
+                "verdict": "PASS",
+                "records": 2431,
+                "expected": 2431,
+                "wall_time_s": 30,
+                "tokens_input": 331501,
+                "tokens_output": 4383,
+                "cost_usd": 0.05
+              },
+              "source": "bench/reference-paging/README.md"
+            }
+          }
+        ],
+        "showcase-reference-deepseek-r1": [
+          {
+            "kind": "showcase",
+            "session_id": "showcase-disbursements",
+            "run_id": "showcase-reference-deepseek-r1",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "schema": "kalari.showcase.v1",
+              "arm": "reference",
+              "model": "DeepSeek V4.1 Flash",
+              "model_id": "deepseek-v4.1-flash-1017",
+              "label": "deepseek-r1",
+              "verdict": "PASS",
+              "records": 2341,
+              "records_lost": 0,
+              "records_duplicated": 0,
+              "records_changed": 0,
+              "wall_time_s": 61,
+              "cost_usd": null,
+              "source": "bench/showcase/disbursements/runs/reference/deepseek-r1.json",
+              "transcript": "bench/showcase/disbursements/runs/reference/deepseek-r1.transcript.jsonl",
+              "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+              "differential": null,
+              "flagged": null,
+              "fixed": null
+            }
+          }
+        ],
+        "showcase-reference-deepseek-r2": [
+          {
+            "kind": "showcase",
+            "session_id": "showcase-disbursements",
+            "run_id": "showcase-reference-deepseek-r2",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "schema": "kalari.showcase.v1",
+              "arm": "reference",
+              "model": "DeepSeek V4.1 Flash",
+              "model_id": "deepseek-v4.1-flash-1017",
+              "label": "deepseek-r2",
+              "verdict": "PASS",
+              "records": 2341,
+              "records_lost": 0,
+              "records_duplicated": 0,
+              "records_changed": 0,
+              "wall_time_s": 221,
+              "cost_usd": 0.107389,
+              "source": "bench/showcase/disbursements/runs/reference/deepseek-r2.json",
+              "transcript": "bench/showcase/disbursements/runs/reference/deepseek-r2.transcript.jsonl",
+              "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+              "differential": null,
+              "flagged": null,
+              "fixed": null
+            }
+          }
+        ],
+        "showcase-reference-deepseek-r3": [
+          {
+            "kind": "showcase",
+            "session_id": "showcase-disbursements",
+            "run_id": "showcase-reference-deepseek-r3",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "schema": "kalari.showcase.v1",
+              "arm": "reference",
+              "model": "DeepSeek V4.1 Flash",
+              "model_id": "deepseek-v4.1-flash-1017",
+              "label": "deepseek-r3",
+              "verdict": "PASS",
+              "records": 2341,
+              "records_lost": 0,
+              "records_duplicated": 0,
+              "records_changed": 0,
+              "wall_time_s": 37,
+              "cost_usd": 0.056516,
+              "source": "bench/showcase/disbursements/runs/reference/deepseek-r3.json",
+              "transcript": "bench/showcase/disbursements/runs/reference/deepseek-r3.transcript.jsonl",
+              "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+              "differential": null,
+              "flagged": null,
+              "fixed": null
+            }
+          }
+        ],
+        "showcase-reference-glm-r1": [
+          {
+            "kind": "showcase",
+            "session_id": "showcase-disbursements",
+            "run_id": "showcase-reference-glm-r1",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "schema": "kalari.showcase.v1",
+              "arm": "reference",
+              "model": "GLM 5.3 Flash",
+              "model_id": "glm-5.3-flash",
+              "label": "glm-r1",
+              "verdict": "FAIL",
+              "records": 2341,
+              "records_lost": 0,
+              "records_duplicated": 0,
+              "records_changed": 23,
+              "wall_time_s": 65,
+              "cost_usd": 0.02819,
+              "source": "bench/showcase/disbursements/runs/reference/glm-r1.json",
+              "transcript": "bench/showcase/disbursements/runs/reference/glm-r1.transcript.jsonl",
+              "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+              "differential": null,
+              "flagged": null,
+              "fixed": null
+            }
+          }
+        ],
+        "showcase-reference-glm-r2": [
+          {
+            "kind": "showcase",
+            "session_id": "showcase-disbursements",
+            "run_id": "showcase-reference-glm-r2",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "schema": "kalari.showcase.v1",
+              "arm": "reference",
+              "model": "GLM 5.3 Flash",
+              "model_id": "glm-5.3-flash",
+              "label": "glm-r2",
+              "verdict": "PASS",
+              "records": 2341,
+              "records_lost": 0,
+              "records_duplicated": 0,
+              "records_changed": 0,
+              "wall_time_s": 47,
+              "cost_usd": 0.016175,
+              "source": "bench/showcase/disbursements/runs/reference/glm-r2.json",
+              "transcript": "bench/showcase/disbursements/runs/reference/glm-r2.transcript.jsonl",
+              "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+              "differential": null,
+              "flagged": null,
+              "fixed": null
+            }
+          }
+        ],
+        "showcase-reference-glm-r3": [
+          {
+            "kind": "showcase",
+            "session_id": "showcase-disbursements",
+            "run_id": "showcase-reference-glm-r3",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "schema": "kalari.showcase.v1",
+              "arm": "reference",
+              "model": "GLM 5.3 Flash",
+              "model_id": "glm-5.3-flash",
+              "label": "glm-r3",
+              "verdict": "FAIL",
+              "records": 2341,
+              "records_lost": 0,
+              "records_duplicated": 0,
+              "records_changed": 23,
+              "wall_time_s": 139,
+              "cost_usd": 0.035607,
+              "source": "bench/showcase/disbursements/runs/reference/glm-r3.json",
+              "transcript": "bench/showcase/disbursements/runs/reference/glm-r3.transcript.jsonl",
+              "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+              "differential": null,
+              "flagged": null,
+              "fixed": null
+            }
+          }
+        ],
+        "showcase-reference-mimo-r1": [
+          {
+            "kind": "showcase",
+            "session_id": "showcase-disbursements",
+            "run_id": "showcase-reference-mimo-r1",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "schema": "kalari.showcase.v1",
+              "arm": "reference",
+              "model": "MiMo V2.6 Flash",
+              "model_id": "mimo-v2.6-flash",
+              "label": "mimo-r1",
+              "verdict": "FAIL",
+              "records": 0,
+              "records_lost": 2341,
+              "records_duplicated": 0,
+              "records_changed": 0,
+              "wall_time_s": 10,
+              "cost_usd": 0.00457,
+              "source": "bench/showcase/disbursements/runs/reference/mimo-r1.json",
+              "transcript": "bench/showcase/disbursements/runs/reference/mimo-r1.transcript.jsonl",
+              "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+              "differential": null,
+              "flagged": null,
+              "fixed": null
+            }
+          }
+        ],
+        "showcase-reference-muse-r1": [
+          {
+            "kind": "showcase",
+            "session_id": "showcase-disbursements",
+            "run_id": "showcase-reference-muse-r1",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "schema": "kalari.showcase.v1",
+              "arm": "reference",
+              "model": "Muse Glimmer 30B",
+              "model_id": "muse-glimmer-30b",
+              "label": "muse-r1",
+              "verdict": "FAIL",
+              "records": 2341,
+              "records_lost": 0,
+              "records_duplicated": 0,
+              "records_changed": 23,
+              "wall_time_s": 26,
+              "cost_usd": 0.082224,
+              "source": "bench/showcase/disbursements/runs/reference/muse-r1.json",
+              "transcript": "bench/showcase/disbursements/runs/reference/muse-r1.transcript.jsonl",
+              "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+              "differential": null,
+              "flagged": null,
+              "fixed": null
+            }
+          }
+        ],
+        "showcase-reference-qwen27b-r1": [
+          {
+            "kind": "showcase",
+            "session_id": "showcase-disbursements",
+            "run_id": "showcase-reference-qwen27b-r1",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "schema": "kalari.showcase.v1",
+              "arm": "reference",
+              "model": "Qwen3.8 27B",
+              "model_id": "qwen3.8-27b",
+              "label": "qwen27b-r1",
+              "verdict": "FAIL",
+              "records": 2341,
+              "records_lost": 0,
+              "records_duplicated": 0,
+              "records_changed": 23,
+              "wall_time_s": 38,
+              "cost_usd": 0.064113,
+              "source": "bench/showcase/disbursements/runs/reference/qwen27b-r1.json",
+              "transcript": "bench/showcase/disbursements/runs/reference/qwen27b-r1.transcript.jsonl",
+              "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+              "differential": null,
+              "flagged": null,
+              "fixed": null
+            }
+          }
+        ],
+        "showcase-kalari-glm-r1": [
+          {
+            "kind": "showcase",
+            "session_id": "showcase-disbursements",
+            "run_id": "showcase-kalari-glm-r1",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "schema": "kalari.showcase.v1",
+              "arm": "kalari",
+              "model": "GLM 5.3 Flash",
+              "model_id": "glm-5.3-flash",
+              "label": "glm-r1",
+              "verdict": "PASS",
+              "records": 2341,
+              "records_lost": 0,
+              "records_duplicated": 0,
+              "records_changed": 0,
+              "wall_time_s": 36.251,
+              "cost_usd": 0.008561,
+              "source": "bench/showcase/disbursements/runs/kalari/glm-r1.json",
+              "transcript": "bench/showcase/disbursements/runs/kalari/glm-r1.transcript.jsonl",
+              "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+              "differential": [
+                "0 changed"
+              ],
+              "flagged": false,
+              "fixed": false
+            }
+          }
+        ],
+        "showcase-kalari-glm-r2": [
+          {
+            "kind": "showcase",
+            "session_id": "showcase-disbursements",
+            "run_id": "showcase-kalari-glm-r2",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "schema": "kalari.showcase.v1",
+              "arm": "kalari",
+              "model": "GLM 5.3 Flash",
+              "model_id": "glm-5.3-flash",
+              "label": "glm-r2",
+              "verdict": "FAIL",
+              "records": 2341,
+              "records_lost": 0,
+              "records_duplicated": 0,
+              "records_changed": 23,
+              "wall_time_s": 61.587,
+              "cost_usd": 0.019734,
+              "source": "bench/showcase/disbursements/runs/kalari/glm-r2.json",
+              "transcript": "bench/showcase/disbursements/runs/kalari/glm-r2.transcript.jsonl",
+              "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+              "differential": [
+                "23 changed",
+                "23 changed"
+              ],
+              "flagged": true,
+              "fixed": false
+            }
+          }
+        ],
+        "showcase-kalari-glm-r3": [
+          {
+            "kind": "showcase",
+            "session_id": "showcase-disbursements",
+            "run_id": "showcase-kalari-glm-r3",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "schema": "kalari.showcase.v1",
+              "arm": "kalari",
+              "model": "GLM 5.3 Flash",
+              "model_id": "glm-5.3-flash",
+              "label": "glm-r3",
+              "verdict": "PASS",
+              "records": 2341,
+              "records_lost": 0,
+              "records_duplicated": 0,
+              "records_changed": 0,
+              "wall_time_s": 56.879,
+              "cost_usd": 0.014646,
+              "source": "bench/showcase/disbursements/runs/kalari/glm-r3.json",
+              "transcript": "bench/showcase/disbursements/runs/kalari/glm-r3.transcript.jsonl",
+              "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+              "differential": [
+                "23 changed",
+                "0 changed"
+              ],
+              "flagged": true,
+              "fixed": true
+            }
+          }
+        ],
+        "showcase-kalari-muse-r1": [
+          {
+            "kind": "showcase",
+            "session_id": "showcase-disbursements",
+            "run_id": "showcase-kalari-muse-r1",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "schema": "kalari.showcase.v1",
+              "arm": "kalari",
+              "model": "Muse Glimmer 30B",
+              "model_id": "muse-glimmer-30b",
+              "label": "muse-r1",
+              "verdict": "FAIL",
+              "records": 2341,
+              "records_lost": 0,
+              "records_duplicated": 0,
+              "records_changed": 23,
+              "wall_time_s": 35.756,
+              "cost_usd": 0.088541,
+              "source": "bench/showcase/disbursements/runs/kalari/muse-r1.json",
+              "transcript": "bench/showcase/disbursements/runs/kalari/muse-r1.transcript.jsonl",
+              "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+              "differential": [
+                "23 changed"
+              ],
+              "flagged": true,
+              "fixed": false
+            }
+          }
+        ],
+        "showcase-kalari-qwen27b-r1": [
+          {
+            "kind": "showcase",
+            "session_id": "showcase-disbursements",
+            "run_id": "showcase-kalari-qwen27b-r1",
+            "change_kinds": [
+              "pagination_changed"
+            ],
+            "payload": {
+              "schema": "kalari.showcase.v1",
+              "arm": "kalari",
+              "model": "Qwen3.8 27B",
+              "model_id": "qwen3.8-27b",
+              "label": "qwen27b-r1",
+              "verdict": "FAIL",
+              "records": 2341,
+              "records_lost": 0,
+              "records_duplicated": 0,
+              "records_changed": 23,
+              "wall_time_s": 71.907,
+              "cost_usd": 0.077535,
+              "source": "bench/showcase/disbursements/runs/kalari/qwen27b-r1.json",
+              "transcript": "bench/showcase/disbursements/runs/kalari/qwen27b-r1.transcript.jsonl",
+              "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+              "differential": [
+                "23 changed",
+                "23 changed"
+              ],
+              "flagged": true,
+              "fixed": false
+            }
+          }
+        ]
+      },
+      "showcase": [
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-deepseek-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "DeepSeek V4.1 Flash",
+            "model_id": "deepseek-v4.1-flash-1017",
+            "label": "deepseek-r1",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 61,
+            "cost_usd": null,
+            "source": "bench/showcase/disbursements/runs/reference/deepseek-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/deepseek-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-deepseek-r2",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "DeepSeek V4.1 Flash",
+            "model_id": "deepseek-v4.1-flash-1017",
+            "label": "deepseek-r2",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 221,
+            "cost_usd": 0.107389,
+            "source": "bench/showcase/disbursements/runs/reference/deepseek-r2.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/deepseek-r2.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-deepseek-r3",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "DeepSeek V4.1 Flash",
+            "model_id": "deepseek-v4.1-flash-1017",
+            "label": "deepseek-r3",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 37,
+            "cost_usd": 0.056516,
+            "source": "bench/showcase/disbursements/runs/reference/deepseek-r3.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/deepseek-r3.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-glm-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r1",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 65,
+            "cost_usd": 0.02819,
+            "source": "bench/showcase/disbursements/runs/reference/glm-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/glm-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-glm-r2",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r2",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 47,
+            "cost_usd": 0.016175,
+            "source": "bench/showcase/disbursements/runs/reference/glm-r2.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/glm-r2.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-glm-r3",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r3",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 139,
+            "cost_usd": 0.035607,
+            "source": "bench/showcase/disbursements/runs/reference/glm-r3.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/glm-r3.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-mimo-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "MiMo V2.6 Flash",
+            "model_id": "mimo-v2.6-flash",
+            "label": "mimo-r1",
+            "verdict": "FAIL",
+            "records": 0,
+            "records_lost": 2341,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 10,
+            "cost_usd": 0.00457,
+            "source": "bench/showcase/disbursements/runs/reference/mimo-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/mimo-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-muse-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "Muse Glimmer 30B",
+            "model_id": "muse-glimmer-30b",
+            "label": "muse-r1",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 26,
+            "cost_usd": 0.082224,
+            "source": "bench/showcase/disbursements/runs/reference/muse-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/muse-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-qwen27b-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "Qwen3.8 27B",
+            "model_id": "qwen3.8-27b",
+            "label": "qwen27b-r1",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 38,
+            "cost_usd": 0.064113,
+            "source": "bench/showcase/disbursements/runs/reference/qwen27b-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/qwen27b-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-kalari-glm-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "kalari",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r1",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 36.251,
+            "cost_usd": 0.008561,
+            "source": "bench/showcase/disbursements/runs/kalari/glm-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/kalari/glm-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": [
+              "0 changed"
+            ],
+            "flagged": false,
+            "fixed": false
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-kalari-glm-r2",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "kalari",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r2",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 61.587,
+            "cost_usd": 0.019734,
+            "source": "bench/showcase/disbursements/runs/kalari/glm-r2.json",
+            "transcript": "bench/showcase/disbursements/runs/kalari/glm-r2.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": [
+              "23 changed",
+              "23 changed"
+            ],
+            "flagged": true,
+            "fixed": false
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-kalari-glm-r3",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "kalari",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r3",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 56.879,
+            "cost_usd": 0.014646,
+            "source": "bench/showcase/disbursements/runs/kalari/glm-r3.json",
+            "transcript": "bench/showcase/disbursements/runs/kalari/glm-r3.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": [
+              "23 changed",
+              "0 changed"
+            ],
+            "flagged": true,
+            "fixed": true
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-kalari-muse-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "kalari",
+            "model": "Muse Glimmer 30B",
+            "model_id": "muse-glimmer-30b",
+            "label": "muse-r1",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 35.756,
+            "cost_usd": 0.088541,
+            "source": "bench/showcase/disbursements/runs/kalari/muse-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/kalari/muse-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": [
+              "23 changed"
+            ],
+            "flagged": true,
+            "fixed": false
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-kalari-qwen27b-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "kalari",
+            "model": "Qwen3.8 27B",
+            "model_id": "qwen3.8-27b",
+            "label": "qwen27b-r1",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 71.907,
+            "cost_usd": 0.077535,
+            "source": "bench/showcase/disbursements/runs/kalari/qwen27b-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/kalari/qwen27b-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": [
+              "23 changed",
+              "23 changed"
+            ],
+            "flagged": true,
+            "fixed": false
           }
         }
       ]
@@ -11609,6 +14157,20 @@
         "tmp.XXdrLVOs",
         "tmp.XXSQOmhn",
         "reference-paging-fix",
+        "showcase-reference-deepseek-r1",
+        "showcase-reference-deepseek-r2",
+        "showcase-reference-deepseek-r3",
+        "showcase-reference-glm-r1",
+        "showcase-reference-glm-r2",
+        "showcase-reference-glm-r3",
+        "showcase-reference-mimo-r1",
+        "showcase-reference-muse-r1",
+        "showcase-reference-qwen27b-r1",
+        "showcase-kalari-glm-r1",
+        "showcase-kalari-glm-r2",
+        "showcase-kalari-glm-r3",
+        "showcase-kalari-muse-r1",
+        "showcase-kalari-qwen27b-r1",
         "fixture-extra-settlements-r5b"
       ],
       "sessions": [
@@ -11629,7 +14191,8 @@
         "payouts-upgrade",
         "payouts-earlier",
         "containment-runs",
-        "reference-paging"
+        "reference-paging",
+        "showcase-disbursements"
       ],
       "lessons": [
         {
@@ -12348,6 +14911,413 @@
               "cost_usd": 0.05
             },
             "source": "bench/reference-paging/README.md"
+          }
+        }
+      ],
+      "showcase": [
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-deepseek-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "DeepSeek V4.1 Flash",
+            "model_id": "deepseek-v4.1-flash-1017",
+            "label": "deepseek-r1",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 61,
+            "cost_usd": null,
+            "source": "bench/showcase/disbursements/runs/reference/deepseek-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/deepseek-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-deepseek-r2",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "DeepSeek V4.1 Flash",
+            "model_id": "deepseek-v4.1-flash-1017",
+            "label": "deepseek-r2",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 221,
+            "cost_usd": 0.107389,
+            "source": "bench/showcase/disbursements/runs/reference/deepseek-r2.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/deepseek-r2.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-deepseek-r3",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "DeepSeek V4.1 Flash",
+            "model_id": "deepseek-v4.1-flash-1017",
+            "label": "deepseek-r3",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 37,
+            "cost_usd": 0.056516,
+            "source": "bench/showcase/disbursements/runs/reference/deepseek-r3.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/deepseek-r3.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-glm-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r1",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 65,
+            "cost_usd": 0.02819,
+            "source": "bench/showcase/disbursements/runs/reference/glm-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/glm-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-glm-r2",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r2",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 47,
+            "cost_usd": 0.016175,
+            "source": "bench/showcase/disbursements/runs/reference/glm-r2.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/glm-r2.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-glm-r3",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r3",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 139,
+            "cost_usd": 0.035607,
+            "source": "bench/showcase/disbursements/runs/reference/glm-r3.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/glm-r3.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-mimo-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "MiMo V2.6 Flash",
+            "model_id": "mimo-v2.6-flash",
+            "label": "mimo-r1",
+            "verdict": "FAIL",
+            "records": 0,
+            "records_lost": 2341,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 10,
+            "cost_usd": 0.00457,
+            "source": "bench/showcase/disbursements/runs/reference/mimo-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/mimo-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-muse-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "Muse Glimmer 30B",
+            "model_id": "muse-glimmer-30b",
+            "label": "muse-r1",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 26,
+            "cost_usd": 0.082224,
+            "source": "bench/showcase/disbursements/runs/reference/muse-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/muse-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-qwen27b-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "Qwen3.8 27B",
+            "model_id": "qwen3.8-27b",
+            "label": "qwen27b-r1",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 38,
+            "cost_usd": 0.064113,
+            "source": "bench/showcase/disbursements/runs/reference/qwen27b-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/qwen27b-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-kalari-glm-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "kalari",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r1",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 36.251,
+            "cost_usd": 0.008561,
+            "source": "bench/showcase/disbursements/runs/kalari/glm-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/kalari/glm-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": [
+              "0 changed"
+            ],
+            "flagged": false,
+            "fixed": false
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-kalari-glm-r2",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "kalari",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r2",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 61.587,
+            "cost_usd": 0.019734,
+            "source": "bench/showcase/disbursements/runs/kalari/glm-r2.json",
+            "transcript": "bench/showcase/disbursements/runs/kalari/glm-r2.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": [
+              "23 changed",
+              "23 changed"
+            ],
+            "flagged": true,
+            "fixed": false
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-kalari-glm-r3",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "kalari",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r3",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 56.879,
+            "cost_usd": 0.014646,
+            "source": "bench/showcase/disbursements/runs/kalari/glm-r3.json",
+            "transcript": "bench/showcase/disbursements/runs/kalari/glm-r3.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": [
+              "23 changed",
+              "0 changed"
+            ],
+            "flagged": true,
+            "fixed": true
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-kalari-muse-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "kalari",
+            "model": "Muse Glimmer 30B",
+            "model_id": "muse-glimmer-30b",
+            "label": "muse-r1",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 35.756,
+            "cost_usd": 0.088541,
+            "source": "bench/showcase/disbursements/runs/kalari/muse-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/kalari/muse-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": [
+              "23 changed"
+            ],
+            "flagged": true,
+            "fixed": false
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-kalari-qwen27b-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "kalari",
+            "model": "Qwen3.8 27B",
+            "model_id": "qwen3.8-27b",
+            "label": "qwen27b-r1",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 71.907,
+            "cost_usd": 0.077535,
+            "source": "bench/showcase/disbursements/runs/kalari/qwen27b-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/kalari/qwen27b-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": [
+              "23 changed",
+              "23 changed"
+            ],
+            "flagged": true,
+            "fixed": false
           }
         }
       ]
@@ -13326,7 +16296,526 @@
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
         "tmp.XXSQOmhn",
-        "reference-paging-fix"
+        "reference-paging-fix",
+        "showcase-reference-deepseek-r1",
+        "showcase-reference-deepseek-r2",
+        "showcase-reference-deepseek-r3",
+        "showcase-reference-glm-r1",
+        "showcase-reference-glm-r2",
+        "showcase-reference-glm-r3",
+        "showcase-reference-mimo-r1",
+        "showcase-reference-muse-r1",
+        "showcase-reference-qwen27b-r1",
+        "showcase-kalari-glm-r1",
+        "showcase-kalari-glm-r2",
+        "showcase-kalari-glm-r3",
+        "showcase-kalari-muse-r1",
+        "showcase-kalari-qwen27b-r1"
+      ]
+    },
+    "session-showcase": {
+      "view": "session",
+      "sessionId": "showcase-disbursements",
+      "records": [
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-deepseek-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "DeepSeek V4.1 Flash",
+            "model_id": "deepseek-v4.1-flash-1017",
+            "label": "deepseek-r1",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 61,
+            "cost_usd": null,
+            "source": "bench/showcase/disbursements/runs/reference/deepseek-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/deepseek-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-deepseek-r2",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "DeepSeek V4.1 Flash",
+            "model_id": "deepseek-v4.1-flash-1017",
+            "label": "deepseek-r2",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 221,
+            "cost_usd": 0.107389,
+            "source": "bench/showcase/disbursements/runs/reference/deepseek-r2.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/deepseek-r2.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-deepseek-r3",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "DeepSeek V4.1 Flash",
+            "model_id": "deepseek-v4.1-flash-1017",
+            "label": "deepseek-r3",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 37,
+            "cost_usd": 0.056516,
+            "source": "bench/showcase/disbursements/runs/reference/deepseek-r3.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/deepseek-r3.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-glm-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r1",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 65,
+            "cost_usd": 0.02819,
+            "source": "bench/showcase/disbursements/runs/reference/glm-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/glm-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-glm-r2",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r2",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 47,
+            "cost_usd": 0.016175,
+            "source": "bench/showcase/disbursements/runs/reference/glm-r2.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/glm-r2.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-glm-r3",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r3",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 139,
+            "cost_usd": 0.035607,
+            "source": "bench/showcase/disbursements/runs/reference/glm-r3.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/glm-r3.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-mimo-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "MiMo V2.6 Flash",
+            "model_id": "mimo-v2.6-flash",
+            "label": "mimo-r1",
+            "verdict": "FAIL",
+            "records": 0,
+            "records_lost": 2341,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 10,
+            "cost_usd": 0.00457,
+            "source": "bench/showcase/disbursements/runs/reference/mimo-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/mimo-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-muse-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "Muse Glimmer 30B",
+            "model_id": "muse-glimmer-30b",
+            "label": "muse-r1",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 26,
+            "cost_usd": 0.082224,
+            "source": "bench/showcase/disbursements/runs/reference/muse-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/muse-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-reference-qwen27b-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "reference",
+            "model": "Qwen3.8 27B",
+            "model_id": "qwen3.8-27b",
+            "label": "qwen27b-r1",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 38,
+            "cost_usd": 0.064113,
+            "source": "bench/showcase/disbursements/runs/reference/qwen27b-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/reference/qwen27b-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": null,
+            "flagged": null,
+            "fixed": null
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-kalari-glm-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "kalari",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r1",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 36.251,
+            "cost_usd": 0.008561,
+            "source": "bench/showcase/disbursements/runs/kalari/glm-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/kalari/glm-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": [
+              "0 changed"
+            ],
+            "flagged": false,
+            "fixed": false
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-kalari-glm-r2",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "kalari",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r2",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 61.587,
+            "cost_usd": 0.019734,
+            "source": "bench/showcase/disbursements/runs/kalari/glm-r2.json",
+            "transcript": "bench/showcase/disbursements/runs/kalari/glm-r2.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": [
+              "23 changed",
+              "23 changed"
+            ],
+            "flagged": true,
+            "fixed": false
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-kalari-glm-r3",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "kalari",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r3",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 56.879,
+            "cost_usd": 0.014646,
+            "source": "bench/showcase/disbursements/runs/kalari/glm-r3.json",
+            "transcript": "bench/showcase/disbursements/runs/kalari/glm-r3.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": [
+              "23 changed",
+              "0 changed"
+            ],
+            "flagged": true,
+            "fixed": true
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-kalari-muse-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "kalari",
+            "model": "Muse Glimmer 30B",
+            "model_id": "muse-glimmer-30b",
+            "label": "muse-r1",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 35.756,
+            "cost_usd": 0.088541,
+            "source": "bench/showcase/disbursements/runs/kalari/muse-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/kalari/muse-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": [
+              "23 changed"
+            ],
+            "flagged": true,
+            "fixed": false
+          }
+        },
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-kalari-qwen27b-r1",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "kalari",
+            "model": "Qwen3.8 27B",
+            "model_id": "qwen3.8-27b",
+            "label": "qwen27b-r1",
+            "verdict": "FAIL",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 23,
+            "wall_time_s": 71.907,
+            "cost_usd": 0.077535,
+            "source": "bench/showcase/disbursements/runs/kalari/qwen27b-r1.json",
+            "transcript": "bench/showcase/disbursements/runs/kalari/qwen27b-r1.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": [
+              "23 changed",
+              "23 changed"
+            ],
+            "flagged": true,
+            "fixed": false
+          }
+        }
+      ],
+      "lessons": [],
+      "runs": [
+        "pilot-c1-payouts-r1",
+        "pilot-c1-payouts-r2",
+        "pilot-c1-payouts-r3",
+        "pilot-c1-payouts-r4",
+        "pilot-c1-payouts-r5",
+        "pilot-c1-settlements-r1",
+        "pilot-c1-settlements-r2",
+        "pilot-c1-settlements-r3",
+        "pilot-c1-settlements-r4",
+        "pilot-c1-settlements-r5",
+        "pilot-c2-payouts-r1",
+        "pilot-c2-payouts-r2",
+        "pilot-c2-payouts-r3",
+        "pilot-c2-payouts-r4",
+        "pilot-c2-payouts-r5",
+        "pilot-c2-settlements-r1",
+        "pilot-c2-settlements-r2",
+        "pilot-c2-settlements-r3",
+        "pilot-c2-settlements-r4",
+        "pilot-c2-settlements-r5",
+        "pilot-c3-payouts-r1",
+        "pilot-c3-payouts-r2",
+        "pilot-c3-payouts-r3",
+        "pilot-c3-payouts-r4",
+        "pilot-c3-payouts-r5",
+        "pilot-c3-settlements-r1",
+        "pilot-c3-settlements-r2",
+        "pilot-c3-settlements-r3",
+        "pilot-c3-settlements-r4",
+        "pilot-c3-settlements-r5",
+        "pilot-c6-payouts-r1",
+        "pilot-c6-payouts-r2",
+        "pilot-c6-payouts-r3",
+        "pilot-c6-payouts-r4",
+        "pilot-c6-payouts-r5",
+        "pilot-c6-settlements-r1",
+        "pilot-c6-settlements-r2",
+        "pilot-c6-settlements-r3",
+        "pilot-c6-settlements-r4",
+        "pilot-c6-settlements-r5",
+        "pilot-b-payouts-B1-r1",
+        "pilot-b-payouts-B1-r2",
+        "pilot-b-payouts-B1-r3",
+        "pilot-b-payouts-B1-r4",
+        "pilot-b-payouts-B1-r5",
+        "pilot-b-payouts-B2-r1",
+        "pilot-b-payouts-B2-r2",
+        "pilot-b-payouts-B2-r3",
+        "pilot-b-payouts-B2-r4",
+        "pilot-b-payouts-B2-r5",
+        "pilot-b-payouts-B4-r1",
+        "pilot-b-payouts-B4-r2",
+        "pilot-b-payouts-B4-r3",
+        "pilot-b-payouts-B4-r4",
+        "pilot-b-payouts-B4-r5",
+        "pilot-b-settlements-B1-r1",
+        "pilot-b-settlements-B1-r2",
+        "pilot-b-settlements-B1-r3",
+        "pilot-b-settlements-B1-r4",
+        "pilot-b-settlements-B1-r5",
+        "pilot-b-settlements-B2-r1",
+        "pilot-b-settlements-B2-r2",
+        "pilot-b-settlements-B2-r3",
+        "pilot-b-settlements-B2-r4",
+        "pilot-b-settlements-B2-r5",
+        "pilot-b-settlements-B3-r1",
+        "pilot-b-settlements-B3-r2",
+        "pilot-b-settlements-B3-r3",
+        "pilot-b-settlements-B3-r4",
+        "pilot-b-settlements-B3-r5",
+        "payouts-attempt-3",
+        "payouts-earlier-pass",
+        "payouts-attempt-1",
+        "payouts-attempt-2",
+        "tmp.XXdrLVOs",
+        "tmp.XXSQOmhn",
+        "reference-paging-fix",
+        "showcase-reference-deepseek-r1",
+        "showcase-reference-deepseek-r2",
+        "showcase-reference-deepseek-r3",
+        "showcase-reference-glm-r1",
+        "showcase-reference-glm-r2",
+        "showcase-reference-glm-r3",
+        "showcase-reference-mimo-r1",
+        "showcase-reference-muse-r1",
+        "showcase-reference-qwen27b-r1",
+        "showcase-kalari-glm-r1",
+        "showcase-kalari-glm-r2",
+        "showcase-kalari-glm-r3",
+        "showcase-kalari-muse-r1",
+        "showcase-kalari-qwen27b-r1"
       ]
     },
     "session-frozen": {
@@ -13774,7 +17263,151 @@
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
         "tmp.XXSQOmhn",
-        "reference-paging-fix"
+        "reference-paging-fix",
+        "showcase-reference-deepseek-r1",
+        "showcase-reference-deepseek-r2",
+        "showcase-reference-deepseek-r3",
+        "showcase-reference-glm-r1",
+        "showcase-reference-glm-r2",
+        "showcase-reference-glm-r3",
+        "showcase-reference-mimo-r1",
+        "showcase-reference-muse-r1",
+        "showcase-reference-qwen27b-r1",
+        "showcase-kalari-glm-r1",
+        "showcase-kalari-glm-r2",
+        "showcase-kalari-glm-r3",
+        "showcase-kalari-muse-r1",
+        "showcase-kalari-qwen27b-r1"
+      ]
+    },
+    "run-showcase": {
+      "view": "run",
+      "runId": "showcase-kalari-glm-r3",
+      "records": [
+        {
+          "kind": "showcase",
+          "session_id": "showcase-disbursements",
+          "run_id": "showcase-kalari-glm-r3",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.showcase.v1",
+            "arm": "kalari",
+            "model": "GLM 5.3 Flash",
+            "model_id": "glm-5.3-flash",
+            "label": "glm-r3",
+            "verdict": "PASS",
+            "records": 2341,
+            "records_lost": 0,
+            "records_duplicated": 0,
+            "records_changed": 0,
+            "wall_time_s": 56.879,
+            "cost_usd": 0.014646,
+            "source": "bench/showcase/disbursements/runs/kalari/glm-r3.json",
+            "transcript": "bench/showcase/disbursements/runs/kalari/glm-r3.transcript.jsonl",
+            "notes": "Manufactured disbursement scenario. Not part of the frozen comparison.",
+            "differential": [
+              "23 changed",
+              "0 changed"
+            ],
+            "flagged": true,
+            "fixed": true
+          }
+        }
+      ],
+      "runs": [
+        "pilot-c1-payouts-r1",
+        "pilot-c1-payouts-r2",
+        "pilot-c1-payouts-r3",
+        "pilot-c1-payouts-r4",
+        "pilot-c1-payouts-r5",
+        "pilot-c1-settlements-r1",
+        "pilot-c1-settlements-r2",
+        "pilot-c1-settlements-r3",
+        "pilot-c1-settlements-r4",
+        "pilot-c1-settlements-r5",
+        "pilot-c2-payouts-r1",
+        "pilot-c2-payouts-r2",
+        "pilot-c2-payouts-r3",
+        "pilot-c2-payouts-r4",
+        "pilot-c2-payouts-r5",
+        "pilot-c2-settlements-r1",
+        "pilot-c2-settlements-r2",
+        "pilot-c2-settlements-r3",
+        "pilot-c2-settlements-r4",
+        "pilot-c2-settlements-r5",
+        "pilot-c3-payouts-r1",
+        "pilot-c3-payouts-r2",
+        "pilot-c3-payouts-r3",
+        "pilot-c3-payouts-r4",
+        "pilot-c3-payouts-r5",
+        "pilot-c3-settlements-r1",
+        "pilot-c3-settlements-r2",
+        "pilot-c3-settlements-r3",
+        "pilot-c3-settlements-r4",
+        "pilot-c3-settlements-r5",
+        "pilot-c6-payouts-r1",
+        "pilot-c6-payouts-r2",
+        "pilot-c6-payouts-r3",
+        "pilot-c6-payouts-r4",
+        "pilot-c6-payouts-r5",
+        "pilot-c6-settlements-r1",
+        "pilot-c6-settlements-r2",
+        "pilot-c6-settlements-r3",
+        "pilot-c6-settlements-r4",
+        "pilot-c6-settlements-r5",
+        "pilot-b-payouts-B1-r1",
+        "pilot-b-payouts-B1-r2",
+        "pilot-b-payouts-B1-r3",
+        "pilot-b-payouts-B1-r4",
+        "pilot-b-payouts-B1-r5",
+        "pilot-b-payouts-B2-r1",
+        "pilot-b-payouts-B2-r2",
+        "pilot-b-payouts-B2-r3",
+        "pilot-b-payouts-B2-r4",
+        "pilot-b-payouts-B2-r5",
+        "pilot-b-payouts-B4-r1",
+        "pilot-b-payouts-B4-r2",
+        "pilot-b-payouts-B4-r3",
+        "pilot-b-payouts-B4-r4",
+        "pilot-b-payouts-B4-r5",
+        "pilot-b-settlements-B1-r1",
+        "pilot-b-settlements-B1-r2",
+        "pilot-b-settlements-B1-r3",
+        "pilot-b-settlements-B1-r4",
+        "pilot-b-settlements-B1-r5",
+        "pilot-b-settlements-B2-r1",
+        "pilot-b-settlements-B2-r2",
+        "pilot-b-settlements-B2-r3",
+        "pilot-b-settlements-B2-r4",
+        "pilot-b-settlements-B2-r5",
+        "pilot-b-settlements-B3-r1",
+        "pilot-b-settlements-B3-r2",
+        "pilot-b-settlements-B3-r3",
+        "pilot-b-settlements-B3-r4",
+        "pilot-b-settlements-B3-r5",
+        "payouts-attempt-3",
+        "payouts-earlier-pass",
+        "payouts-attempt-1",
+        "payouts-attempt-2",
+        "tmp.XXdrLVOs",
+        "tmp.XXSQOmhn",
+        "reference-paging-fix",
+        "showcase-reference-deepseek-r1",
+        "showcase-reference-deepseek-r2",
+        "showcase-reference-deepseek-r3",
+        "showcase-reference-glm-r1",
+        "showcase-reference-glm-r2",
+        "showcase-reference-glm-r3",
+        "showcase-reference-mimo-r1",
+        "showcase-reference-muse-r1",
+        "showcase-reference-qwen27b-r1",
+        "showcase-kalari-glm-r1",
+        "showcase-kalari-glm-r2",
+        "showcase-kalari-glm-r3",
+        "showcase-kalari-muse-r1",
+        "showcase-kalari-qwen27b-r1"
       ]
     },
     "run-frozen": {
@@ -14174,7 +17807,21 @@
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
         "tmp.XXSQOmhn",
-        "reference-paging-fix"
+        "reference-paging-fix",
+        "showcase-reference-deepseek-r1",
+        "showcase-reference-deepseek-r2",
+        "showcase-reference-deepseek-r3",
+        "showcase-reference-glm-r1",
+        "showcase-reference-glm-r2",
+        "showcase-reference-glm-r3",
+        "showcase-reference-mimo-r1",
+        "showcase-reference-muse-r1",
+        "showcase-reference-qwen27b-r1",
+        "showcase-kalari-glm-r1",
+        "showcase-kalari-glm-r2",
+        "showcase-kalari-glm-r3",
+        "showcase-kalari-muse-r1",
+        "showcase-kalari-qwen27b-r1"
       ]
     },
     "run-containment": {
@@ -14576,7 +18223,21 @@
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
         "tmp.XXSQOmhn",
-        "reference-paging-fix"
+        "reference-paging-fix",
+        "showcase-reference-deepseek-r1",
+        "showcase-reference-deepseek-r2",
+        "showcase-reference-deepseek-r3",
+        "showcase-reference-glm-r1",
+        "showcase-reference-glm-r2",
+        "showcase-reference-glm-r3",
+        "showcase-reference-mimo-r1",
+        "showcase-reference-muse-r1",
+        "showcase-reference-qwen27b-r1",
+        "showcase-kalari-glm-r1",
+        "showcase-kalari-glm-r2",
+        "showcase-kalari-glm-r3",
+        "showcase-kalari-muse-r1",
+        "showcase-kalari-qwen27b-r1"
       ]
     },
     "run-containment-earlier": {
@@ -14978,7 +18639,21 @@
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
         "tmp.XXSQOmhn",
-        "reference-paging-fix"
+        "reference-paging-fix",
+        "showcase-reference-deepseek-r1",
+        "showcase-reference-deepseek-r2",
+        "showcase-reference-deepseek-r3",
+        "showcase-reference-glm-r1",
+        "showcase-reference-glm-r2",
+        "showcase-reference-glm-r3",
+        "showcase-reference-mimo-r1",
+        "showcase-reference-muse-r1",
+        "showcase-reference-qwen27b-r1",
+        "showcase-kalari-glm-r1",
+        "showcase-kalari-glm-r2",
+        "showcase-kalari-glm-r3",
+        "showcase-kalari-muse-r1",
+        "showcase-kalari-qwen27b-r1"
       ]
     },
     "run-endpoint": {
@@ -15141,7 +18816,21 @@
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
         "tmp.XXSQOmhn",
-        "reference-paging-fix"
+        "reference-paging-fix",
+        "showcase-reference-deepseek-r1",
+        "showcase-reference-deepseek-r2",
+        "showcase-reference-deepseek-r3",
+        "showcase-reference-glm-r1",
+        "showcase-reference-glm-r2",
+        "showcase-reference-glm-r3",
+        "showcase-reference-mimo-r1",
+        "showcase-reference-muse-r1",
+        "showcase-reference-qwen27b-r1",
+        "showcase-kalari-glm-r1",
+        "showcase-kalari-glm-r2",
+        "showcase-kalari-glm-r3",
+        "showcase-kalari-muse-r1",
+        "showcase-kalari-qwen27b-r1"
       ]
     },
     "run-redaction": {

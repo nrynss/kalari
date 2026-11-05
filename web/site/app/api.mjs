@@ -75,14 +75,19 @@ const CONTAINMENT_SESSION = "containment-runs";
    records. A 404 means it is not published, which is not an error. */
 const REFERENCE_SESSION = "reference-paging";
 
+/* The showcase runs keep their own session too, apart from the benchmark
+   records. A 404 means they are not published, which is not an error. */
+const SHOWCASE_SESSION = "showcase-disbursements";
+
 export async function loadJudgesData() {
-  const [benchmark, runs, sessions, lessons, containment, reference] = await Promise.allSettled([
+  const [benchmark, runs, sessions, lessons, containment, reference, showcase] = await Promise.allSettled([
     getJson("api/benchmark"),
     getJson("api/runs"),
     getJson("api/sessions"),
     getJson("api/lessons"),
     getJson(`api/sessions/${encodeURIComponent(CONTAINMENT_SESSION)}`),
     getJson(`api/sessions/${encodeURIComponent(REFERENCE_SESSION)}`),
+    getJson(`api/sessions/${encodeURIComponent(SHOWCASE_SESSION)}`),
   ]);
   if (benchmark.status === "rejected") {
     throw benchmark.reason;
@@ -115,6 +120,10 @@ export async function loadJudgesData() {
   if (referenceError && !(referenceError instanceof ApiError && referenceError.status === 404)) {
     entries.push({ label: "The reference run", error: referenceError });
   }
+  const showcaseError = errorOf(showcase);
+  if (showcaseError && !(showcaseError instanceof ApiError && showcaseError.status === 404)) {
+    entries.push({ label: "The showcase runs", error: showcaseError });
+  }
   detailResults.forEach((result, index) => {
     if (result.status === "fulfilled") runDetails[otherRunIds[index]] = result.value;
     else entries.push({ label: "A run detail", error: result.reason });
@@ -126,6 +135,7 @@ export async function loadJudgesData() {
     lessons: valueOf(lessons),
     containment: valueOf(containment),
     reference: valueOf(reference),
+    showcase: valueOf(showcase),
     runDetails,
     warnings: warningsFrom(entries),
   };
