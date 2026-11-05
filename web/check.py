@@ -515,18 +515,37 @@ def assert_no_external_urls() -> None:
     say(f"no external URL and no runtime request outside the relative paths in {len(files)} files and snapshots")
 
 
-def evidence_ref() -> str:
-    text = (SITE / "app/views.mjs").read_text(encoding="utf-8")
-    match = EVIDENCE_REF_RE.search(text)
-    check(match is not None, "views.mjs has no pinned EVIDENCE_REF hash")
-    ref = match.group(1)
+def _commit_exists(ref: str) -> bool:
     result = subprocess.run(
         ["git", "cat-file", "-e", ref],
         cwd=REPO,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
-    check(result.returncode == 0, f"EVIDENCE_REF {ref} is not a commit in this repository")
+    return result.returncode == 0
+
+
+def _fetch_pinned_commit(ref: str) -> None:
+    # Shallow clones (like CI's default checkout) omit history. Fetch just the
+    # pinned commit instead of the whole repository. The commit must already
+    # be pushed; unpushed work cannot have resolvable public links.
+    result = subprocess.run(
+        ["git", "fetch", "--depth", "1", "origin", ref],
+        cwd=REPO,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    check(result.returncode == 0, f"EVIDENCE_REF {ref} is not reachable from origin; push the commit that sets it")
+
+
+def evidence_ref() -> str:
+    text = (SITE / "app/views.mjs").read_text(encoding="utf-8")
+    match = EVIDENCE_REF_RE.search(text)
+    check(match is not None, "views.mjs has no pinned EVIDENCE_REF hash")
+    ref = match.group(1)
+    if not _commit_exists(ref):
+        _fetch_pinned_commit(ref)
+    check(_commit_exists(ref), f"EVIDENCE_REF {ref} is not a commit in this repository")
     return ref
 
 
