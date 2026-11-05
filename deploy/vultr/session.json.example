@@ -1,0 +1,22 @@
+{
+  "session_id": "demo",
+  "repo_scope": "demo",
+  "workspace": "/var/lib/kalari/candidate",
+  "old_spec": "/etc/kalari/spec-v1.yaml",
+  "new_spec": "/etc/kalari/spec-v2.yaml",
+  "baseline": {
+    "workspace": "/var/lib/kalari/baseline",
+    "command": ["true"],
+    "caps": {
+      "timeout_ms": 1200000,
+      "output_cap_bytes": 1048576,
+      "memory_mib": 512
+    },
+    "allowlist": []
+  },
+  "check_workspace": "/var/lib/kalari/checks",
+  "evidence_workspace": "/var/lib/kalari/evidence",
+  "artifact": "demo.jsonl",
+  "aashaan": "/opt/kalari/bin/kalari-aashaan",
+  "tool_path": "/home/kalari/.local/bin:/usr/local/bin:/usr/bin:/bin"
+}

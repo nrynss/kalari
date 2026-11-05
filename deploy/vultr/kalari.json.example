@@ -1,0 +1,26 @@
+{
+  "models": {
+    "endpoint": "https://api.vultrinference.com/v1",
+    "model": "deepseek-v4.1-flash-1017",
+    "api_key_env": "VULTR_INFERENCE_API_KEY"
+  },
+  "decisions": {
+    "endpoint": "https://api.vultrinference.com/v1/systemone",
+    "model": "clef",
+    "api_key_env": "VULTR_INFERENCE_API_KEY"
+  },
+  "sandbox": {
+    "backend": "microsandbox",
+    "image": "python:3.13-slim",
+    "caps": {
+      "timeout_ms": 1200000,
+      "output_cap_bytes": 1048576,
+      "memory_mib": 512
+    },
+    "allowlist": []
+  },
+  "lambo": {
+    "command": ["/opt/kalari/bin/lambo", "serve"],
+    "config_path": "/etc/kalari/lambo.toml"
+  }
+}

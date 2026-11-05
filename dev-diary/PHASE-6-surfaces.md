@@ -54,13 +54,15 @@ requires:   [T6.2, T2.3b]
 fixture-ok: no
 size:       M · mid
 owns:       deploy/vultr/
-status:     claimed:t6-3
+status:     in-review
 ```
 The Vultr preset: `kalari serve` as a systemd unit (`UMask=0022`, its own user, the key from a credentials file only that user reads, never in the unit), Caddy for TLS in front of the HTTP API, Lambo's store on the VM, and the benchmark APIs (`bench/apis/deploy.sh`). **Opening ports 80 and 443 in the Vultr firewall is the user's call**; SSH stays Tailscale-only. A domain name for the demo URL is the user's choice.
 
 **Infrastructure: reuse the current VM only.** No resize and no second instance. Stop before any change that would increase its cost.
 
 **Done when:** the demo URL serves the web app over HTTPS from the VM; a restart brings everything back; `deploy/vultr/README.md` takes a fresh VX1 to a running deployment.
+
+**Notes (in-review):** `deploy/vultr/` holds the preset: `README.md` (fresh-VX1 path), `install.sh` (builds kalari from source on the VM, installs Caddy from the official apt repo, Lambo 0.9.0 after a sha256 check against the published release hash, msb plus the sandbox image for the kalari user, the units, the site, and the key over SSH stdin), `Caddyfile` (hostname only, static root plus `/api` reverse proxy), `kalari.service` (kalari serve as user kalari, UMask=0022, key from a 0600 EnvironmentFile, stdin held open since serve speaks MCP over stdio), `kalari-api.service`, `kalari-api.py` (loopback-only evidence API mirroring Kalari/Http.lean routes; verified response-identical to the fixture server on every route and status), and `*.example` configs (endpoints and `api_key_env` names only, never values). The demo serves HTTPS with an ACME certificate; `/api/benchmark` is empty so the judges page shows the not-yet-published panel, the expected state until T5.6. A restart of all three units brings everything back; firewall group and host filter hold inbound 80/443 only, SSH unchanged. Four install runs converged on this state: they caught a mistyped Lambo hash (retyped, then verified against the release asset), the stock Caddy config surviving `enable --now` (restart after installing the Caddyfile, plus a content check, not just status), an `admin off` block that broke every later reload (removed; admin stays on loopback), a `:80`-only local check behind the new HTTP-to-HTTPS redirect (checks now go through TLS with SNI to loopback), and an apostrophe in an in-quote comment that broke the script parse. Residual, not owned here: nothing starts `Kalari.Http.serve` from `kalari serve` yet (T6.1 note), so `/api` is the shim until that wiring lands; the first serve start appends one `lesson-policy` provenance record, which the judges page ignores while `/api/benchmark` is empty.
 
 ---
 
