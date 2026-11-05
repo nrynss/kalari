@@ -147,13 +147,15 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P2 | 7 / 7 | T2.1 through T2.6 done. The Microsandbox-only exit line stays open because the Docker fallback exists |
 | P3 | 7 / 7 | T3.1 through T3.4 done, including T3.1a, T3.2b and T3.3b |
 | P4 | 13 / 13 | All done. T4.6b adds the trusted retry trace and lesson. T4.7c closed the production memory path with the observer refused and the harness-only rehearsal |
-| P5 | 8 / 9 | T5.1 through T5.5 done
+| P5 | 9 / 9 | All done. T5.6 published the traced comparison: zero learned-memory benefit observed, cost/attempts/containment lead |
 | P6 | 3 / 3 | All done. T6.1 and T6.2 built the API and the judges page. T6.3 put the demo live over HTTPS |
 | P7 | 0 / 5 | Waits for P5, P6 |
 
 ---
 
 ## Handoff Log
+
+- **T5.6 closed.** `bench/RESULTS.md` publishes the frozen comparison with every number traced to its row files: the zero-lesson finding leads, cost/attempts/containment lead the table, both T5.4 qualifications are preserved, token and cost bases are explained, sandbox attempts stay apart from HTTP retries, and reference provenance plus five-repeat limits are stated. The traceability script recomputes all 12 group aggregates from the 60 rows. T5.6a containment demonstration is next, then P7.
 
 - **T5.4 closed.** Kalari arm complete: 20 frozen-pair rows under `bench/runs/kalari/` (conditions 4+5, all PASS, c4 10/10 right-first-time, c5 6/10), $0.38 of the $8 cap, FROZEN hashes verified before first and after last, gate passes, old pilot untouched. Zero lessons published in production (observer refused by design), so condition 5 ran with empty recall and the comparison rests on cost, attempts, and containment. Payouts agent retry windows read unknown from a saturated journal counter; per spec they stay null, never zero. T5.6 builds RESULTS from these rows plus T5.5's reference rows.
 
