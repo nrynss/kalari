@@ -2240,12 +2240,19 @@ td.num {
 
 .config-snippet {
   margin-top: 0.5rem;
-  background: var(--dark);
-  color: var(--dark-ink);
+  background: var(--paper-2);
+  color: var(--ink);
+  border: 1px solid var(--rule);
   border-radius: 2px;
   padding: 0.8rem 1rem;
   overflow-x: auto;
   font-size: 0.85rem;
+}
+
+.config-snippet code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
 }
 
 /* Model names and evidence links ---------------------------------------- */

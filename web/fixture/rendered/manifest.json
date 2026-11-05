@@ -85,7 +85,7 @@
     }
   },
   "sha256": {
-    "app.css": "67fc21f38c27b07cb65e41332971cca872ca13d3d69d3ec763b7666b24ce4783",
+    "app.css": "7240beaad048ad24f798734c8fe7a1cf2cf05dce0f83e0e455ae89c7e421fc08",
     "app/api.mjs": "182cc3c997d46f2fa157f2d935675b92fa6f9f49d61b612dde16cf43f1c9247e",
     "app/boot.mjs": "52ed3a653d7826d3d9080c9d50aedee1570a3bce7fba91bd69bb627d9253ce81",
     "app/format.mjs": "d6b60b8861907518dd39cae928b9e13250f61d311f111845d8524b6ca8710975",
