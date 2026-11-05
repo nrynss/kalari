@@ -1,0 +1,11 @@
+stateDiagram-v2
+  [*] --> Running
+  Running --> Exited : process ends
+  Running --> KilledTimeout : wall clock cap fires
+  Running --> KilledCap : output byte cap fires
+  Exited --> Passed : exit 0 and checks pass
+  Exited --> Failed : exit nonzero or checks fail
+  KilledTimeout --> Failed : passed is false
+  KilledCap --> Failed : passed is false
+  Passed --> [*]
+  Failed --> [*]

@@ -1,0 +1,47 @@
+---
+import figures from '../data/figures.json';
+
+const groups = figures.frozen.groups;
+---
+
+<div class="kalari-table-wrap">
+<table>
+  <caption>The frozen comparison: every condition and upgrade, five repeats each.</caption>
+  <thead>
+    <tr>
+      <th scope="col">Cond</th>
+      <th scope="col">Upgrade</th>
+      <th scope="col">Cost USD</th>
+      <th scope="col">Runs</th>
+      <th scope="col">Wall s</th>
+      <th scope="col">Stuck s</th>
+      <th scope="col">PASS</th>
+      <th scope="col">RFT</th>
+      <th scope="col">Tok in</th>
+      <th scope="col">Tok out</th>
+      <th scope="col">Rows</th>
+    </tr>
+  </thead>
+  <tbody>
+    {groups.map((g) => (
+      <tr>
+        <td>{g.condition}</td>
+        <td>{g.upgrade}</td>
+        <td>{g.cost.toFixed(6)}</td>
+        <td>{g.runs}</td>
+        <td>{g.wall.toFixed(1)}</td>
+        <td>{g.stuck.toFixed(1)}</td>
+        <td>{g.pass}</td>
+        <td>{g.rft}</td>
+        <td>{g.tin}</td>
+        <td>{g.tout}</td>
+        <td>
+          {g.repeats.map((r, i) => (
+            <><a href={r.fileUrl}>r{i + 1}</a>{i < g.repeats.length - 1 ? ' ' : ''}</>
+          ))}
+        </td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+</div>

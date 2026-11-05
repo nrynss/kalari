@@ -1,0 +1,83 @@
+---
+// Canonical design SVG. Do not redraw by hand.
+---
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 280" role="img" aria-label="Kalari three-plane security and execution architecture">
+  <defs>
+    <marker id="arch-arrow-gold" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#d99b38" />
+    </marker>
+    <marker id="arch-arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#1f5a46" />
+    </marker>
+  </defs>
+
+  <!-- Plane 1: Trusted Host (Lean 4) -->
+  <g transform="translate(10, 12)">
+    <rect x="4" y="4" width="290" height="252" rx="6" fill="#090b0c" />
+    <rect x="0" y="0" width="290" height="252" rx="6" fill="#f5f1e8" stroke="#171a1c" stroke-width="2" />
+    <rect x="12" y="12" width="168" height="20" rx="3" fill="#1f5a46" />
+    <text x="96" y="26" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" font-weight="700" fill="#f5f1e8">TRUSTED HOST · LEAN 4.35</text>
+
+    <rect x="14" y="44" width="262" height="58" rx="4" fill="#ece6da" stroke="#171a1c" stroke-width="1.5" />
+    <text x="24" y="63" font-family="ui-serif, Georgia, serif" font-size="13.5" font-weight="700" fill="#171a1c">kalari serve (MCP + HTTP)</text>
+    <text x="24" y="80" font-family="ui-monospace, monospace" font-size="10.5" fill="#64615b">5 MCP tools over stdio to OpenCode</text>
+    <text x="24" y="94" font-family="ui-monospace, monospace" font-size="10" fill="#1f5a46">Read-only evidence API on loopback :18001</text>
+
+    <rect x="14" y="112" width="262" height="62" rx="4" fill="#ece6da" stroke="#1f5a46" stroke-width="2" />
+    <text x="24" y="131" font-family="ui-serif, Georgia, serif" font-size="13.5" font-weight="700" fill="#171a1c">Kalari.Gate.decide (Proved)</text>
+    <text x="24" y="148" font-family="ui-monospace, monospace" font-size="10" fill="#64615b">1. Workspace path · 2. Allowlist subset</text>
+    <text x="24" y="163" font-family="ui-monospace, monospace" font-size="10" fill="#64615b">3. Caps bounded · 4. Secret/key-shape free</text>
+
+    <rect x="14" y="184" width="262" height="54" rx="4" fill="#ece6da" stroke="#171a1c" stroke-width="1.5" />
+    <text x="24" y="203" font-family="ui-serif, Georgia, serif" font-size="13.5" font-weight="700" fill="#171a1c">Kalari.Evidence (JSONL Store)</text>
+    <text x="24" y="220" font-family="ui-monospace, monospace" font-size="10" fill="#64615b">Sessions, runs, checks, lessons, benchmarks</text>
+  </g>
+
+  <!-- Plane 2: Untrusted MicroVM Boundary -->
+  <g transform="translate(335, 12)">
+    <rect x="4" y="4" width="275" height="252" rx="6" fill="#090b0c" />
+    <rect x="0" y="0" width="275" height="252" rx="6" fill="#121514" stroke="#a63a2b" stroke-width="2.5" />
+    <rect x="12" y="12" width="210" height="20" rx="3" fill="#a63a2b" />
+    <text x="117" y="26" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" font-weight="700" fill="#f5f1e8">UNTRUSTED GUEST · MICROSANDBOX</text>
+
+    <rect x="14" y="44" width="247" height="68" rx="4" fill="#1b201e" stroke="#d99b38" stroke-width="1.5" />
+    <text x="24" y="64" font-family="ui-serif, Georgia, serif" font-size="13.5" font-weight="700" fill="#f5f1e8">kalari-aashaan (3.3 MB)</text>
+    <text x="24" y="81" font-family="ui-monospace, monospace" font-size="10" fill="#b9b3a8">Imports Std only · setsid process group</text>
+    <text x="24" y="96" font-family="ui-monospace, monospace" font-size="10" fill="#d99b38">Wall-clock cap + output byte cap + OOM</text>
+
+    <rect x="14" y="124" width="247" height="60" rx="4" fill="#1b201e" stroke="#3a4045" stroke-width="1.5" />
+    <text x="24" y="143" font-family="ui-serif, Georgia, serif" font-size="13.5" font-weight="700" fill="#f5f1e8">Untrusted Consumer Job</text>
+    <text x="24" y="160" font-family="ui-monospace, monospace" font-size="10" fill="#b9b3a8">Empty env · explicit PATH · python:3.13-slim</text>
+    <text x="24" y="175" font-family="ui-monospace, monospace" font-size="10" fill="#e06c5a">No API keys · No host filesystem</text>
+
+    <rect x="14" y="196" width="247" height="42" rx="4" fill="#1b201e" stroke="#1f5a46" stroke-width="1.5" />
+    <text x="24" y="214" font-family="ui-monospace, monospace" font-size="10" font-weight="700" fill="#2ca57d">Network: --no-net</text>
+    <text x="24" y="229" font-family="ui-monospace, monospace" font-size="9.5" fill="#b9b3a8">Only allow@&lt;API_IP&gt;/32:tcp:18080..18091</text>
+  </g>
+
+  <!-- Plane 3: External Services & Surfaces -->
+  <g transform="translate(645, 12)">
+    <rect x="4" y="4" width="225" height="252" rx="6" fill="#090b0c" />
+    <rect x="0" y="0" width="225" height="252" rx="6" fill="#f5f1e8" stroke="#171a1c" stroke-width="2" />
+    <rect x="12" y="12" width="154" height="20" rx="3" fill="#ece6da" stroke="#171a1c" stroke-width="1" />
+    <text x="89" y="26" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" font-weight="700" fill="#171a1c">SURFACES &amp; SERVICES</text>
+
+    <rect x="14" y="44" width="197" height="62" rx="4" fill="#ece6da" stroke="#d99b38" stroke-width="1.5" />
+    <text x="24" y="63" font-family="ui-serif, Georgia, serif" font-size="13" font-weight="700" fill="#171a1c">Caddy TLS · kalai.nryn.dev</text>
+    <text x="24" y="80" font-family="ui-monospace, monospace" font-size="10" fill="#64615b">/ -&gt; Chaaya Judge Console</text>
+    <text x="24" y="95" font-family="ui-monospace, monospace" font-size="10" fill="#a63a2b">/docs/ -&gt; Starlight + GH Pages</text>
+
+    <rect x="14" y="116" width="197" height="58" rx="4" fill="#ece6da" stroke="#171a1c" stroke-width="1.5" />
+    <text x="24" y="135" font-family="ui-serif, Georgia, serif" font-size="13" font-weight="700" fill="#171a1c">Lambo 0.9.0 (MCP Child)</text>
+    <text x="24" y="152" font-family="ui-monospace, monospace" font-size="10" fill="#64615b">Lesson graph + Solo promotion</text>
+    <text x="24" y="166" font-family="ui-monospace, monospace" font-size="10" fill="#1f5a46">Contradiction &amp; receipt checks</text>
+
+    <rect x="14" y="184" width="197" height="54" rx="4" fill="#ece6da" stroke="#171a1c" stroke-width="1.5" />
+    <text x="24" y="203" font-family="ui-serif, Georgia, serif" font-size="13" font-weight="700" fill="#171a1c">Vultr Inference + Clef</text>
+    <text x="24" y="220" font-family="ui-monospace, monospace" font-size="10" fill="#64615b">Key on host curl stdin only</text>
+  </g>
+
+  <!-- Connectors -->
+  <line x1="302" y1="142" x2="333" y2="142" stroke="#d99b38" stroke-width="2.5" marker-end="url(#arch-arrow-gold)" />
+  <line x1="612" y1="80" x2="643" y2="80" stroke="#1f5a46" stroke-width="2.5" marker-end="url(#arch-arrow-green)" />
+</svg>

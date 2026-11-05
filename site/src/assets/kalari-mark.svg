@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" role="img" aria-label="Kalari mark: Kuzhikalari stepped earthen pit, coiled gold urumi loop, and Aashaan staff strike">
+  <!-- Hard Offset Shadow -->
+  <rect x="18" y="18" width="96" height="96" rx="14" fill="#090b0c" />
+  <!-- Outer Laterite Earth Wall (Kuzhikalari Pit Perimeter) -->
+  <rect x="14" y="14" width="96" height="96" rx="14" fill="#a63a2b" stroke="#171a1c" stroke-width="5" />
+  <!-- Second Recessed Step (Ola Paper / Arena Sand) -->
+  <rect x="26" y="26" width="72" height="72" rx="9" fill="#ece6da" stroke="#171a1c" stroke-width="4" />
+  <!-- Inner Sunken Pit Floor (Dark Obsidian) -->
+  <rect x="36" y="36" width="52" height="52" rx="6" fill="#15191c" stroke="#171a1c" stroke-width="3.5" />
+  <!-- 4 Corner Theorem Studs = 4 Proved Gate Theorems in Kalari/Gate.lean -->
+  <circle cx="21" cy="21" r="3.5" fill="#f5f1e8" stroke="#171a1c" stroke-width="1.5" />
+  <circle cx="103" cy="21" r="3.5" fill="#f5f1e8" stroke="#171a1c" stroke-width="1.5" />
+  <circle cx="21" cy="103" r="3.5" fill="#f5f1e8" stroke="#171a1c" stroke-width="1.5" />
+  <circle cx="103" cy="103" r="3.5" fill="#f5f1e8" stroke="#171a1c" stroke-width="1.5" />
+  <!-- Coiling Gold Urumi (Runaway Cursor Loop Contained Inside Pit) -->
+  <path
+    d="M 46 68 C 42 52, 58 42, 72 48 C 84 53, 82 72, 66 76 C 54 79, 48 68, 56 58"
+    stroke="#d99b38"
+    stroke-width="6"
+    stroke-linecap="round"
+  />
+  <!-- Aashaan's Containment Staff Strike (Diagonal Lock) -->
+  <line x1="22" y1="86" x2="102" y2="38" stroke="#171a1c" stroke-width="9" stroke-linecap="round" />
+  <line x1="22" y1="86" x2="102" y2="38" stroke="#f5f1e8" stroke-width="4.5" stroke-linecap="round" />
+  <!-- Center Impact Node -->
+  <circle cx="62" cy="62" r="6.5" fill="#a63a2b" stroke="#f5f1e8" stroke-width="2.5" />
+</svg>

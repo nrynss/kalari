@@ -1,0 +1,210 @@
+/* --------------------------------------------------------------------------
+   SECTION B — Starlight Docs (`site/src/styles/kalari.css`)
+   -------------------------------------------------------------------------- */
+:root,
+:root[data-theme='light'] {
+  --kalari-paper: #f5f1e8;
+  --kalari-paper-deep: #ece6da;
+  --kalari-paper-sunken: #e4ddd0;
+  --kalari-ink: #171a1c;
+  --kalari-muted: #64615b;
+  --kalari-rule: #d6d0c4;
+  --kalari-accent: #a63a2b;
+  --kalari-accent-dark: #882c20;
+  --kalari-brass: #d99b38;
+  --kalari-stamp: #a63a2b;
+  --kalari-pass: #1f5a46;
+  --kalari-dark: #121514;
+  --kalari-dark-raised: #1b201e;
+  --kalari-shadow: #090b0c;
+
+  --sl-font: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --sl-font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --kalari-font-display: 'Fraunces', ui-serif, Georgia, Cambria, serif;
+
+  --sl-color-bg: var(--kalari-paper);
+  --sl-color-bg-nav: var(--kalari-paper-deep);
+  --sl-color-bg-sidebar: var(--kalari-paper-deep);
+  --sl-color-bg-inline-code: var(--kalari-paper-deep);
+  --sl-color-hairline: var(--kalari-rule);
+  --sl-color-hairline-light: var(--kalari-rule);
+  --sl-color-hairline-shade: var(--kalari-ink);
+
+  --sl-color-white: var(--kalari-ink);
+  --sl-color-gray-1: #24292e;
+  --sl-color-gray-2: #3f4347;
+  --sl-color-gray-3: var(--kalari-muted);
+  --sl-color-gray-4: #8b867c;
+  --sl-color-gray-5: var(--kalari-rule);
+  --sl-color-gray-6: var(--kalari-paper-deep);
+  --sl-color-black: var(--kalari-paper);
+
+  --sl-color-accent-low: #f8dfdb;
+  --sl-color-accent: var(--kalari-accent);
+  --sl-color-accent-high: #61180e;
+  --sl-color-text: var(--kalari-ink);
+  --sl-color-text-accent: var(--kalari-accent-dark);
+}
+
+:root[data-theme='dark'] {
+  --kalari-paper: #121514;
+  --kalari-paper-deep: #1b201e;
+  --kalari-paper-sunken: #0c0f0e;
+  --kalari-ink: #f5f1e8;
+  --kalari-muted: #b9b3a8;
+  --kalari-rule: #3a4045;
+  --kalari-accent: #e06c5a;
+  --kalari-accent-dark: #a63a2b;
+  --kalari-brass: #d99b38;
+  --kalari-stamp: #e06c5a;
+  --kalari-pass: #2ca57d;
+  --kalari-shadow: #050706;
+
+  --sl-color-bg: var(--kalari-paper);
+  --sl-color-bg-nav: var(--kalari-paper-deep);
+  --sl-color-bg-sidebar: var(--kalari-paper-deep);
+  --sl-color-bg-inline-code: var(--kalari-paper-deep);
+  --sl-color-hairline: var(--kalari-rule);
+  --sl-color-hairline-light: var(--kalari-rule);
+  --sl-color-hairline-shade: var(--kalari-rule);
+
+  --sl-color-white: var(--kalari-ink);
+  --sl-color-gray-1: #ece6da;
+  --sl-color-gray-2: #cfc8ba;
+  --sl-color-gray-3: var(--kalari-muted);
+  --sl-color-gray-4: #757c83;
+  --sl-color-gray-5: var(--kalari-rule);
+  --sl-color-gray-6: var(--kalari-paper-deep);
+  --sl-color-black: #0c0f0e;
+
+  --sl-color-accent-low: #361713;
+  --sl-color-accent: var(--kalari-accent);
+  --sl-color-accent-high: #fedcd7;
+  --sl-color-text: var(--kalari-ink);
+  --sl-color-text-accent: var(--kalari-brass);
+}
+
+.sl-markdown-content h1,
+.sl-markdown-content h2,
+.sl-markdown-content h3,
+.hero h1 {
+  font-family: var(--kalari-font-display);
+  letter-spacing: -0.02em;
+}
+
+header.header {
+  border-bottom: 2px solid var(--kalari-ink);
+}
+
+.card,
+.sl-link-card {
+  background: var(--kalari-paper-deep);
+  border: 2px solid var(--kalari-ink);
+  border-radius: 6px;
+  box-shadow: 4px 4px 0 var(--kalari-shadow);
+}
+
+.sl-link-button.primary {
+  background: var(--kalari-accent);
+  color: #f5f1e8;
+  border: 2px solid var(--kalari-ink);
+  border-radius: 4px;
+  box-shadow: 3px 3px 0 var(--kalari-shadow);
+  font-family: var(--sl-font-mono);
+  font-weight: 700;
+}
+
+.sl-link-button.secondary {
+  background: var(--kalari-paper-deep);
+  color: var(--kalari-ink);
+  border: 2px solid var(--kalari-ink);
+  border-radius: 4px;
+  box-shadow: 3px 3px 0 var(--kalari-shadow);
+  font-family: var(--sl-font-mono);
+}
+
+.kalari-diagram {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: var(--kalari-paper-deep);
+  border: 2px solid var(--kalari-ink);
+  border-radius: 6px;
+  box-shadow: 4px 4px 0 var(--kalari-shadow);
+}
+
+.kalari-diagram svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.kalari-badge {
+  display: inline-block;
+  font-family: var(--sl-font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  border: 1.5px solid currentColor;
+}
+
+.kalari-badge.proved,
+.kalari-badge.pass {
+  color: var(--kalari-pass);
+}
+
+.kalari-badge.cap,
+.kalari-badge.fail {
+  color: var(--kalari-stamp);
+}
+
+.kalari-badge.gold {
+  color: var(--kalari-brass);
+}
+
+/* Docs-only rules. Palette tokens above stay canonical. */
+
+.kalari-diagram .diagram-dark {
+  display: none;
+}
+
+:root[data-theme='dark'] .kalari-diagram .diagram-dark {
+  display: block;
+}
+
+:root[data-theme='dark'] .kalari-diagram .diagram-light {
+  display: none;
+}
+
+.kalari-diagram caption,
+.kalari-diagram figcaption {
+  font-size: 0.85rem;
+  color: var(--kalari-muted);
+}
+
+.kalari-figure-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  margin: 1rem 0;
+}
+
+.kalari-stat {
+  background: var(--kalari-paper-deep);
+  border: 2px solid var(--kalari-ink);
+  border-radius: 6px;
+  box-shadow: 4px 4px 0 var(--kalari-shadow);
+  padding: 0.75rem 1rem;
+}
+
+.kalari-stat strong {
+  display: block;
+  font-family: var(--sl-font-mono);
+  font-size: 1.25rem;
+}
+
+.kalari-table-wrap {
+  overflow-x: auto;
+}

@@ -1,0 +1,41 @@
+---
+title: Vultr
+description: What Vultr runs for Kalari, service by service.
+---
+
+import figures from '../../data/figures.json';
+import Diagram from '../../components/Diagram.astro';
+
+export const blob = `${figures.repo}/blob/${figures.commit}`;
+
+Kalari is generic. Vultr is the deployment we demo, not a dependency. The Lean code knows an OpenAI-compatible endpoint and a sandbox backend. Vultr fills those slots in production. The rule comes from [product.md]({blob}/product.md). The line holds: runs on Vultr, and anywhere else you point it.
+
+## What we run on
+
+One VX1 virtual machine holds the whole demo. The plan is `vx1-g-2c-8g-120s` with 2 vCPU, 8 GB of RAM, and Ubuntu 24.04. The choice is recorded in [dev-diary/research/vultr-vm.md]({blob}/dev-diary/research/vultr-vm.md). That host runs `kalari serve`, Lambo as a child process, the read-only evidence API, Caddy with automatic HTTPS, and the Microsandbox microVM fleet. The setup order lives in [deploy/vultr/README.md]({blob}/deploy/vultr/README.md). The installer lives in [deploy/vultr/install.sh]({blob}/deploy/vultr/install.sh).
+
+Vultr Serverless Inference answers every model call. No team member manages a GPU anywhere. Three jobs use three models:
+
+- DeepSeek V4.1 Flash drives the coding agent in both arms of the comparison.
+- Clef answers three fixed questions at the System One endpoint. Its answers stay opinion, never verdict.
+- Qwen3 embeddings back Lambo lesson search at 2560 dimensions.
+
+The model map lives in [docs/architecture.md]({blob}/docs/architecture.md). The endpoint shapes live in [Kalari/Config.lean]({blob}/Kalari/Config.lean). Keys stay in environment names in config, never in values.
+
+## How it helps
+
+One host holds the agent, the sandbox fleet, and the evidence. A run never leaves the building. Serverless inference means no model servers to feed and no weights to host. Per-task microVMs with their own kernels make containment a platform feature rather than a precaution. One bill covers the host and the inference calls. One firewall group opens only ports 80 and 443. One Tailscale tailnet carries SSH, and the firewall group holds no SSH rule at all.
+
+## Each service and its job
+
+- Cloud Compute (the VX1 VM) hosts the service, the memory, the evidence, the TLS front, and every guest.
+- Serverless Inference serves the agent model, the Clef decisions, and the Lambo embeddings.
+- The firewall group exposes the demo and nothing else. SSH stays off it by operator choice.
+
+The service list matches the README: Lean 4 for the executables, Vimanam for change facts, Lambo for lessons, Microsandbox for microVMs, all running on the VM above with inference beside it.
+
+<Diagram
+  name="deployment"
+  caption="The Vultr deployment: one VM, three units, API microVMs beside them."
+  alt="Internet reaches Caddy on ports 80 and 443. Caddy serves the static root with docs and proxies the API. kalari serve runs Lambo and the benchmark microVMs. SSH arrives over Tailscale only."
+/>

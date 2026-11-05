@@ -1,0 +1,72 @@
+---
+title: Judges walkthrough
+description: Every result in demo order, each figure linked to a live run and a repo file.
+---
+
+import figures from '../../data/figures.json';
+import HeadlineStats from '../../components/HeadlineStats.astro';
+import FrozenTable from '../../components/FrozenTable.astro';
+import ShowcaseTable from '../../components/ShowcaseTable.astro';
+import Diagram from '../../components/Diagram.astro';
+
+export const demo = figures.demo;
+export const repo = figures.repo;
+
+This page walks every result in the order of the demo video. Each figure links to its run on the [live console](https://kalari.nryn.dev/) and to its file on GitHub, pinned to commit `{figures.commit.slice(0, 12)}`. A build-time step recomputes every number from the committed evidence. The build fails when a figure disagrees with `bench/RESULTS.md`.
+
+Both arms run the same OpenCode 2 with the same model, DeepSeek V4.1 Flash on Vultr Serverless Inference. The only difference is whether Kalari is plugged in.
+
+## The problem
+
+The reference run motivates the whole project. A v1 consumer exits 0 with `imported 100 items`. The hidden grader counts 2,431 records and finds 2,331 missing. The process said success and lost the data. The setup is documented in [bench/reference-paging/README.md](https://github.com/nrynss/kalari/blob/main/bench/reference-paging/README.md). It is a stack check, not a comparison.
+
+## The frozen comparison
+
+Sixty sessions ran the frozen pair. Kalari ran 20. The reference ran 40. The hidden grader passed every session in both arms.
+
+<HeadlineStats />
+
+Cost per session reads about 0.019 USD against 0.082 USD. That is 4.2 times cheaper. Wall time reads about 26 seconds against 84 seconds. That is 3.3 times faster. Time stuck reads 0 seconds against 799 seconds. Sandbox runs read 58 against 85.
+
+Kalari runs more sandbox executions per session because it also runs v1 for the differential. Token columns are not compared across arms. Kalari tokens count step totals without cache reads. Reference tokens count the account usage delta. Cost is the fair column. Both arms use the same price rule.
+
+<FrozenTable />
+
+PASS means the hidden grader passed the final file. RFT means the first consumer run against v2 already passed. RFT is about the session path, not the final file. Two condition 5 payouts sessions stopped early on repeated tool failure, yet their final files still graded PASS. The table states counts, never shares.
+
+## The zero-lesson finding
+
+No lesson was published in the frozen runs. Production refused the observer configuration. Every Kalari row records zero published lessons. Condition 5 recall was empty in every repeat. Memory showed no benefit there. Condition 5 matches condition 4 in memory terms. Read cost, attempts, containment, and correctness as observed under those conditions.
+
+## Containment
+
+Two runs stand outside the comparison. They are ordinary published runs with the same caps and the same allowlist shape as a Kalari consumer run. No agent wrote either consumer. Read the full scene at [Containment](./containment/).
+
+- Run 1: the reference cursor loop crashed on the API 429 after 437 ms. The cap never came into play. Verdict `exited` with exit code 1.
+- Run 2: the paced retry loop fetched 68 pages, then the aashaan killed it at 5,009 ms against the 5,000 ms cap. Verdict `killed_timeout`.
+- The boundary: one allowed port answered, four unnamed targets refused. Cleanup removed every sandbox and left no child process.
+
+## Across models
+
+The showcase is a manufactured scenario, not a frozen pair. It demos the differential check on models that can also run self-hosted. The agent docs are true sentence by sentence. The trap is a gap: they never say which delivery of a repeated record is current.
+
+<ShowcaseTable />
+
+Without Kalari, four sessions ship silent corruption. The agent deduplicates keeping the first delivery, the API self-check passes on ids only, and the session ends in success with 23 wrong amounts. With Kalari, the enforced differential reports 23 changed in every affected session. One of four then fixes the consumer and reaches 0 changed before the session ends. The other three ship the broken file anyway, but the failure is surfaced and recorded. On DeepSeek the arms do not diverge: the strong model compares against v1 unasked. MiMo could not drive the harness at all, a loud failure, not a silent one. Costs and walls come from the committed files. [QUIRKS.md](https://github.com/nrynss/kalari/blob/main/bench/showcase/disbursements/QUIRKS.md) maps each behaviour to server code.
+
+## What this does not show
+
+The table shows cost, attempts, containment, and correctness under zero-lesson conditions. It does not show the value of learned memory. No run here tested that value. Five repeats per condition is a small sample. Treat every count as raw. Do not generalize beyond this pair. Condition 1 and condition 6 match condition 5 on verdicts and beat it on right-first-time. The limits use the same tone as the results.
+
+## Where to look next
+
+- The live judges page and the run pages on the [demo host](https://kalari.nryn.dev/).
+- The [Architecture](./architecture/) page for the gate, the tools, and the run pipeline.
+- The [Containment](./containment/) page for the timeout scene, the boundary, and the cleanup.
+- The demo video. The recording is not ready yet. Its link lands here when it is done.
+
+<Diagram
+  name="benchmark-design"
+  caption="The benchmark design: six conditions, one frozen pair, one hidden grader."
+  alt="Six condition boxes feed one frozen pair box, which feeds one hidden grader box. Conditions 4 and 5 use Kalari. Conditions 1, 2, 3, and 6 use the reference setup."
+/>

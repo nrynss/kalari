@@ -1,0 +1,125 @@
+---
+title: Architecture
+description: The full picture in five minutes, every claim linked to its source file.
+---
+
+import figures from '../../data/figures.json';
+import ArchitectureSvg from '../../components/ArchitectureSvg.astro';
+import ContainmentLoopSvg from '../../components/ContainmentLoopSvg.astro';
+import Diagram from '../../components/Diagram.astro';
+
+export const blob = `${figures.repo}/blob/${figures.commit}`;
+
+Every statement below names its source. Links point at the pinned commit `{figures.commit.slice(0, 12)}`. Proofs cover the gate and the aashaan. They do not cover the agent code or the sandbox backend.
+
+## The picture
+
+<figure class="kalari-diagram">
+<ArchitectureSvg />
+<figcaption>Three planes: the trusted Lean host, the untrusted microVM guests, and the outside services.</figcaption>
+</figure>
+
+The coding agent connects over MCP. `kalari serve` runs on the VM. Each run gets one Microsandbox microVM with `kalari-aashaan` inside. Vultr Serverless Inference answers every model call. Lambo runs as a child process. Vimanam and `msb` run as subprocesses. Caddy terminates TLS in front of the read-only web app. The layout above is drawn from [docs/architecture.md]({blob}/docs/architecture.md).
+
+<figure class="kalari-diagram">
+<ContainmentLoopSvg />
+<figcaption>One run through the five-step loop, then the lesson feeds the next upgrade.</figcaption>
+</figure>
+
+<Diagram
+  name="system-context"
+  caption="System context: who calls whom across the agent, the service, the guests, and the outside."
+  alt="OpenCode calls kalari serve. kalari calls the gate, Lambo, Vimanam, the microVMs, and Vultr inference. Caddy fronts the web app, which reads kalari."
+/>
+
+## Two Lean programs, and why Lean
+
+Kalari ships two executables, both Lean 4 natives:
+
+- [kalari]({blob}/Kalari/Main.lean) is the main service on the VM. It serves the MCP endpoint, runs the gate, drives the run pipeline, and keeps the evidence store.
+- [kalari-aashaan]({blob}/Aashaan/) is the supervisor inside each microVM. It runs the untrusted job, enforces the time and output caps, and prints one JSON verdict.
+
+Lean carries the containment logic as theorems checked at build time. A broken proof fails `lake build`, so the binary cannot ship with a weaker gate. The supervisor imports `Std` only, never the compiler library, so it stays a small static binary that starts inside each guest. State this plainly: the proofs cover the gate decision and the aashaan caps. They do not cover the agent generated code or the sandbox backend.
+
+## The gate and its four theorems
+
+Every `run_in_sandbox` call passes [Kalari.Gate.decide]({blob}/Kalari/Gate.lean#L125) before it reaches any backend. It returns allow or refuse with a named reason. Four theorems pin what allow means:
+
+- [decide_workspace]({blob}/Kalari/Gate.lean#L189) keeps writes inside the workspace. Absolute paths and `..` segments must resolve under it on a segment boundary.
+- [decide_network]({blob}/Kalari/Gate.lean#L201) keeps network use inside the allowlist. Each requested host and port must match an entry exactly.
+- [decide_caps]({blob}/Kalari/Gate.lean#L211) keeps all three caps within the configured maximum. Time, output bytes, and memory each compare with `<=`.
+- [decide_secrets]({blob}/Kalari/Gate.lean#L222) keeps secrets out of the call. No non-empty secret may appear in the workspace or any argument.
+
+A fifth check refuses 32-character alphanumeric runs, the shape of a pasted key. A refusal never reaches `msb`.
+
+## A run, step by step
+
+1. The gate checks the call. A refusal stops here.
+2. Kalari resolves each allowed hostname to IPs.
+3. `msb create` starts a fresh guest with `--no-net` plus one allow rule per API.
+4. Kalari copies the workspace and the aashaan into the guest. It sets `vm.overcommit_memory=1` there first.
+5. `msb exec` runs `kalari-aashaan` with the timeout, the output cap, and the command. The job starts with an empty environment and an explicit `PATH`.
+6. The aashaan reports one verdict: `exited` with an exit code, `killed_timeout`, or `killed_output_cap`.
+7. The trusted checks run in fresh guests: the candidate truth check and the differential against v1. The artifact must sit at the workspace root. Exploratory commands without an artifact report `passed=false`.
+8. The verdict and logs go to the evidence store. Teardown stops and removes the guest.
+
+The [T5.6a runs](./containment/) are the worked example. They show both the crash path and the kill path with measured timings.
+
+<Diagram
+  name="run-sequence"
+  caption="One run_in_sandbox call from the agent request to the stored verdict."
+  alt="The agent calls run_in_sandbox. kalari asks the gate, creates a no-net guest, copies code in, runs the aashaan, runs baseline and checks, tears the guest down, stores evidence, and answers."
+/>
+
+<Diagram
+  name="verdicts"
+  caption="The three verdicts and how each maps to passed or failed."
+  alt="A run starts in Running. It ends as exited, killed by timeout, or killed by output cap. Exited with code zero and passing checks means passed. All other ends mean failed."
+/>
+
+## The five tools
+
+The [tool schemas]({blob}/Kalari/Mcp.lean#L22) and the [request handler]({blob}/Kalari/Mcp.lean#L82) live in one file, so schema and routing cannot drift:
+
+- `what_changed` lists the changes between two specs with stable change IDs. It calls Vimanam as a subprocess.
+- `blast_radius` finds the callers, tests, and earlier decisions each change touches. Statuses stay per ID: searched, not searchable, or unknown. Links go to Lambo.
+- `recall_lessons` returns lessons for change kinds as checks that must pass. Lookup walks from the change kind.
+- `run_in_sandbox` runs the proved gate, then a throwaway microVM run, and returns the verdict with logs.
+- `record_lesson` stores what a verified run showed. A failure needs Clef to attribute it to the API change. A verified pass stores the observed behaviour directly.
+
+## Memory
+
+Kalari is Lambo single writer. OpenCode never talks to Lambo directly. Lessons key by change kind, such as `pagination_changed`. Recall walks from the change kind to the lesson, not through recall ranking. The measured limit is honest: the frozen runs published zero lessons, so memory showed no benefit there. Read [Evidence and limits](./evidence/) for what that means.
+
+## Judgement calls
+
+Clef answers three fixed questions on Vultr Inference at the System One endpoint. Its answers are a model opinion, logged with probabilities. They never enter the gate and never decide the verdict. The web app labels them as opinion everywhere they appear.
+
+## Security boundaries
+
+- No key enters any guest. Keys stay in environment names in config, and values stay on the host.
+- Each run gets its own network policy from the gate. The reference setup instead lets the agent choose, and it once chose none.
+- `--no-net` denies default egress and ingress. The TLS domain rule limitation is real on msb 0.7.13, so Kalari resolves hostnames on the host and passes IP rules.
+- Caddy terminates TLS. SSH reaches the VM over Tailscale only. The firewall group opens only ports 80 and 443.
+
+## Deployment
+
+The Vultr preset lives in [deploy/vultr/]({blob}/deploy/vultr/README.md). One VX1 VM holds `kalari serve`, Lambo, the evidence API, Caddy, and the microVM fleet. Systemd units carry `UMask=0022`, which Microsandbox storage requires. The key travels to the VM over SSH stdin only. The generic local preset lives in [deploy/local/]({blob}/deploy/local/README.md) with a Docker backend for hosts without KVM. The line holds: runs on Vultr, and anywhere else you point it.
+
+<Diagram
+  name="deployment"
+  caption="The Vultr deployment: one VM, three units, API microVMs beside them."
+  alt="Internet reaches Caddy on ports 80 and 443. Caddy serves the static root with docs and proxies the API. kalari serve runs Lambo and the benchmark microVMs. SSH arrives over Tailscale only."
+/>
+
+## Dependencies
+
+Each entry names its version, how Kalari invokes it, and why, from [docs/architecture.md]({blob}/docs/architecture.md):
+
+- Lean 4.35.0 with `Std`: the executables and the proofs.
+- Vimanam 2.1.0 as a CLI subprocess: change facts across OpenAPI, GraphQL, and protobuf.
+- Lambo as a `lambo serve` child process over MCP: lessons, links, and canonization.
+- Microsandbox `msb` as a CLI subprocess: microVMs with their own kernel and a network policy.
+- `curl` as a subprocess: outbound HTTPS, since Lean has no HTTP client or TLS.
+- Caddy in front of `kalari`: automatic HTTPS.
+- Chaaya in `web/`: the read-only front end.

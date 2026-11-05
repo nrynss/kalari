@@ -1,0 +1,20 @@
+sequenceDiagram
+  participant A as Agent
+  participant K as kalari
+  participant G as Gate
+  participant M as msb
+  participant S as aashaan
+  participant E as Evidence
+
+  A->>K: run_in_sandbox
+  K->>G: decide caps paths net secrets
+  G-->>K: allow or refuse
+  K->>M: create --no-net plus one rule
+  K->>M: copy workspace and aashaan
+  K->>M: exec aashaan caps command
+  M->>S: run candidate
+  S-->>M: verdict killed or exited
+  M->>S: run baseline and checks
+  K->>M: stop and remove
+  K->>E: store verdict and logs
+  K-->>A: verdict and log tail

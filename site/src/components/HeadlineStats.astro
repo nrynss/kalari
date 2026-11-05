@@ -1,0 +1,17 @@
+---
+import figures from '../data/figures.json';
+
+const f = figures.frozen;
+---
+
+<div class="kalari-figure-grid">
+  <div class="kalari-stat"><strong>{f.kalari.costPerSession} USD</strong> Kalari cost per session</div>
+  <div class="kalari-stat"><strong>{f.reference.costPerSession} USD</strong> Reference cost per session</div>
+  <div class="kalari-stat"><strong>{f.costRatio}x</strong> Cheaper per session</div>
+  <div class="kalari-stat"><strong>{f.kalari.wallPerSession} s</strong> Kalari wall time per session</div>
+  <div class="kalari-stat"><strong>{f.reference.wallPerSession} s</strong> Reference wall time per session</div>
+  <div class="kalari-stat"><strong>{f.wallRatio}x</strong> Faster per session</div>
+  <div class="kalari-stat"><strong>{f.kalari.stuck} s</strong> Kalari time stuck</div>
+  <div class="kalari-stat"><strong>{f.reference.stuck} s</strong> Reference time stuck</div>
+  <div class="kalari-stat"><strong>{f.kalari.runs} / {f.reference.runs}</strong> Sandbox runs Kalari and reference</div>
+</div>

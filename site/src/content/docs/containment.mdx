@@ -1,0 +1,40 @@
+---
+title: Containment
+description: The timeout scene, the network boundary, and the verified cleanup.
+---
+
+import figures from '../../data/figures.json';
+
+export const c1 = figures.containment[0];
+export const c2 = figures.containment[1];
+
+Two runs show what containment means in practice. They are ordinary published runs, not benchmark rows. No agent wrote either consumer. The evidence files sit at [run-1.jsonl]({c1.evidenceUrl}) and [run-2.jsonl]({c2.evidenceUrl}). The transcript is `tests/live/containment-transcript.txt`.
+
+## The timeout scene
+
+Run 2 carries the containment moment. A payouts consumer honours `Retry-After` on a 429 and follows the page cursor on every response. It ignores the `drained` flag, so it never stops on its own. The aashaan runs it under a 5,000 ms cap.
+
+- Configured cap: 5,000 ms. Measured wall time: 5,009 ms.
+- Pages fetched before the kill: 68, with one wait for `Retry-After`.
+- Verdict: `killed_timeout`. No exit code. `passed=false`.
+- The output cap never came into play. The note in the record says the output and memory caps are configuration only.
+
+The aashaan polls, so the measured 5,009 ms is a measurement, not a bound. No fixed overshoot is promised. The run before it tells the other half of the story. Run 1 uses the reference cursor loop with no retry logic. It crashes on the API first 429 after 437 ms. The cap never comes into play. Verdict `exited` with exit code 1. Both runs reach `passed=false` because no consumer completed.
+
+## The boundary
+
+Each run probed the boundary from a second guest with the same arguments and the same allowlist. Requested, effective, and observed policy stay recorded apart:
+
+- Requested: `msb create --no-net` plus one allow rule for the API port.
+- Effective: `msb inspect` reads back default egress deny, default ingress deny, and one allow rule.
+- Observed: the allowed API port answers 200. Four unnamed targets refuse: another port on the same host, the host SSH port, the cloud metadata address, and a public internet address.
+
+These are observed restrictions for the listed requests from one guest configuration on one host. This is not a claim of zero blast radius. No exploitation was attempted or observed.
+
+## Verified cleanup
+
+`run_in_sandbox` removed both sandboxes itself: the consumer guest and the probe guest. None was listed afterwards. The four benchmark API sandboxes were unchanged. No child process remained. The baseline never started because no candidate wrote an output file, so the pipeline never opened a baseline guest.
+
+## Why this matters
+
+The reference setup lets the agent choose each sandbox network. In the reference run it chose none, so its sandbox could reach the internet and the VM own public IP. Kalari sets the network policy itself, per run, after the gate. These two runs show the policy holding on a real loop against a real API.

@@ -1,0 +1,35 @@
+---
+title: Kalari docs
+description: Rehearse every API upgrade in a contained arena, and learn from every fall.
+template: splash
+hero:
+  tagline: Rehearse every API upgrade in a contained arena, and learn from every fall.
+  image:
+    file: ../../assets/kalari-mark.svg
+  actions:
+    - text: Start here
+      link: ./start/
+      icon: right-arrow
+      variant: primary
+    - text: Judges walkthrough
+      link: ./judges/
+      icon: open-book
+      variant: secondary
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid>
+  <Card title="Architecture" icon="puzzle">
+    The full picture in five minutes. Every claim links to its source file.
+  </Card>
+  <Card title="Vultr" icon="rocket">
+    What each Vultr service runs for this project, with specifics.
+  </Card>
+  <Card title="Containment" icon="shield">
+    The timeout scene, the network boundary, and the verified cleanup.
+  </Card>
+  <Card title="Run it yourself" icon="laptop">
+    Both presets, every config field, and the check script.
+  </Card>
+</CardGrid>

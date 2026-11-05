@@ -1,0 +1,7 @@
+node_modules/
+dist/
+dist-docs/
+dist-pages/
+.astro/
+src/data/figures.json
+src/data/diagrams/

@@ -1,0 +1,26 @@
+flowchart TB
+  agent["OpenCode agent"]:::neutral
+  kalari["kalari serve"]:::kalari
+  gate["Kalari.Gate.decide"]:::gate
+  lambo["Lambo child process"]:::kalari
+  vimanam["Vimanam subprocess"]:::neutral
+  msb["msb microVMs"]:::reference
+  aashaan["kalari-aashaan"]:::gate
+  inference["Vultr Serverless Inference"]:::neutral
+  caddy["Caddy TLS"]:::neutral
+  web["Chaaya web app"]:::neutral
+
+  agent --> kalari
+  kalari --> gate
+  kalari --> lambo
+  kalari --> vimanam
+  kalari --> msb
+  msb --> aashaan
+  kalari --> inference
+  web --> kalari
+  caddy --> web
+
+  classDef kalari fill:#1f5a46,color:#f5f1e8,stroke:#121514,stroke-width:2px
+  classDef reference fill:#a63a2b,color:#f5f1e8,stroke:#121514,stroke-width:2px
+  classDef gate fill:#d99b38,color:#171a1c,stroke:#121514,stroke-width:2px
+  classDef neutral fill:#f5f1e8,color:#171a1c,stroke:#171a1c,stroke-width:2px

@@ -1,0 +1,37 @@
+---
+import figures from '../data/figures.json';
+
+const rows = figures.showcase;
+---
+
+<div class="kalari-table-wrap">
+<table>
+  <caption>The showcase grid: 14 committed runs on a manufactured scenario.</caption>
+  <thead>
+    <tr>
+      <th scope="col">Arm</th>
+      <th scope="col">Model</th>
+      <th scope="col">Run</th>
+      <th scope="col">Verdict</th>
+      <th scope="col">Lost</th>
+      <th scope="col">Dup</th>
+      <th scope="col">Changed</th>
+      <th scope="col">File</th>
+    </tr>
+  </thead>
+  <tbody>
+    {rows.map((r) => (
+      <tr>
+        <td>{r.arm}</td>
+        <td>{r.model}</td>
+        <td>{r.label}</td>
+        <td>{r.verdict}</td>
+        <td>{r.lost}</td>
+        <td>{r.dup}</td>
+        <td>{r.changed}</td>
+        <td><a href={r.fileUrl}>json</a></td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+</div>

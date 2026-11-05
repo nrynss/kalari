@@ -1,0 +1,21 @@
+flowchart TB
+  start["Keep-first consumer"]:::neutral
+  verify["POST /v2/verify ids only"]:::reference
+  claimed["Reports verified exit 0"]:::reference
+  graderFail["Hidden grader FAIL 23 changed"]:::reference
+  diff["differential-v1 23 changed"]:::kalari
+  fix["Agent keeps last delivery"]:::kalari
+  clean["differential-v1 0 changed"]:::kalari
+  graderPass["Hidden grader PASS"]:::kalari
+
+  start --> verify
+  verify --> claimed
+  claimed --> graderFail
+  start --> diff
+  diff --> fix
+  fix --> clean
+  clean --> graderPass
+
+  classDef kalari fill:#1f5a46,color:#f5f1e8,stroke:#121514,stroke-width:2px
+  classDef reference fill:#a63a2b,color:#f5f1e8,stroke:#121514,stroke-width:2px
+  classDef neutral fill:#f5f1e8,color:#171a1c,stroke:#171a1c,stroke-width:2px

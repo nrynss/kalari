@@ -1,0 +1,22 @@
+flowchart TB
+  c1["1 reference continuous"]:::reference
+  c2["2 reference new session"]:::reference
+  c3["3 reference fresh"]:::reference
+  c4["4 Kalari no memory"]:::kalari
+  c5["5 Kalari with lesson"]:::kalari
+  c6["6 reference better prompt"]:::reference
+  frozen["Frozen pair payouts and settlements"]:::gate
+  grader["Hidden grader PASS or FAIL"]:::neutral
+
+  c1 --> frozen
+  c2 --> frozen
+  c3 --> frozen
+  c4 --> frozen
+  c5 --> frozen
+  c6 --> frozen
+  frozen --> grader
+
+  classDef kalari fill:#1f5a46,color:#f5f1e8,stroke:#121514,stroke-width:2px
+  classDef reference fill:#a63a2b,color:#f5f1e8,stroke:#121514,stroke-width:2px
+  classDef gate fill:#d99b38,color:#171a1c,stroke:#121514,stroke-width:2px
+  classDef neutral fill:#f5f1e8,color:#171a1c,stroke:#171a1c,stroke-width:2px

@@ -1,0 +1,143 @@
+---
+title: Run it yourself
+description: Both presets, every config field, and the check script, with honest verification notes.
+---
+
+import figures from '../../data/figures.json';
+
+export const blob = `${figures.repo}/blob/${figures.commit}`;
+
+This guide covers both presets and every config field. The README stays usable on its own. Commands below come from the implementation. Steps nobody has run on a clean host say so directly.
+
+## Release installation
+
+No published release archive exists yet. The [release workflow]({blob}/.github/workflows/release.yml) builds one on dispatch, but no tag has shipped a binary. Until it does, install from source with the pinned toolchain.
+
+From a checkout on Linux x86-64:
+
+```sh
+lake build
+```
+
+The build produces `.lake/build/bin/kalari` and `.lake/build/bin/kalari-aashaan`. Copy both into a directory on `PATH`. Check them:
+
+```sh
+kalari --version
+kalari --offline-self-test
+```
+
+The second command drives the real executable over stdio and checks all five tool handlers. It needs no key and no network. The release notes will name the exact architecture, the libc floor, and the linked libraries when the first archive lands. None of that is verified yet.
+
+Upgrade means replacing both binaries. Removal means deleting them. Lean is only needed for source builds, never for binary users.
+
+## Host requirements
+
+The host that runs Kalari needs CPU virtualization with working `/dev/kvm` for the Microsandbox path. This laptop exposes `/dev/kvm` and runs msb 0.7.13. The VM in production is a VX1 with 2 vCPU and 8 GB of RAM. The demo keeps several small microVMs plus the Lean build on that host.
+
+`msb doctor` reports host readiness. The coding agent may run on another host; only the Kalari host needs KVM. Tested on Linux only. macOS, Windows, WSL, and remote Linux are unverified. Do not assume they work.
+
+## Dependencies and ownership
+
+Each tool lives on a named host:
+
+- Microsandbox (`msb` 0.7.13) runs on the Kalari host. It owns the microVMs.
+- Lambo runs on the Kalari host as a child process of `kalari serve`. Kalari starts it, nobody else.
+- Vimanam runs on the Kalari host as a subprocess. Version 2.1.0.
+- `curl` runs on the Kalari host as a subprocess for outbound HTTPS.
+- Language runtimes live inside the guests, not on the host. The guest image is `python:3.13-slim` by default.
+
+Verify each one: `msb --version`, `lambo --version`, `vimanam --version`, `curl --version`. The inference key belongs to you. Vultr bills the model calls to your account. Nobody else pays for your runs.
+
+## Sandbox preparation
+
+Set `umask 022` before anything starts `msb`. Systemd units carry `UMask=0022`. Microsandbox refuses group-writable storage, so 002 is fatal. Pull guest images with retries before a run, then run with `--pull never`. Docker Hub pulls fail at times.
+
+The production path sets `vm.overcommit_memory=1` in the guest before the aashaan starts. Without it the Lean runtime cannot start threads. The workspace and the aashaan reach the guest through `msb copy`. No key ever enters a guest. The aashaan starts each job with an empty environment and an explicit `PATH`.
+
+Unsupported today: consumer runtimes beyond what the guest image holds, and dependency installs that need the network outside the allowlist. Those runs fail closed at the gate or at the sandbox.
+
+## Network setup
+
+Host endpoints and guest endpoints differ. The guest sees only what the allowlist names. Each entry is a host plus a TCP port. Kalari resolves each hostname on the host and passes IP rules to `msb create`.
+
+Separate the baseline and candidate allowlists. The live API answers the agent phase. The grading API answers grading. Keep keys outside guests: config names environment variables, never values.
+
+The recorded TLS limitation is real. msb 0.7.13 cannot express domain allow rules for TLS, so Kalari resolves names first and allows IPs. Local APIs and remote APIs both work through this path. The [containment page](./containment/) shows the observed boundary with four refused targets.
+
+## Configuration reference
+
+Two JSON files drive a migration. Both are parsed by `Lean.Json`, and both reject unknown shapes early.
+
+`kalari.json` holds four sections. The example is [deploy/vultr/kalari.json.example]({blob}/deploy/vultr/kalari.json.example). Field shapes come from [Kalari/Config.lean]({blob}/Kalari/Config.lean):
+
+- `models.endpoint` and `models.model` name the OpenAI-compatible endpoint and model. `models.api_key_env` names the environment variable with the key.
+- `decisions.*` is the same shape for the System One endpoint that serves Clef.
+- `sandbox.backend` is `microsandbox` or `docker`. `sandbox.image` defaults to `python:3.13-slim`. `sandbox.caps` holds `timeout_ms`, `output_cap_bytes`, and `memory_mib`, each bounded above by the gate. `sandbox.allowlist` holds host and port pairs.
+- `lambo.command` is the argv that starts `lambo serve`. `lambo.config_path` is Lambo own config file.
+
+`session.json` scopes one migration. The example is [deploy/vultr/session.json.example]({blob}/deploy/vultr/session.json.example):
+
+- `session_id` and `repo_scope` name the session and the repository under test.
+- `workspace` is the candidate checkout. Writes must stay inside it.
+- `old_spec` and `new_spec` point at the two API specifications.
+- `baseline` repeats the run shape against the old API for the differential.
+- `check_workspace` holds the trusted checks. `evidence_workspace` receives the records.
+- `artifact` names the consumer output file the checks read.
+- `aashaan` is the supervisor path inside the deployment. `tool_path` is the guest `PATH`.
+
+A field named `api_key` is rejected anywhere a name belongs. The error names the field and never the value. Deployment placeholders in the examples need replacement before use.
+
+## Bring your own migration
+
+Supply the old and new specifications, the baseline and candidate workspaces, the consumer command with arguments, the output artifact name, a check workspace, an evidence workspace, a session identity, and the repository scope. Preserve the baseline before editing so the differential compares like with like. Keep input data comparable across arms. Keep credentials and API reachability outside the guests.
+
+## Verification harness
+
+Each candidate execution runs against v2, then the same consumer runs against v1 in a fresh guest. Trusted checks compare the two outputs record by record: none missing, none extra, each exactly once, each equal to v1. The artifact format is JSON lines. The pass rule is exact equality with the v1 truth file. Current comparison assumes the consumer writes one artifact at the workspace root.
+
+Kalari supplies the gate, the sandbox run, the baseline run, and the differential. You write the consumer adapter that emits the artifact. Hidden grading stays separate from your harness and never leaks into it. A minimal adapter reads v2 pages, writes one JSON object per line, and exits 0 only when it believes the export is complete.
+
+## Coding-agent integration
+
+Point OpenCode at `kalari serve` over stdio with absolute paths:
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "kalari": {
+        "type": "local",
+        "command": ["kalari", "serve", "/etc/kalari/kalari.json", "/etc/kalari/session.json"]
+      }
+    }
+  }
+}
+```
+
+Restart the agent after editing the config. Discovery should list all five tools: `what_changed`, `blast_radius`, `recall_lessons`, `run_in_sandbox`, `record_lesson`. The agent picks tools per turn; the gate picks what may run. Other clients are untested. Their config is unverified, so this guide names OpenCode only.
+
+This wiring is derived from the MCP contract in [Kalari/Mcp.lean]({blob}/Kalari/Mcp.lean). Nobody has run the documented discovery against a live server yet. That step is unverified.
+
+## First successful run
+
+Use recorded or loopback replies before spending on production calls. Ask for the change list, check the blast radius, recall the checks, then call `run_in_sandbox` with caps inside the configured maximum. Expect the sequence: gate allow, guest create, candidate run, baseline run, differential, teardown, verdict.
+
+A failed check returns the logs and any matching lesson, then the agent retries. A timeout returns `killed_timeout` with no exit code. Only steps that touch the live API need network. Only guest runs need KVM. Only model calls need the key and billing.
+
+## Evidence and interface
+
+Every run lands in the evidence store as JSON lines: inputs, verdicts, logs, timings, and tokens. Sessions map to runs by id. The read-only web deployment and the API shim are documented in [deploy/vultr/README.md]({blob}/deploy/vultr/README.md). Starting the MCP server is `kalari serve`. Serving the web interface is the Caddy plus API deployment. They are separate commands with separate units.
+
+## Limits and troubleshooting
+
+The observer refused production configuration, so zero lessons were published in the frozen runs. Do not expect memory benefit until that path is fixed. Missing KVM fails `msb doctor`; fix the host, not the config. Image pull failures need retries with `--pull never` at run time. A missing artifact means the run was exploratory: `passed=false` by design. A hung run that recovers still counts its stuck seconds. Interrupted runs leave teardown to `msb stop` and `msb remove`; the evidence records what was left behind.
+
+`kalari check` is not implemented yet. The usage line says so and exits 2. Do not present it as a working command.
+
+## Contributor and deployment paths
+
+Source builds pin Lean 4.35.0 in `lean-toolchain`. `./tools/check.sh` is the full gate: the Lake build with theorems and guards, the aashaan cases, the examples, the benchmark quirks, and the web evidence. It needs no key and no network beyond the toolchain. Live tests under `tests/live/` never run in CI. Each carries its own budget. The Vultr path uses a service user, key delivery over SSH stdin, systemd restart, and public HTTPS through Caddy.
+
+## Setup acceptance
+
+Validated in this worktree on the development laptop: `lake build` passes, `kalari --version` and the offline self-test pass, the aashaan cases pass, `./web/check.sh` passes, both docs builds pass, and the privacy scan passes. No clean host was available, so a fresh install without Lean is unverified. MCP discovery of all five tools against a live server is unverified. The documented sample migration has not been run end to end here. macOS, Windows, WSL, and remote Linux are unverified. Every unverified item above stays listed until someone runs it.

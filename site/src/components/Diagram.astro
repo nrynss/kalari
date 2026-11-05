@@ -1,0 +1,38 @@
+---
+// A build-time Mermaid diagram: two pre-rendered SVG variants, no client JS.
+interface Props {
+  name:
+    | 'system-context'
+    | 'run-sequence'
+    | 'verdicts'
+    | 'showcase-paths'
+    | 'benchmark-design'
+    | 'deployment';
+  caption: string;
+  alt: string;
+}
+
+const { name, caption, alt } = Astro.props as Props;
+const modules = import.meta.glob('../data/diagrams/*.svg', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+}) as Record<string, string>;
+const pick = (variant: string) => {
+  const hit = Object.entries(modules).find(([k]) => k.endsWith(`${name}-${variant}.svg`));
+  if (!hit) throw new Error(`Diagram ${name} ${variant} was not rendered`);
+  return hit[1];
+};
+const light = pick('light');
+const dark = pick('dark');
+---
+
+<figure class="kalari-diagram" role="img" aria-label={alt}>
+  <div class="diagram-light" set:html={light} />
+  <div class="diagram-dark" set:html={dark} />
+  <figcaption>{caption}</figcaption>
+  <details>
+    <summary>Text alternative</summary>
+    <p>{alt}</p>
+  </details>
+</figure>
