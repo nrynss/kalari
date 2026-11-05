@@ -15,7 +15,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0 done. P1 done. P2 7/7. P3 7/7. P4 12/13. P5 4/9. P6 2/3. T3.2b done. T5.1, T5.1a, T5.2 and T5.2a done. T6.2 done. T4.6b done. The user chose B5 in both upgrades and the 50-session harder-pair pilot. T5.3 now requires T5.2b. T5.2b has a $12 cap and starts after T5.2a. T5.1a repaired condition 1 before that pilot. T4.7c establishes the production retry memory path before T5.4. T4.6 done. T4.5b done. T4.7a done. T4.7b done. T4.7 done. T6.1 done. Previous live spend remains approved, including the old pilot (T5.2, about $16) and T3.2b (under $0.01). New live caps are approved: T5.2b $12, T5.5 $10 and T5.4 $8, $30 in total. T6.3 reuses the current VM only. Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
+**Current status:** P0 done. P1 done. P2 7/7. P3 7/7. P4 12/13. P5 4/9. P6 2/3. T3.2b done. T5.1, T5.1a, T5.2 and T5.2a done. T6.2 done. T4.6b done. T6.3 claimed, deploying the public demo. The user chose B5 in both upgrades and the 50-session harder-pair pilot. T5.3 now requires T5.2b. T5.2b has a $12 cap and starts after T5.2a. T5.1a repaired condition 1 before that pilot. T4.7c establishes the production retry memory path before T5.4. T4.6 done. T4.5b done. T4.7a done. T4.7b done. T4.7 done. T6.1 done. Previous live spend remains approved, including the old pilot (T5.2, about $16) and T3.2b (under $0.01). New live caps are approved: T5.2b $12, T5.5 $10 and T5.4 $8, $30 in total. T6.3 reuses the current VM only. Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
 
 ---
 
@@ -147,7 +147,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P3 | 7 / 7 | T3.1 through T3.4 done, including T3.1a, T3.2b and T3.3b |
 | P4 | 12 / 13 | T4.1 through T4.7 done. T4.6b adds the trusted retry trace and lesson. T4.7c closes the production memory path |
 | P5 | 4 / 9 | T5.1, T5.1a, T5.2 and T5.2a done. T5.2b follows with a $12 cap, then the freeze. B5-in-both and the 50-session pilot are decided |
-| P6 | 2 / 3 | T6.1 and T6.2 done. HTTP startup and benchmark evidence production still need integration |
+| P6 | 2 / 3 | T6.1 and T6.2 done. T6.3 claimed: public demo with HTTPS, HTTP startup and benchmark evidence production in progress |
 | P7 | 0 / 4 | Waits for P5, P6 |
 
 ---
