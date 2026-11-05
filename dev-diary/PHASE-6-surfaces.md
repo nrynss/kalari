@@ -66,6 +66,26 @@ The Vultr preset: `kalari serve` as a systemd unit (`UMask=0022`, its own user, 
 
 ---
 
+### T6.4: Publish benchmark evidence to the demo ★
+```yaml
+requires:   [T5.6, T6.3]
+fixture-ok: no
+size:       S · mid
+owns:       bench/produce-evidence.py, bench/tests/produce-evidence-check.sh, deploy/vultr/ship-evidence.sh
+status:     not-started
+```
+The live demo serves an empty evidence store: `/api/benchmark` is `[]` and `/api/runs` holds one provenance record, so the judges page cannot show the frozen comparison. Convert the 60 frozen rows (`bench/runs/kalari/*.json`, `bench/runs/reference/*.json`) into `benchmark` evidence records in the `web/README.md` contract and ship them to the VM store at `/var/lib/kalari/evidence/.kalari/evidence.jsonl`. Keep the existing `lesson-policy` provenance record. The ship step is idempotent: it replaces previously shipped benchmark records by run id, never duplicates. No inference calls. No key on the VM beyond what T6.3 provisioned.
+
+After shipping, the judges page must render the frozen comparison with working run links on the live demo, and the empty-store panel must be gone. Report the unknown retry windows as unknown, never zero. Keep the containment demonstration (T5.6a) and its label separate: this task ships only frozen comparison rows.
+
+**Live budget: $0.** Stop and report if any step needs inference or spend.
+
+**Done when:** live `/api/benchmark` returns the shipped records; the live judges page shows the frozen comparison with every number linking to its run; the producer, its check, and a sanitized ship transcript are committed; `./tools/check.sh` passes.
+
+---
+
+---
+
 ## Exit Criteria
 
 - [ ] A public, product-style web app on Vultr, with the judges' page first.
