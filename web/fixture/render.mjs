@@ -411,6 +411,7 @@ try {
     throw new Error("the fixture has no pilot-c3-payouts-r5 run");
   }
   const containment = await getJson(base, "api/sessions/containment-runs");
+  const reference = await getJson(base, "api/sessions/reference-paging");
   const containmentRuns = containment.filter((record) => record.kind === "containment");
   const containmentRunId = containmentRuns.find((record) => record.payload.result.verdict === "killed_timeout")?.run_id;
   const earlierRunId = containmentRuns.find((record) => record.run_id !== containmentRunId)?.run_id;
@@ -438,8 +439,8 @@ try {
   const snapshots = {
     judges: {
       view: "judges",
-      args: { benchmark, runs, sessions, lessons, runDetails, containment },
-      inputs: { benchmark, runs, sessions, lessons, containment },
+      args: { benchmark, runs, sessions, lessons, runDetails, containment, reference },
+      inputs: { benchmark, runs, sessions, lessons, containment, reference },
     },
     "judges-empty": {
       view: "judges",
@@ -453,8 +454,8 @@ try {
     },
     "judges-extra-run": {
       view: "judges",
-      args: { benchmark: benchmarkWithExtra, runs: runsWithExtra, sessions, lessons, containment },
-      inputs: { benchmark: benchmarkWithExtra, runs: runsWithExtra, sessions, lessons, containment },
+      args: { benchmark: benchmarkWithExtra, runs: runsWithExtra, sessions, lessons, containment, reference },
+      inputs: { benchmark: benchmarkWithExtra, runs: runsWithExtra, sessions, lessons, containment, reference },
     },
     "judges-frozen-after": {
       view: "judges",
@@ -515,6 +516,11 @@ try {
       view: "run",
       args: { runId: endpointRecord.run_id, records: [endpointRecord], runs: endpointRuns },
       inputs: { runId: endpointRecord.run_id, records: [endpointRecord], runs: endpointRuns },
+    },
+    "run-reference": {
+      view: "run",
+      args: { runId: "reference-paging-fix", records: reference, runs },
+      inputs: { runId: "reference-paging-fix", records: reference, runs },
     },
     "run-redaction": {
       view: "run",

@@ -5317,7 +5317,8 @@
         "payouts-attempt-1",
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
-        "tmp.XXSQOmhn"
+        "tmp.XXSQOmhn",
+        "reference-paging-fix"
       ],
       "sessions": [
         "pilot-c1-payouts",
@@ -5336,7 +5337,8 @@
         "pilot-b-settlements-B3",
         "payouts-upgrade",
         "payouts-earlier",
-        "containment-runs"
+        "containment-runs",
+        "reference-paging"
       ],
       "lessons": [
         {
@@ -6021,6 +6023,42 @@
             }
           }
         }
+      ],
+      "reference": [
+        {
+          "kind": "reference",
+          "session_id": "reference-paging",
+          "run_id": "reference-paging-fix",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.reference.v1",
+            "benchmark": false,
+            "case": "The v1 consumer meets a paging API. It reads one page and stops.",
+            "consumer": "import_items.py",
+            "before": {
+              "exit_code": 0,
+              "stdout": "imported 100 items",
+              "records": 100,
+              "expected": 2431,
+              "missing": 2331,
+              "verdict": "FAIL"
+            },
+            "after": {
+              "setup": "OpenCode with microsandbox-mcp and DeepSeek V4.1 Flash",
+              "attempt": 1,
+              "verdict": "PASS",
+              "records": 2431,
+              "expected": 2431,
+              "wall_time_s": 30,
+              "tokens_input": 331501,
+              "tokens_output": 4383,
+              "cost_usd": 0.05
+            },
+            "source": "bench/reference-paging/README.md"
+          }
+        }
       ]
     },
     "judges-empty": {
@@ -6102,7 +6140,8 @@
         "payouts-attempt-1",
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
-        "tmp.XXSQOmhn"
+        "tmp.XXSQOmhn",
+        "reference-paging-fix"
       ],
       "sessions": [
         "pilot-c1-payouts",
@@ -6121,7 +6160,8 @@
         "pilot-b-settlements-B3",
         "payouts-upgrade",
         "payouts-earlier",
-        "containment-runs"
+        "containment-runs",
+        "reference-paging"
       ],
       "lessons": [
         {
@@ -11568,6 +11608,7 @@
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
         "tmp.XXSQOmhn",
+        "reference-paging-fix",
         "fixture-extra-settlements-r5b"
       ],
       "sessions": [
@@ -11587,7 +11628,8 @@
         "pilot-b-settlements-B3",
         "payouts-upgrade",
         "payouts-earlier",
-        "containment-runs"
+        "containment-runs",
+        "reference-paging"
       ],
       "lessons": [
         {
@@ -12270,6 +12312,42 @@
               "kalari": "kalari 0.1.0",
               "image": "python:3.13-slim"
             }
+          }
+        }
+      ],
+      "reference": [
+        {
+          "kind": "reference",
+          "session_id": "reference-paging",
+          "run_id": "reference-paging-fix",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.reference.v1",
+            "benchmark": false,
+            "case": "The v1 consumer meets a paging API. It reads one page and stops.",
+            "consumer": "import_items.py",
+            "before": {
+              "exit_code": 0,
+              "stdout": "imported 100 items",
+              "records": 100,
+              "expected": 2431,
+              "missing": 2331,
+              "verdict": "FAIL"
+            },
+            "after": {
+              "setup": "OpenCode with microsandbox-mcp and DeepSeek V4.1 Flash",
+              "attempt": 1,
+              "verdict": "PASS",
+              "records": 2431,
+              "expected": 2431,
+              "wall_time_s": 30,
+              "tokens_input": 331501,
+              "tokens_output": 4383,
+              "cost_usd": 0.05
+            },
+            "source": "bench/reference-paging/README.md"
           }
         }
       ]
@@ -13247,7 +13325,8 @@
         "payouts-attempt-1",
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
-        "tmp.XXSQOmhn"
+        "tmp.XXSQOmhn",
+        "reference-paging-fix"
       ]
     },
     "session-frozen": {
@@ -13694,7 +13773,8 @@
         "payouts-attempt-1",
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
-        "tmp.XXSQOmhn"
+        "tmp.XXSQOmhn",
+        "reference-paging-fix"
       ]
     },
     "run-frozen": {
@@ -14093,7 +14173,8 @@
         "payouts-attempt-1",
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
-        "tmp.XXSQOmhn"
+        "tmp.XXSQOmhn",
+        "reference-paging-fix"
       ]
     },
     "run-containment": {
@@ -14494,7 +14575,8 @@
         "payouts-attempt-1",
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
-        "tmp.XXSQOmhn"
+        "tmp.XXSQOmhn",
+        "reference-paging-fix"
       ]
     },
     "run-containment-earlier": {
@@ -14895,7 +14977,8 @@
         "payouts-attempt-1",
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
-        "tmp.XXSQOmhn"
+        "tmp.XXSQOmhn",
+        "reference-paging-fix"
       ]
     },
     "run-endpoint": {
@@ -14940,6 +15023,125 @@
       ],
       "runs": [
         "endpoint-fixture-r1"
+      ]
+    },
+    "run-reference": {
+      "view": "run",
+      "runId": "reference-paging-fix",
+      "records": [
+        {
+          "kind": "reference",
+          "session_id": "reference-paging",
+          "run_id": "reference-paging-fix",
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "payload": {
+            "schema": "kalari.reference.v1",
+            "benchmark": false,
+            "case": "The v1 consumer meets a paging API. It reads one page and stops.",
+            "consumer": "import_items.py",
+            "before": {
+              "exit_code": 0,
+              "stdout": "imported 100 items",
+              "records": 100,
+              "expected": 2431,
+              "missing": 2331,
+              "verdict": "FAIL"
+            },
+            "after": {
+              "setup": "OpenCode with microsandbox-mcp and DeepSeek V4.1 Flash",
+              "attempt": 1,
+              "verdict": "PASS",
+              "records": 2431,
+              "expected": 2431,
+              "wall_time_s": 30,
+              "tokens_input": 331501,
+              "tokens_output": 4383,
+              "cost_usd": 0.05
+            },
+            "source": "bench/reference-paging/README.md"
+          }
+        }
+      ],
+      "runs": [
+        "pilot-c1-payouts-r1",
+        "pilot-c1-payouts-r2",
+        "pilot-c1-payouts-r3",
+        "pilot-c1-payouts-r4",
+        "pilot-c1-payouts-r5",
+        "pilot-c1-settlements-r1",
+        "pilot-c1-settlements-r2",
+        "pilot-c1-settlements-r3",
+        "pilot-c1-settlements-r4",
+        "pilot-c1-settlements-r5",
+        "pilot-c2-payouts-r1",
+        "pilot-c2-payouts-r2",
+        "pilot-c2-payouts-r3",
+        "pilot-c2-payouts-r4",
+        "pilot-c2-payouts-r5",
+        "pilot-c2-settlements-r1",
+        "pilot-c2-settlements-r2",
+        "pilot-c2-settlements-r3",
+        "pilot-c2-settlements-r4",
+        "pilot-c2-settlements-r5",
+        "pilot-c3-payouts-r1",
+        "pilot-c3-payouts-r2",
+        "pilot-c3-payouts-r3",
+        "pilot-c3-payouts-r4",
+        "pilot-c3-payouts-r5",
+        "pilot-c3-settlements-r1",
+        "pilot-c3-settlements-r2",
+        "pilot-c3-settlements-r3",
+        "pilot-c3-settlements-r4",
+        "pilot-c3-settlements-r5",
+        "pilot-c6-payouts-r1",
+        "pilot-c6-payouts-r2",
+        "pilot-c6-payouts-r3",
+        "pilot-c6-payouts-r4",
+        "pilot-c6-payouts-r5",
+        "pilot-c6-settlements-r1",
+        "pilot-c6-settlements-r2",
+        "pilot-c6-settlements-r3",
+        "pilot-c6-settlements-r4",
+        "pilot-c6-settlements-r5",
+        "pilot-b-payouts-B1-r1",
+        "pilot-b-payouts-B1-r2",
+        "pilot-b-payouts-B1-r3",
+        "pilot-b-payouts-B1-r4",
+        "pilot-b-payouts-B1-r5",
+        "pilot-b-payouts-B2-r1",
+        "pilot-b-payouts-B2-r2",
+        "pilot-b-payouts-B2-r3",
+        "pilot-b-payouts-B2-r4",
+        "pilot-b-payouts-B2-r5",
+        "pilot-b-payouts-B4-r1",
+        "pilot-b-payouts-B4-r2",
+        "pilot-b-payouts-B4-r3",
+        "pilot-b-payouts-B4-r4",
+        "pilot-b-payouts-B4-r5",
+        "pilot-b-settlements-B1-r1",
+        "pilot-b-settlements-B1-r2",
+        "pilot-b-settlements-B1-r3",
+        "pilot-b-settlements-B1-r4",
+        "pilot-b-settlements-B1-r5",
+        "pilot-b-settlements-B2-r1",
+        "pilot-b-settlements-B2-r2",
+        "pilot-b-settlements-B2-r3",
+        "pilot-b-settlements-B2-r4",
+        "pilot-b-settlements-B2-r5",
+        "pilot-b-settlements-B3-r1",
+        "pilot-b-settlements-B3-r2",
+        "pilot-b-settlements-B3-r3",
+        "pilot-b-settlements-B3-r4",
+        "pilot-b-settlements-B3-r5",
+        "payouts-attempt-3",
+        "payouts-earlier-pass",
+        "payouts-attempt-1",
+        "payouts-attempt-2",
+        "tmp.XXdrLVOs",
+        "tmp.XXSQOmhn",
+        "reference-paging-fix"
       ]
     },
     "run-redaction": {

@@ -534,6 +534,55 @@ def illustrative_records() -> list[dict[str, Any]]:
 CONTAINMENT_DIR = REPO / "tests" / "live" / "containment-evidence"
 
 
+REFERENCE_SESSION = "reference-paging"
+REFERENCE_RUN = "reference-paging-fix"
+
+
+def reference_records() -> list[dict[str, Any]]:
+    """The reference run that motivates Kalari, in its own session.
+
+    The figures come from bench/reference-paging/README.md, which records the
+    B5 task: the v1 consumer exits 0 with "imported 100 items" while the hidden
+    grader finds 100 of 2,431 records, then OpenCode with microsandbox-mcp and
+    DeepSeek V4.1 Flash fixes it on the first attempt. This record is not a
+    benchmark row. It never enters the benchmark tallies or the hero sums.
+    """
+    return [
+        record(
+            "reference",
+            REFERENCE_SESSION,
+            REFERENCE_RUN,
+            ["pagination_changed"],
+            {
+                "schema": "kalari.reference.v1",
+                "benchmark": False,
+                "case": "The v1 consumer meets a paging API. It reads one page and stops.",
+                "consumer": "import_items.py",
+                "before": {
+                    "exit_code": 0,
+                    "stdout": "imported 100 items",
+                    "records": 100,
+                    "expected": 2431,
+                    "missing": 2331,
+                    "verdict": "FAIL",
+                },
+                "after": {
+                    "setup": "OpenCode with microsandbox-mcp and DeepSeek V4.1 Flash",
+                    "attempt": 1,
+                    "verdict": "PASS",
+                    "records": 2431,
+                    "expected": 2431,
+                    "wall_time_s": 30,
+                    "tokens_input": 331501,
+                    "tokens_output": 4383,
+                    "cost_usd": 0.05,
+                },
+                "source": "bench/reference-paging/README.md",
+            },
+        )
+    ]
+
+
 def containment_records() -> list[dict[str, Any]]:
     """The two containment runs, in their own session: the committed, sanitised
     evidence in tests/live/containment-evidence/run-*.jsonl."""
@@ -546,7 +595,7 @@ def containment_records() -> list[dict[str, Any]]:
 
 
 def main() -> None:
-    records = pilot_records() + illustrative_records() + containment_records()
+    records = pilot_records() + illustrative_records() + containment_records() + reference_records()
     with OUT.open("w", encoding="utf-8", newline="\n") as handle:
         for item in records:
             handle.write(json.dumps(item, ensure_ascii=False, separators=(",", ":")))

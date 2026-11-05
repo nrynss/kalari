@@ -5,9 +5,90 @@
     <p class="hero-copy">This page is the evidence index. Every figure comes from an evidence record, and every benchmark figure links to the run that produced it.</p>
     <p class="status-line"><span class="status-dot is-live" aria-hidden="true"></span>Frozen comparison published</p>
     <nav class="reading-path" aria-label="On this page">
-      <ul><li><a href="#comparison">The measured before and after</a></li><li><a href="#baseline">Every condition in this fixture</a></li><li><a href="#runs">Every run</a></li><li><a href="#sessions">Read a session</a></li></ul>
+      <ul><li><a href="#changed">What Kalari changed</a></li><li><a href="#comparison">The measured before and after</a></li><li><a href="#baseline">Every condition in this fixture</a></li><li><a href="#runs">Every run</a></li><li><a href="#sessions">Read a session</a></li></ul>
     </nav>
   </header>
+
+    <section id="changed" class="section section--changed" aria-labelledby="changed-title">
+    <p class="hero-kicker">What Kalari changed</p>
+    <h2 id="changed-title">Cheaper is good. Faster is good. Both at once is the headline.</h2>
+    <p class="hero-lede">OpenCode alone against OpenCode with Kalari, on the frozen pair. Both arms passed the hidden grader in every session. Kalari cost less and finished sooner, inside a boundary the agent cannot switch off.</p>
+    <div class="hero-grid">
+      <div class="hero-row">
+      <h3>Cost per session</h3>
+      <div class="hero-pair">
+        <div class="hero-arm hero-arm--kalari">
+    <span class="hero-arm-name">Kalari</span>
+    <span class="hero-value"><a class="run-link" href="run.html?id=fixture-c5-payouts-r1" data-run-link="fixture-c5-payouts-r1" title="Kalari mean cost">$0.0123</a></span>
+    <span class="hero-sub"><a class="run-link" href="run.html?id=fixture-c5-payouts-r1" data-run-link="fixture-c5-payouts-r1" title="Kalari sessions">1 sessions</a></span>
+    <span class="hero-bar hero-bar--kalari" aria-hidden="true"><span style="width: 100.0%"></span></span>
+  </div>
+        <span class="hero-ratio"><a class="run-link" href="run.html?id=fixture-c5-payouts-r1" data-run-link="fixture-c5-payouts-r1" title="Cost ratio">1.0x costlier</a></span>
+        <div class="hero-arm hero-arm--reference">
+    <span class="hero-arm-name">Reference</span>
+    <span class="hero-value"><a class="run-link" href="run.html?id=fixture-c3-payouts-r1" data-run-link="fixture-c3-payouts-r1" title="Reference mean cost">$0.0119</a></span>
+    <span class="hero-sub"><a class="run-link" href="run.html?id=fixture-c3-payouts-r1" data-run-link="fixture-c3-payouts-r1" title="Reference sessions">1 sessions</a></span>
+    <span class="hero-bar hero-bar--reference" aria-hidden="true"><span style="width: 96.7%"></span></span>
+  </div>
+      </div>
+
+    </div>
+      <div class="hero-row">
+      <h3>Wall time per session</h3>
+      <div class="hero-pair">
+        <div class="hero-arm hero-arm--kalari">
+    <span class="hero-arm-name">Kalari</span>
+    <span class="hero-value"><a class="run-link" href="run.html?id=fixture-c5-payouts-r1" data-run-link="fixture-c5-payouts-r1" title="Kalari mean wall time">421.5 s</a></span>
+    <span class="hero-sub"><a class="run-link" href="run.html?id=fixture-c5-payouts-r1" data-run-link="fixture-c5-payouts-r1" title="Kalari sessions">1 sessions</a></span>
+    <span class="hero-bar hero-bar--kalari" aria-hidden="true"><span style="width: 82.3%"></span></span>
+  </div>
+        <span class="hero-ratio"><a class="run-link" href="run.html?id=fixture-c5-payouts-r1" data-run-link="fixture-c5-payouts-r1" title="Wall time ratio">1.2x faster</a></span>
+        <div class="hero-arm hero-arm--reference is-worse">
+    <span class="hero-arm-name">Reference</span>
+    <span class="hero-value"><a class="run-link" href="run.html?id=fixture-c3-payouts-r1" data-run-link="fixture-c3-payouts-r1" title="Reference mean wall time">512.0 s</a></span>
+    <span class="hero-sub"><a class="run-link" href="run.html?id=fixture-c3-payouts-r1" data-run-link="fixture-c3-payouts-r1" title="Reference sessions">1 sessions</a></span>
+    <span class="hero-bar hero-bar--reference" aria-hidden="true"><span style="width: 100.0%"></span></span>
+  </div>
+      </div>
+
+    </div>
+      <div class="hero-row">
+      <h3>Time stuck in hung runs</h3>
+      <div class="hero-pair">
+        <div class="hero-arm hero-arm--kalari">
+    <span class="hero-arm-name">Kalari</span>
+    <span class="hero-value"><a class="run-link" href="run.html?id=fixture-c5-payouts-r1" data-run-link="fixture-c5-payouts-r1" title="Kalari total stuck">0.0 s</a></span>
+    <span class="hero-sub"><a class="run-link" href="run.html?id=fixture-c5-payouts-r1" data-run-link="fixture-c5-payouts-r1" title="Kalari sessions">1 sessions</a></span>
+    <span class="hero-bar hero-bar--kalari" aria-hidden="true"><span style="width: 0.0%"></span></span>
+  </div>
+        <span class="hero-ratio"><a class="run-link" href="run.html?id=fixture-c5-payouts-r1" data-run-link="fixture-c5-payouts-r1" title="Stuck note">No stuck time on either side</a></span>
+        <div class="hero-arm hero-arm--reference is-worse">
+    <span class="hero-arm-name">Reference</span>
+    <span class="hero-value"><a class="run-link" href="run.html?id=fixture-c3-payouts-r1" data-run-link="fixture-c3-payouts-r1" title="Reference total stuck">0.0 s</a></span>
+    <span class="hero-sub"><a class="run-link" href="run.html?id=fixture-c3-payouts-r1" data-run-link="fixture-c3-payouts-r1" title="Reference sessions">1 sessions</a></span>
+    <span class="hero-bar hero-bar--reference" aria-hidden="true"><span style="width: 0.0%"></span></span>
+  </div>
+      </div>
+      <p class="hero-note">No session ended in a hung run.</p>
+    </div>
+      <div class="hero-row">
+        <h3>What the sandbox could reach</h3>
+        <div class="hero-pair hero-pair--text">
+          <div class="hero-arm hero-arm--kalari">
+            <span class="hero-arm-name">Kalari</span>
+            <p class="hero-boundary">One fresh guest per run. No network except one allow rule. Caps on time, memory and output.</p>
+          </div>
+          <div class="hero-arm hero-arm--reference is-worse">
+            <span class="hero-arm-name">Reference</span>
+            <p class="hero-boundary hero-boundary--open">The agent chose its own sandbox. The default network reached the internet and the virtual machine's own SSH.</p>
+          </div>
+        </div>
+        <p class="hero-note">The agent cannot switch the Kalari boundary off.</p>
+      </div>
+    </div>
+    <p class="hero-verdicts">Both arms passed the hidden grader in every session. Kalari: <a class="run-link" href="run.html?id=fixture-c5-payouts-r1" data-run-link="fixture-c5-payouts-r1" title="Kalari pass tally">1/1</a> Reference: <a class="run-link" href="run.html?id=fixture-c3-payouts-r1" data-run-link="fixture-c3-payouts-r1" title="Reference pass tally">1/1</a></p>
+
+  </section>
 
     <section id="comparison" class="section section--comparison">
       <h2>The measured before and after</h2>
@@ -171,7 +252,6 @@
     <ul><li data-not-run="1"><strong>One continuous session</strong> (condition one). Not run. No record for this condition is in the store.</li><li data-not-run="2"><strong>The notes handoff</strong> (condition two). Not run. No record for this condition is in the store.</li><li data-not-run="4"><strong>Kalari, without stored lessons</strong> (condition four). Not run. No record for this condition is in the store.</li><li data-not-run="6"><strong>The verifier prompt</strong> (condition six). Not run. No record for this condition is in the store.</li></ul>
   </div>
           </section>
-
     <section id="runs" class="section"><h2>Every run</h2>
     <p>Every run id in the run index is listed here. Benchmark runs are grouped by condition. Other runs are listed at the end.</p>
     <div class="run-groups"><div class="run-group">

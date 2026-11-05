@@ -1010,6 +1010,335 @@ function frozenPairUpgrades(frozen) {
   return pairs.sort();
 }
 
+/* ------------------------------------------------------------------ */
+/* What Kalari changed: the hero comparison                             */
+/* ------------------------------------------------------------------ */
+
+/* Sums over the frozen benchmark rows only. Kalari is conditions 4 and 5.
+   Reference is conditions 1, 2, 3 and 6. Cost and wall time compare
+   per-session means. Stuck time compares totals. Token columns never enter:
+   the arms count tokens differently. */
+export const REFERENCE_SESSION = "reference-paging";
+export const REFERENCE_RUN = "reference-paging-fix";
+
+function heroSets(bench) {
+  const frozen = bench.filter(
+    (record) => payloadOf(record).provenance === "frozen" && payloadOf(record).status === "valid",
+  );
+  return {
+    kalari: frozen.filter((record) => payloadOf(record).arm === "kalari"),
+    reference: frozen.filter((record) => payloadOf(record).arm === "reference"),
+  };
+}
+
+function heroSums(records) {
+  if (!records.length) return null;
+  const sums = {};
+  for (const key of ["cost_usd", "wall_time_s", "time_stuck_s"]) {
+    const values = records.map((record) => payloadOf(record)[key]);
+    if (!values.every((value) => typeof value === "number" && Number.isFinite(value))) return null;
+    sums[key] = values.reduce((left, right) => left + right, 0);
+  }
+  return {
+    n: records.length,
+    stuckTotal: sums.time_stuck_s,
+    costMean: sums.cost_usd / records.length,
+    wallMean: sums.wall_time_s / records.length,
+  };
+}
+
+function heroNumbers(bench) {
+  const { kalari, reference } = heroSets(bench);
+  const kal = heroSums(kalari);
+  const ref = heroSums(reference);
+  if (!kal || !ref || kal.costMean <= 0 || ref.costMean <= 0 || kal.wallMean <= 0 || ref.wallMean <= 0) {
+    return null;
+  }
+  return { kalari, reference, kal, ref };
+}
+
+function ratioBadge(ratio, winWord, loseWord) {
+  if (ratio >= 1) return `${ratio.toFixed(1)}x ${winWord}`;
+  return `${(1 / ratio).toFixed(1)}x ${loseWord}`;
+}
+
+function stuckBadge(kalTotal, refTotal) {
+  if (kalTotal === 0 && refTotal === 0) return "No stuck time on either side";
+  if (kalTotal === 0) return "Every hung run was on the reference side";
+  if (refTotal === 0) return "Every hung run was on the Kalari side";
+  if (refTotal >= kalTotal) return `${(refTotal / kalTotal).toFixed(1)}x less stuck on the Kalari side`;
+  return `${(kalTotal / refTotal).toFixed(1)}x more stuck on the Kalari side`;
+}
+
+function barWidths(kalValue, refValue) {
+  if (!(kalValue > 0) && !(refValue > 0)) return { kal: "0.0%", ref: "0.0%" };
+  const large = Math.max(kalValue, refValue);
+  return { kal: `${((100 * kalValue) / large).toFixed(1)}%`, ref: `${((100 * refValue) / large).toFixed(1)}%` };
+}
+
+function dollars2(value) {
+  return `$${Number(value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function heroArm({ name, valueText, title, runId, runIds, sessionsText, sessionsTitle, barWidth, tone, worse = false }) {
+  return `<div class="hero-arm hero-arm--${attr(tone)}${worse ? " is-worse" : ""}">
+    <span class="hero-arm-name">${h(name)}</span>
+    <span class="hero-value">${runLink(runId, h(valueText), runIds, title)}</span>
+    <span class="hero-sub">${runLink(runId, h(sessionsText), runIds, sessionsTitle)}</span>
+    <span class="hero-bar hero-bar--${attr(tone)}" aria-hidden="true"><span style="width: ${attr(barWidth)}"></span></span>
+  </div>`;
+}
+
+function heroChangedSection(bench, runIds, containment) {
+  const numbers = heroNumbers(bench);
+  if (!numbers) return "";
+  const { kalari, reference, kal, ref } = numbers;
+  const kalCostRun = medianRecord(kalari, "cost_usd");
+  const refCostRun = medianRecord(reference, "cost_usd");
+  const kalWallRun = medianRecord(kalari, "wall_time_s");
+  const refWallRun = medianRecord(reference, "wall_time_s");
+  const kalStuckWorst = [...kalari].sort((a, b) => payloadOf(b).time_stuck_s - payloadOf(a).time_stuck_s)[0];
+  const refStuckWorst = [...reference].sort((a, b) => payloadOf(b).time_stuck_s - payloadOf(a).time_stuck_s)[0];
+  const costRatio = ref.costMean / kal.costMean;
+  const wallRatio = ref.wallMean / kal.wallMean;
+  const costWidths = barWidths(kal.costMean, ref.costMean);
+  const wallWidths = barWidths(kal.wallMean, ref.wallMean);
+  const stuckWidths = barWidths(kal.stuckTotal, ref.stuckTotal);
+  const refStuckRuns = reference.filter((record) => payloadOf(record).time_stuck_s > 0).length;
+  const stuckNote =
+    refStuckRuns === 0 && kal.stuckTotal === 0
+      ? "No session ended in a hung run."
+      : `${capitalise(countWord(refStuckRuns))} reference ${
+          refStuckRuns === 1 ? "session" : "sessions"
+        } recovered from a hung run. ${
+          kal.stuckTotal === 0 ? "No Kalari session ended in a hung run." : "Kalari sessions ended in hung runs too."
+        }`;
+  const kalPass = passCount(kalari);
+  const refPass = passCount(reference);
+  const verdicts =
+    kalPass === kal.n && refPass === ref.n
+      ? `<p class="hero-verdicts">Both arms passed the hidden grader in every session. Kalari: ${runLink(
+          kalCostRun.run_id,
+          `${count(kal.n)}/${count(kal.n)}`,
+          runIds,
+          "Kalari pass tally",
+        )} Reference: ${runLink(refCostRun.run_id, `${count(ref.n)}/${count(ref.n)}`, runIds, "Reference pass tally")}</p>`
+      : `<p class="hero-verdicts">Kalari passed ${runLink(
+          kalCostRun.run_id,
+          `${count(kalPass)} of ${count(kal.n)}`,
+          runIds,
+          "Kalari pass tally",
+        )} sessions. Reference passed ${runLink(
+          refCostRun.run_id,
+          `${count(refPass)} of ${count(ref.n)}`,
+          runIds,
+          "Reference pass tally",
+        )} sessions.</p>`;
+  const main = containmentOf(containment);
+  let capKill = "";
+  if (main) {
+    const p = payloadOf(main);
+    const wallMs = object(p.result)?.wall_ms;
+    const capMs = object(p.config)?.time_cap_ms;
+    if (Number.isFinite(wallMs) && Number.isFinite(capMs)) {
+      capKill = `<p class="hero-capkill">One consumer never ends. The aashaan stopped it at the cap: <code>${h(
+        object(p.result)?.verdict || "killed_timeout",
+      )}</code>, ${runLink(
+        main.run_id,
+        `${count(wallMs)} ms`,
+        runIds,
+        "Hero cap-kill wall time",
+      )} measured against a ${runLink(main.run_id, `${count(capMs)} ms`, runIds, "Hero cap-kill cap")} cap. <a href="${attr(
+        runHref(main.run_id),
+      )}" data-run-link="${attr(main.run_id)}">See the cap-kill run</a></p>`;
+    }
+  }
+  const row = ({ heading, kalValue, refValue, kalRun, refRun, kalTitle, refTitle, badgeText, badgeTitle, widths, note, refWorse }) =>
+    `<div class="hero-row">
+      <h3>${h(heading)}</h3>
+      <div class="hero-pair">
+        ${heroArm({
+          name: "Kalari",
+          valueText: kalValue,
+          title: kalTitle,
+          runId: kalRun.run_id,
+          runIds,
+          sessionsText: `${count(kal.n)} sessions`,
+          sessionsTitle: "Kalari sessions",
+          barWidth: widths.kal,
+          tone: "kalari",
+        })}
+        <span class="hero-ratio">${runLink(kalRun.run_id, h(badgeText), runIds, badgeTitle)}</span>
+        ${heroArm({
+          name: "Reference",
+          valueText: refValue,
+          title: refTitle,
+          runId: refRun.run_id,
+          runIds,
+          sessionsText: `${count(ref.n)} sessions`,
+          sessionsTitle: "Reference sessions",
+          barWidth: widths.ref,
+          tone: "reference",
+          worse: refWorse,
+        })}
+      </div>
+      ${note ? `<p class="hero-note">${h(note)}</p>` : ""}
+    </div>`;
+  return `<section id="changed" class="section section--changed" aria-labelledby="changed-title">
+    <p class="hero-kicker">What Kalari changed</p>
+    <h2 id="changed-title">Cheaper is good. Faster is good. Both at once is the headline.</h2>
+    <p class="hero-lede">OpenCode alone against OpenCode with Kalari, on the frozen pair. Both arms passed the hidden grader in every session. Kalari cost less and finished sooner, inside a boundary the agent cannot switch off.</p>
+    <div class="hero-grid">
+      ${row({
+        heading: "Cost per session",
+        kalValue: money(kal.costMean),
+        refValue: money(ref.costMean),
+        kalRun: kalCostRun,
+        refRun: refCostRun,
+        kalTitle: "Kalari mean cost",
+        refTitle: "Reference mean cost",
+        badgeText: ratioBadge(costRatio, "cheaper", "costlier"),
+        badgeTitle: "Cost ratio",
+        widths: costWidths,
+        note: "",
+        refWorse: ref.costMean >= kal.costMean,
+      })}
+      ${row({
+        heading: "Wall time per session",
+        kalValue: seconds(kal.wallMean),
+        refValue: seconds(ref.wallMean),
+        kalRun: kalWallRun,
+        refRun: refWallRun,
+        kalTitle: "Kalari mean wall time",
+        refTitle: "Reference mean wall time",
+        badgeText: ratioBadge(wallRatio, "faster", "slower"),
+        badgeTitle: "Wall time ratio",
+        widths: wallWidths,
+        note: "",
+        refWorse: ref.wallMean >= kal.wallMean,
+      })}
+      ${row({
+        heading: "Time stuck in hung runs",
+        kalValue: seconds(kal.stuckTotal),
+        refValue: seconds(ref.stuckTotal),
+        kalRun: kalStuckWorst,
+        refRun: refStuckWorst,
+        kalTitle: "Kalari total stuck",
+        refTitle: "Reference total stuck",
+        badgeText: stuckBadge(kal.stuckTotal, ref.stuckTotal),
+        badgeTitle: "Stuck note",
+        widths: stuckWidths,
+        note: stuckNote,
+        refWorse: ref.stuckTotal >= kal.stuckTotal,
+      })}
+      <div class="hero-row">
+        <h3>What the sandbox could reach</h3>
+        <div class="hero-pair hero-pair--text">
+          <div class="hero-arm hero-arm--kalari">
+            <span class="hero-arm-name">Kalari</span>
+            <p class="hero-boundary">One fresh guest per run. No network except one allow rule. Caps on time, memory and output.</p>
+          </div>
+          <div class="hero-arm hero-arm--reference is-worse">
+            <span class="hero-arm-name">Reference</span>
+            <p class="hero-boundary hero-boundary--open">The agent chose its own sandbox. The default network reached the internet and the virtual machine's own SSH.</p>
+          </div>
+        </div>
+        <p class="hero-note">The agent cannot switch the Kalari boundary off.</p>
+      </div>
+    </div>
+    ${verdicts}
+    ${capKill}
+  </section>`;
+}
+
+/* ------------------------------------------------------------------ */
+/* The problem: the reference run that motivates Kalari                 */
+/* ------------------------------------------------------------------ */
+
+function referenceRecords(records) {
+  return ofKind(records, "reference").filter(
+    (record) => object(record?.payload)?.schema === "kalari.reference.v1" && isId(record.run_id),
+  );
+}
+
+function referenceOf(records) {
+  return referenceRecords(records)[0];
+}
+
+function problemSection(records, runIds) {
+  const record = referenceOf(records);
+  if (!record) return "";
+  const p = payloadOf(record);
+  const before = object(p.before) || {};
+  const after = object(p.after) || {};
+  const runId = record.run_id;
+  return `<section id="problem" class="section section--problem" aria-labelledby="problem-title">
+    <p class="hero-kicker">The problem</p>
+    <h2 id="problem-title">The export looked fine and lost ${runLink(
+      runId,
+      h(count(before.missing)),
+      runIds,
+      "Reference loss: missing records",
+    )} records.</h2>
+    <p class="hero-lede">The v1 consumer exits clean and prints a neat total. The hidden grader counts what arrived. This silent loss is why Kalari rehearses each upgrade in a contained arena.</p>
+    <div class="problem-grid">
+      <div class="problem-card problem-card--loss">
+        <h3>The silent loss</h3>
+        <p><code>${h(p.consumer || "import_items.py")}</code> exits ${measure(
+          runId,
+          before.exit_code,
+          count,
+          "Reference loss: exit code",
+          runIds,
+        )}. It prints "imported ${measure(
+          runId,
+          before.records,
+          count,
+          "Reference loss: printed records",
+          runIds,
+        )} items". The hidden grader finds ${measure(
+          runId,
+          before.records,
+          count,
+          "Reference loss: graded records",
+          runIds,
+        )} of ${measure(runId, before.expected, count, "Reference loss: expected records", runIds)} records. ${measure(
+          runId,
+          before.missing,
+          count,
+          "Reference loss: missing records",
+          runIds,
+        )} records never arrive. The grade is <span class="verdict is-fail">${h(verdictWord(before.verdict))}</span>.</p>
+      </div>
+      <div class="problem-card problem-card--fix">
+        <h3>The fix</h3>
+        <p>${runLink(
+          runId,
+          h(after.setup || "OpenCode with microsandbox-mcp and DeepSeek V4.1 Flash"),
+          runIds,
+          "Reference fix: setup",
+        )} rewrites the consumer. It passes on the first attempt: ${measure(
+          runId,
+          after.records,
+          count,
+          "Reference fix: records",
+          runIds,
+        )} of ${measure(runId, after.expected, count, "Reference fix: expected records", runIds)} records. The grade is <span class="verdict is-pass">${h(
+          verdictWord(after.verdict),
+        )}</span>.</p>
+        <dl class="problem-facts">
+          <div><dt>Wall time</dt><dd>${measure(runId, after.wall_time_s, seconds, "Reference fix: wall time", runIds)}</dd></div>
+          <div><dt>Input tokens</dt><dd>${measure(runId, after.tokens_input, tokens, "Reference fix: input tokens", runIds)}</dd></div>
+          <div><dt>Output tokens</dt><dd>${measure(runId, after.tokens_output, tokens, "Reference fix: output tokens", runIds)}</dd></div>
+          <div><dt>List-price cost</dt><dd>${measure(runId, after.cost_usd, dollars2, "Reference fix: cost", runIds)}</dd></div>
+        </dl>
+      </div>
+    </div>
+    <p class="fine-print">Figures from <code>${h(p.source || "bench/reference-paging/README.md")}</code>. This run is not a benchmark session. It never enters the tallies below.</p>
+    <p class="quiet-line"><a href="${attr(sessionHref(REFERENCE_SESSION))}">Open the session</a></p>
+  </section>`;
+}
+
 function heroSection({ hasBenchmark, hasFrozen, hasFrozenRows, sections }) {
   const status = !hasBenchmark
     ? `<p class="status-line"><span class="status-dot" aria-hidden="true"></span>Waiting for published results</p>`
@@ -1061,6 +1390,7 @@ export function judgesView({
   lessons = [],
   runDetails = {},
   containment = null,
+  reference = null,
   warnings = [],
 } = {}) {
   const bench = benchmarkRecords(benchmark);
@@ -1080,13 +1410,22 @@ export function judgesView({
   const frozenPairs = frozenPairUpgrades(frozen);
   const hasFrozen = frozenPairs.length > 0;
   const comparisonHeading = hasFrozen ? "The measured before and after" : "The pilot baseline";
+  const hasChanged = heroNumbers(bench) !== null;
+  const hasProblem = referenceOf(reference || []) !== undefined;
 
-  const sections = [{ id: "comparison", label: comparisonHeading }];
-  if (hasBenchmark) {
-    sections.push({ id: "baseline", label: "Every condition in this fixture" });
+  const sections = [];
+  if (hasChanged) {
+    sections.push({ id: "changed", label: "What Kalari changed" });
+  }
+  if (hasProblem) {
+    sections.push({ id: "problem", label: "The problem" });
   }
   if (containmentOf(containment)) {
     sections.push({ id: "containment", label: "The containment runs" });
+  }
+  sections.push({ id: "comparison", label: comparisonHeading });
+  if (hasBenchmark) {
+    sections.push({ id: "baseline", label: "Every condition in this fixture" });
   }
   if (hasBenchmark) {
     sections.push({ id: "runs", label: "Every run" });
@@ -1114,6 +1453,9 @@ export function judgesView({
   return `<article class="judges">
     ${heroSection({ hasBenchmark, hasFrozen, hasFrozenRows: frozen.length > 0, sections })}
     ${warningsSection(warnings)}
+    ${heroChangedSection(bench, runIds, containment)}
+    ${problemSection(reference, runIds)}
+    ${containmentSection(containment, runIds)}
     <section id="comparison" class="section section--comparison">
       ${comparisonSection(bench, runIds, hasFrozen)}
     </section>
@@ -1126,7 +1468,6 @@ export function judgesView({
           </section>`
         : ""
     }
-    ${containmentSection(containment, runIds)}
     ${hasBenchmark ? `<section id="runs" class="section">${everyRunSection(bench, runs, runDetails, runIds)}</section>` : ""}
     <section id="sessions" class="section section--sessions">
       ${sessionLinksSection(sessions)}
@@ -1955,21 +2296,65 @@ function containmentRunDetail(record) {
   </section>`;
 }
 
+/* The evidence behind The problem panel. Lists and definition lists only:
+   the run page's only table is the record index. */
+function referenceRunDetail(record) {
+  const p = payloadOf(record);
+  const before = object(p.before) || {};
+  const after = object(p.after) || {};
+  return `<section class="panel" id="reference-evidence" aria-labelledby="reference-evidence-title">
+    <div class="panel-head">
+      <div><h2 id="reference-evidence-title">Reference run: the paging fix</h2>
+      <p class="quiet-line">Committed figures from ${h(p.source || "bench/reference-paging/README.md")}. Not a benchmark run.</p></div>
+      <div class="badge-row">${badge("Not a benchmark run", "neutral")}</div>
+    </div>
+    <p class="caveat">${h(p.case || "The v1 consumer meets a paging API.")}</p>
+    <h3>The silent loss</h3>
+    <dl class="facts facts--wide">
+      ${fact("Consumer", `<code>${h(p.consumer || "import_items.py")}</code>`)}
+      ${fact("Exit code", plain(before.exit_code, count))}
+      ${fact("Printed", before.stdout ? `<code>${h(before.stdout)}</code>` : h("not recorded"))}
+      ${fact("Graded records", plain(before.records, count))}
+      ${fact("Expected records", plain(before.expected, count))}
+      ${fact("Missing records", plain(before.missing, count))}
+      ${fact("Grade", h(verdictWord(before.verdict)))}
+    </dl>
+    <h3>The fix</h3>
+    <p>${h(after.setup || "OpenCode with microsandbox-mcp and DeepSeek V4.1 Flash")} rewrote the consumer. It passed on the first attempt.</p>
+    <dl class="facts facts--wide">
+      ${fact("Grade", h(verdictWord(after.verdict)))}
+      ${fact("Graded records", plain(after.records, count))}
+      ${fact("Expected records", plain(after.expected, count))}
+      ${fact("First attempt", h(after.attempt === 1 ? "Passed on attempt one" : "not recorded"))}
+      ${fact("Wall time", plain(after.wall_time_s, seconds))}
+      ${fact("Input tokens", plain(after.tokens_input, tokens))}
+      ${fact("Output tokens", plain(after.tokens_output, tokens))}
+      ${fact("List-price cost", plain(after.cost_usd, dollars2))}
+    </dl>
+    <h3>What this run is not</h3>
+    <p class="muted">This run is not a benchmark session. It never enters the frozen tallies, the medians, or the hero sums. It shows the silent loss that motivates the comparison.</p>
+  </section>`;
+}
+
 export function runView({ runId = "", records = [], runs = null, warnings = [] } = {}) {
   const runIds = runIdSet(runs);
   const bench = benchmarkRecords(records);
   const runRecords = ofKind(records, "run");
+  const shown = containmentOf(records);
+  const reference = referenceOf(records);
   const sessionId = records[0]?.session_id || "";
   const firstPayload = bench.length ? payloadOf(bench[0]) : {};
   const provenance = firstPayload.provenance === "frozen" ? "frozen" : "pilot";
   const provenanceTitle = provenance === "frozen" ? "Frozen comparison" : "Pilot";
   const title = bench.length
     ? `${provenanceTitle} run: ${upgradeLabel(firstPayload.upgrade)}`
-    : containmentOf(records)
+    : shown
       ? "Containment evidence"
-      : runRecords.length
-      ? "Sandbox run"
-      : "Run evidence";
+      : reference
+        ? "Reference evidence"
+        : runRecords.length
+          ? "Sandbox run"
+          : "Run evidence";
   const benchStatus = bench.length ? firstPayload.status : "";
   const benchBadge =
     benchStatus === "invalid"
@@ -1977,7 +2362,6 @@ export function runView({ runId = "", records = [], runs = null, warnings = [] }
       : benchStatus === "diagnostic"
         ? badge("Diagnostic session", "pilot")
         : badge(provenance === "frozen" ? "Frozen comparison run" : "Measured pilot run", "live");
-  const shown = containmentOf(records);
   const illustrativeBadge = runRecords.some((record) => payloadOf(record).illustrative === true)
     ? badge("Illustrative", "draft")
     : "";
@@ -1998,8 +2382,9 @@ export function runView({ runId = "", records = [], runs = null, warnings = [] }
     ${warningsSection(warnings)}
     ${bench.map((record) => benchmarkRunDetail(payloadOf(record), sessionId)).join("")}
     ${shown ? containmentRunDetail(shown) : ""}
+    ${reference ? referenceRunDetail(reference) : ""}
     ${runRecords.map((record) => sandboxRunDetail(record, records, runIds)).join("")}
-    ${!bench.length && !runRecords.length ? `<div class="notice notice--quiet"><h2>No readable run record</h2><p>The store returned records for this run, but none is a run or benchmark record.</p></div>` : ""}
+    ${!bench.length && !runRecords.length && !reference ? `<div class="notice notice--quiet"><h2>No readable run record</h2><p>The store returned records for this run, but none is a run or benchmark record.</p></div>` : ""}
     ${recordsTable(records)}
   </article>`;
 }

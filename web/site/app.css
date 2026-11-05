@@ -515,15 +515,15 @@ p {
 }
 
 .tally-dot {
-  width: 2rem;
-  height: 2rem;
+  width: 1.15rem;
+  height: 1.15rem;
   border-radius: 50%;
   border: 1px solid var(--rule-strong);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   text-decoration: none;
-  background: var(--paper);
+  background: transparent;
   transition: transform 120ms ease-out;
 }
 
@@ -532,12 +532,12 @@ p {
 }
 
 .tally-dot.is-pass {
-  background: var(--pass);
+  background: transparent;
   border-color: var(--pass);
 }
 
 .tally-dot.is-fail {
-  background: var(--fail);
+  background: transparent;
   border-color: var(--fail);
 }
 
@@ -547,7 +547,7 @@ p {
 }
 
 .tally-dot.is-first {
-  box-shadow: inset 0 0 0 2px var(--paper);
+  border-width: 2px;
 }
 
 .tally-mark {
@@ -556,10 +556,18 @@ p {
   justify-content: center;
   width: 1rem;
   height: 1rem;
-  color: var(--paper);
-  font-size: 0.8rem;
+  color: var(--muted);
+  font-size: 0.65rem;
   font-weight: 700;
   line-height: 1;
+}
+
+.tally-dot.is-pass .tally-mark {
+  color: var(--pass);
+}
+
+.tally-dot.is-fail .tally-mark {
+  color: var(--fail);
 }
 
 .tally-dot.is-pass .tally-mark::after {
@@ -1710,6 +1718,225 @@ td.num {
   font-size: clamp(2.2rem, 5vw, 3.5rem);
 }
 
+/* What Kalari changed and the problem ------------------------------------- */
+
+.hero-kicker {
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+}
+
+.hero-lede {
+  max-width: 60ch;
+  color: var(--ink-2);
+  font-size: 1.1rem;
+}
+
+.hero-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin-top: 2rem;
+  max-width: 62rem;
+}
+
+.hero-row {
+  border-top: 1px solid var(--rule);
+  padding-top: 1.5rem;
+}
+
+.hero-row h3 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.3rem, 2.2vw, 1.7rem);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.25rem;
+}
+
+.hero-pair {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 1.5rem;
+  align-items: stretch;
+  margin-top: 1rem;
+}
+
+.hero-arm {
+  padding: 1.25rem 1.5rem;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.hero-arm-name {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.hero-value {
+  font-family: var(--font-serif);
+  font-size: clamp(1.9rem, 3.4vw, 2.7rem);
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-arm--kalari .hero-value,
+.hero-arm--kalari .hero-value .run-link {
+  color: var(--pass);
+}
+
+.hero-arm--reference .hero-value,
+.hero-arm--reference .hero-value .run-link {
+  color: var(--ink-2);
+}
+
+.hero-arm--reference.is-worse .hero-value,
+.hero-arm--reference.is-worse .hero-value .run-link {
+  color: var(--accent);
+}
+
+.hero-sub {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.hero-bar {
+  display: block;
+  height: 0.6rem;
+  background: var(--paper-3);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.hero-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.hero-bar--kalari > span {
+  background: var(--pass);
+}
+
+.hero-arm--reference .hero-bar > span {
+  background: var(--ink-2);
+}
+
+.hero-arm--reference.is-worse .hero-bar > span {
+  background: var(--accent);
+}
+
+.hero-ratio {
+  align-self: center;
+  font-weight: 700;
+  font-size: 1.05rem;
+  white-space: nowrap;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  background: var(--paper-2);
+}
+
+.hero-ratio .run-link {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.hero-note {
+  font-size: 0.92rem;
+  color: var(--muted);
+  max-width: 68ch;
+}
+
+.hero-verdicts {
+  font-size: 1.05rem;
+  font-weight: 600;
+  max-width: 68ch;
+  margin-top: 2rem;
+}
+
+.hero-capkill {
+  max-width: 68ch;
+}
+
+.hero-boundary {
+  color: var(--ink-2);
+  font-size: 0.95rem;
+  margin-bottom: 0;
+  max-width: 40ch;
+}
+
+.hero-boundary--open {
+  color: var(--accent);
+}
+
+.problem-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  max-width: 62rem;
+}
+
+.problem-card {
+  padding: 1.5rem;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+}
+
+.problem-card--loss {
+  border-top: 3px solid var(--accent);
+}
+
+.problem-card--fix {
+  border-top: 3px solid var(--pass);
+}
+
+.problem-card h3 {
+  margin-top: 0;
+}
+
+.problem-card p {
+  font-size: 0.95rem;
+  max-width: 52ch;
+}
+
+.problem-facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem 1.5rem;
+  margin: 1rem 0 0;
+  padding: 0;
+}
+
+.problem-facts > div {
+  border-top: 1px solid var(--rule);
+  padding-top: 0.5rem;
+}
+
+.problem-facts dt {
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.problem-facts dd {
+  margin: 0.15rem 0 0;
+  font-weight: 600;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Small screens ---------------------------------------------------------- */
 
 @media (max-width: 860px) {
@@ -1732,8 +1959,18 @@ td.num {
   }
 
   .contrast-grid,
-  .loss-grid {
+  .loss-grid,
+  .problem-grid {
     grid-template-columns: 1fr;
+  }
+
+  .hero-pair {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .hero-ratio {
+    justify-self: center;
   }
 
   .containment-measures {
@@ -1882,8 +2119,8 @@ td.num {
   }
 
   .tally-dot {
-    width: 1.85rem;
-    height: 1.85rem;
+    width: 1rem;
+    height: 1rem;
   }
 }
 

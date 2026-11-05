@@ -15,7 +15,7 @@ sits outside it and has no HTTP route. The fixture server serves `web/site/` and
 
 | File | Address | What it shows |
 |---|---|---|
-| `web/site/index.html` | `/` | For judges: start here. The pilot baseline, every condition in the fixture, the containment runs and every run. |
+| `web/site/index.html` | `/` | For judges: start here. The hero comparison, the problem the reference run shows, the containment runs, each condition in the fixture, and every run. |
 | `web/site/session.html` | `/session.html?id=<id>` | One session: the change list, the blast radius, the recalled checks, each run with logs, the retry loop and the lesson written. |
 | `web/site/run.html` | `/run.html?id=<id>` | One run: its verdict, checks, logs, Clef answer and evidence record. |
 
@@ -93,10 +93,13 @@ loopback and stops it on exit. It reads the rendered snapshots from
     and the repeat counts from the records the snapshot was rendered from. The
     measure-link count covers table cells, median lines and the frozen worst-run
     lines. The containment panel has its own links, checked against its own
-    record (item 21). A new record changes the page and the
+    record (item 21). The hero figures are recomputed from the frozen benchmark
+    records and must match what the page shows. The problem panel figures must
+    match the reference record. A new record changes the page and the
     expectation together. The snapshots cover a second pilot row for one
     condition, a single frozen condition-five record, a complete frozen pair and
-    a split frozen store.
+    a split frozen store. The reference record is excluded from every benchmark
+    tally and hero sum.
 13. Every median is computed from the benchmark records and compared with the
     displayed text and its run link. Each median line holds exactly one link,
     and that link sits inside the value span.
@@ -408,6 +411,7 @@ reads, and the web check checks it on every record every route returns.
 | `session` | `{title, summary, arm, illustrative, notes}` | No producer yet. The fixture supplies it. |
 | `change` | `{id, kind, severity, title, summary, endpoint, source}` | No producer yet. The fixture supplies it. |
 | `containment` | `kalari.containment.v1`, written by `tests/live/containment.sh` | The containment runs's own summary. It shares the run id of the production `run` record. |
+| `reference` | `kalari.reference.v1`, written by `web/fixture/build.py` from `bench/reference-paging/README.md` | The reference run that motivates Kalari. It lives in its own session, apart from the benchmark records, and never enters a benchmark tally. |
 | `blast-radius` | `Kalari.Model.BlastRadius` | The search tool writes links to Lambo, not the evidence store. |
 | `decision` | `{question, question_set, model, answer}` | No producer yet. The fixture supplies it. |
 

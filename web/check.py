@@ -60,10 +60,11 @@ PAGES = (
     "run-containment-earlier",
     "run-endpoint",
     "run-redaction",
+    "run-reference",
 )
 JUDGES_PAGES = tuple(name for name in PAGES if name.startswith("judges"))
 SESSION_PAGES = ("session", "session-frozen", "session-redaction")
-RUN_PAGES = ("run", "run-frozen", "run-illustrative", "run-containment", "run-containment-earlier", "run-endpoint", "run-redaction")
+RUN_PAGES = ("run", "run-frozen", "run-illustrative", "run-containment", "run-containment-earlier", "run-endpoint", "run-redaction", "run-reference")
 SHELLS = ("index.html", "session.html", "run.html")
 
 ID_RE = re.compile(r"^[A-Za-z0-9._-]+$")
@@ -873,7 +874,7 @@ def assert_numbers_link_to_runs(base: str, judges_html: str, run_ids: set[str], 
                 f"an anchor shows a number but data-run-link {data_id!r} does not equal href id {run_id!r}",
             )
             check(
-                title in TITLE_FIELDS or title in CONTAINMENT_TITLES or title == f"Open run {run_id}",
+                title in TITLE_FIELDS or title in CONTAINMENT_TITLES or title in HERO_TITLES or title in REFERENCE_TITLES or title == f"Open run {run_id}",
                 f"an anchor shows a number with an unknown title: {title!r}",
             )
 
@@ -1171,6 +1172,8 @@ def assert_values_match_records(name: str, html: str, benchmark: list[dict], run
             )
         elif title in CONTAINMENT_TITLES:
             pass  # assert_containment checks these against the containment record
+        elif title in HERO_TITLES or title in REFERENCE_TITLES:
+            pass  # assert_hero and assert_reference_panel check these against their records
         elif title:
             raise Failure(f"an anchor with data-run-link has an unknown title: {title!r}")
     say(f"{name}: {checked} table values match their records")
@@ -1197,6 +1200,12 @@ def assert_anchor_containers(name: str, html: str) -> None:
             check(
                 anchor["attrs"].get("data-run-link") == run_id,
                 f"on {name}, the containment figure {title!r} has no data-run-link for {run_id!r}",
+            )
+            continue
+        if run_id is not None and (title in HERO_TITLES or title in REFERENCE_TITLES):
+            check(
+                anchor["attrs"].get("data-run-link") == run_id,
+                f"on {name}, the figure {title!r} has no data-run-link for {run_id!r}",
             )
             continue
         if run_id is not None and title in TITLE_FIELDS:
@@ -1456,6 +1465,379 @@ def assert_containment_run_page(name: str, html: str, records: list[dict]) -> No
     check(html.count("<table") <= 1, f"on {name}, the containment evidence added a table")
     for word in ("demonstration", "deliberate"):
         check(word not in text.lower(), f"on {name}, the run page carries the label {word!r}")
+
+
+REFERENCE_SESSION = "reference-paging"
+REFERENCE_RUN = "reference-paging-fix"
+
+HERO_TITLES = {
+    "Kalari mean cost",
+    "Reference mean cost",
+    "Kalari mean wall time",
+    "Reference mean wall time",
+    "Kalari total stuck",
+    "Reference total stuck",
+    "Cost ratio",
+    "Wall time ratio",
+    "Stuck note",
+    "Kalari pass tally",
+    "Reference pass tally",
+    "Kalari sessions",
+    "Reference sessions",
+    "Hero cap-kill wall time",
+    "Hero cap-kill cap",
+}
+
+REFERENCE_TITLES = {
+    "Reference loss: exit code",
+    "Reference loss: printed records",
+    "Reference loss: graded records",
+    "Reference loss: expected records",
+    "Reference loss: missing records",
+    "Reference fix: setup",
+    "Reference fix: records",
+    "Reference fix: expected records",
+    "Reference fix: wall time",
+    "Reference fix: input tokens",
+    "Reference fix: output tokens",
+    "Reference fix: cost",
+}
+
+
+def reference_record_of(records: list[dict]) -> dict | None:
+    """The reference run record, if the store publishes it."""
+    for record in records or []:
+        if (
+            isinstance(record, dict)
+            and record.get("kind") == "reference"
+            and payload_of(record).get("schema") == "kalari.reference.v1"
+        ):
+            return record
+    return None
+
+
+def hero_sets(benchmark: list[dict]) -> tuple[list[dict], list[dict]]:
+    """The frozen benchmark rows per arm. Kalari is conditions 4 and 5,
+    reference is conditions 1, 2, 3 and 6."""
+    kalari, reference = [], []
+    for record in benchmark or []:
+        if not isinstance(record, dict) or record.get("kind") != "benchmark":
+            continue
+        p = payload_of(record)
+        if p.get("provenance") != "frozen" or p.get("status") != "valid":
+            continue
+        if p.get("arm") == "kalari":
+            kalari.append(record)
+        elif p.get("arm") == "reference":
+            reference.append(record)
+    return kalari, reference
+
+
+def hero_sums(records: list[dict]) -> dict | None:
+    if not records:
+        return None
+    sums: dict[str, float] = {}
+    for key in ("cost_usd", "wall_time_s", "time_stuck_s"):
+        values = [payload_of(record).get(key) for record in records]
+        if any(not finite(value) for value in values):
+            return None
+        sums[key] = sum(values)  # type: ignore[arg-type]
+    return {
+        "n": len(records),
+        "stuck": sums["time_stuck_s"],
+        "cost_mean": sums["cost_usd"] / len(records),
+        "wall_mean": sums["wall_time_s"] / len(records),
+    }
+
+
+def hero_ratio_text(ratio: float, win: str, lose: str) -> str:
+    if ratio >= 1:
+        return f"{ratio:.1f}x {win}"
+    return f"{1 / ratio:.1f}x {lose}"
+
+
+def hero_stuck_badge(kal_total: float, ref_total: float) -> str:
+    if kal_total == 0 and ref_total == 0:
+        return "No stuck time on either side"
+    if kal_total == 0:
+        return "Every hung run was on the reference side"
+    if ref_total == 0:
+        return "Every hung run was on the Kalari side"
+    if ref_total >= kal_total:
+        return f"{ref_total / kal_total:.1f}x less stuck on the Kalari side"
+    return f"{kal_total / ref_total:.1f}x more stuck on the Kalari side"
+
+
+def hero_bar_widths(kal_value: float, ref_value: float) -> tuple[str, str]:
+    if not (kal_value > 0) and not (ref_value > 0):
+        return "0.0%", "0.0%"
+    large = max(kal_value, ref_value)
+    return f"{100 * kal_value / large:.1f}%", f"{100 * ref_value / large:.1f}%"
+
+
+def hero_stuck_note(kalari: list[dict], reference: list[dict], kal_stuck: float) -> str:
+    ref_stuck_runs = sum(1 for record in reference if payload_of(record).get("time_stuck_s", 0) > 0)
+    if ref_stuck_runs == 0 and kal_stuck == 0:
+        return "No session ended in a hung run."
+    sessions = "session" if ref_stuck_runs == 1 else "sessions"
+    kalari_part = (
+        "No Kalari session ended in a hung run."
+        if kal_stuck == 0
+        else "Kalari sessions ended in hung runs too."
+    )
+    return f"{capitalise(count_word(ref_stuck_runs))} reference {sessions} recovered from a hung run. {kalari_part}"
+
+
+def hero_expected(benchmark: list[dict], containment: list[dict]) -> list[tuple] | None:
+    """Every hero figure as (title, run id, text), recomputed from the records.
+    None when an arm is missing or a measure is unknown."""
+    kalari, reference = hero_sets(benchmark)
+    kal, ref = hero_sums(kalari), hero_sums(reference)
+    if kal is None or ref is None:
+        return None
+    if kal["cost_mean"] <= 0 or ref["cost_mean"] <= 0 or kal["wall_mean"] <= 0 or ref["wall_mean"] <= 0:
+        return None
+    kal_cost = median_record(kalari, "cost_usd")
+    ref_cost = median_record(reference, "cost_usd")
+    kal_wall = median_record(kalari, "wall_time_s")
+    ref_wall = median_record(reference, "wall_time_s")
+    kal_stuck = max(kalari, key=lambda record: payload_of(record)["time_stuck_s"])
+    ref_stuck = max(reference, key=lambda record: payload_of(record)["time_stuck_s"])
+    figures = [
+        ("Kalari mean cost", kal_cost["run_id"], format_money(kal["cost_mean"])),
+        ("Reference mean cost", ref_cost["run_id"], format_money(ref["cost_mean"])),
+        ("Kalari mean wall time", kal_wall["run_id"], format_seconds(kal["wall_mean"])),
+        ("Reference mean wall time", ref_wall["run_id"], format_seconds(ref["wall_mean"])),
+        ("Kalari total stuck", kal_stuck["run_id"], format_seconds(kal["stuck"])),
+        ("Reference total stuck", ref_stuck["run_id"], format_seconds(ref["stuck"])),
+        (
+            "Cost ratio",
+            kal_cost["run_id"],
+            hero_ratio_text(ref["cost_mean"] / kal["cost_mean"], "cheaper", "costlier"),
+        ),
+        (
+            "Wall time ratio",
+            kal_wall["run_id"],
+            hero_ratio_text(ref["wall_mean"] / kal["wall_mean"], "faster", "slower"),
+        ),
+        ("Stuck note", kal_stuck["run_id"], hero_stuck_badge(kal["stuck"], ref["stuck"])),
+    ]
+    # Each arm block shows its session count, so the count appears once per
+    # row, linked to that row's representative run.
+    for run in (kal_cost, kal_wall, kal_stuck):
+        figures.append(("Kalari sessions", run["run_id"], f"{format_count(kal['n'])} sessions"))
+    for run in (ref_cost, ref_wall, ref_stuck):
+        figures.append(("Reference sessions", run["run_id"], f"{format_count(ref['n'])} sessions"))
+    kal_pass = sum(1 for record in kalari if payload_of(record).get("verdict") == "PASS")
+    ref_pass = sum(1 for record in reference if payload_of(record).get("verdict") == "PASS")
+    if kal_pass == kal["n"] and ref_pass == ref["n"]:
+        figures.append(("Kalari pass tally", kal_cost["run_id"], f"{format_count(kal['n'])}/{format_count(kal['n'])}"))
+        figures.append(("Reference pass tally", ref_cost["run_id"], f"{format_count(ref['n'])}/{format_count(ref['n'])}"))
+    else:
+        figures.append(("Kalari pass tally", kal_cost["run_id"], f"{format_count(kal_pass)} of {format_count(kal['n'])}"))
+        figures.append(("Reference pass tally", ref_cost["run_id"], f"{format_count(ref_pass)} of {format_count(ref['n'])}"))
+    main = containment_record_of(containment or [])
+    if main is not None:
+        wall_ms = (payload_of(main).get("result") or {}).get("wall_ms")
+        cap_ms = (payload_of(main).get("config") or {}).get("time_cap_ms")
+        if finite(wall_ms) and finite(cap_ms):
+            figures.append(("Hero cap-kill wall time", main["run_id"], f"{format_count(wall_ms)} ms"))
+            figures.append(("Hero cap-kill cap", main["run_id"], f"{format_count(cap_ms)} ms"))
+    return figures
+
+
+def hero_bar_expected(benchmark: list[dict]) -> list[str] | None:
+    kalari, reference = hero_sets(benchmark)
+    kal, ref = hero_sums(kalari), hero_sums(reference)
+    if kal is None or ref is None:
+        return None
+    if kal["cost_mean"] <= 0 or ref["cost_mean"] <= 0 or kal["wall_mean"] <= 0 or ref["wall_mean"] <= 0:
+        return None
+    widths: list[str] = []
+    for key in ("cost_mean", "wall_mean"):
+        kal_width, ref_width = hero_bar_widths(kal[key], ref[key])
+        widths += [kal_width, ref_width]
+    kal_width, ref_width = hero_bar_widths(kal["stuck"], ref["stuck"])
+    widths += [kal_width, ref_width]
+    return widths
+
+
+def hero_section_of(html: str, section_id: str) -> str:
+    start = html.index(f'<section id="{section_id}"')
+    return html[start : html.index("</section>", start)]
+
+
+def assert_hero(name: str, html: str, benchmark: list[dict], run_ids: set[str], containment: list[dict]) -> None:
+    expected = hero_expected(benchmark, containment or [])
+    has_section = 'id="changed"' in html
+    if expected is None:
+        check(not has_section, f"on {name}, a hero comparison is drawn with an incomplete arm")
+        return
+    check(has_section, f"on {name}, the frozen rows have both arms and no hero comparison")
+    section = hero_section_of(html, "changed")
+    parser = JudgesParser()
+    parser.feed(section)
+    actual = [
+        (anchor["attrs"].get("title"), anchor["attrs"].get("data-run-link"), anchor["text"])
+        for anchor in parser.anchors
+        if str(anchor["attrs"].get("title", "")) in HERO_TITLES
+    ]
+    check(
+        Counter(actual) == Counter(expected),
+        f"on {name}, the hero figures are {actual}, expected {expected}",
+    )
+    kalari, reference = hero_sets(benchmark)
+    kal_runs = {record["run_id"] for record in kalari}
+    ref_runs = {record["run_id"] for record in reference}
+    main = containment_record_of(containment or [])
+    for title, run_id, _text in actual:
+        check(run_id in run_ids, f"on {name}, the hero figure {title!r} links {run_id!r}, which is not in /api/runs")
+        if title in ("Hero cap-kill wall time", "Hero cap-kill cap"):
+            check(
+                main is not None and run_id == main["run_id"],
+                f"on {name}, the hero figure {title!r} does not link the cap-kill run",
+            )
+        elif str(title).startswith("Reference"):
+            check(run_id in ref_runs, f"on {name}, the hero figure {title!r} links a run outside the reference arm")
+        else:
+            check(run_id in kal_runs, f"on {name}, the hero figure {title!r} links a run outside the Kalari arm")
+    for number, context, run_id in parser.numbers:
+        check(run_id is not None, f"on {name}, the hero shows {number!r} outside a run link ({context!r})")
+    widths = re.findall(r'style="width: ([0-9.]+%)"', section)
+    check(
+        widths == hero_bar_expected(benchmark),
+        f"on {name}, the hero bars are {widths}, expected {hero_bar_expected(benchmark)}",
+    )
+    text = plain_text(section)
+    kal, ref = hero_sums(kalari), hero_sums(reference)
+    assert kal is not None and ref is not None
+    for phrase in (
+        "One fresh guest per run",
+        "No network except one allow rule",
+        "Caps on time, memory and output",
+        "The agent chose its own sandbox",
+        "reached the internet",
+        "cannot switch off",
+        hero_stuck_note(kalari, reference, kal["stuck"]),
+    ):
+        check(phrase in text, f"on {name}, the hero lacks {phrase!r}")
+    if main is not None:
+        check("killed_timeout" in text, f"on {name}, the hero cap-kill line lacks the verdict")
+        check("See the cap-kill run" in text, f"on {name}, the hero cap-kill line lacks its run link")
+    say(f"{name}: {len(actual)} hero figures recomputed from the benchmark records")
+
+
+def dollars2(value) -> str:
+    return f"${value:,.2f}"
+
+
+def reference_expected(record: dict) -> list[tuple]:
+    """Every problem-panel figure as (title, run id, text) from the record."""
+    p = payload_of(record)
+    before = p.get("before") or {}
+    after = p.get("after") or {}
+    run_id = record["run_id"]
+    return [
+        # The heading links the missing count too, so it appears twice.
+        ("Reference loss: missing records", run_id, format_count(before.get("missing"))),
+        ("Reference loss: exit code", run_id, format_count(before.get("exit_code"))),
+        ("Reference loss: printed records", run_id, format_count(before.get("records"))),
+        ("Reference loss: graded records", run_id, format_count(before.get("records"))),
+        ("Reference loss: expected records", run_id, format_count(before.get("expected"))),
+        ("Reference loss: missing records", run_id, format_count(before.get("missing"))),
+        ("Reference fix: setup", run_id, after.get("setup") or "OpenCode with microsandbox-mcp and DeepSeek V4.1 Flash"),
+        ("Reference fix: records", run_id, format_count(after.get("records"))),
+        ("Reference fix: expected records", run_id, format_count(after.get("expected"))),
+        ("Reference fix: wall time", run_id, format_seconds(after.get("wall_time_s"))),
+        ("Reference fix: input tokens", run_id, format_tokens(after.get("tokens_input"))),
+        ("Reference fix: output tokens", run_id, format_tokens(after.get("tokens_output"))),
+        ("Reference fix: cost", run_id, dollars2(after.get("cost_usd"))),
+    ]
+
+
+def assert_reference_panel(name: str, html: str, reference: list[dict], run_ids: set[str]) -> None:
+    record = reference_record_of(reference or [])
+    has_section = 'id="problem"' in html
+    if record is None:
+        check(not has_section, f"on {name}, a problem panel is drawn with no reference record")
+        return
+    check(has_section, f"on {name}, the reference record has no problem panel")
+    section = hero_section_of(html, "problem")
+    parser = JudgesParser()
+    parser.feed(section)
+    actual = [
+        (anchor["attrs"].get("title"), anchor["attrs"].get("data-run-link"), anchor["text"])
+        for anchor in parser.anchors
+        if str(anchor["attrs"].get("title", "")) in REFERENCE_TITLES
+    ]
+    expected = reference_expected(record)
+    check(
+        Counter(actual) == Counter(expected),
+        f"on {name}, the problem figures are {actual}, expected {expected}",
+    )
+    for _title, run_id, _text in actual:
+        check(run_id == REFERENCE_RUN, f"on {name}, a problem figure links {run_id!r}, expected {REFERENCE_RUN!r}")
+        check(run_id in run_ids, f"on {name}, the problem figure links {run_id!r}, which is not in /api/runs")
+    for number, context, run_id in parser.numbers:
+        check(run_id is not None, f"on {name}, the problem panel shows {number!r} outside a run link ({context!r})")
+    text = plain_text(section)
+    for phrase in (
+        "The problem",
+        "The silent loss",
+        "The fix",
+        "import_items.py",
+        "This run is not a benchmark session",
+        "never enters the tallies",
+        "bench/reference-paging/README.md",
+    ):
+        check(phrase in text, f"on {name}, the problem panel lacks {phrase!r}")
+    check(
+        f'href="session.html?id={REFERENCE_SESSION}"' in section,
+        f"on {name}, the problem panel does not link its session",
+    )
+    say(f"{name}: {len(actual)} problem figures match the reference record")
+
+
+def assert_reference_excluded(name: str, benchmark: list[dict], reference: list[dict]) -> None:
+    """The reference run never enters the benchmark tallies or the hero sums."""
+    kinds = {record.get("kind") for record in benchmark or [] if isinstance(record, dict)}
+    check("reference" not in kinds, f"on {name}, a reference record is in the benchmark route")
+    bench_runs = {record.get("run_id") for record in benchmark or [] if isinstance(record, dict)}
+    check(REFERENCE_RUN not in bench_runs, f"on {name}, the reference run is in the benchmark route")
+    sessions = {record.get("session_id") for record in benchmark or [] if isinstance(record, dict)}
+    check(REFERENCE_SESSION not in sessions, f"on {name}, the reference session is in the benchmark route")
+    kalari, reference_arm = hero_sets(benchmark)
+    hero_runs = {record["run_id"] for record in kalari + reference_arm}
+    check(REFERENCE_RUN not in hero_runs, f"on {name}, the reference run enters a hero arm")
+    say(f"{name}: the reference run is outside the benchmark sums")
+
+
+def assert_reference_run_page(name: str, html: str, records: list[dict]) -> None:
+    record = reference_record_of(records)
+    check(record is not None, f"{name} has no reference record")
+    p = payload_of(record)
+    before = p.get("before") or {}
+    after = p.get("after") or {}
+    text = plain_text(html)
+    for needle in (
+        "Reference run",
+        "Not a benchmark run",
+        "The silent loss",
+        "The fix",
+        "What this run is not",
+        "import_items.py",
+        "imported 100 items",
+        "bench/reference-paging/README.md",
+        format_count(before.get("missing")),
+        format_count(before.get("expected")),
+        format_seconds(after.get("wall_time_s")),
+        format_tokens(after.get("tokens_input")),
+        format_tokens(after.get("tokens_output")),
+        dollars2(after.get("cost_usd")),
+    ):
+        check(needle in text, f"on {name}, the reference evidence lacks {needle!r}")
+    check(html.count("<table") <= 1, f"on {name}, the reference evidence added a table")
+    check("benchmark session" in text.lower(), f"on {name}, the run page does not say what the run is not")
 
 
 def table_measure_links(html: str, benchmark: list[dict], run_ids: set[str]) -> int:
@@ -2300,6 +2682,11 @@ def assert_inputs_match_api(base: str, inputs: dict) -> None:
         judges.get("containment") == get_json(base, f"/api/sessions/{CONTAINMENT_SESSION}"),
         "the judges snapshot input 'containment' does not match the containment session. run `node web/fixture/render.mjs`",
     )
+    if "reference" in judges:
+        check(
+            judges.get("reference") == get_json(base, f"/api/sessions/{REFERENCE_SESSION}"),
+            "the judges snapshot input 'reference' does not match the reference session. run `node web/fixture/render.mjs`",
+        )
     check(
         inputs["session"]["records"] == get_json(base, "/api/sessions/payouts-upgrade"),
         "the session snapshot input does not match /api/sessions/payouts-upgrade",
@@ -2316,7 +2703,7 @@ def assert_inputs_valid(inputs: dict) -> None:
     for name in PAGES:
         data = inputs[name]
         if name in JUDGES_PAGES:
-            records = list(data["benchmark"]) + list(data.get("lessons") or []) + list(data.get("containment") or [])
+            records = list(data["benchmark"]) + list(data.get("lessons") or []) + list(data.get("containment") or []) + list(data.get("reference") or [])
             if data.get("containment"):
                 errors = validate_containment_records(data["containment"])
                 check(not errors, f"the snapshot input {name} has a bad containment record: " + "; ".join(errors[:4]))
@@ -2350,6 +2737,9 @@ def assert_page_shapes(inputs: dict) -> None:
         assert_cell_counts(name, html, judges_cell_counts(benchmark))
         assert_values_match_records(name, html, benchmark, run_ids)
         assert_containment(name, html, data.get("containment") or [], run_ids)
+        assert_hero(name, html, benchmark, run_ids, data.get("containment") or [])
+        assert_reference_panel(name, html, data.get("reference") or [], run_ids)
+        assert_reference_excluded(name, benchmark, data.get("reference") or [])
         if benchmark:
             assert_medians(name, html, benchmark)
             assert_comparison_copy(name, html, benchmark)
@@ -2376,6 +2766,8 @@ def assert_page_shapes(inputs: dict) -> None:
         assert_measure_link_count(name, html, [], set(inputs[name]["runs"]), "run")
         if name in ("run-containment", "run-containment-earlier"):
             assert_containment_run_page(name, html, records)
+        if name == "run-reference":
+            assert_reference_run_page(name, html, records)
     say("every page carries the table cells and links its records require")
 
 
@@ -2399,6 +2791,22 @@ def main() -> int:
         errors = validate_containment_records(get_json(server.base, f"/api/sessions/{CONTAINMENT_SESSION}"))
         check(not errors, "the containment evidence contract: " + "; ".join(errors[:6]))
         say("the containment evidence passes its contract and traces to its run and check records")
+        reference = get_json(server.base, f"/api/sessions/{REFERENCE_SESSION}")
+        check(reference, "the reference session has no records")
+        for record in reference:
+            for message in envelope_errors(record):
+                raise Failure(f"the reference session has a bad record: {message}")
+        check(
+            reference_record_of(reference) is not None,
+            "the reference session has no kalari.reference.v1 record",
+        )
+        check(
+            all(record.get("kind") != "benchmark" for record in reference),
+            "the reference session holds a benchmark record",
+        )
+        run_records = get_json(server.base, id_path(server.base, "runs", REFERENCE_RUN))
+        check(run_records == reference, "the reference run page does not show the reference record")
+        say("the reference run passes its envelope and stays outside the benchmark route")
         runs = set(get_json(server.base, "/api/runs"))
         benchmark = get_json(server.base, "/api/benchmark")
         benchmark_run_ids = {
