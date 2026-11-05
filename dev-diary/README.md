@@ -147,13 +147,15 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P2 | 7 / 7 | T2.1 through T2.6 done. The Microsandbox-only exit line stays open because the Docker fallback exists |
 | P3 | 7 / 7 | T3.1 through T3.4 done, including T3.1a, T3.2b and T3.3b |
 | P4 | 13 / 13 | All done. T4.6b adds the trusted retry trace and lesson. T4.7c closed the production memory path with the observer refused and the harness-only rehearsal |
-| P5 | 4 / 9 | T5.1, T5.1a, T5.2 and T5.2a done. T5.2b claimed: 50-session harder-pair pilot running with a $12 cap, then the freeze |
+| P5 | 5 / 9 | T5.1, T5.1a, T5.2, T5.2a and T5.2b done. T5.3 freeze is next, then the arms. B5-in-both stood: 50/50 PASS right first time |
 | P6 | 3 / 3 | All done. T6.1 and T6.2 built the API and the judges page. T6.3 put the demo live over HTTPS |
 | P7 | 0 / 5 | Waits for P5, P6 |
 
 ---
 
 ## Handoff Log
+
+- **T5.2b closed.** Harder-pair pilot complete: 50/50 reference sessions PASS right first time on the B5-in-both pair (10 B5-only, 40 full-pair across conditions 1, 2, 3, 6), $3.74 of the $12 cap, validate 50/50, gate passed, old pilot untouched, no leftover processes or sandboxes. One agent ran a duplicate finisher mid-task and the two collided once (mutual opencode kill, two rows discarded and re-run clean). Condition-1 settlements show continued sessions with verified identity on the stable workspace. The unknown retry window reads null, never zero. T5.3 freeze is next.
 
 - **T6.3 closed.** The demo is live at https://kalari.nryn.dev over HTTPS (renamed from the misspelled kalai.nryn.dev, which now redirects permanently): Caddy in front of `web/site/` and a loopback evidence API, `kalari serve` as a supervised unit with the key from a 0600 file, benchmark APIs untouched in their sandboxes. Verified from outside Tailscale: home page 200 with the judges title, all four `/api` routes 200, empty benchmark showing the not-yet-published panel. Restart of all three units re-verified. Firewall holds inbound 80/443 only; SSH unchanged. `deploy/vultr/README.md` plus idempotent `install.sh` is the fresh-VM path (elan bootstrap unexercised, no second instance allowed). Residual: `/api` is a loopback shim mirroring `Kalari/Http.lean` until `Kalari.Http.serve` is wired into `kalari serve`; nothing starts it yet.
 

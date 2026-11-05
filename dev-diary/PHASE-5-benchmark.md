@@ -135,7 +135,7 @@ requires:   [T5.2a]
 fixture-ok: no
 size:       M · mid
 owns:       bench/pilot/harder/
-status:     in-review
+status:     done
 ```
 Run exactly 50 reference sessions on the harder pair: five fresh B5-only sessions for each upgrade, then conditions 1, 2, 3 and 6 on the full pair, five repeats each (40 sessions). The 10 isolated rows diagnose retry alone; the 40 full-pair rows answer the benchmark question after the condition-1 repair. The old 70 rows remain published separately and are never merged into harder-pair counts. B5-in-both remains the pair even if the baseline passes every row.
 
@@ -143,7 +143,7 @@ Run exactly 50 reference sessions on the harder pair: five fresh B5-only session
 
 **Done when:** all 50 result files and their sanitized transcript are committed under `bench/pilot/harder/`; counts include every existing measure plus HTTP retries reported separately from consumer sandbox runs; the old pilot is unchanged; no process, scope or sandbox started by the pilot remains.
 
-**Notes (in review):** All 50 sessions ran; every committed row is PASS, right first time, with zero records lost or duplicated and no capped session. `bench/pilot/harder/results/` holds the 50 files; `bench/pilot/harder/SUMMARY.md` counts every measure plus agent/grading HTTP retries (429s / matching attempts / successful matches) apart from sandbox runs; `bench/pilot/harder/TRANSCRIPT.md` is the sanitized jsonl transcript. `validate.py --b5` passes 50/50; `./tools/check.sh` passes; `git diff --stat` shows no change under `bench/pilot/results/`; no process, scope or sandbox from the pilot remains on the VM.
+**Notes:** All 50 sessions ran; every committed row is PASS, right first time, with zero records lost or duplicated and no capped session. `bench/pilot/harder/results/` holds the 50 files; `bench/pilot/harder/SUMMARY.md` counts every measure plus agent/grading HTTP retries (429s / matching attempts / successful matches) apart from sandbox runs; `bench/pilot/harder/TRANSCRIPT.md` is the sanitized jsonl transcript. `validate.py --b5` passes 50/50; `./tools/check.sh` passes; `git diff --stat` shows no change under `bench/pilot/results/`; no process, scope or sandbox from the pilot remains on the VM.
 
 Spend: $3.74 list price across the 50 committed rows (first case $0.066, projection $3.31, inside the cap). Total live spend about $4.17 including two discarded misruns, still inside the $12 cap. Wall 3,864 s over the 50 rows, 861 s stuck (three sessions with a hung run that recovered: condition-3 payouts r3 600 s, condition-6 payouts r2 122 s, condition-3 payouts r5 61 s). One agent retry window is `unknown` (condition-6 payouts r5 overflowed the live journal); every other phase is `ok`.
 
