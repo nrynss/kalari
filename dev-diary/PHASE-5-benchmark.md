@@ -238,7 +238,7 @@ requires:   [T5.6]
 fixture-ok: no
 size:       S · mid
 owns:       tests/live/containment.sh, tests/live/containment-transcript.txt, tests/live/containment-evidence/, web/ (judges containment panel, evidence loading and checks only), bench/RESULTS.md (containment label only)
-status:     claimed:claude-sonnet-5.5
+status:     in-review
 ```
 Capture one real cursor-loop migration failure through production `run_in_sandbox`. Reuse the wiring in `tests/live/run.sh`. Keep the candidate, baseline and differential results in the evidence.
 
@@ -263,6 +263,15 @@ Commit sanitized evidence under `tests/live/containment-evidence/` and a transcr
 **Live budget: $1.** One run plus verification. No inference calls are expected. Stop and report if any appear.
 
 **Done when:** production `run_in_sandbox` returns `killed_timeout` and `passed=false`; the transcript records configured and measured limits, candidate and differential outcomes, boundary evidence, and verified cleanup. The judges panel links to reachable evidence and shows one containment moment. `RESULTS.md` labels it separately from the frozen comparison. No frozen file or row changes. `./tools/check.sh` passes.
+
+
+**Notes (in review):** `tests/live/containment.sh` runs one production `run_in_sandbox` call for a payouts consumer, then a second production call with the same caps and allowlist that runs a probe from a fresh guest. A shim in front of `msb` records each sandbox's creation arguments and its `msb inspect` network policy. Cleanup is proved from `msb list` and `/proc`, on success and on failure. Modes: live, `--dry` (failure-path cleanup and the probe only), `--rehearse` (a sleeping stub) and `--assemble RAWDIR`. Two runs were filmed and are committed as `tests/live/containment-evidence/run-1.jsonl` and `run-2.jsonl`, with `tests/live/containment-transcript.txt`.
+
+Run 1 (the reference `cursor_loop.py`) crashed on the API's first 429 after 437 ms: `exited`, exit code 1. That consumer predates B5 and has no retry. My sleeping-stub rehearsal could not catch it, because the stub never called the API. Run 2 (`cursor_loop_retry.py`, under `tests/live/containment-evidence/`) honours `Retry-After` and ignores `drained`. It was killed at 5009 ms against the 5000 ms cap after 68 pages: `killed_timeout`, `passed=false`. Unpaced, that loop makes about 8,400 requests in 10 s from the VM, which exceeds the 64 KiB output cap in about 5 s, so a 0.05 s pause per page keeps the timeout the thing that fires.
+
+Decisions. The panel shows run 2 as the main moment and run 1 as the run before it, apart from the benchmark records, in their own session `containment-runs`. Both are ordinary runs, described by what they did, with no label; the transcripts are verbatim, so run 1's banner keeps the wording of the script version that ran, and a note line says so. The probe runs in a second guest with the same arguments, not the consumer's guest, because the existing probe cannot run inside the same guest without changing production code; the evidence says so. The v1 baseline never starts when the candidate writes no output, so its recorded result is "not executed". Publication is `tests/live/containment-evidence/publish.sh`, idempotent by run id, never to run at the same moment as `deploy/vultr/ship-evidence.sh`; it was checked against the fixture and not applied.
+
+Surprises. `kalari serve` refuses a `decisions` config that is not the Clef endpoint, so the harness uses the Clef URL with a placeholder key variable, as `run.sh` does; no inference call was seen. `msb` has to be staged as a symlink, because it finds `libkrunfw` relative to its own path. The web check tied every number on the judges page to a benchmark record, so the new panel needed its own figure rules, and the panel's prose spells numbers as words. Not applied: the public deploy.
 
 ---
 

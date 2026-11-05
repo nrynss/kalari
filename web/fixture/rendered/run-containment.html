@@ -2,7 +2,7 @@
     <header class="page-head">
       <p class="breadcrumb"><a href="index.html">For judges</a> <span aria-hidden="true">/</span> Run</p>
       <div class="page-title"><h1>Containment evidence</h1></div>
-      <p class="run-id"><code>tmp.XXirNPzP</code></p>
+      <p class="run-id"><code>tmp.XXSQOmhn</code></p>
       <p class="quiet-line">From <a href="session.html?id=containment-runs">containment-runs</a></p>
       <p class="quiet-line"><a href="index.html">Back to the evidence index</a></p>
     </header>
@@ -11,21 +11,21 @@
     <div class="panel-head">
       <div><h2 id="containment-evidence-title">Containment evidence</h2>
       <p class="quiet-line">A run constructed for this test, apart from the benchmark records. No benchmark row is involved.</p></div>
-      <div class="badge-row"><span class="badge badge--neutral">Not a benchmark run</span><span class="badge badge--draft">Synthetic fixture</span></div>
+      <div class="badge-row"><span class="badge badge--neutral">Not a benchmark run</span></div>
     </div>
-    <p class="caveat">REHEARSAL with a sleeping stub, not the cursor-loop consumer</p>
+    <p class="caveat">payouts consumer that honours Retry-After on a 429 and follows the page cursor on every response, ignoring the drained flag</p>
     <h3>The failure</h3>
     <dl class="facts facts--wide">
       <div><dt>Configured time cap</dt><dd>5,000 ms</dd></div>
       <div><dt>Configured time ceiling</dt><dd>30,000 ms</dd></div>
-      <div><dt>Measured wall time (supervisor clock)</dt><dd>5,007 ms</dd></div>
-      <div><dt>Whole call on the host</dt><dd>5,910 ms</dd></div>
+      <div><dt>Measured wall time (supervisor clock)</dt><dd>5,009 ms</dd></div>
+      <div><dt>Whole call on the host</dt><dd>5,881 ms</dd></div>
       <div><dt>Verdict</dt><dd>killed_timeout</dd></div>
       <div><dt>Exit code</dt><dd>none</dd></div>
       <div><dt>Passed</dt><dd>No</dd></div>
       <div><dt>Stdout truncated</dt><dd>No</dd></div>
       <div><dt>Pipe held open</dt><dd>No</dd></div>
-      <div><dt>Pages fetched before the end</dt><dd>78</dd></div>
+      <div><dt>Pages fetched before the end</dt><dd>68</dd></div>
       <div><dt>Waits for Retry-After</dt><dd>1</dd></div>
     </dl>
 
@@ -42,7 +42,7 @@
     </dl>
     <p class="muted">The output and memory caps are configuration only. Neither is claimed to have fired in this run.</p>
     <h3>How the sandbox was created</h3>
-    <pre class="log">msb create --name kalari-tmp.XXirNPzP --cpus 1 --memory 512M --no-net --net-rule allow@&lt;vm-public-ip&gt;/32:tcp:18090 --pull never python:3.13-slim</pre>
+    <pre class="log">msb create --name kalari-tmp.XXSQOmhn --cpus 1 --memory 512M --no-net --net-rule allow@&lt;vm-public-ip&gt;/32:tcp:18090 --pull never python:3.13-slim</pre>
     <dl class="facts">
       <div><dt>Image</dt><dd>python:3.13-slim</dd></div>
       <div><dt>CPUs</dt><dd>1</dd></div>
@@ -64,7 +64,7 @@
     <h4>Observed</h4>
     <p class="muted">a probe run through the same production run_in_sandbox path, with the same caps and the same allowlist</p>
     <dl class="facts">
-      <div><dt>Probe run</dt><dd><code>tmp.XXUNzhhR</code></dd></div>
+      <div><dt>Probe run</dt><dd><code>tmp.XXdT7o7W</code></dd></div>
       <div><dt>Same guest as the consumer</dt><dd>No</dd></div>
       <div><dt>Same creation arguments and allowlist</dt><dd>Yes</dd></div>
       <div><dt>Probe policy equals candidate policy</dt><dd>Yes</dd></div>
@@ -83,7 +83,7 @@
       <div><dt>Sandboxes from before, unchanged</dt><dd>Yes</dd></div>
       <div><dt>Service exited</dt><dd>Yes</dd></div>
     </dl>
-    <ul class="plain-list"><li><code>kalari-tmp.XXirNPzP</code></li><li><code>kalari-tmp.XXUNzhhR</code></li></ul>
+    <ul class="plain-list"><li><code>kalari-tmp.XXSQOmhn</code></li><li><code>kalari-tmp.XXdT7o7W</code></li></ul>
     <p class="muted">Removed by <code>run_in_sandbox</code> itself: 2. Needed forced cleanup by the test: 0.</p>
     <h3>What this does not show</h3>
     <ul class="plain-list"><li>Observed restrictions only: the listed requests from one guest configuration, on this host, with this msb and this guest kernel.</li><li>This is not a claim of zero blast radius, and not a security audit.</li><li>The probe ran in a second guest created with the same arguments, not inside the guest that ran the consumer.</li><li>The output cap and the memory cap are recorded as configuration. This run did not exercise either.</li></ul>
@@ -91,17 +91,17 @@
   </section>
     <section class="panel">
     <div class="panel-head">
-      <div><h2>Sandbox run</h2><p class="run-id"><code>tmp.XXirNPzP</code></p></div>
+      <div><h2>Sandbox run</h2><p class="run-id"><code>tmp.XXSQOmhn</code></p></div>
       <div class="badge-row"><span class="badge badge--fail">Stopped by the time cap</span> <span class="badge badge--fail">Checks failed</span></div>
     </div>
 
     <dl class="facts facts--wide">
       <div><dt>Verdict</dt><dd>Stopped by the time cap</dd></div>
       <div><dt>Exit code</dt><dd>none</dd></div>
-      <div><dt>Wall time</dt><dd>5.007 s</dd></div>
+      <div><dt>Wall time</dt><dd>5.009 s</dd></div>
       <div><dt>Stdout truncated</dt><dd>No</dd></div>
       <div><dt>Pipe held open</dt><dd>No</dd></div>
-      <div><dt>Supervisor peak RSS</dt><dd>9,188 kB</dd></div>
+      <div><dt>Supervisor peak RSS</dt><dd>9,100 kB</dd></div>
       <div><dt>Cgroup memory limit</dt><dd>0 bytes</dd></div>
     </dl>
     <h3>Request</h3>
@@ -121,7 +121,76 @@
                 <p>consumer did not complete successfully</p>
               </li></ul>
     <h3>Logs</h3>
-    <details class="logs" open><summary>Standard output</summary><pre></pre></details>
+    <details class="logs" open><summary>Standard output</summary><pre>page 1: 100 payouts, drained false, cursor cdd853d2
+page 2: 100 payouts, drained false, cursor af94b027
+page 3: 100 payouts, drained false, cursor 8ef0e4c2
+page 4: 100 payouts, drained false, cursor 40d498c9
+page 5: 100 payouts, drained false, cursor 61f2b665
+page 6: 100 payouts, drained false, cursor fe74c2ec
+page 7: 100 payouts, drained false, cursor b23bb73a
+page 8: 100 payouts, drained false, cursor 693ec4fe
+page 9: 100 payouts, drained false, cursor 91f0c980
+page 10: 100 payouts, drained false, cursor 0237ef1d
+page 11: 100 payouts, drained false, cursor 9e8aeb81
+page 12: 100 payouts, drained false, cursor f145130e
+page 13: 100 payouts, drained false, cursor 775464e3
+page 14: 100 payouts, drained false, cursor aa49f09e
+page 15: 100 payouts, drained false, cursor 0f3b3846
+page 16: 100 payouts, drained false, cursor b7a732dc
+page 17: 429 too many requests, waiting 1 s then repeating it
+page 17: 100 payouts, drained false, cursor 069bc030
+page 18: 100 payouts, drained false, cursor 8a225bac
+page 19: 100 payouts, drained false, cursor b25edd11
+page 20: 100 payouts, drained false, cursor 30c0a3a1
+page 21: 100 payouts, drained false, cursor bfc3400f
+page 22: 100 payouts, drained false, cursor cda8149d
+page 23: 100 payouts, drained false, cursor 77bab16e
+page 24: 100 payouts, drained false, cursor c76c1393
+page 25: 55 payouts, drained true, cursor c15daa5e
+page 26: 1 payouts, drained true, cursor 39ec073f
+page 27: 1 payouts, drained true, cursor c38322aa
+page 28: 1 payouts, drained true, cursor f1b3ee80
+page 29: 1 payouts, drained true, cursor 3d93cb22
+page 30: 1 payouts, drained true, cursor 8c19016d
+page 31: 1 payouts, drained true, cursor f3f9dfb1
+page 32: 1 payouts, drained true, cursor d44d7ea1
+page 33: 1 payouts, drained true, cursor c6a9a51b
+page 34: 1 payouts, drained true, cursor 1013b116
+page 35: 1 payouts, drained true, cursor 49158656
+page 36: 1 payouts, drained true, cursor cbe623e5
+page 37: 1 payouts, drained true, cursor a7fc6099
+page 38: 1 payouts, drained true, cursor b55df822
+page 39: 1 payouts, drained true, cursor 1e6a5d72
+page 40: 1 payouts, drained true, cursor 575858ac
+page 41: 1 payouts, drained true, cursor 485f97f8
+page 42: 1 payouts, drained true, cursor a01166a5
+page 43: 1 payouts, drained true, cursor 51d1665c
+page 44: 1 payouts, drained true, cursor 42ca83e3
+page 45: 1 payouts, drained true, cursor cc626ed1
+page 46: 1 payouts, drained true, cursor 835583af
+page 47: 1 payouts, drained true, cursor 981f260a
+page 48: 1 payouts, drained true, cursor 9ea6dce5
+page 49: 1 payouts, drained true, cursor 5e96aba5
+page 50: 1 payouts, drained true, cursor 139f28a1
+page 51: 1 payouts, drained true, cursor a7692ec8
+page 52: 1 payouts, drained true, cursor 23f0cfc8
+page 53: 1 payouts, drained true, cursor c5972591
+page 54: 1 payouts, drained true, cursor c16e98bf
+page 55: 1 payouts, drained true, cursor 1ad27a57
+page 56: 1 payouts, drained true, cursor 05c1e805
+page 57: 1 payouts, drained true, cursor 58c71f6a
+page 58: 1 payouts, drained true, cursor 73b80053
+page 59: 1 payouts, drained true, cursor 2c264220
+page 60: 1 payouts, drained true, cursor 2cd9c485
+page 61: 1 payouts, drained true, cursor 70766a28
+page 62: 1 payouts, drained true, cursor 27e7f7f1
+page 63: 1 payouts, drained true, cursor 76f22492
+page 64: 1 payouts, drained true, cursor 22fff3fc
+page 65: 1 payouts, drained true, cursor 6fe623b6
+page 66: 1 payouts, drained true, cursor ad2516b1
+page 67: 1 payouts, drained true, cursor b530d5db
+page 68: 1 payouts, drained true, cursor d43aa853
+</pre></details>
     <details class="logs"><summary>Standard error</summary><pre></pre></details>
 
   </section>
@@ -129,6 +198,6 @@
     <section class="subsection"><h2>Every record in this run</h2><div class="table-wrap"><table class="measures-table">
     <caption class="visually-hidden">Every evidence record in this run.</caption>
     <thead><tr><th scope="col">Kind</th><th scope="col">Run</th><th scope="col">Change kinds</th></tr></thead>
-    <tbody><tr><td><code>run</code></td><td><code>tmp.XXirNPzP</code></td><td>Operation moved, Operation renamed, Argument added, Field added, Required field changed, Result added, Type added, Pagination changed</td></tr><tr><td><code>check</code></td><td><code>tmp.XXirNPzP</code></td><td>Operation moved, Operation renamed, Argument added, Field added, Required field changed, Result added, Type added, Pagination changed</td></tr><tr><td><code>check</code></td><td><code>tmp.XXirNPzP</code></td><td>Operation moved, Operation renamed, Argument added, Field added, Required field changed, Result added, Type added, Pagination changed</td></tr><tr><td><code>containment</code></td><td><code>tmp.XXirNPzP</code></td><td>Operation moved, Operation renamed, Argument added, Field added, Required field changed, Result added, Type added, Pagination changed</td></tr></tbody>
+    <tbody><tr><td><code>run</code></td><td><code>tmp.XXSQOmhn</code></td><td>Operation moved, Operation renamed, Argument added, Field added, Required field changed, Result added, Type added, Pagination changed</td></tr><tr><td><code>check</code></td><td><code>tmp.XXSQOmhn</code></td><td>Operation moved, Operation renamed, Argument added, Field added, Required field changed, Result added, Type added, Pagination changed</td></tr><tr><td><code>check</code></td><td><code>tmp.XXSQOmhn</code></td><td>Operation moved, Operation renamed, Argument added, Field added, Required field changed, Result added, Type added, Pagination changed</td></tr><tr><td><code>containment</code></td><td><code>tmp.XXSQOmhn</code></td><td>Operation moved, Operation renamed, Argument added, Field added, Required field changed, Result added, Type added, Pagination changed</td></tr></tbody>
   </table></div></section>
   </article>

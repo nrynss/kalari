@@ -305,18 +305,6 @@ def assemble(raw):
     except FileNotFoundError:
         transcript = ""
     with open(f"{bundle}/transcript.txt", "w", encoding="utf-8", newline="\n") as f:
-        rewords = {
-            "== Deliberate containment demonstration ==": "== A payouts consumer under a time cap ==",
-            "A consumer with a known bug is run on purpose, to show the time limit and the boundary.":
-                "A payouts consumer is run under a time cap, to show the time limit and the boundary.",
-            "Case:    payouts cursor_loop, a consumer that follows the page cursor and never stops":
-                "Case:    payouts reference cursor-loop consumer with no retry",
-        }
-        changed = [k for k in rewords if k in transcript]
-        for old, new in rewords.items():
-            transcript = transcript.replace(old, new)
-        if changed:
-            transcript = ("[%d banner lines were reworded after the run to drop an old label. Every other line is as printed.]\n" % len(changed)) + transcript
         f.write(clean(transcript))
     print(f"bundle: {len(recs)} records, transcript {len(transcript)} bytes -> {bundle}")
 

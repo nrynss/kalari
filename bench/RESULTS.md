@@ -55,6 +55,27 @@ Policy R lets the agent choose its own sandbox. Each run names its own sandbox. 
 
 Observation differs from policy. Kalari shows zero killed runs and zero stuck seconds. No Kalari session hit its cap. Cleanup is clean on all 20 rows. Reference shows zero capped sessions and zero leftovers on all 40 rows. Four rows carry stuck time from hung runs that recovered. Two of those rows include a timed-out consumer run. Six rows record one denied shell call each. No denial changed a verdict.
 
+## 6a. Two sandbox runs outside the comparison
+
+These two runs are not benchmark rows. They are not in the frozen table, in any tally in this file, or in the counts of sections 2 to 9. Each was constructed for this test: a payouts consumer run once through the production `run_in_sandbox` path against the payouts API, with the same cap and allowlist as a Kalari consumer run (5000 ms, 512 MiB, 64 KiB of output, `--no-net` plus one allow rule for the API port). No agent wrote either consumer. Evidence: `tests/live/containment-evidence/run-1.jsonl` and `run-2.jsonl`; output: `tests/live/containment-transcript.txt`.
+
+| | Run 1 | Run 2 |
+|---|---|---|
+| Consumer | `bench/apis/payouts/reference/cursor_loop.py`: follows the cursor, no retry | `tests/live/containment-evidence/cursor_loop_retry.py`: waits out a 429 as `Retry-After` asks, follows the cursor on every response, ignores `drained`, pauses 0.05 s per page |
+| Verdict | `exited`, exit code 1, `passed=false` | `killed_timeout`, no exit code, `passed=false` |
+| Measured `wall_ms` against the 5000 ms cap | 437 | 5009 |
+| What happened | Died on the API's first 429 (`HTTP Error 429`) partway through the stream. The cap never came into play | Fetched 68 pages, waited out the one 429, then kept fetching one-payout pages with `drained` true until the aashaan killed it |
+| Output cap | Not exercised (`stdout_truncated` false) | Not exercised (`stdout_truncated` false) |
+| Baseline (v1) and differential | Baseline not started: it follows only a candidate that wrote an output file. Differential failed | Same |
+
+Run 1 is real and kept: the reference consumer predates B5, so the first 429 ended it. Run 2 exists because of that. Unpaced, the same loop made about 8,400 requests in 10 s from the VM and would have hit the output cap before the time cap, so run 2 pauses between pages. The aashaan polls, so run 2's 5009 ms is a measurement, not a bound; no fixed overshoot is promised.
+
+Boundary. Each run's probe ran in a second guest created with the same arguments and the same allowlist as the consumer's, not in the consumer's own guest. In both, the allowed API port answered 200, and four requests the allowlist does not name were refused: a different port on the same host and the host's SSH port (connection refused), the cloud metadata address and a public internet address (HTTP 403, `network_policy_denied`). `msb inspect` read back default egress deny, default ingress deny and one allow rule. Requested and effective policy are recorded apart from these observations.
+
+Cleanup. In each run both sandboxes were removed by `run_in_sandbox` itself, none was listed afterwards, the four benchmark API sandboxes were unchanged, and no child process remained.
+
+These are observed restrictions for the listed requests from one guest configuration on one host. This is not a claim of zero blast radius, and no exploitation was attempted or observed.
+
 ## 7. Provenance of the reference rows and limits of five repeats
 
 Reference rows reuse T5.2b harder-pair rows. All 40 files are byte-identical copies. They were made on the frozen files. Frozen-file changes predate the row commits. Working-tree hashes matched before and after the copy. The 10 B5-only rows stay excluded. The 70 old-pair rows stay untouched. They cannot count.

@@ -1,9 +1,10 @@
-=== Run 1: the reference cursor-loop consumer, which crashed on a rate-limit reply ===
-[3 banner lines were reworded after the run to drop an old label. Every other line is as printed.]
-== A payouts consumer under a time cap ==
-A payouts consumer is run under a time cap, to show the time limit and the boundary.
+Note: both transcripts below are verbatim. Run 1's banner lines use the wording of the script version that ran then; the script changed that wording afterwards.
+
+=== Run 1: the reference cursor-loop consumer, which has no retry and crashed on a rate-limit reply ===
+== Deliberate containment demonstration ==
+A consumer with a known bug is run on purpose, to show the time limit and the boundary.
 This is not a benchmark session, and no benchmark row is involved.
-Case:    payouts reference cursor-loop consumer with no retry
+Case:    payouts cursor_loop, a consumer that follows the page cursor and never stops
 Config:  time cap 5000 ms (ceiling 30000 ms), output cap 65536 bytes, memory 512 MiB
          The output and memory caps are configuration. This run does not exercise them.
 Network: --no-net plus one allow rule for the grading API port only (resolved on this VM)
@@ -50,3 +51,61 @@ child processes remaining:   0
 kalari service exited:       true
 
 RESULT: NOT AS EXPECTED. See above. The raw files are in the output directory.
+
+=== Run 2: a payouts consumer that honours Retry-After and never stops following the cursor, killed by the time cap ===
+== A payouts consumer that never stops, under a time cap ==
+The consumer waits out a 429 as Retry-After asks, then follows the page cursor on every response, drained or not.
+This is not a benchmark session, and no benchmark row is involved.
+Case:    payouts consumer that honours Retry-After on a 429 and follows the page cursor on every response, ignoring the drained flag
+Config:  time cap 5000 ms (ceiling 30000 ms), output cap 65536 bytes, memory 512 MiB
+         The output and memory caps are configuration. This run does not exercise them.
+Network: --no-net plus one allow rule for the grading API port only (resolved on this VM)
+Tools:   msb 0.7.13, kalari 0.1.0, image python:3.13-slim
+Before:  4 sandboxes exist and are not ours: api-payouts-grading, api-payouts-live, api-settlements-grading, api-settlements-live
+
+-- run_in_sandbox, production path: candidate against the v2 API --
+   sandbox created: kalari-tmp.XXSQOmhn
+   creation arguments: msb create --name kalari-tmp.XXSQOmhn --cpus 1 --memory 512M --no-net --net-rule allow@<vm-public-ip>/32:tcp:18090 --pull never python:3.13-slim
+   effective network policy (msb inspect): default egress deny, default ingress deny; rules: allow egress tcp <vm-public-ip>/32 port 18090
+   ... 1 s elapsed, the call has not returned
+   ... 2 s elapsed, the call has not returned
+   ... 3 s elapsed, the call has not returned
+   ... 4 s elapsed, the call has not returned
+   ... 5 s elapsed, the call has not returned
+
+-- verdict --
+run id:          tmp.XXSQOmhn
+configured cap:  5000 ms
+measured wall:   5009 ms (the aashaan's clock; the supervisor polls, so this can exceed the cap)
+verdict:         killed_timeout   exit code: none (killed)   passed: false
+pages fetched:   68 before the kill (1 wait for Retry-After)
+output:          stdout_truncated=false (output cap not exercised), pipe_held_open=false
+whole call:      5881 ms on the host, including create, copy, exec and remove
+candidate:       killed_timeout
+baseline (v1):   not run; it follows only a candidate that wrote an output file
+differential:    passed=false  consumer did not complete successfully
+
+-- boundary: a probe through the same production path (same caps, same allowlist, a fresh guest) --
+   The probe asks the allowed API port and four things the allowlist does not name.
+   sandbox created: kalari-tmp.XXdT7o7W
+   creation arguments: msb create --name kalari-tmp.XXdT7o7W --cpus 1 --memory 512M --no-net --net-rule allow@<vm-public-ip>/32:tcp:18090 --pull never python:3.13-slim
+   effective network policy (msb inspect): default egress deny, default ingress deny; rules: allow egress tcp <vm-public-ip>/32 port 18090
+   ... 1 s elapsed, the call has not returned
+   allowed                expected allowed  observed allowed  ANSWERED http-200
+   other-port-same-host   expected refused  observed refused  refused ConnectionRefusedError
+   host-ssh               expected refused  observed refused  refused ConnectionRefusedError
+   metadata-link-local    expected refused  observed refused  refused network_policy_denied
+   internet               expected refused  observed refused  refused network_policy_denied
+   Requested policy is what msb create was asked for. Observed enforcement is only the lines above.
+
+-- cleanup --
+sandboxes this test created: kalari-tmp.XXSQOmhn, kalari-tmp.XXdT7o7W
+removed by run_in_sandbox:    kalari-tmp.XXSQOmhn, kalari-tmp.XXdT7o7W
+needed forced cleanup:       none
+still listed afterwards:     none
+sandboxes from before:       all present and unchanged
+child processes remaining:   0
+kalari service exited:       true
+
+RESULT: killed_timeout and passed=false at the configured cap; the boundary refused every request it was asked to refuse; every sandbox this test created is gone and no child process remains.
+This shows the listed requests from one guest configuration. It is not a claim of zero blast radius.

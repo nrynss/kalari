@@ -5,7 +5,7 @@
   "pages": {
     "judges": {
       "path": "web/fixture/rendered/judges.html",
-      "sha256": "3f834129b2b98cb98427663b2c3e1aec38815797e045baef376b0de718a1072e"
+      "sha256": "861db5efd47da25212d1f66077da68fda2804e8cfea33a1801d1730178686688"
     },
     "judges-empty": {
       "path": "web/fixture/rendered/judges-empty.html",
@@ -17,7 +17,7 @@
     },
     "judges-extra-run": {
       "path": "web/fixture/rendered/judges-extra-run.html",
-      "sha256": "401b6c5928f49d9d987a5b7310450a57fc2e6988d3f55570b6a91cb056093789"
+      "sha256": "bb8c38cea9aefe0f330a78797831c9e20c2487f725bee0047f71148b70f0d623"
     },
     "judges-frozen-after": {
       "path": "web/fixture/rendered/judges-frozen-after.html",
@@ -57,7 +57,7 @@
     },
     "run-containment": {
       "path": "web/fixture/rendered/run-containment.html",
-      "sha256": "6f269620ea7b01674ee37fd8ed5c4b13f39cd216dfb964936c6de6ad92c5b584"
+      "sha256": "b59586916d68629407524c8b3c4f3876a19ea801fa1bba31707fb2155d801cd7"
     },
     "run-containment-earlier": {
       "path": "web/fixture/rendered/run-containment-earlier.html",
@@ -89,10 +89,10 @@
   },
   "inputs": {
     "path": "web/fixture/rendered/inputs.json",
-    "sha256": "d824d4b5e6942c383295316922cc9981c23e7e0f0b23322cc9d9937f12562565"
+    "sha256": "7dcf2384527cd3b544fd04439cd7313e2a7c6e21e8e20f601f76adccb7bf089a"
   },
   "evidence": {
     "path": "web/fixture/evidence.jsonl",
-    "sha256": "2d1dba737ad1afdc1e6a77038ccd5afe10abc4caae5e13f5fe5ac12357b63fc9"
+    "sha256": "6b653282c3cb27aa10fa86c9291162e7dc40df0e50e92444334c4281f3cb7e5f"
   }
 }

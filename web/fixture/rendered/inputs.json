@@ -5317,7 +5317,7 @@
         "payouts-attempt-1",
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
-        "tmp.XXirNPzP"
+        "tmp.XXSQOmhn"
       ],
       "sessions": [
         "pilot-c1-payouts",
@@ -5764,7 +5764,7 @@
               "workspace": "<work>/candidate"
             },
             "timings": {
-              "wall_ms": 5007
+              "wall_ms": 5009
             },
             "tokens": null,
             "verdict": {
@@ -5772,14 +5772,14 @@
               "exit_code": null,
               "pipe_held_open": false,
               "stderr": "",
-              "stdout": "",
+              "stdout": "page 1: 100 payouts, drained false, cursor cdd853d2\npage 2: 100 payouts, drained false, cursor af94b027\npage 3: 100 payouts, drained false, cursor 8ef0e4c2\npage 4: 100 payouts, drained false, cursor 40d498c9\npage 5: 100 payouts, drained false, cursor 61f2b665\npage 6: 100 payouts, drained false, cursor fe74c2ec\npage 7: 100 payouts, drained false, cursor b23bb73a\npage 8: 100 payouts, drained false, cursor 693ec4fe\npage 9: 100 payouts, drained false, cursor 91f0c980\npage 10: 100 payouts, drained false, cursor 0237ef1d\npage 11: 100 payouts, drained false, cursor 9e8aeb81\npage 12: 100 payouts, drained false, cursor f145130e\npage 13: 100 payouts, drained false, cursor 775464e3\npage 14: 100 payouts, drained false, cursor aa49f09e\npage 15: 100 payouts, drained false, cursor 0f3b3846\npage 16: 100 payouts, drained false, cursor b7a732dc\npage 17: 429 too many requests, waiting 1 s then repeating it\npage 17: 100 payouts, drained false, cursor 069bc030\npage 18: 100 payouts, drained false, cursor 8a225bac\npage 19: 100 payouts, drained false, cursor b25edd11\npage 20: 100 payouts, drained false, cursor 30c0a3a1\npage 21: 100 payouts, drained false, cursor bfc3400f\npage 22: 100 payouts, drained false, cursor cda8149d\npage 23: 100 payouts, drained false, cursor 77bab16e\npage 24: 100 payouts, drained false, cursor c76c1393\npage 25: 55 payouts, drained true, cursor c15daa5e\npage 26: 1 payouts, drained true, cursor 39ec073f\npage 27: 1 payouts, drained true, cursor c38322aa\npage 28: 1 payouts, drained true, cursor f1b3ee80\npage 29: 1 payouts, drained true, cursor 3d93cb22\npage 30: 1 payouts, drained true, cursor 8c19016d\npage 31: 1 payouts, drained true, cursor f3f9dfb1\npage 32: 1 payouts, drained true, cursor d44d7ea1\npage 33: 1 payouts, drained true, cursor c6a9a51b\npage 34: 1 payouts, drained true, cursor 1013b116\npage 35: 1 payouts, drained true, cursor 49158656\npage 36: 1 payouts, drained true, cursor cbe623e5\npage 37: 1 payouts, drained true, cursor a7fc6099\npage 38: 1 payouts, drained true, cursor b55df822\npage 39: 1 payouts, drained true, cursor 1e6a5d72\npage 40: 1 payouts, drained true, cursor 575858ac\npage 41: 1 payouts, drained true, cursor 485f97f8\npage 42: 1 payouts, drained true, cursor a01166a5\npage 43: 1 payouts, drained true, cursor 51d1665c\npage 44: 1 payouts, drained true, cursor 42ca83e3\npage 45: 1 payouts, drained true, cursor cc626ed1\npage 46: 1 payouts, drained true, cursor 835583af\npage 47: 1 payouts, drained true, cursor 981f260a\npage 48: 1 payouts, drained true, cursor 9ea6dce5\npage 49: 1 payouts, drained true, cursor 5e96aba5\npage 50: 1 payouts, drained true, cursor 139f28a1\npage 51: 1 payouts, drained true, cursor a7692ec8\npage 52: 1 payouts, drained true, cursor 23f0cfc8\npage 53: 1 payouts, drained true, cursor c5972591\npage 54: 1 payouts, drained true, cursor c16e98bf\npage 55: 1 payouts, drained true, cursor 1ad27a57\npage 56: 1 payouts, drained true, cursor 05c1e805\npage 57: 1 payouts, drained true, cursor 58c71f6a\npage 58: 1 payouts, drained true, cursor 73b80053\npage 59: 1 payouts, drained true, cursor 2c264220\npage 60: 1 payouts, drained true, cursor 2cd9c485\npage 61: 1 payouts, drained true, cursor 70766a28\npage 62: 1 payouts, drained true, cursor 27e7f7f1\npage 63: 1 payouts, drained true, cursor 76f22492\npage 64: 1 payouts, drained true, cursor 22fff3fc\npage 65: 1 payouts, drained true, cursor 6fe623b6\npage 66: 1 payouts, drained true, cursor ad2516b1\npage 67: 1 payouts, drained true, cursor b530d5db\npage 68: 1 payouts, drained true, cursor d43aa853\n",
               "stdout_truncated": false,
-              "supervisor_peak_rss_kb": 9188,
+              "supervisor_peak_rss_kb": 9100,
               "verdict": "killed_timeout",
-              "wall_ms": 5007
+              "wall_ms": 5009
             }
           },
-          "run_id": "tmp.XXirNPzP",
+          "run_id": "tmp.XXSQOmhn",
           "session_id": "containment-runs"
         },
         {
@@ -5799,7 +5799,7 @@
             "detail": "Skipped because no successful artifact was available: consumer did not complete successfully",
             "passed": false
           },
-          "run_id": "tmp.XXirNPzP",
+          "run_id": "tmp.XXSQOmhn",
           "session_id": "containment-runs"
         },
         {
@@ -5819,13 +5819,13 @@
             "detail": "consumer did not complete successfully",
             "passed": false
           },
-          "run_id": "tmp.XXirNPzP",
+          "run_id": "tmp.XXSQOmhn",
           "session_id": "containment-runs"
         },
         {
           "kind": "containment",
           "session_id": "containment-runs",
-          "run_id": "tmp.XXirNPzP",
+          "run_id": "tmp.XXSQOmhn",
           "change_kinds": [
             "operation_moved",
             "operation_renamed",
@@ -5840,8 +5840,8 @@
             "schema": "kalari.containment.v1",
             "label": "Containment evidence",
             "benchmark": false,
-            "synthetic": true,
-            "case": "REHEARSAL with a sleeping stub, not the cursor-loop consumer",
+            "synthetic": false,
+            "case": "payouts consumer that honours Retry-After on a 429 and follows the page cursor on every response, ignoring the drained flag",
             "config": {
               "time_cap_ms": 5000,
               "time_ceiling_ms": 30000,
@@ -5850,18 +5850,18 @@
               "note": "The output and memory caps are configuration only. Neither is claimed to have fired in this run."
             },
             "result": {
-              "run_id": "tmp.XXirNPzP",
+              "run_id": "tmp.XXSQOmhn",
               "verdict": "killed_timeout",
               "exit_code": null,
               "passed": false,
-              "wall_ms": 5007,
-              "call_ms": 5910,
-              "pages_fetched": 78,
+              "wall_ms": 5009,
+              "call_ms": 5881,
+              "pages_fetched": 68,
               "waits_for_retry_after": 1,
               "stderr_tail": "",
               "stdout_truncated": false,
               "pipe_held_open": false,
-              "supervisor_peak_rss_kb": 9188,
+              "supervisor_peak_rss_kb": 9100,
               "enforcement_note": "The supervisor polls, so the measured elapsed time can exceed the configured cap. No fixed bound is promised."
             },
             "outcomes": {
@@ -5885,7 +5885,7 @@
                 "msb",
                 "create",
                 "--name",
-                "kalari-tmp.XXirNPzP",
+                "kalari-tmp.XXSQOmhn",
                 "--cpus",
                 "1",
                 "--memory",
@@ -5938,7 +5938,7 @@
                 "same_guest": false,
                 "probe_policy_matches_candidate": true,
                 "same_configuration": true,
-                "probe_run_id": "tmp.XXUNzhhR",
+                "probe_run_id": "tmp.XXdT7o7W",
                 "probe_verdict": "exited",
                 "probe_exit_code": 0,
                 "attempts": [
@@ -5987,12 +5987,12 @@
             },
             "cleanup": {
               "sandboxes_created": [
-                "kalari-tmp.XXirNPzP",
-                "kalari-tmp.XXUNzhhR"
+                "kalari-tmp.XXSQOmhn",
+                "kalari-tmp.XXdT7o7W"
               ],
               "removed_by_run_in_sandbox": [
-                "kalari-tmp.XXirNPzP",
-                "kalari-tmp.XXUNzhhR"
+                "kalari-tmp.XXSQOmhn",
+                "kalari-tmp.XXdT7o7W"
               ],
               "removed_by_forced_cleanup": [],
               "still_listed": [],
@@ -6102,7 +6102,7 @@
         "payouts-attempt-1",
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
-        "tmp.XXirNPzP"
+        "tmp.XXSQOmhn"
       ],
       "sessions": [
         "pilot-c1-payouts",
@@ -11567,7 +11567,7 @@
         "payouts-attempt-1",
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
-        "tmp.XXirNPzP",
+        "tmp.XXSQOmhn",
         "fixture-extra-settlements-r5b"
       ],
       "sessions": [
@@ -12015,7 +12015,7 @@
               "workspace": "<work>/candidate"
             },
             "timings": {
-              "wall_ms": 5007
+              "wall_ms": 5009
             },
             "tokens": null,
             "verdict": {
@@ -12023,14 +12023,14 @@
               "exit_code": null,
               "pipe_held_open": false,
               "stderr": "",
-              "stdout": "",
+              "stdout": "page 1: 100 payouts, drained false, cursor cdd853d2\npage 2: 100 payouts, drained false, cursor af94b027\npage 3: 100 payouts, drained false, cursor 8ef0e4c2\npage 4: 100 payouts, drained false, cursor 40d498c9\npage 5: 100 payouts, drained false, cursor 61f2b665\npage 6: 100 payouts, drained false, cursor fe74c2ec\npage 7: 100 payouts, drained false, cursor b23bb73a\npage 8: 100 payouts, drained false, cursor 693ec4fe\npage 9: 100 payouts, drained false, cursor 91f0c980\npage 10: 100 payouts, drained false, cursor 0237ef1d\npage 11: 100 payouts, drained false, cursor 9e8aeb81\npage 12: 100 payouts, drained false, cursor f145130e\npage 13: 100 payouts, drained false, cursor 775464e3\npage 14: 100 payouts, drained false, cursor aa49f09e\npage 15: 100 payouts, drained false, cursor 0f3b3846\npage 16: 100 payouts, drained false, cursor b7a732dc\npage 17: 429 too many requests, waiting 1 s then repeating it\npage 17: 100 payouts, drained false, cursor 069bc030\npage 18: 100 payouts, drained false, cursor 8a225bac\npage 19: 100 payouts, drained false, cursor b25edd11\npage 20: 100 payouts, drained false, cursor 30c0a3a1\npage 21: 100 payouts, drained false, cursor bfc3400f\npage 22: 100 payouts, drained false, cursor cda8149d\npage 23: 100 payouts, drained false, cursor 77bab16e\npage 24: 100 payouts, drained false, cursor c76c1393\npage 25: 55 payouts, drained true, cursor c15daa5e\npage 26: 1 payouts, drained true, cursor 39ec073f\npage 27: 1 payouts, drained true, cursor c38322aa\npage 28: 1 payouts, drained true, cursor f1b3ee80\npage 29: 1 payouts, drained true, cursor 3d93cb22\npage 30: 1 payouts, drained true, cursor 8c19016d\npage 31: 1 payouts, drained true, cursor f3f9dfb1\npage 32: 1 payouts, drained true, cursor d44d7ea1\npage 33: 1 payouts, drained true, cursor c6a9a51b\npage 34: 1 payouts, drained true, cursor 1013b116\npage 35: 1 payouts, drained true, cursor 49158656\npage 36: 1 payouts, drained true, cursor cbe623e5\npage 37: 1 payouts, drained true, cursor a7fc6099\npage 38: 1 payouts, drained true, cursor b55df822\npage 39: 1 payouts, drained true, cursor 1e6a5d72\npage 40: 1 payouts, drained true, cursor 575858ac\npage 41: 1 payouts, drained true, cursor 485f97f8\npage 42: 1 payouts, drained true, cursor a01166a5\npage 43: 1 payouts, drained true, cursor 51d1665c\npage 44: 1 payouts, drained true, cursor 42ca83e3\npage 45: 1 payouts, drained true, cursor cc626ed1\npage 46: 1 payouts, drained true, cursor 835583af\npage 47: 1 payouts, drained true, cursor 981f260a\npage 48: 1 payouts, drained true, cursor 9ea6dce5\npage 49: 1 payouts, drained true, cursor 5e96aba5\npage 50: 1 payouts, drained true, cursor 139f28a1\npage 51: 1 payouts, drained true, cursor a7692ec8\npage 52: 1 payouts, drained true, cursor 23f0cfc8\npage 53: 1 payouts, drained true, cursor c5972591\npage 54: 1 payouts, drained true, cursor c16e98bf\npage 55: 1 payouts, drained true, cursor 1ad27a57\npage 56: 1 payouts, drained true, cursor 05c1e805\npage 57: 1 payouts, drained true, cursor 58c71f6a\npage 58: 1 payouts, drained true, cursor 73b80053\npage 59: 1 payouts, drained true, cursor 2c264220\npage 60: 1 payouts, drained true, cursor 2cd9c485\npage 61: 1 payouts, drained true, cursor 70766a28\npage 62: 1 payouts, drained true, cursor 27e7f7f1\npage 63: 1 payouts, drained true, cursor 76f22492\npage 64: 1 payouts, drained true, cursor 22fff3fc\npage 65: 1 payouts, drained true, cursor 6fe623b6\npage 66: 1 payouts, drained true, cursor ad2516b1\npage 67: 1 payouts, drained true, cursor b530d5db\npage 68: 1 payouts, drained true, cursor d43aa853\n",
               "stdout_truncated": false,
-              "supervisor_peak_rss_kb": 9188,
+              "supervisor_peak_rss_kb": 9100,
               "verdict": "killed_timeout",
-              "wall_ms": 5007
+              "wall_ms": 5009
             }
           },
-          "run_id": "tmp.XXirNPzP",
+          "run_id": "tmp.XXSQOmhn",
           "session_id": "containment-runs"
         },
         {
@@ -12050,7 +12050,7 @@
             "detail": "Skipped because no successful artifact was available: consumer did not complete successfully",
             "passed": false
           },
-          "run_id": "tmp.XXirNPzP",
+          "run_id": "tmp.XXSQOmhn",
           "session_id": "containment-runs"
         },
         {
@@ -12070,13 +12070,13 @@
             "detail": "consumer did not complete successfully",
             "passed": false
           },
-          "run_id": "tmp.XXirNPzP",
+          "run_id": "tmp.XXSQOmhn",
           "session_id": "containment-runs"
         },
         {
           "kind": "containment",
           "session_id": "containment-runs",
-          "run_id": "tmp.XXirNPzP",
+          "run_id": "tmp.XXSQOmhn",
           "change_kinds": [
             "operation_moved",
             "operation_renamed",
@@ -12091,8 +12091,8 @@
             "schema": "kalari.containment.v1",
             "label": "Containment evidence",
             "benchmark": false,
-            "synthetic": true,
-            "case": "REHEARSAL with a sleeping stub, not the cursor-loop consumer",
+            "synthetic": false,
+            "case": "payouts consumer that honours Retry-After on a 429 and follows the page cursor on every response, ignoring the drained flag",
             "config": {
               "time_cap_ms": 5000,
               "time_ceiling_ms": 30000,
@@ -12101,18 +12101,18 @@
               "note": "The output and memory caps are configuration only. Neither is claimed to have fired in this run."
             },
             "result": {
-              "run_id": "tmp.XXirNPzP",
+              "run_id": "tmp.XXSQOmhn",
               "verdict": "killed_timeout",
               "exit_code": null,
               "passed": false,
-              "wall_ms": 5007,
-              "call_ms": 5910,
-              "pages_fetched": 78,
+              "wall_ms": 5009,
+              "call_ms": 5881,
+              "pages_fetched": 68,
               "waits_for_retry_after": 1,
               "stderr_tail": "",
               "stdout_truncated": false,
               "pipe_held_open": false,
-              "supervisor_peak_rss_kb": 9188,
+              "supervisor_peak_rss_kb": 9100,
               "enforcement_note": "The supervisor polls, so the measured elapsed time can exceed the configured cap. No fixed bound is promised."
             },
             "outcomes": {
@@ -12136,7 +12136,7 @@
                 "msb",
                 "create",
                 "--name",
-                "kalari-tmp.XXirNPzP",
+                "kalari-tmp.XXSQOmhn",
                 "--cpus",
                 "1",
                 "--memory",
@@ -12189,7 +12189,7 @@
                 "same_guest": false,
                 "probe_policy_matches_candidate": true,
                 "same_configuration": true,
-                "probe_run_id": "tmp.XXUNzhhR",
+                "probe_run_id": "tmp.XXdT7o7W",
                 "probe_verdict": "exited",
                 "probe_exit_code": 0,
                 "attempts": [
@@ -12238,12 +12238,12 @@
             },
             "cleanup": {
               "sandboxes_created": [
-                "kalari-tmp.XXirNPzP",
-                "kalari-tmp.XXUNzhhR"
+                "kalari-tmp.XXSQOmhn",
+                "kalari-tmp.XXdT7o7W"
               ],
               "removed_by_run_in_sandbox": [
-                "kalari-tmp.XXirNPzP",
-                "kalari-tmp.XXUNzhhR"
+                "kalari-tmp.XXSQOmhn",
+                "kalari-tmp.XXdT7o7W"
               ],
               "removed_by_forced_cleanup": [],
               "still_listed": [],
@@ -13247,7 +13247,7 @@
         "payouts-attempt-1",
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
-        "tmp.XXirNPzP"
+        "tmp.XXSQOmhn"
       ]
     },
     "session-frozen": {
@@ -13694,7 +13694,7 @@
         "payouts-attempt-1",
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
-        "tmp.XXirNPzP"
+        "tmp.XXSQOmhn"
       ]
     },
     "run-frozen": {
@@ -14093,12 +14093,12 @@
         "payouts-attempt-1",
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
-        "tmp.XXirNPzP"
+        "tmp.XXSQOmhn"
       ]
     },
     "run-containment": {
       "view": "run",
-      "runId": "tmp.XXirNPzP",
+      "runId": "tmp.XXSQOmhn",
       "records": [
         {
           "change_kinds": [
@@ -14160,7 +14160,7 @@
               "workspace": "<work>/candidate"
             },
             "timings": {
-              "wall_ms": 5007
+              "wall_ms": 5009
             },
             "tokens": null,
             "verdict": {
@@ -14168,14 +14168,14 @@
               "exit_code": null,
               "pipe_held_open": false,
               "stderr": "",
-              "stdout": "",
+              "stdout": "page 1: 100 payouts, drained false, cursor cdd853d2\npage 2: 100 payouts, drained false, cursor af94b027\npage 3: 100 payouts, drained false, cursor 8ef0e4c2\npage 4: 100 payouts, drained false, cursor 40d498c9\npage 5: 100 payouts, drained false, cursor 61f2b665\npage 6: 100 payouts, drained false, cursor fe74c2ec\npage 7: 100 payouts, drained false, cursor b23bb73a\npage 8: 100 payouts, drained false, cursor 693ec4fe\npage 9: 100 payouts, drained false, cursor 91f0c980\npage 10: 100 payouts, drained false, cursor 0237ef1d\npage 11: 100 payouts, drained false, cursor 9e8aeb81\npage 12: 100 payouts, drained false, cursor f145130e\npage 13: 100 payouts, drained false, cursor 775464e3\npage 14: 100 payouts, drained false, cursor aa49f09e\npage 15: 100 payouts, drained false, cursor 0f3b3846\npage 16: 100 payouts, drained false, cursor b7a732dc\npage 17: 429 too many requests, waiting 1 s then repeating it\npage 17: 100 payouts, drained false, cursor 069bc030\npage 18: 100 payouts, drained false, cursor 8a225bac\npage 19: 100 payouts, drained false, cursor b25edd11\npage 20: 100 payouts, drained false, cursor 30c0a3a1\npage 21: 100 payouts, drained false, cursor bfc3400f\npage 22: 100 payouts, drained false, cursor cda8149d\npage 23: 100 payouts, drained false, cursor 77bab16e\npage 24: 100 payouts, drained false, cursor c76c1393\npage 25: 55 payouts, drained true, cursor c15daa5e\npage 26: 1 payouts, drained true, cursor 39ec073f\npage 27: 1 payouts, drained true, cursor c38322aa\npage 28: 1 payouts, drained true, cursor f1b3ee80\npage 29: 1 payouts, drained true, cursor 3d93cb22\npage 30: 1 payouts, drained true, cursor 8c19016d\npage 31: 1 payouts, drained true, cursor f3f9dfb1\npage 32: 1 payouts, drained true, cursor d44d7ea1\npage 33: 1 payouts, drained true, cursor c6a9a51b\npage 34: 1 payouts, drained true, cursor 1013b116\npage 35: 1 payouts, drained true, cursor 49158656\npage 36: 1 payouts, drained true, cursor cbe623e5\npage 37: 1 payouts, drained true, cursor a7fc6099\npage 38: 1 payouts, drained true, cursor b55df822\npage 39: 1 payouts, drained true, cursor 1e6a5d72\npage 40: 1 payouts, drained true, cursor 575858ac\npage 41: 1 payouts, drained true, cursor 485f97f8\npage 42: 1 payouts, drained true, cursor a01166a5\npage 43: 1 payouts, drained true, cursor 51d1665c\npage 44: 1 payouts, drained true, cursor 42ca83e3\npage 45: 1 payouts, drained true, cursor cc626ed1\npage 46: 1 payouts, drained true, cursor 835583af\npage 47: 1 payouts, drained true, cursor 981f260a\npage 48: 1 payouts, drained true, cursor 9ea6dce5\npage 49: 1 payouts, drained true, cursor 5e96aba5\npage 50: 1 payouts, drained true, cursor 139f28a1\npage 51: 1 payouts, drained true, cursor a7692ec8\npage 52: 1 payouts, drained true, cursor 23f0cfc8\npage 53: 1 payouts, drained true, cursor c5972591\npage 54: 1 payouts, drained true, cursor c16e98bf\npage 55: 1 payouts, drained true, cursor 1ad27a57\npage 56: 1 payouts, drained true, cursor 05c1e805\npage 57: 1 payouts, drained true, cursor 58c71f6a\npage 58: 1 payouts, drained true, cursor 73b80053\npage 59: 1 payouts, drained true, cursor 2c264220\npage 60: 1 payouts, drained true, cursor 2cd9c485\npage 61: 1 payouts, drained true, cursor 70766a28\npage 62: 1 payouts, drained true, cursor 27e7f7f1\npage 63: 1 payouts, drained true, cursor 76f22492\npage 64: 1 payouts, drained true, cursor 22fff3fc\npage 65: 1 payouts, drained true, cursor 6fe623b6\npage 66: 1 payouts, drained true, cursor ad2516b1\npage 67: 1 payouts, drained true, cursor b530d5db\npage 68: 1 payouts, drained true, cursor d43aa853\n",
               "stdout_truncated": false,
-              "supervisor_peak_rss_kb": 9188,
+              "supervisor_peak_rss_kb": 9100,
               "verdict": "killed_timeout",
-              "wall_ms": 5007
+              "wall_ms": 5009
             }
           },
-          "run_id": "tmp.XXirNPzP",
+          "run_id": "tmp.XXSQOmhn",
           "session_id": "containment-runs"
         },
         {
@@ -14195,7 +14195,7 @@
             "detail": "Skipped because no successful artifact was available: consumer did not complete successfully",
             "passed": false
           },
-          "run_id": "tmp.XXirNPzP",
+          "run_id": "tmp.XXSQOmhn",
           "session_id": "containment-runs"
         },
         {
@@ -14215,13 +14215,13 @@
             "detail": "consumer did not complete successfully",
             "passed": false
           },
-          "run_id": "tmp.XXirNPzP",
+          "run_id": "tmp.XXSQOmhn",
           "session_id": "containment-runs"
         },
         {
           "kind": "containment",
           "session_id": "containment-runs",
-          "run_id": "tmp.XXirNPzP",
+          "run_id": "tmp.XXSQOmhn",
           "change_kinds": [
             "operation_moved",
             "operation_renamed",
@@ -14236,8 +14236,8 @@
             "schema": "kalari.containment.v1",
             "label": "Containment evidence",
             "benchmark": false,
-            "synthetic": true,
-            "case": "REHEARSAL with a sleeping stub, not the cursor-loop consumer",
+            "synthetic": false,
+            "case": "payouts consumer that honours Retry-After on a 429 and follows the page cursor on every response, ignoring the drained flag",
             "config": {
               "time_cap_ms": 5000,
               "time_ceiling_ms": 30000,
@@ -14246,18 +14246,18 @@
               "note": "The output and memory caps are configuration only. Neither is claimed to have fired in this run."
             },
             "result": {
-              "run_id": "tmp.XXirNPzP",
+              "run_id": "tmp.XXSQOmhn",
               "verdict": "killed_timeout",
               "exit_code": null,
               "passed": false,
-              "wall_ms": 5007,
-              "call_ms": 5910,
-              "pages_fetched": 78,
+              "wall_ms": 5009,
+              "call_ms": 5881,
+              "pages_fetched": 68,
               "waits_for_retry_after": 1,
               "stderr_tail": "",
               "stdout_truncated": false,
               "pipe_held_open": false,
-              "supervisor_peak_rss_kb": 9188,
+              "supervisor_peak_rss_kb": 9100,
               "enforcement_note": "The supervisor polls, so the measured elapsed time can exceed the configured cap. No fixed bound is promised."
             },
             "outcomes": {
@@ -14281,7 +14281,7 @@
                 "msb",
                 "create",
                 "--name",
-                "kalari-tmp.XXirNPzP",
+                "kalari-tmp.XXSQOmhn",
                 "--cpus",
                 "1",
                 "--memory",
@@ -14334,7 +14334,7 @@
                 "same_guest": false,
                 "probe_policy_matches_candidate": true,
                 "same_configuration": true,
-                "probe_run_id": "tmp.XXUNzhhR",
+                "probe_run_id": "tmp.XXdT7o7W",
                 "probe_verdict": "exited",
                 "probe_exit_code": 0,
                 "attempts": [
@@ -14383,12 +14383,12 @@
             },
             "cleanup": {
               "sandboxes_created": [
-                "kalari-tmp.XXirNPzP",
-                "kalari-tmp.XXUNzhhR"
+                "kalari-tmp.XXSQOmhn",
+                "kalari-tmp.XXdT7o7W"
               ],
               "removed_by_run_in_sandbox": [
-                "kalari-tmp.XXirNPzP",
-                "kalari-tmp.XXUNzhhR"
+                "kalari-tmp.XXSQOmhn",
+                "kalari-tmp.XXdT7o7W"
               ],
               "removed_by_forced_cleanup": [],
               "still_listed": [],
@@ -14494,7 +14494,7 @@
         "payouts-attempt-1",
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
-        "tmp.XXirNPzP"
+        "tmp.XXSQOmhn"
       ]
     },
     "run-containment-earlier": {
@@ -14895,7 +14895,7 @@
         "payouts-attempt-1",
         "payouts-attempt-2",
         "tmp.XXdrLVOs",
-        "tmp.XXirNPzP"
+        "tmp.XXSQOmhn"
       ]
     },
     "run-endpoint": {

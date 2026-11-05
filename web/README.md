@@ -153,9 +153,8 @@ part of the gate.
 `web/fixture/evidence.jsonl` is the append-only store the fixture server reads.
 `web/fixture/build.py` writes it from the committed pilot results and the
 walkthrough records. It also appends the containment runs: the
-sanitised evidence in `tests/live/containment-evidence/run-*.jsonl`, and, while
-no committed run was stopped by the time cap, the synthetic stand-in in
-`web/fixture/sources/containment-sample.jsonl` (marked `synthetic`). Run the
+sanitised evidence of the two runs in
+`tests/live/containment-evidence/run-*.jsonl`. Run the
 build only when the fixture sources change.
 
 `web/fixture/rendered/` holds snapshots of the view output. The check parses
