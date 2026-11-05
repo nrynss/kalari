@@ -1,0 +1,250 @@
+---
+title: MCP and tool commands
+description: Connect OpenCode, discover the five tools, and send complete requests.
+---
+
+import DocLink from '../../components/DocLink.astro';
+import RepoLink from '../../components/RepoLink.astro';
+
+Complete <DocLink to="run-it-yourself/">installation and configuration</DocLink> first. Every command below uses the same two configuration files.
+
+## OpenCode configuration
+
+The demonstrated client is OpenCode 2.2.5. Save this in your project's `opencode.json`. Replace the three absolute paths.
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "kalari": {
+        "type": "local",
+        "codemode": false,
+        "command": [
+          "/absolute/path/to/kalari",
+          "serve",
+          "/absolute/path/to/kalari.json",
+          "/absolute/path/to/session.json"
+        ]
+      }
+    }
+  }
+}
+```
+
+OpenCode starts the process and exchanges newline-delimited JSON-RPC over stdio. Launch OpenCode with the inference environment variable already set.
+
+Select the configuration explicitly before checking client status.
+
+```sh
+export OPENCODE_CONFIG="$PWD/opencode.json"
+opencode --version
+opencode mcp list --standalone
+```
+
+The tested OpenCode status command can report no servers despite the configured entry. Use direct MCP discovery below to verify Kalari independently.
+
+Inspect stderr if startup fails. Common causes are missing credentials, invalid paths, and unsupported session settings.
+
+Use a standalone process when supplying credentials. This avoids leaving a background OpenCode daemon holding the key.
+
+Run the migration after selecting your coding model through OpenCode's provider configuration.
+
+```sh
+opencode run --standalone \
+  "Migrate this consumer to the new API. Use Kalari to inspect the specs, find affected callers, and verify records.jsonl before finishing."
+```
+
+The agent still needs permission to edit the candidate workspace. Keep its edits away from the baseline and trusted check directories.
+
+[OpenCode MCP configuration](https://opencode.ai/docs/mcp-servers/) · [Current configuration schema](https://opencode.ai/config.json).
+
+## Discover tools without an agent
+
+This command checks MCP startup and lists the tools. It does not run a consumer or ask a model to solve a migration.
+
+```sh
+printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
+  '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
+  | kalari serve "$KALARI_WORK/kalari.json" "$KALARI_WORK/session.json"
+```
+
+Expect five names in the second response.
+
+| Name | Purpose |
+|---|---|
+| `what_changed` | Compare the session's specifications |
+| `blast_radius` | Find confirmed and uncertain callers |
+| `recall_lessons` | Retrieve applicable checks |
+| `run_in_sandbox` | Execute the consumer and compare artifacts |
+| `record_lesson` | Propose a lesson from a verified run |
+
+Startup runs a local policy fixture and can append its provenance record. This discovery check uses your configured evidence directory.
+
+## Send a tool call
+
+Each tool uses the same JSON-RPC envelope.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "what_changed",
+    "arguments": {
+      "old_spec": "/absolute/path/to/spec-v1.yaml",
+      "new_spec": "/absolute/path/to/spec-v2.yaml"
+    }
+  }
+}
+```
+
+Keep one server process open for a migration. `what_changed` establishes in-memory session state used by subsequent calls.
+
+The two specification paths must match the configured session. Starting a fresh process discards that change state.
+
+For a shell-only inspection, send initialization and `what_changed` together.
+
+```sh
+python3 - <<'PY' | kalari serve "$KALARI_WORK/kalari.json" "$KALARI_WORK/session.json"
+import json
+import os
+from pathlib import Path
+
+session = json.loads((Path(os.environ["KALARI_WORK"]) / "session.json").read_text())
+messages = [
+    {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+    {"jsonrpc": "2.0", "method": "notifications/initialized"},
+    {
+        "jsonrpc": "2.0", "id": 2, "method": "tools/call",
+        "params": {
+            "name": "what_changed",
+            "arguments": {
+                "old_spec": session["old_spec"],
+                "new_spec": session["new_spec"],
+            },
+        },
+    },
+]
+for message in messages:
+    print(json.dumps(message))
+PY
+```
+
+## Tool arguments
+
+Pass these objects as `params.arguments`. Use the exact tool name in `params.name`.
+
+### what_changed
+
+```json
+{
+  "old_spec": "/absolute/path/to/spec-v1.yaml",
+  "new_spec": "/absolute/path/to/spec-v2.yaml"
+}
+```
+
+The result contains changes with IDs and kinds. Vimanam provides operation metadata for later caller searches.
+
+### blast_radius
+
+```json
+{
+  "change_ids": ["COPY_AN_ID_FROM_WHAT_CHANGED"]
+}
+```
+
+You may pass every returned change ID. Each gets a report in request order.
+
+Statuses are `searched`, `not_searchable`, or `unknown_change_id`. Non-searchable and unknown IDs do not discard other reports.
+
+Confirmed and uncertain sites stay separate. A shortened site list carries `truncated: true`. Empty requests and oversized minimum responses fail explicitly.
+
+Search confirmation can call Clef. Graph writes can use Lambo embeddings. Those steps may incur inference charges.
+
+### recall_lessons
+
+```json
+{
+  "change_kinds": ["pagination_changed"]
+}
+```
+
+Use kinds from the change list. Empty recall means no applicable lesson was returned.
+
+### run_in_sandbox
+
+```json
+{
+  "workspace": "/absolute/path/to/kalari-work/candidate",
+  "command": ["python3", "consumer.py"],
+  "caps": {
+    "timeout_ms": 30000,
+    "output_cap_bytes": 65536,
+    "memory_mib": 512
+  },
+  "allowlist": [
+    {"host": "api.example.test", "port": 443}
+  ]
+}
+```
+
+Replace the workspace and API hostname. Use an empty allowlist for a consumer that reads only local fixture data.
+
+The workspace must match the configured session. Limits and destinations must fit within the host policy.
+
+Write the configured artifact at the workspace root. For this guide, that filename is `records.jsonl`.
+
+A command that writes no artifact can exit zero and still return `passed=false`. The response explains which file verification requires.
+
+The candidate and baseline run in separate guests. Kalari compares complete records and executes service-owned checks against the candidate artifact.
+
+The response contains `run_id`, `verdict`, `checks`, `passed`, and `summary`. A check failure leaves `passed=false`.
+
+### record_lesson
+
+```json
+{
+  "run_id": "COPY_THE_RETURNED_RUN_ID"
+}
+```
+
+Use an actual verified run ID. Publication depends on supported observations and checks. Calling the tool does not guarantee a new lesson.
+
+Production refuses observer configuration. The frozen runs produced no published lessons. See <DocLink to="evidence/">evidence and limits</DocLink>.
+
+## Remote Linux host
+
+The stdio transport can cross SSH. Install Kalari and its dependencies on the Linux host and keep its configuration paths there.
+
+The local MCP command can invoke a credential-loading remote wrapper.
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "kalari": {
+        "type": "local",
+        "codemode": false,
+        "command": [
+          "ssh",
+          "-T",
+          "YOUR_SSH_ALIAS",
+          "/absolute/path/to/start-kalari"
+        ]
+      }
+    }
+  }
+}
+```
+
+The wrapper loads credentials on the remote host and executes `kalari serve` with remote paths. Keep wrapper output off stdout except for MCP messages.
+
+The candidate also lives on that host. A local coding agent needs a deliberate way to edit those remote files.
+
+For the demonstrated workflow, run OpenCode on the same Linux host as Kalari. Use SSH to reach that workspace from another machine.
+
+<RepoLink path="Kalari/Mcp.lean">Authoritative tool schemas</RepoLink> · <RepoLink path="Kalari/Service.lean">Session dispatch</RepoLink>

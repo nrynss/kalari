@@ -3,22 +3,22 @@ title: Architecture
 description: The full picture in five minutes, every claim linked to its source file.
 ---
 
-import ArchitectureSvg from '../../components/ArchitectureSvg.astro';
 import ContainmentLoopSvg from '../../components/ContainmentLoopSvg.astro';
 import Diagram from '../../components/Diagram.astro';
 import DocLink from '../../components/DocLink.astro';
 import RepoLink from '../../components/RepoLink.astro';
 
-Every statement below names its source. Links point at the pinned commit. Proofs cover the gate and the aashaan. They do not cover the agent code or the sandbox backend.
+Every statement below names its source. Links point at the pinned commit. Proofs cover the gate predicates. Runtime tests exercise the aashaan. They do not cover the agent code or the sandbox backend.
 
 ## The picture
 
-<figure class="kalari-diagram">
-<ArchitectureSvg />
-<figcaption>Three planes: the trusted Lean host, the untrusted microVM guests, and the outside services.</figcaption>
-</figure>
+<Diagram
+  name="system-context"
+  caption="The coding agent, execution boundary, inference services, and evidence interface."
+  alt="The agent uses MCP over stdio. Kalari checks policy and controls microVM execution. Caddy serves the interface while a separate API reads evidence."
+/>
 
-The coding agent connects over MCP. `kalari serve` runs on the VM. Each run gets one Microsandbox microVM with `kalari-aashaan` inside. Vultr Serverless Inference answers every model call. Lambo runs as a child process. Vimanam and `msb` run as subprocesses. Caddy terminates TLS in front of the read-only web app. The layout above is drawn from <RepoLink path="docs/architecture.md">docs/architecture.md</RepoLink>.
+The coding agent connects over MCP. `kalari serve` runs on the VM. Candidate, baseline, and checks use separate Microsandbox guests under `kalari-aashaan`. Vultr Serverless Inference answers every model call. Lambo runs as a child process. Vimanam and `msb` run as subprocesses. Caddy terminates TLS in front of the read-only web app. The layout above is drawn from <RepoLink path="docs/architecture.md">docs/architecture.md</RepoLink>.
 
 <figure class="kalari-diagram">
 <ContainmentLoopSvg />
@@ -38,7 +38,7 @@ Kalari ships two executables, both Lean 4 natives:
 - <RepoLink path="Kalari/Main.lean">kalari</RepoLink> is the main service on the VM. It serves the MCP endpoint, runs the gate, drives the run pipeline, and keeps the evidence store.
 - <RepoLink path="Aashaan/">kalari-aashaan</RepoLink> is the supervisor inside each microVM. It runs the untrusted job, enforces the time and output caps, and prints one JSON verdict.
 
-Lean carries the containment logic as theorems checked at build time. A broken proof fails `lake build`, so the binary cannot ship with a weaker gate. The supervisor imports `Std` only, never the compiler library, so it stays a small static binary that starts inside each guest. State this plainly: the proofs cover the gate decision and the aashaan caps. They do not cover the agent generated code or the sandbox backend.
+Lean carries the containment logic as theorems checked at build time. The build checks the gate theorems against the implemented predicates. The supervisor imports `Std` only. It avoids linking the Lean compiler library. State this plainly: the proofs cover the admission gate predicates. They do not cover the agent generated code or the sandbox backend.
 
 ## The gate and its four theorems
 
@@ -81,7 +81,7 @@ The <DocLink to="containment/">Containment</DocLink> runs are the worked example
 The tool schemas and the request handler live in one file, so schema and routing cannot drift. See <RepoLink path="Kalari/Mcp.lean">Kalari/Mcp.lean</RepoLink>.
 
 - `what_changed` lists the changes between two specs with stable change IDs. It calls Vimanam as a subprocess.
-- `blast_radius` finds the callers, tests, and earlier decisions each change touches. Statuses stay per ID: searched, not searchable, or unknown. Links go to Lambo.
+- `blast_radius` searches code for callers of each changed operation. Statuses stay per ID: searched, not searchable, or unknown. Links go to Lambo.
 - `recall_lessons` returns lessons for change kinds as checks that must pass. Lookup walks from the change kind.
 - `run_in_sandbox` runs the proved gate, then a throwaway microVM run, and returns the verdict with logs.
 - `record_lesson` stores what a verified run showed. A failure needs Clef to attribute it to the API change. A verified pass stores the observed behaviour directly.

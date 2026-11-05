@@ -3,10 +3,10 @@ flowchart TB
   caddy["Caddy automatic HTTPS"]:::neutral
   www["Static root /srv/kalari/www"]:::neutral
   docs["Docs /docs from Starlight"]:::kalari
-  api["kalari-api loopback 18001"]:::kalari
+  api["Read-only evidence API"]:::kalari
   serve["kalari serve systemd unit"]:::kalari
   lambo["Lambo child process"]:::kalari
-  vms["API microVMs published ports"]:::reference
+  vms["Consumer execution microVMs"]:::reference
   ssh["SSH over Tailscale only"]:::gate
 
   net --> caddy
@@ -15,6 +15,9 @@ flowchart TB
   caddy --> api
   serve --> lambo
   serve --> vms
+  evidence["Evidence store"]:::neutral
+  serve --> evidence
+  api --> evidence
   ssh --> serve
 
   classDef kalari fill:#1f5a46,color:#f5f1e8,stroke:#121514,stroke-width:2px

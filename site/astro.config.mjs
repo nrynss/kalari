@@ -29,7 +29,8 @@ export default defineConfig({
         { label: 'Architecture', slug: 'architecture' },
         { label: 'Vultr', slug: 'vultr' },
         { label: 'Containment', slug: 'containment' },
-        { label: 'Run it yourself', slug: 'run-it-yourself' },
+        { label: 'Install and configure', slug: 'run-it-yourself' },
+        { label: 'MCP and tool commands', slug: 'mcp' },
         { label: 'Evidence and limits', slug: 'evidence' },
       ],
       social: [

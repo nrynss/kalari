@@ -37,6 +37,9 @@ jobs:
         env:
           ASTRO_SITE: https://nrynss.github.io
           ASTRO_BASE: /kalari
+      - name: Check documentation links
+        working-directory: site
+        run: python3 scripts/links.py dist --base /kalari
       - name: Privacy scan
         working-directory: site
         run: npm run check -- dist

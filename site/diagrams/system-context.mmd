@@ -17,7 +17,11 @@ flowchart TB
   kalari --> msb
   msb --> aashaan
   kalari --> inference
-  web --> kalari
+  api["Read-only evidence API"]:::neutral
+  evidence["Evidence store"]:::neutral
+  web --> api
+  kalari --> evidence
+  api --> evidence
   caddy --> web
 
   classDef kalari fill:#1f5a46,color:#f5f1e8,stroke:#121514,stroke-width:2px

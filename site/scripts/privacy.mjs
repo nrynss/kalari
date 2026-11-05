@@ -43,6 +43,7 @@ for (const f of files) {
   // Visible text carries the claims. Link targets carry the addresses.
   // SVG path data and style blocks are drawing code, not content.
   const text = `${stripToText(html)}\n${hrefs(html)}`
+    .replace(/\bVULTR_INFERENCE_API_KEY\b/g, '')
     .replace(/<vm-public-ip>/g, '')
     .replace(/@<[^>]+>/g, '');
   const hits = [];

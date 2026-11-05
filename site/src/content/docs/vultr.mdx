@@ -1,39 +1,194 @@
 ---
-title: Vultr
-description: What Vultr runs for Kalari, service by service.
+title: Deploy on Vultr
+description: Host requirements, inference setup, installation, service checks, and docs publishing.
 ---
 
 import Diagram from '../../components/Diagram.astro';
 import RepoLink from '../../components/RepoLink.astro';
+import DocLink from '../../components/DocLink.astro';
 
-Kalari is generic. Vultr is the deployment we demo, not a dependency. The Lean code knows an OpenAI-compatible endpoint and a sandbox backend. Vultr fills those slots in production. The rule comes from <RepoLink path="product.md">product.md</RepoLink>. The line holds: runs on Vultr, and anywhere else you point it.
+The demo runs on one Vultr Cloud Compute VM. Serverless Inference supplies model access. Microsandbox creates the execution guests on that VM.
 
-## What we run on
+The public interface lives at [kalari.nryn.dev](https://kalari.nryn.dev/). These docs live under its `/docs/` path.
 
-One VX1 virtual machine holds the whole demo. The plan is `vx1-g-2c-8g-120s` with 2 vCPU, 8 GB of RAM, and Ubuntu 24.04. The choice is recorded in <RepoLink path="dev-diary/research/vultr-vm.md">dev-diary/research/vultr-vm.md</RepoLink>. That host runs `kalari serve`, Lambo as a child process, the read-only evidence API, Caddy with automatic HTTPS, and the Microsandbox microVM fleet. The setup order lives in <RepoLink path="deploy/vultr/README.md">deploy/vultr/README.md</RepoLink>. The installer lives in <RepoLink path="deploy/vultr/install.sh">deploy/vultr/install.sh</RepoLink>.
+## What Vultr runs
 
-Vultr Serverless Inference answers every model call. No team member manages a GPU anywhere. Three jobs use three models:
+| Service | Responsibility |
+|---|---|
+| Cloud Compute | Hosts Kalari, Lambo, the evidence API, and microVMs |
+| Serverless Inference | Serves the coding model, Clef, and embedding requests |
+| Firewall | Allows public HTTP and HTTPS while SSH stays on Tailscale |
+| Caddy on the VM | Obtains certificates and serves the interface and docs |
 
-- DeepSeek V4.1 Flash drives the coding agent in both arms of the comparison.
-- Clef answers three fixed questions at the System One endpoint. Its answers stay opinion, never verdict.
-- Qwen3 embeddings back Lambo lesson search at 2560 dimensions.
+Microsandbox is a tool installed on the VM. It is not a separate Vultr sandbox service.
 
-The model map lives in <RepoLink path="docs/architecture.md">docs/architecture.md</RepoLink>. The endpoint shapes live in <RepoLink path="Kalari/Config.lean">Kalari/Config.lean</RepoLink>. Keys stay in environment names in config, never in values.
+The demonstrated host uses Ubuntu 24.04 with 2 vCPU and 8 GB RAM. Check KVM availability before deploying.
 
-## How it helps
-
-One host holds the agent, the sandbox fleet, and the evidence. A run never leaves the building. Serverless inference means no model servers to feed and no weights to host. Per-task microVMs with their own kernels make containment a platform feature rather than a precaution. One bill covers the host and the inference calls. One firewall group opens only ports 80 and 443. One Tailscale tailnet carries SSH, and the firewall group holds no SSH rule at all.
-
-## Each service and its job
-
-- Cloud Compute (the VX1 VM) hosts the service, the memory, the evidence, the TLS front, and every guest.
-- Serverless Inference serves the agent model, the Clef decisions, and the Lambo embeddings.
-- The firewall group exposes the demo and nothing else. SSH stays off it by operator choice.
-
-The service list matches the README: Lean 4 for the executables, Vimanam for change facts, Lambo for lessons, Microsandbox for microVMs, all running on the VM above with inference beside it.
+Model requests leave the host for Serverless Inference. Consumer execution and artifact comparison run on the VM.
 
 <Diagram
   name="deployment"
-  caption="The Vultr deployment: one VM, three units, API microVMs beside them."
-  alt="Internet reaches Caddy on ports 80 and 443. Caddy serves the static root with docs and proxies the API. kalari serve runs Lambo and the benchmark microVMs. SSH arrives over Tailscale only."
+  caption="Public HTTPS, private MCP execution, and recorded evidence on the Vultr host."
+  alt="Caddy serves the static interface and docs, then proxies the read-only evidence API. Kalari starts Lambo and execution microVMs. SSH reaches the host through Tailscale."
 />
+
+## Prepare the machine
+
+Create an Ubuntu host with virtualization exposed. Connect through your own SSH alias.
+
+The examples use `kalari` as that alias. It represents your host, username, and SSH authentication settings.
+
+```sh
+ssh kalari 'uname -m; test -r /dev/kvm && test -w /dev/kvm'
+ssh kalari 'command -v sudo; command -v python3'
+```
+
+The operator needs sudo on the target. The installer creates a separate `kalari` service user and grants that user KVM access.
+
+Keep SSH restricted to your management network. Point an A record for your chosen hostname at the VM.
+
+Allow inbound TCP 80 and 443 through both the Vultr firewall and the host firewall. Caddy needs a publicly resolvable hostname for automatic HTTPS.
+
+The checked-in Caddy configuration uses `kalari.nryn.dev`. Change both hostnames in your deployment copy before using another domain.
+
+<RepoLink path="deploy/vultr/Caddyfile">Caddy configuration</RepoLink> · <RepoLink path="dev-diary/research/sandbox.md">Measured virtualization requirements</RepoLink>.
+
+## Configure inference
+
+Create your own Serverless Inference access and retrieve its inference key. The account API key and inference key have different purposes.
+
+Kalari uses these endpoint shapes.
+
+| Work | Endpoint | Demonstrated model |
+|---|---|---|
+| Coding agent | `https://api.vultrinference.com/v1` | DeepSeek V4.1 Flash |
+| Decision calls | `https://api.vultrinference.com/v1/systemone` | `clef` |
+| Lambo embeddings | Configured from `https://api.vultrinference.com` | `qwen3-embedding-4b`, 2560 dimensions |
+
+The agent model belongs to the agent's configuration. The service configuration carries the Clef settings and the Lambo child configuration.
+
+Production validation requires the shown Clef endpoint and model. Check model access on your own inference account.
+
+[Serverless Inference documentation](https://api.vultrinference.com/docs) · [Endpoint reference](https://api.vultrinference.com/docs/reference).
+
+## Install the deployment
+
+Run the deployment installer from a source checkout on your operator machine. It builds the executables on the VM against that host's libraries.
+
+The operator machine needs SSH, rsync, curl, and access to the inference key. A docs build also needs Node.js and Chrome or Chromium.
+
+Clone the source and review the deployment script.
+
+```sh
+git clone https://github.com/nrynss/kalari.git
+cd kalari
+less deploy/vultr/install.sh
+```
+
+Load your inference key through the operator environment. The demonstrated keyring entry is:
+
+```sh
+export VULTR_INFERENCE_API_KEY="$(secret-tool lookup service vultr-inference account kalari)"
+test -n "$VULTR_INFERENCE_API_KEY"
+./deploy/vultr/install.sh --host kalari --source "$PWD"
+unset VULTR_INFERENCE_API_KEY
+```
+
+Use your own secret manager if that keyring entry does not exist. The installer sends the key through SSH stdin.
+
+The VM receives a mode-0600 environment file owned by the service user. The key never appears in the unit's command line.
+
+The installer also builds these docs for `/docs/`. It installs Caddy, Lambo, service definitions, static assets, and the read-only API.
+
+The default session is an idle deployment example. Configure real specifications, workspaces, and a baseline command before connecting an agent.
+
+<DocLink to="run-it-yourself/">Migration configuration</DocLink> · <DocLink to="mcp/">MCP commands</DocLink>.
+
+## Files on the VM
+
+| Path | Contents |
+|---|---|
+| `/opt/kalari/bin/` | Kalari executables and Lambo |
+| `/etc/kalari/kalari.json` | Host policy and endpoints |
+| `/etc/kalari/session.json` | Session paths and baseline command |
+| `/etc/kalari/lambo.toml` | Lambo storage and embedding settings |
+| `/etc/kalari/kalari.env` | Protected inference environment |
+| `/var/lib/kalari/evidence/.kalari/evidence.jsonl` | Append-only evidence |
+| `/var/lib/kalari/lambo.db` | Graph store |
+| `/srv/kalari/www/` | Static judges' interface |
+| `/srv/kalari/www/docs/` | Built documentation |
+
+The read-only API listens on loopback. Caddy routes `/api/*` to that service.
+
+The web interface reads stored evidence. A fresh installation does not contain the demo's published benchmark records.
+
+## Restart and verify
+
+An install refreshes files. Explicitly restart the running services when replacing binaries.
+
+```sh
+ssh kalari 'sudo systemctl restart kalari kalari-api caddy'
+ssh kalari 'sudo systemctl is-active caddy kalari kalari-api'
+ssh kalari '/opt/kalari/bin/kalari --version'
+```
+
+Expect three `active` lines and the installed release version. Check HTTPS from outside the management network.
+
+```sh
+curl -fsS -o /dev/null -w 'site %{http_code}\n' https://kalari.nryn.dev/
+curl -fsS -o /dev/null -w 'docs %{http_code}\n' https://kalari.nryn.dev/docs/
+curl -fsS -o /dev/null -w 'runs %{http_code}\n' https://kalari.nryn.dev/api/runs
+```
+
+Replace the hostname when deploying your own instance.
+
+## Connect an agent on the VM
+
+The systemd MCP service keeps a process running. It does not expose an HTTP MCP endpoint.
+
+A coding agent normally launches its own stdio server using its own session configuration. Run the agent on the host containing its candidate workspace.
+
+```sh
+kalari serve /absolute/path/to/kalari.json /absolute/path/to/session.json
+```
+
+The <DocLink to="mcp/">MCP guide</DocLink> shows OpenCode configuration and direct discovery. Give separate sessions separate evidence and workspace directories.
+
+## Publish docs without replacing the service
+
+Build the documentation with the Vultr base. Keep the source checkout as the working directory.
+
+```sh
+cd site
+npm ci --no-audit --no-fund
+ASTRO_SITE=https://kalari.nryn.dev ASTRO_BASE=/docs npm run build
+npm run check -- dist
+python3 scripts/links.py dist --base /docs
+rsync -az --delete dist/ kalari:kalari-docs/
+ssh kalari 'sudo rsync -a --delete "$HOME/kalari-docs/" /srv/kalari/www/docs/'
+```
+
+Install rsync on the target before this command. The command replaces only the published docs directory.
+
+Caddy serves the updated static files without a restart. Keep the interface, service binaries, and evidence store outside this sync target.
+
+## Troubleshooting
+
+Inspect unit logs without printing the credential file.
+
+```sh
+ssh kalari 'sudo journalctl -u kalari -u kalari-api -u caddy -n 80 --no-pager'
+ssh kalari 'sudo systemctl status kalari kalari-api caddy --no-pager'
+```
+
+| Symptom | Check |
+|---|---|
+| Certificate issuance fails | Public DNS and inbound 80/443 |
+| HTTPS works but `/api/runs` fails | `kalari-api` status and Caddy proxy |
+| MCP exits during startup | Config paths, service permissions, and credential variable |
+| Sandbox creation fails | KVM access, image cache, and storage permissions |
+| Docs assets return 404 | Rebuild with `ASTRO_BASE=/docs` |
+| GitHub Pages links appear on the VM | Deploy the Vultr build rather than the Pages output |
+| Docs work but migration cannot run | Configure the session separately from web hosting |
+
+<RepoLink path="deploy/vultr/README.md">Deployment reference</RepoLink> · <RepoLink path="deploy/vultr/install.sh">Installer source</RepoLink> · <DocLink to="architecture/">Architecture</DocLink>

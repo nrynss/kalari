@@ -17,20 +17,32 @@ hero:
       variant: secondary
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 import DocLink from '../../components/DocLink.astro';
 
 <CardGrid>
-  <Card title="Architecture" icon="puzzle">
-    The full picture in five minutes. Every claim links to its source file.
-  </Card>
-  <Card title="Vultr" icon="rocket">
-    What each Vultr service runs for this project, with specifics.
-  </Card>
-  <Card title="Containment" icon="shield">
-    The timeout scene, the network boundary, and the verified cleanup.
-  </Card>
-  <Card title="Run it yourself" icon="laptop">
-    Both presets, every config field, and the check script.
-  </Card>
+  <LinkCard
+    title="Architecture"
+    description="The agent, the execution boundary, and the evidence."
+    href={import.meta.env.BASE_URL.replace(/\/$/, '') + '/architecture/'}
+  />
+  <LinkCard
+    title="Deploy on Vultr"
+    description="Inference, host setup, services, HTTPS, and verification commands."
+    href={import.meta.env.BASE_URL.replace(/\/$/, '') + '/vultr/'}
+  />
+  <LinkCard
+    title="Containment"
+    description="The timeout scene, the network boundary, and verified cleanup."
+    href={import.meta.env.BASE_URL.replace(/\/$/, '') + '/containment/'}
+  />
+  <LinkCard
+    title="Install and configure"
+    description="Release binaries, dependencies, configuration, and a local fixture."
+    href={import.meta.env.BASE_URL.replace(/\/$/, '') + '/run-it-yourself/'}
+  />
 </CardGrid>
+
+## Connect your agent
+
+<DocLink to="mcp/">MCP setup and tool commands</DocLink> includes server discovery and copyable requests for all five tools.
