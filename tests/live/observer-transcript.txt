@@ -1,0 +1,25 @@
+observer rehearsal: budget model_calls=0 inference_key=absent placeholder=set
+versions: vimanam 2.1.0, lambo 0.9.1, msb msb 0.7.13
+embedder: fixture (local, no external model calls)
+apis: payouts live=loopback:43751, payouts observer=loopback:36371, settlements live=loopback:50353, settlements grading=loopback:47347
+lambo: private fixture store provisioned, change kinds seeded: argument_added,field_added,field_required_changed,field_type_changed,operation_moved,operation_renamed,pagination_changed,result_added,type_added
+payouts what_changed: kinds=argument_added,field_added,field_required_changed,operation_moved,operation_renamed,pagination_changed,result_added,type_added
+payouts run_in_sandbox: passed=true verdict=exited exit=0 checks=[candidate-v1-truth-v1=pass, differential-v1=pass]
+payouts record_lesson: observation='Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.'
+payouts record_lesson: check=candidate-v1-truth-v1 command=['python3', 'kalari_candidate_truth_check.py', 'payouts.jsonl', 'kalari-v1-truth.jsonl']
+payouts record_lesson: memory_concept_id=03074177-71d5-4aa8-bd9d-b023bc94ba17
+settlements what_changed: kinds=argument_added,field_type_changed,pagination_changed,type_added
+settlements recall_lessons: status=required check=candidate-v1-truth-v1 command=['python3', 'kalari_candidate_truth_check.py', 'payouts.jsonl', 'kalari-v1-truth.jsonl']
+settlements recall_lessons: observation='Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.'
+settlements correct: passed=true verdict=exited exit=0 checks=[candidate-v1-truth-v1=pass, differential-v1=pass]
+settlements partial_output: passed=false verdict=exited exit=0 checks=[candidate-v1-truth-v1=fail, differential-v1=fail]
+settlements partial_output: recalled_detail='Exited with code 1.'
+settlements partial_output: differential_detail='1078 missing, 0 extra, 0 duplicates, 3 changed'
+evidence: payouts page observation behaviors=['boundary_overlap_one', 'final_page_token', 'rate_limit_retry']
+evidence: published lesson='Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.'
+evidence: settlements check rebound command=['python3', 'kalari_candidate_truth_check.py', 'settlements.jsonl', 'kalari-v1-truth.jsonl']
+retries: agent_http=0 grading_http=0 sandbox_payouts=1 sandbox_settlements_429=2 sandbox_settlements_retries=1
+refusal: exit=1 message='kalari serve: observer requires verified exclusive guest source isolation'
+services: payouts=reaped settlements=reaped lambo=reaped
+rehearsal: observe -> publish -> recall -> enforce
+cleanup: sandboxes_remaining=0

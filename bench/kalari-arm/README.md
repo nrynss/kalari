@@ -19,10 +19,16 @@ Lambo store and pinned tools must be prepared separately. The inference key
 belongs in the environment, never in these files. See `tests/live/run.sh` for
 trusted-session construction and private dependency staging.
 
-The service currently rejects observer configuration and does not wire the
-observer into its run context; an IP probe alone cannot make a page observation
-trusted. `record_lesson` may still be called, but a call is not evidence that a
-lesson was published.
+The service accepts an optional `observer` in the trusted session. The caller
+names the payouts server and the guest-visible msb gateway alias. It cannot
+supply a guest address. For each run the service reads the guest and gateway
+from the runtime, requires one private /30 and one egress rule for the observer
+port, and starts the observer only then. A runtime that cannot report the
+network, a sandbox with another rule or a caller-supplied address keeps the
+refusal. `tests/live/observer.sh` rehearses observe, publish, recall and
+enforce with a private fixture-embedder Lambo store and no model calls. A
+`record_lesson` call alone is still not evidence that a lesson was published.
+The run must have produced the trusted observation.
 
 `session.py` prepares separate candidate, baseline, check, and evidence
 workspaces plus a private fixture-embedder Lambo configuration. Provision and

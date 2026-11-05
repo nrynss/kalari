@@ -8,6 +8,13 @@ import Kalari.Tools.Lesson
 open Lean Kalari.Model
 namespace Kalari.Service
 
+/-- A host-owned payouts observer. The endpoint name is the guest-visible msb
+gateway alias. The service reads the real guest network from the runtime. -/
+structure ObserverSetup where
+  server : String
+  endpoint : AllowHost
+  deriving FromJson
+
 /-- Operator-owned setup, read at process startup and never from MCP arguments. -/
 structure Setup where
   session_id : String
@@ -21,6 +28,7 @@ structure Setup where
   artifact : String
   aashaan : String
   tool_path : Option String := none
+  observer : Option ObserverSetup := none
   deriving FromJson
 
 private def validName (s : String) : Bool :=
@@ -34,6 +42,14 @@ private def validate (cfg : Kalari.Config.Config) (s : Setup) : IO Unit := do
   if let some path := s.tool_path then
     unless (path.splitOn ":").all (fun p => Kalari.Gate.workspaceOk p && !p.contains '\x00') do
       throw <| .userError "tool_path must contain only absolute normalized directories"
+  if let some observer := s.observer then
+    unless observer.endpoint.host == Kalari.Tools.Run.guestAlias &&
+        observer.endpoint.port > 0 && observer.endpoint.port <= 65535 &&
+        Kalari.Gate.workspaceOk observer.server &&
+        !observer.server.contains '\x00' do
+      throw <| .userError "observer requires verified exclusive guest source isolation"
+    unless cfg.sandbox.allowlist.contains observer.endpoint do
+      throw <| .userError "observer endpoint must be in the sandbox allowlist"
   unless validName s.session_id && !s.repo_scope.isEmpty do throw <| .userError "invalid session identity"
   unless [s.workspace, s.baseline.workspace, s.check_workspace, s.evidence_workspace, s.aashaan, s.old_spec, s.new_spec].all Kalari.Gate.workspaceOk do
     throw <| .userError "session paths must be absolute and normalized"
@@ -51,13 +67,15 @@ private def validate (cfg : Kalari.Config.Config) (s : Setup) : IO Unit := do
       Kalari.Gate.commandInside s.baseline.workspace s.baseline.command &&
       !(s.baseline.workspace :: s.baseline.command).any (·.contains '\x00') do
     throw <| .userError "invalid baseline or caps"
-  for path in [s.workspace, s.baseline.workspace, s.check_workspace, s.evidence_workspace, s.aashaan, s.old_spec, s.new_spec] do
+  let observerFiles := s.observer.toList.map (·.server)
+  let filePaths := [s.aashaan, s.old_spec, s.new_spec] ++ observerFiles
+  for path in [s.workspace, s.baseline.workspace, s.check_workspace, s.evidence_workspace] ++ filePaths do
     unless ← (System.FilePath.mk path).pathExists do throw <| .userError "session path does not exist"
     let resolved ← IO.FS.realPath (System.FilePath.mk path)
     unless resolved.toString == path do throw <| .userError "session path must be canonical"
   for path in [s.workspace, s.baseline.workspace, s.check_workspace, s.evidence_workspace] do
     unless ← (System.FilePath.mk path).isDir do throw <| .userError "session workspace must be a directory"
-  for path in [s.aashaan, s.old_spec, s.new_spec] do
+  for path in filePaths do
     if ← (System.FilePath.mk path).isDir then
       throw <| .userError "session executable and specs must be files"
   let roots := [s.workspace, s.baseline.workspace, s.check_workspace, s.evidence_workspace]
@@ -86,6 +104,8 @@ def dispatcher (cfg : Kalari.Config.Config) (setup : Setup) (deps : Dependencies
   let evidence := deps.evidence
   let secrets := deps.secrets
   let writer := deps.writer
+  let observer := setup.observer.map fun item =>
+    Kalari.Tools.Run.payoutsObserver item.server item.endpoint "127.0.0.1" "127.0.0.1"
   return fun name args => do
     match name with
     | "what_changed" =>
@@ -123,8 +143,17 @@ def dispatcher (cfg : Kalari.Config.Config) (setup : Setup) (deps : Dependencies
         evidence := evidence
         sessionId := setup.session_id
         changeKinds := kinds
+        observer
       }
       let ctx ← Kalari.Tools.Lesson.attachLessonBootstrapChecks ctx
+      -- An observed run reaches only the trusted observer. Replace the
+      -- model-supplied allowlist rather than trusting it or rejecting it.
+      let args ← match setup.observer with
+        | none => pure args
+        | some item =>
+          match fromJson? (α := RunRequest) args with
+          | .error _ => pure args
+          | .ok request => pure (toJson { request with allowlist := [item.endpoint] })
       Kalari.Tools.Run.call deps.runtime ctx args
     | "record_lesson" =>
       let runId ← IO.ofExcept (args.getObjValAs? String "run_id")
@@ -144,11 +173,14 @@ def serveWithLamboCleanup (client : Kalari.Lambo.Client) (handler : Kalari.Mcp.H
 def serve (configPath setupPath : System.FilePath) : IO Unit := do
   let cfg ← Kalari.Config.load configPath
   let setupJson ← IO.ofExcept (Json.parse (← IO.FS.readFile setupPath))
-  -- A guest address alone does not prove exclusive source ownership. Until the
-  -- launcher can establish that isolation, never accept observer configuration.
-  if (setupJson.getObjVal? "observer").isOk then
-    throw <| .userError "observer requires verified exclusive guest source isolation"
-  let setup ← IO.ofExcept (fromJson? (α := Setup) setupJson)
+  let setup ← match fromJson? (α := Setup) setupJson with
+    | .ok setup => pure setup
+    | .error error =>
+      -- An observer that cannot be read is not a configuration this service
+      -- can prove. Keep the same refusal as an unproven guest source.
+      if (setupJson.getObjVal? "observer").isOk then
+        throw <| .userError "observer requires verified exclusive guest source isolation"
+      throw <| .userError error
   validate cfg setup
   let evidence ← Kalari.Evidence.openStore setup.evidence_workspace
   IO.ofExcept (← Kalari.Tools.Lesson.verifyAmendedPolicyProvenance evidence setup.session_id setup.check_workspace)
@@ -253,6 +285,21 @@ def fixture : IO Unit := IO.FS.withTempDir fun dir => do
   unless ← rejects { validSetup with workspace := oldSpec.toString } do throw <| .userError "file accepted as workspace"
   unless ← rejects { validSetup with old_spec := (dir / "candidate").toString } do throw <| .userError "directory accepted as spec"
   unless ← rejects { validSetup with evidence_workspace := validSetup.workspace } do throw <| .userError "overlapping roots accepted"
+  -- An observer is accepted only from the guest gateway alias, with a trusted
+  -- server file and an endpoint already in the sandbox allowlist.
+  let observerEndpoint : AllowHost := { host := Kalari.Tools.Run.guestAlias, port := 18080 }
+  let observerCfg := { cfg with sandbox := { cfg.sandbox with allowlist := allow ++ [observerEndpoint] } }
+  let observerSetup := { validSetup with observer := some { server := executable.toString, endpoint := observerEndpoint } }
+  validate observerCfg observerSetup
+  let rejectsObserver (candidate : Setup) : IO Bool := do
+    try validate observerCfg candidate; pure false catch _ => pure true
+  unless ← rejectsObserver { observerSetup with observer := some {
+      server := executable.toString, endpoint := { observerEndpoint with host := "127.0.0.1" } } } do
+    throw <| .userError "caller-supplied guest address accepted"
+  unless ← rejectsObserver { observerSetup with observer := some {
+      server := (dir / "missing-server").toString, endpoint := observerEndpoint } } do
+    throw <| .userError "missing observer server accepted"
+  unless ← rejects observerSetup do throw <| .userError "observer endpoint outside the sandbox allowlist accepted"
 
   -- Exercise the actual dispatcher with a successful Run, then record a lesson
   -- from the evidence produced by that Run through the same shared writer.

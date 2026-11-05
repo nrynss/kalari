@@ -18,27 +18,47 @@ private def artifactCap := 4 * 1024 * 1024
 same run's differential comparison. -/
 def trustedTruthArtifactName : String := "kalari-v1-truth.jsonl"
 
-/-- The endpoint is the candidate's sole permitted destination. The source
-address is an exclusive guest address provisioned by the trusted host. -/
+/-- The guest-visible name of the msb host gateway. Every observed endpoint
+uses this name so the trusted service, not the caller, fixes the destination. -/
+def guestAlias : String := "host.microsandbox.internal"
+
+/-- The private range msb allocates a dedicated /30 from for one sandbox. -/
+def guestCidr : String := "172.16.0.0/12"
+
+/-- What the runtime reports from inside one running sandbox. The guest and
+gateway must be the two usable addresses of one dedicated /30. -/
+structure GuestNetwork where
+  guest : String
+  gateway : String
+  deriving Repr, BEq
+
+/-- The endpoint is the candidate's sole permitted destination. The runtime
+must report the guest network before the observer starts. -/
 structure Observer where
   endpoint : AllowHost
   start : String → System.FilePath → IO (Except String (IO (Except String String)))
 
-/-- Start a dedicated observed payouts server on the trusted host. The caller
-must reserve the IP/port and supply the candidate guest's exclusive IPv4 address.
-An optional behaviour list lets the gate replay a B5-off trace. -/
-def payoutsObserver (serverPath : String) (endpoint : AllowHost) (guestIp : String)
+/-- Start a dedicated observed payouts server on a loopback bind. The guest
+reaches it through the msb host gateway. `guestIp` is the address the observer
+sees: the gateway proxy uses loopback, so it is the loopback address, not a
+caller claim about the guest. An optional behaviour list lets the gate replay
+a B5-off trace. -/
+def payoutsObserver (serverPath : String) (endpoint : AllowHost) (bindHost guestIp : String)
     (behaviours : Option String := none) : Observer := {
   endpoint
   start := fun _ dir => do
-    if (Std.Net.IPv4Addr.ofString endpoint.host).isNone ||
+    if (Std.Net.IPv4Addr.ofString bindHost).isNone ||
         (Std.Net.IPv4Addr.ofString guestIp).isNone || endpoint.port == 0 || endpoint.port > 65535 then
       return .error "observer requires IPv4 addresses and a valid port"
     let trace := dir / "payouts-pages.jsonl"
-    let args := #["-I", serverPath, "--bind", endpoint.host, "--port", toString endpoint.port, "--v1", "off", "--trace", trace.toString, "--trace-client", guestIp]
+    let args := #["-I", serverPath, "--bind", bindHost, "--port", toString endpoint.port, "--v1", "off", "--trace", trace.toString, "--trace-client", guestIp]
     let args := match behaviours with | some value => args ++ #["--behaviours", value] | none => args
     try
-      let child ← IO.Process.spawn { cmd := "python3", args := args, stdin := .null, stdout := .piped, stderr := .inherit }
+      -- The observer is trusted host code. It needs no service secret, so it
+      -- starts with an explicit PATH and no inherited environment.
+      let child ← IO.Process.spawn {
+        cmd := "python3", args := args, stdin := .null, stdout := .piped, stderr := .inherit
+        inheritEnv := false, env := #[("PATH", some "/usr/local/bin:/usr/bin:/bin")] }
       let ready ← IO.asTask child.stdout.getLine Task.Priority.dedicated
       let started ← IO.monoMsNow
       repeat
@@ -228,11 +248,26 @@ structure Context where
   changeKinds : List String
   observer : Option Observer := none
 
-/-- External operations can replay through the same orchestration as live runs. -/
+/-- Reads the gateway from the guest's hosts file and the guest's own /30
+address from the kernel table. It makes no network request. -/
+private def networkProbe : List String :=
+  ["sh", "-c",
+    "gw=$(grep 'host.microsandbox' /etc/hosts | head -1 | cut -f1); " ++
+    "guest=$(grep -B1 '/32 host LOCAL' /proc/net/fib_trie | " ++
+    "grep -oE '([0-9]{1,3}[.]){3}[0-9]{1,3}' | grep -v '^127[.]' | head -1); " ++
+    "printf '%s\\n%s\\n' \"$gw\" \"$guest\""]
+
+/-- External operations can replay through the same orchestration as live runs.
+A runtime that cannot report its guest network, or cannot show the sandbox
+policy, fails the observer closed. -/
 structure Runtime where
   runner : Microsandbox.Runner
   resolve : String → IO (List String)
   wait : Nat → IO Unit := fun ms => IO.sleep ms.toUInt32
+  network : String → IO (Except String GuestNetwork) := fun _ =>
+    pure (.error "runtime cannot report the guest network")
+  inspect : String → IO (Except String String) := fun _ =>
+    pure (.error "runtime cannot inspect the sandbox")
 
 /-- Run commands with the storage permissions msb expects and no inherited keys. -/
 def live (path : String) : Runtime :=
@@ -246,7 +281,20 @@ def live (path : String) : Runtime :=
       let result ← run ["getent", "ahostsv4", host] 5000 16384
       if result.cap != .none || result.exitCode != some 0 then return []
       let lines := ((String.fromUTF8? result.stdout).getD "").splitOn "\n"
-      return lines.map fun line => (line.splitOn " ").headD "" }
+      return lines.map fun line => (line.splitOn " ").headD ""
+    network := fun name => do
+      let result ← run (["msb", "exec", name, "--"] ++ networkProbe) 5000 16384
+      if result.cap != .none || result.exitCode != some 0 then
+        return .error "sandbox network unavailable"
+      let lines := (String.fromUTF8? result.stdout).getD "" |>.splitOn "\n" |>.map (·.trimAscii.toString)
+      match lines.filter (fun line => !line.isEmpty) with
+      | gateway :: guest :: _ => pure (.ok { guest, gateway })
+      | _ => pure (.error "sandbox network unavailable")
+    inspect := fun name => do
+      let result ← run ["msb", "inspect", name, "--format", "json"] 5000 65536
+      if result.cap != .none || result.exitCode != some 0 then
+        return .error "sandbox inspect unavailable"
+      pure (.ok ((String.fromUTF8? result.stdout).getD "")) }
 
 structure Difference where
   missing : Nat
@@ -318,16 +366,105 @@ private def resolveAllowlist (runtime : Runtime) (hosts : List AllowHost) :
   let mut rules := []
   for entry in hosts do
     unless entry.port > 0 && entry.port <= 65535 && !entry.host.isEmpty &&
-        entry.host.toList.all (fun c => c.isAlphanum || c == '.' || c == '-') &&
+        entry.host.toList.all (fun c => c.isAlphanum || c == '.' || c == '-' || c == '/') &&
         !entry.host.startsWith "-" do
       throw "setup: invalid API host or port"
-    let answers ← match Std.Net.IPv4Addr.ofString entry.host with
-      | some ip => pure [toString ip]
-      | none => runtime.resolve entry.host
-    let ips := answers.filterMap Std.Net.IPv4Addr.ofString
-    if ips.isEmpty then throw "setup: API host has no IPv4 address"
-    rules := rules ++ ips.map fun ip => { entry with host := toString ip }
+    if entry.host == guestAlias then
+      rules := rules ++ [{ entry with host := guestCidr }]
+    else
+      let answers ← match Std.Net.IPv4Addr.ofString entry.host with
+        | some ip => pure [toString ip]
+        | none => runtime.resolve entry.host
+      let ips := answers.filterMap Std.Net.IPv4Addr.ofString
+      if ips.isEmpty then throw "setup: API host has no IPv4 address"
+      rules := rules ++ ips.map fun ip => { entry with host := toString ip }
   return rules.eraseDups
+
+/-- One net rule token. A guest CIDR is already a network, so it does not get
+the `/32` suffix a single address needs. -/
+private def netRule (host : AllowHost) : String :=
+  if host.host.contains "/" then s!"allow@{host.host}:tcp:{host.port}"
+  else s!"allow@{host.host}/32:tcp:{host.port}"
+
+/-- The msb create argv, with the same shape as `Microsandbox.createArgv`, so a
+guest-alias endpoint becomes one private CIDR rule instead of a /32. -/
+private def createArgv (ctx : Context) (name : String) (request : RunRequest)
+    (allow : List AllowHost) : List String :=
+  ["msb", "create", "--name", name, "--cpus", "1", "--memory", s!"{request.caps.memory_mib}M", "--no-net"]
+    ++ allow.flatMap (fun host => ["--net-rule", netRule host])
+    ++ ["--pull", "never", ctx.image]
+
+/-- Parse a dotted IPv4 literal into one number. -/
+private def ipv4Nat? (value : String) : Option Nat :=
+  let part (text : String) : Option Nat :=
+    match text.toNat? with
+    | some n => if n ≤ 255 then some n else none
+    | none => none
+  match value.splitOn "." with
+  | [a, b, c, d] =>
+    match part a, part b, part c, part d with
+    | some a, some b, some c, some d => some (a * 16777216 + b * 65536 + c * 256 + d)
+    | _, _, _, _ => none
+  | _ => none
+
+private def isolationMessage : String :=
+  "observer requires verified exclusive guest source isolation"
+
+/-- A guest address is exclusive when the runtime reports a private /30 with
+the gateway at network+1 and the guest at network+2. The alias rule is the
+pool that contains that /30. The sandbox holds no other network path. -/
+private def verifyGuestNetwork (net : GuestNetwork) : Except String Unit := do
+  let some gateway := ipv4Nat? net.gateway | throw isolationMessage
+  let some guest := ipv4Nat? net.guest | throw isolationMessage
+  -- The create rule is the default msb pool. Any other pool leaves the guest
+  -- unable to reach the observer, so it is not a configuration to enable.
+  unless (gateway &&& 0xFFF00000) == 0xAC100000 &&
+      (guest &&& 0xFFF00000) == 0xAC100000 do
+    throw isolationMessage
+  unless (gateway &&& 3) == 1 && (guest &&& 3) == 2 && gateway + 1 == guest do
+    throw isolationMessage
+  let canonical (n : Nat) : String :=
+    s!"{n / 16777216}.{n / 65536 % 256}.{n / 256 % 256}.{n % 256}"
+  unless net.gateway == canonical gateway && net.guest == canonical guest do
+    throw isolationMessage
+
+/-- The sandbox must be the one just created: running, no published port, and
+one egress allow rule for this observer's port on the expected guest network. -/
+private def verifySandboxPolicy (name expectedCidr : String) (port : Nat) (raw : String) :
+    Except String Unit := do
+  let json ← Json.parse raw
+  let actual ← (json.getObjVal? "name" >>= Json.getStr?).mapError fun _ => isolationMessage
+  unless actual == name do throw isolationMessage
+  let status ← (json.getObjVal? "status" >>= Json.getStr?).mapError fun _ => isolationMessage
+  unless status == "Running" do throw isolationMessage
+  let config ← (json.getObjVal? "active_config").mapError fun _ => isolationMessage
+  let network ← (config.getObjVal? "network").mapError fun _ => isolationMessage
+  let enabled ← (network.getObjVal? "enabled" >>= Json.getBool?).mapError fun _ => isolationMessage
+  unless enabled do throw isolationMessage
+  let published ← (network.getObjVal? "ports" >>= Json.getArr?).mapError fun _ => isolationMessage
+  unless published.isEmpty do throw isolationMessage
+  let policy ← (network.getObjVal? "policy").mapError fun _ => isolationMessage
+  let egress ← (policy.getObjVal? "default_egress" >>= Json.getStr?).mapError fun _ => isolationMessage
+  let ingress ← (policy.getObjVal? "default_ingress" >>= Json.getStr?).mapError fun _ => isolationMessage
+  unless egress == "deny" && ingress == "deny" do throw isolationMessage
+  let rules ← (policy.getObjVal? "rules" >>= Json.getArr?).mapError fun _ => isolationMessage
+  let [rule] := rules.toList | throw isolationMessage
+  let action ← (rule.getObjVal? "action" >>= Json.getStr?).mapError fun _ => isolationMessage
+  let direction ← (rule.getObjVal? "direction" >>= Json.getStr?).mapError fun _ => isolationMessage
+  let destination ← (rule.getObjVal? "destination").mapError fun _ => isolationMessage
+  let cidr ← (destination.getObjVal? "cidr" >>= Json.getStr?).mapError fun _ => isolationMessage
+  let protocols ← (rule.getObjVal? "protocols" >>= Json.getArr?).mapError fun _ => isolationMessage
+  let ports ← (rule.getObjVal? "ports" >>= Json.getArr?).mapError fun _ => isolationMessage
+  let [range] := ports.toList | throw isolationMessage
+  let start ← (range.getObjVal? "start" >>= Json.getNat?).mapError fun _ => isolationMessage
+  let stop ← (range.getObjVal? "end" >>= Json.getNat?).mapError fun _ => isolationMessage
+  let protocolOk := protocols.toList.all fun protocol =>
+    match protocol.getStr? with
+    | .ok "tcp" => true
+    | _ => false
+  unless action == "allow" && direction == "egress" && cidr == expectedCidr &&
+      start == port && stop == port && protocolOk do
+    throw isolationMessage
 
 private def successful (v : Verdict) : Bool :=
   v.verdict == "exited" && v.exit_code == some 0 && !v.pipe_held_open && !v.stdout_truncated
@@ -377,7 +514,7 @@ sandbox; that name is not ours to delete. -/
 private def createSandbox (runtime : Runtime) (ctx : Context) (name : String)
     (request : RunRequest) (allow : List AllowHost) : ExceptT String IO Unit := do
   let attempted : Except String Result ← try
-    pure (.ok (← runtime.runner (Microsandbox.createArgv name request.caps.memory_mib allow ctx.image)
+    pure (.ok (← runtime.runner (createArgv ctx name request allow)
       Microsandbox.controlTimeoutMs (4096 + 12 * request.caps.output_cap_bytes)))
   catch _ => pure (.error "create runner failed")
   let created := attempted.toOption
@@ -420,6 +557,13 @@ private def supervise (backend : Kalari.Backend.SandboxBackend) (name : String)
 private structure Execution where
   verdict : Verdict
   artifact : Except String String
+  trace : Option (Except String String) := none
+
+/-- The host-owned observer to start for this exact sandbox run. -/
+private structure Observation where
+  observer : Observer
+  runId : String
+  dir : System.FilePath
 
 private def readArtifact (backend : Kalari.Backend.SandboxBackend) (name path : String) :
     ExceptT String IO String := do
@@ -435,13 +579,48 @@ private def readArtifact (backend : Kalari.Backend.SandboxBackend) (name path : 
 private def execute (runtime : Runtime) (ctx : Context) (name : String) (request : RunRequest)
     (allow : List AllowHost) (artifactHost : Option String := none)
     (truthArtifactHost : Option String := none)
-    (collectArtifact : Bool := true) : ExceptT String IO Execution := do
+    (collectArtifact : Bool := true)
+    (observation : Option Observation := none) : ExceptT String IO Execution := do
   -- The host deadline lets aashaan kill, collect pipes, and emit its verdict.
   -- JSON can escape each byte of both logs as six bytes.
   let backend := Microsandbox.make runtime.runner (request.caps.timeout_ms + 5000)
     (4096 + 12 * request.caps.output_cap_bytes) ctx.image
   let artifactBackend := Microsandbox.make runtime.runner 5000 (artifactCap + 1) ctx.image
   createSandbox runtime ctx name request allow
+  -- The observer starts only after the runtime reports a private /30 and the
+  -- sandbox shows one egress rule. Any missing proof keeps it off.
+  let started : Except String (Option (IO (Except String String))) ← liftM <| (try
+    match observation with
+    | none => pure (.ok none)
+    | some obs =>
+      match ← runtime.network name with
+      | .error _ => pure (.error isolationMessage)
+      | .ok net =>
+        match verifyGuestNetwork net with
+        | .error e => pure (.error e)
+        | .ok () =>
+          let expected := allow.find? fun host => host.port == obs.observer.endpoint.port
+          match expected with
+          | none => pure (.error isolationMessage)
+          | some host =>
+            let cidr := if host.host.contains "/" then host.host else host.host ++ "/32"
+            match ← runtime.inspect name with
+            | .error _ => pure (.error isolationMessage)
+            | .ok raw =>
+              match verifySandboxPolicy name cidr obs.observer.endpoint.port raw with
+              | .error e => pure (.error e)
+              | .ok () =>
+                match ← obs.observer.start obs.runId obs.dir with
+                | .error e => pure (.error s!"observer start: {e}")
+                | .ok stop => pure (.ok (some stop))
+    catch _ => pure (.error isolationMessage) :
+      IO (Except String (Option (IO (Except String String)))))
+  let finish ← match started with
+    | .error e =>
+      let removed ← runtime.runner ["msb", "remove", "-f", name] Microsandbox.controlTimeoutMs 4096
+      requireStep "cleanup" (.ok removed)
+      throw e
+    | .ok finish => pure finish
   let outcome : Except String Execution ← liftM <| try
     let steps : ExceptT String IO Execution := do
       requireStep "workspace copy" (← liftM (backend.copyIn name request.workspace guestWorkspace))
@@ -463,11 +642,17 @@ private def execute (runtime : Runtime) (ctx : Context) (name : String) (request
     steps.run
   catch _ =>
     pure (.error "sandbox execution failed")
+  -- Always stop the host observer, including when sandbox execution failed.
+  let trace : Option (Except String String) ← match finish with
+    | none => pure none
+    | some stop =>
+      let result ← liftM <| try stop catch _ => pure (.error "observer stop failed")
+      pure (some result)
   -- A successful exec leaves the microVM running. Plain remove refuses it.
   let removed ← runtime.runner ["msb", "remove", "-f", name] Microsandbox.controlTimeoutMs 4096
   requireStep "cleanup" (.ok removed)
   match outcome with
-  | .ok result => return result
+  | .ok result => return { result with trace }
   | .error e => throw e
 
 structure Report where
@@ -557,23 +742,15 @@ def run (runtime : Runtime) (ctx : Context) (request : RunRequest) : IO (Except 
     let runId := dir.fileName.getD "run"
     let name := "kalari-" ++ runId
     requireStep "image pull" (← liftM (Microsandbox.ensureImage runtime.runner ctx.image 4096 runtime.wait))
-    let finish ← match ctx.observer with
-      | none => pure none
-      | some observer =>
-        match ← liftM (observer.start runId dir) with
-        | .error e => throw s!"observer start: {e}"
-        | .ok stop => pure (some stop)
-    let candidateResult ← liftM <| try (execute runtime ctx name request allow).run
+    let observation : Option Observation := ctx.observer.map fun item =>
+      { observer := item, runId := runId, dir := dir }
+    let candidateResult ← liftM <| try
+        (execute runtime ctx name request allow (observation := observation)).run
       catch _ => pure (.error "sandbox execution failed")
-    -- Always stop the host observer, including when sandbox execution failed.
-    let traceResult : Option (Except String String) ← match finish with
-      | none => pure none
-      | some stop =>
-        let result ← liftM <| try stop catch _ => pure (.error "observer stop failed")
-        pure (some result)
     let candidate ← match candidateResult with
       | .error e => throw e
       | .ok c => pure c
+    let traceResult := candidate.trace
     let (diff, truth) ← compareRun runtime ctx name baselineAllow candidate
     let lessonResults ← runChecks runtime ctx name request allow dir candidate.artifact truth
     let checks := lessonResults ++ [diff]
@@ -667,6 +844,29 @@ def fixtureRuntime (calls : IO.Ref (List String)) (variant : String)
     calls.modify (· ++ ["resolve"])
     return ["203.0.113.10", "203.0.113.10"]
   wait := fun _ => throw (.userError "unexpected image retry")
+  network := fun _ => pure (.ok { guest := "172.16.0.6", gateway := "172.16.0.5" })
+  inspect := fun name =>
+    let range : Json := Json.mkObj [
+      ("start", toJson (18080 : Nat)),
+      ("end", toJson (18080 : Nat))]
+    let rule : Json := Json.mkObj [
+      ("action", toJson "allow"),
+      ("direction", toJson "egress"),
+      ("destination", Json.mkObj [("cidr", toJson "203.0.113.10/32")]),
+      ("protocols", toJson ["tcp"]),
+      ("ports", toJson [range])]
+    let policy : Json := Json.mkObj [
+      ("default_egress", toJson "deny"),
+      ("default_ingress", toJson "deny"),
+      ("rules", toJson [rule])]
+    let network : Json := Json.mkObj [
+      ("enabled", toJson true),
+      ("ports", toJson ([] : List Json)),
+      ("policy", policy)]
+    pure (.ok (Json.mkObj [
+      ("name", toJson name),
+      ("status", toJson "Running"),
+      ("active_config", Json.mkObj [("network", network)])]).compress)
   runner := fun argv timeout output => do
     let (stage, reply) ← match argv with
       | ["msb", "pull", image] =>
@@ -972,7 +1172,35 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
   let invalid : Observer := { endpoint := allow.headD {host := "", port := 0}, start := fun _ _ => pure (.ok (pure (.ok "bad"))) }
   let rejectedTrace ← run (fixtureRuntime obsCalls "correct" caps truth duplicateRows obsTamper obsExists) { ctx with observer := some invalid } { req with command := ["python3", "/candidate/correct.py"] }
   verify (rejectedTrace.isOk == false) "invalid observed run accepted"
-  IO.println "run observer: linked retry trace accepted; mismatched fingerprint, failed differential, passing lesson check with a failed differential, and malformed trace rejected"
+  -- A runtime that cannot report the guest network, or reports a network that
+  -- is not one dedicated /30, must leave the observer off and the run failed.
+  let beforeUnknown := (← Kalari.Evidence.load store).records.length
+  let noNetworkCalls ← IO.mkRef []
+  let noNetwork : Runtime := {
+    (fixtureRuntime noNetworkCalls "correct" caps truth duplicateRows obsTamper obsExists) with
+    network := fun _ => pure (.error "unavailable") }
+  let noNetworkRun ← run noNetwork observed { req with command := ["python3", "/candidate/correct.py"] }
+  verify (match noNetworkRun with | .error e => e == isolationMessage | .ok _ => false)
+    "runtime without a guest network did not fail closed"
+  verify ((← noNetworkCalls.get) == ["resolve", "resolve", "pull", "create-v2", "remove-v2"])
+    "unproven observer ran the guest or leaked its sandbox"
+  let badNetworkCalls ← IO.mkRef []
+  let badNetwork : Runtime := {
+    (fixtureRuntime badNetworkCalls "correct" caps truth duplicateRows obsTamper obsExists) with
+    network := fun _ => pure (.ok { guest := "172.16.0.10", gateway := "172.16.0.5" }) }
+  let badNetworkRun ← run badNetwork observed { req with command := ["python3", "/candidate/correct.py"] }
+  verify (match badNetworkRun with | .error e => e == isolationMessage | .ok _ => false)
+    "two different /30 addresses were accepted as one guest network"
+  let badPolicyCalls ← IO.mkRef []
+  let badPolicy : Runtime := {
+    (fixtureRuntime badPolicyCalls "correct" caps truth duplicateRows obsTamper obsExists) with
+    inspect := fun _ => pure (.ok "{}") }
+  let badPolicyRun ← run badPolicy observed { req with command := ["python3", "/candidate/correct.py"] }
+  verify (match badPolicyRun with | .error e => e == isolationMessage | .ok _ => false)
+    "sandbox without a verifiable policy was accepted"
+  verify ((← Kalari.Evidence.load store).records.length == beforeUnknown)
+    "an unproven observer appended evidence"
+  IO.println "run observer: linked retry trace accepted; mismatched fingerprint, failed differential, passing lesson check with a failed differential, malformed trace, and unproven guest isolation rejected"
 
 #guard (compareRecords
   "{\"id\":\"A\",\"amount\":2}\n{\"id\":\"B\",\"amount\":4}\n"
@@ -1063,7 +1291,7 @@ private def resetHandlerDriver : String := String.intercalate "\n" [
 
 private def realObserver : IO Unit := IO.FS.withTempDir fun dir => do
   let port ← freePort
-  let observer := payoutsObserver "bench/apis/payouts/server.py" { host := "127.0.0.1", port } "127.0.0.1"
+  let observer := payoutsObserver "bench/apis/payouts/server.py" { host := "127.0.0.1", port } "127.0.0.1" "127.0.0.1"
   let stop ← expectOk (← observer.start "real-payouts" dir)
   let denied ← IO.Process.output { cmd := "python3", args := #["-c", "import socket,sys; s=socket.create_connection(('127.0.0.1',int(sys.argv[1])), source_address=('127.0.0.2',0)); s.sendall(b'GET /v2/payouts HTTP/1.0\\r\\n\\r\\n'); assert b' 403 ' in s.recv(128)", toString port] }
   unless denied.exitCode == 0 do
@@ -1086,7 +1314,7 @@ private def realObserver : IO Unit := IO.FS.withTempDir fun dir => do
   let offPort ← freePort
   let offDir := dir / "b5off"
   IO.FS.createDirAll offDir
-  let offObserver := payoutsObserver "bench/apis/payouts/server.py" { host := "127.0.0.1", port := offPort } "127.0.0.1" (some "B1,B2,B4")
+  let offObserver := payoutsObserver "bench/apis/payouts/server.py" { host := "127.0.0.1", port := offPort } "127.0.0.1" "127.0.0.1" (some "B1,B2,B4")
   let offStop ← expectOk (← offObserver.start "real-payouts-b5off" offDir)
   let offRun ← IO.Process.output { cmd := "python3", args := #["-I", "bench/apis/payouts/reference/correct.py", "--base-url", s!"http://127.0.0.1:{offPort}", "--out", (dir / "payouts-b5off.jsonl").toString] }
   let offTrace ← expectOk (← offStop)
@@ -1102,7 +1330,7 @@ private def realObserver : IO Unit := IO.FS.withTempDir fun dir => do
   let resetPort ← freePort
   let resetDir := dir / "reset"
   IO.FS.createDirAll resetDir
-  let resetObserver := payoutsObserver "bench/apis/payouts/server.py" { host := "127.0.0.1", port := resetPort } "127.0.0.1"
+  let resetObserver := payoutsObserver "bench/apis/payouts/server.py" { host := "127.0.0.1", port := resetPort } "127.0.0.1" "127.0.0.1"
   let resetStop ← expectOk (← resetObserver.start "real-payouts-reset" resetDir)
   IO.FS.writeFile (dir / "reset.py") resetDriver
   let resetRun ← IO.Process.output { cmd := "python3", args := #["-I", (dir / "reset.py").toString, toString resetPort] }
