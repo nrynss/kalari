@@ -237,14 +237,24 @@ The table product.md promises, per condition, as counts, leading with cost, cons
 requires:   [T5.6]
 fixture-ok: no
 size:       S · mid
-owns:       tests/live/containment.sh, tests/live/containment-transcript.txt, web/ (judges containment link only), bench/RESULTS.md (containment label only)
+owns:       tests/live/containment.sh, tests/live/containment-transcript.txt, tests/live/containment-evidence/, web/ (judges containment panel, evidence loading and checks only), bench/RESULTS.md (containment label only)
 status:     not-started
 ```
-Run the cursor_loop consumer through production `run_in_sandbox` on the VM and publish the cap as evidence. The loop never ends on its own; the aashaan time cap must kill it with verdict `killed_timeout`. Capture the verdict, the wall time against the configured cap, the output cap behavior, and the cleanup proof that no sandbox or process remains. Commit the runner and a sanitized transcript under `tests/live/`. Link the run from the judges page and label it in `bench/RESULTS.md` as a deliberate containment demonstration. Keep its measurements separate from the frozen comparison: it is not a benchmark row, it carries no verdict count, and it never merges into condition tallies.
+Capture one real cursor-loop migration failure through production `run_in_sandbox`. Reuse the wiring in `tests/live/run.sh`. Keep the candidate, baseline and differential results in the evidence.
 
-**Live budget: $1.** One run plus verification. No inference calls are expected; stop and report if any appear.
+The main panel shows the configured time cap, measured `wall_ms`, `killed_timeout`, and `passed=false`. Explain that enforcement polls, so measured elapsed time can exceed the cap. Do not promise a fixed overshoot bound.
 
-**Done when:** the transcript shows `killed_timeout` from a production `run_in_sandbox` call with cleanup verified; the judges page links the run; `RESULTS.md` labels it deliberate and separate; `./tools/check.sh` passes.
+Record output and memory caps as configuration. A separate output flood is outside this task. Do not imply either cap fired in the cursor-loop run.
+
+Capture the run's sandbox creation arguments and effective network policy where available. Include a denied request from the same guest if supported by the existing probe. Distinguish requested policy from observed enforcement. Verify removal of every sandbox this test creates and absence of its child processes, including on failure. Do not delete unrelated resources.
+
+Commit sanitized evidence under `tests/live/containment-evidence/` and a transcript under `tests/live/`. Wire that evidence into the existing web publication path. The judges panel must link to a reachable run detail with its supporting evidence. Show the migration failure, the enforced time limit, then boundary and cleanup evidence. Describe observed restrictions precisely. Avoid an unqualified zero-blast-radius claim.
+
+Label the run as a deliberate containment demonstration in `bench/RESULTS.md`. Keep it separate from frozen condition tallies. Any reference networking contrast must cite its own evidence and state that no exploitation was observed.
+
+**Live budget: $1.** One run plus verification. No inference calls are expected. Stop and report if any appear.
+
+**Done when:** production `run_in_sandbox` returns `killed_timeout` and `passed=false`; the transcript records configured and measured limits, candidate and differential outcomes, boundary evidence, and verified cleanup. The judges panel links to reachable evidence and shows one containment moment. `RESULTS.md` labels it separately from the frozen comparison. No frozen file or row changes. `./tools/check.sh` passes.
 
 ---
 

@@ -26,13 +26,17 @@ Setup docs for both presets; which Vultr services are used and how they power th
 
 ### T7.2: The video
 ```yaml
-requires:   [T6.3, T5.6]
+requires:   [T6.3, T5.6, T5.6a]
 fixture-ok: no
 size:       M · user
 owns:       docs/video.md
 status:     not-started
 ```
-The user records it. Centred on the containment moment: a real run where the aashaan's time cap kills a runaway loop, with the cap visible. Then the measured difference on upgrade two. The orchestrator drafts the script in `docs/video.md`.
+The user records it. The orchestrator drafts the script in `docs/video.md`.
+
+Use T5.6a's cursor-loop failure as the central scene. Show the configured cap, measured elapsed time, timeout verdict, and failed consumer outcome. Follow with the observed network boundary and verified cleanup.
+
+Then show T5.6's measured comparison and its zero-lesson limitation. Link the demonstration separately from benchmark rows. Record output and memory caps as configuration.
 
 **Done when:** the user has the recording.
 
@@ -68,7 +72,7 @@ The user submits on lablab.ai: title, short and long descriptions, **Vultr's tec
 
 ### T7.5: Public documentation site
 ```yaml
-requires:   [T5.6, T6.3, T7.3]
+requires:   [T5.6, T5.6a, T6.3, T7.3]
 fixture-ok: yes
 size:       M · mid
 owns:       site/, .github/workflows/pages.yml, deploy/vultr/install.sh, web/site/, web/fixture/rendered/
@@ -85,6 +89,7 @@ Build a static Astro and Starlight documentation site in `site/` and serve it on
 - **Start here.** Explain the use case, walk judges through the live console at `https://kalari.nryn.dev/`, and link to the repository and video when available.
 - **How it works.** Explain the Lean 4 gate (linking the 4 proved theorems in `Kalari/Gate.lean`), the `kalari-aashaan` and Microsandbox microVM boundary, and how Lambo recall informs a run.
 - **Run it yourself.** Document both presets, configuration, and `./tools/check.sh`. Keep the README usable on its own.
+- **Containment walkthrough.** Use T5.6a for one cursor-loop timeout scene, followed by boundary and cleanup evidence. Show configured and measured timing together. Link its evidence separately from benchmark rows.
 - **Evidence and limits.** Explain the benchmark method, cite T5.6 for measured claims and link to individual runs on `https://kalari.nryn.dev/`. Distinguish the observer rehearsal from current production behavior.
 
 **Done when:** the Pages build and `/docs/` build both pass, `./web/check.sh` passes with the updated Chaaya theme and `/docs/` link, navigation and links work on both GitHub Pages and `https://kalari.nryn.dev/docs/`, the judge walkthrough reaches the public demo and run evidence, and the published site passes the same privacy scan as the repository.
