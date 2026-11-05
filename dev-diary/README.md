@@ -149,11 +149,13 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P4 | 13 / 13 | All done. T4.6b adds the trusted retry trace and lesson. T4.7c closed the production memory path with the observer refused and the harness-only rehearsal |
 | P5 | 9 / 9 | All done. T5.6 published the traced comparison: zero learned-memory benefit observed, cost/attempts/containment lead |
 | P6 | 3 / 3 | All done. T6.1 and T6.2 built the API and the judges page. T6.3 put the demo live over HTTPS |
-| P7 | 0 / 5 | Waits for P5, P6 |
+| P7 | 1 / 6 | T7.5a re-theme done. T5.6a, T7.1, T7.2 ready. T7.3, T7.4, T7.5 wait |
 
 ---
 
 ## Handoff Log
+
+- **T7.5a closed.** Chaaya wears the Laterite Pit and Ola Paper tokens, the pit favicon, and the wordmark. Snapshots regenerated, `web/check.sh` passes, privacy scan clean. T5.6a goes next on `web/` (serial, same shells), then T7.5 brings the docs site and the `/docs/` link.
 
 - **T5.6 closed.** `bench/RESULTS.md` publishes the frozen comparison with every number traced to its row files: the zero-lesson finding leads, cost/attempts/containment lead the table, both T5.4 qualifications are preserved, token and cost bases are explained, sandbox attempts stay apart from HTTP retries, and reference provenance plus five-repeat limits are stated. The traceability script recomputes all 12 group aggregates from the 60 rows. T5.6a containment demonstration is next, then P7.
 
