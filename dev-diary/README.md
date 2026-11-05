@@ -16,7 +16,7 @@ Each phase document gives an engineer starting cold the complete context for its
 
 **This diary is public.** The repository goes public for submission. Nothing private goes in here: no key, no account detail, no IP address, no instance ID, no personal path beyond `~`, no private repository's name.
 
-**Current status:** P0 done. P1 done. P2 7/7. P3 7/7. P4 13/13. P5 4/9. P6 2/3. T3.2b done. T5.1, T5.1a, T5.2 and T5.2a done. T6.2 done. T4.6b done. T4.7c done: production refuses every observer, the harness-only rehearsal shows the full path, the artifact binding is stated in the predicate, and the gate runs the offline self-test. T6.3 done: the demo is live over HTTPS. T6.3 claimed, deploying the public demo. The user chose B5 in both upgrades and the 50-session harder-pair pilot. T5.3 now requires T5.2b. T5.2b has a $12 cap and starts after T5.2a. T5.1a repaired condition 1 before that pilot. T4.7c establishes the production retry memory path before T5.4. T4.6 done. T4.5b done. T4.7a done. T4.7b done. T4.7 done. T6.1 done. Previous live spend remains approved, including the old pilot (T5.2, about $16) and T3.2b (under $0.01). New live caps are approved: T5.2b $12, T5.5 $10 and T5.4 $8, $30 in total. T6.3 reuses the current VM only. Each live task still stops if its first case would exceed its budget. Config format (T1.2) is JSON. The Phase 2 line about untrusted code running only through Microsandbox stays open, because the Docker fallback exists.
+**Current status:** P0 done. P1 done. P2 7/7. P3 7/7. P4 13/13. P5 8/9. P6 3/3. T5.4 done: 20 Kalari-arm rows, all PASS. Only T5.6 remains before P7.
 
 ---
 
@@ -147,13 +147,15 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P2 | 7 / 7 | T2.1 through T2.6 done. The Microsandbox-only exit line stays open because the Docker fallback exists |
 | P3 | 7 / 7 | T3.1 through T3.4 done, including T3.1a, T3.2b and T3.3b |
 | P4 | 13 / 13 | All done. T4.6b adds the trusted retry trace and lesson. T4.7c closed the production memory path with the observer refused and the harness-only rehearsal |
-| P5 | 7 / 9 | T5.1 through T5.5 done
+| P5 | 8 / 9 | T5.1 through T5.5 done
 | P6 | 3 / 3 | All done. T6.1 and T6.2 built the API and the judges page. T6.3 put the demo live over HTTPS |
 | P7 | 0 / 5 | Waits for P5, P6 |
 
 ---
 
 ## Handoff Log
+
+- **T5.4 closed.** Kalari arm complete: 20 frozen-pair rows under `bench/runs/kalari/` (conditions 4+5, all PASS, c4 10/10 right-first-time, c5 6/10), $0.38 of the $8 cap, FROZEN hashes verified before first and after last, gate passes, old pilot untouched. Zero lessons published in production (observer refused by design), so condition 5 ran with empty recall and the comparison rests on cost, attempts, and containment. Payouts agent retry windows read unknown from a saturated journal counter; per spec they stay null, never zero. T5.6 builds RESULTS from these rows plus T5.5's reference rows.
 
 - **T5.5 closed.** Reference arm complete: 40 frozen rows under `bench/runs/reference/`, byte-identical to T5.2b's harder-pair condition rows, frozen hashes verified before and after. Zero live spend of the $10 cap — the task permits counting harder-pair rows made on the frozen files, so no re-runs were needed. Old pilot untouched, gate passes. T5.4 Kalari arm still running.
 
