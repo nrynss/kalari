@@ -72,15 +72,39 @@ requires:   [T5.6, T6.3]
 fixture-ok: no
 size:       S · mid
 owns:       bench/produce-evidence.py, bench/tests/produce-evidence-check.sh, deploy/vultr/ship-evidence.sh
-status:     claimed:t6-4
+status:     in-review
 ```
+
 The live demo serves an empty evidence store: `/api/benchmark` is `[]` and `/api/runs` holds one provenance record, so the judges page cannot show the frozen comparison. Convert the 60 frozen rows (`bench/runs/kalari/*.json`, `bench/runs/reference/*.json`) into `benchmark` evidence records in the `web/README.md` contract and ship them to the VM store at `/var/lib/kalari/evidence/.kalari/evidence.jsonl`. Keep the existing `lesson-policy` provenance record. The ship step is idempotent: it replaces previously shipped benchmark records by run id, never duplicates. No inference calls. No key on the VM beyond what T6.3 provisioned.
 
-After shipping, the judges page must render the frozen comparison with working run links on the live demo, and the empty-store panel must be gone. Report the unknown retry windows as unknown, never zero. Keep the containment demonstration (T5.6a) and its label separate: this task ships only frozen comparison rows.
+After shipping, the judges page must render the frozen comparison with working run links on the live demo, and the empty-store panel must be gone. Report the unknown retry windows as unknown, never zero. Keep the containment demonstration (T5.6a) and its label separate: this task ships only frozen rows.
 
 **Live budget: $0.** Stop and report if any step needs inference or spend.
 
 **Done when:** live `/api/benchmark` returns the shipped records; the live judges page shows the frozen comparison with every number linking to its run; the producer, its check, and a sanitized ship transcript are committed; `./tools/check.sh` passes.
+
+**Notes (t6-4):** `bench/produce-evidence.py` (stdlib only) reads the 60 frozen
+rows and emits `bench/frozen-evidence.jsonl`: one `benchmark` record per row
+with `provenance: frozen`, `status: valid`, session `frozen-c<cond>-<upgrade>`
+and run `frozen-c<cond>-<upgrade>-r<repeat>`. Fields the source row does not
+hold (the Kalari per-endpoint sandbox split, first-v2 grade, grader runs)
+stay null, never zero; grades and grader runs are copied exactly so the
+validator's source comparison holds. `bench/tests/produce-evidence-check.sh`
+checks producer freshness, the `web/fixture/validate.py` contract, content
+rules (60 records, unique ids, frozen-only, no synthetic, condition/arm
+agreement, Kalari splits null), aggregates against `bench/RESULTS.md`
+section 2, secret/address patterns, and source resolution.
+`deploy/vultr/ship-evidence.sh` merges over SSH (existing Tailscale auth,
+no key, no spend), preserves the lesson-policy record, restarts kalari-api,
+and verifies 60/60 benchmark records plus 60/60 run links on the VM loopback
+API and the public demo URL. Run twice with the same store line
+(`lesson-policy: 1, benchmark: 60`), proving idempotency. The live judges
+view renders `The measured before and after` with no not-yet-published panel;
+61 distinct run links (60 frozen plus the provenance run) all return 200;
+unknown windows read unknown. `./tools/check.sh` passes. Transcript in
+`deploy/vultr/ship-evidence.transcript.md`.
+
+---
 
 ---
 
