@@ -222,11 +222,13 @@ requires:   [T5.4, T5.5]
 fixture-ok: yes
 size:       S · frontier
 owns:       bench/RESULTS.md
-status:     claimed:t5-6
+status:     in-review
 ```
 The table product.md promises, per condition, as counts, leading with cost, consumer sandbox attempts, wall time, time stuck and containment. Also publish verdicts, right first time, tokens, records lost or duplicated, B5 429 responses and matching HTTP retry attempts. HTTP retries inside one consumer process are never counted as extra sandbox runs. What it shows and what it doesn't, plainly: if condition 1 or 6 matches 5, say so. Every number links to its runs.
 
 **Done when:** `RESULTS.md` committed; every number traces to a result file.
+
+**Notes (in review):** `bench/RESULTS.md` is committed. It leads with the zero-lesson finding: production refused observer configuration, all 20 Kalari rows record zero published lessons, and condition 5 recall was empty. The per-condition table leads with cost, sandbox runs, wall, stuck, and containment policy, then verdicts, right-first-time, tokens, losses, and retry counts. Both T5.4 qualifications are stated with file links. Two condition-5 payouts sessions stopped on repeated tool failure yet graded PASS. The payouts agent windows are unknown except two file-recorded zeros, which the text marks as no measurement of retries rather than evidence. Token basis is explicit: reference tokens equal account usage deltas while Kalari tokens equal OpenCode step totals, so cost compares across arms and tokens do not. The traceability script in section 10 recomputes all 12 aggregates from the 60 row files with stdlib only and exits 1 on mismatch. It also checks the lessons claim, the token basis, byte-identical reference provenance, and clean cleanup. It prints ALL OK. One discrepancy is reported, not hidden: T5.4 notes say all ten payouts agent windows are unknown, but two files record status ok with zero requests.
 
 ---
 
