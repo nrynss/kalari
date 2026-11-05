@@ -503,21 +503,34 @@ private def clip (bytes : Nat) (s : String) : String :=
   if raw.size <= bytes then s
   else ((List.range 4).findSome? fun n => String.fromUTF8? (raw.extract 0 (bytes - n))).getD ""
 
+private def failureDetail (result : Except String Result) : String :=
+  match result with
+  | .error e => "backend error: " ++ e
+  | .ok r =>
+    let cap := match r.cap with
+      | .none => "none"
+      | .timeout => "timeout"
+      | .output => "output"
+    s!"exit_code={r.exitCode}, cap={cap}; " ++ (String.fromUTF8? r.stderr).getD "invalid UTF-8 diagnostics"
+
 private def execOk (backend : Kalari.Backend.SandboxBackend) (name stage : String)
-    (command : List String) : ExceptT String IO Result := do
+    (command : List String) (secrets : List String := []) : ExceptT String IO Result := do
   let result : Except String Result ← liftM (backend.exec name command)
   match result with
   | .ok r =>
     if r.cap == .none && r.exitCode == some 0 then return r
-    throw s!"sandbox {stage}: msb exec failed"
-  | .error _ => throw s!"sandbox {stage}: msb exec failed"
+    throw s!"sandbox {stage}: msb exec failed: {clip 1024 (scrub secrets (failureDetail result))}"
+  | .error _ =>
+    throw s!"sandbox {stage}: msb exec failed: {clip 1024 (scrub secrets (failureDetail result))}"
 
-private def requireStep (stage : String) (result : Except String Result) : ExceptT String IO Unit :=
+private def requireStep (stage : String) (result : Except String Result)
+    (secrets : List String := []) : ExceptT String IO Unit :=
   match result with
   | .ok r =>
     if r.cap == .none && r.exitCode == some 0 then pure ()
-    else throw s!"sandbox {stage} failed"
-  | .error _ => throw s!"sandbox {stage} failed"
+    else throw s!"sandbox {stage} failed: {clip 1024 (scrub secrets (failureDetail result))}"
+  | .error _ =>
+    throw s!"sandbox {stage} failed: {clip 1024 (scrub secrets (failureDetail result))}"
 
 private def cleanupFailure : Result :=
   { cap := .none, exitCode := some 1, stdout := ByteArray.empty,
@@ -585,15 +598,32 @@ private structure Observation where
   runId : String
   dir : System.FilePath
 
-private def readArtifact (backend : Kalari.Backend.SandboxBackend) (name path : String) :
-    ExceptT String IO String := do
-  -- Bound transfer independently of the log cap. The host never opens a guest-selected path.
-  let result ← execOk backend name "artifact"
-    ["/bin/sh", "-c", "test -f \"$1\" && test ! -L \"$1\" && exec head -c \"$2\" -- \"$1\"",
-     "sh", path, toString (artifactCap + 1)]
-  if result.stdout.size > artifactCap then throw "record artifact exceeds the size limit"
-  match String.fromUTF8? result.stdout with
-  | none => throw "record artifact is not UTF-8"
+private def readArtifact (backend : Kalari.Backend.SandboxBackend) (name artifact : String)
+    (secrets : List String := []) : ExceptT String IO String := do
+  let path := guestWorkspace ++ "/" ++ artifact
+  -- Test symlinks first, including dangling links. Transfer only bounded bytes.
+  let command := ["/bin/sh", "-c",
+    "if test -L \"$1\"; then exit 4; fi; if ! test -e \"$1\"; then exit 3; fi; if ! test -f \"$1\"; then exit 5; fi; exec head -c \"$2\" -- \"$1\"",
+    "sh", path, toString (artifactCap + 1)]
+  let result ← liftM (backend.exec name command)
+  let r ← match result with
+    | .error _ => throw s!"sandbox artifact: msb exec failed: {clip 1024 (scrub secrets (failureDetail result))}"
+    | .ok r => pure r
+  if r.cap == .timeout then
+    throw s!"sandbox artifact: msb exec failed: {clip 1024 (scrub secrets (failureDetail result))}"
+  if r.cap == .none then
+    if r.exitCode == some 3 then
+      throw s!"no artifact: the run wrote no {artifact} at the workspace root; the checks compare that file, so run the consumer with its output there"
+    if r.exitCode == some 4 then
+      throw s!"invalid artifact: {artifact} is a symlink; write a regular file at the workspace root"
+    if r.exitCode == some 5 then
+      throw s!"invalid artifact: {artifact} is not a regular file; write a regular file at the workspace root"
+  if r.stdout.size > artifactCap then
+    throw s!"invalid artifact: {artifact} exceeds the {artifactCap} byte size limit; reduce the artifact size"
+  if r.cap != .none || r.exitCode != some 0 then
+    throw s!"sandbox artifact: msb exec failed: {clip 1024 (scrub secrets (failureDetail result))}"
+  match String.fromUTF8? r.stdout with
+  | none => throw s!"invalid artifact: {artifact} is not UTF-8; write UTF-8 records"
   | some text => return text
 
 private def execute (runtime : Runtime) (ctx : Context) (name : String) (request : RunRequest)
@@ -656,7 +686,7 @@ private def execute (runtime : Runtime) (ctx : Context) (name : String) (request
           (guestWorkspace ++ "/" ++ trustedTruthArtifactName)))
       let verdict ← supervise backend name request ctx.secrets
       let artifact : Except String String ← if !collectArtifact then pure (.error "artifact collection disabled")
-        else if successful verdict then liftM (readArtifact artifactBackend name path).run
+        else if successful verdict then liftM (readArtifact artifactBackend name ctx.artifact ctx.secrets).run
         else pure (.error "consumer did not complete successfully")
       return { verdict, artifact }
     steps.run
@@ -715,7 +745,7 @@ private def runChecks (runtime : Runtime) (ctx : Context) (name : String)
   for (check, index) in ctx.checks.zipIdx do
     let result ← match artifact with
       | .error reason => pure (checkResult check.id false
-          (some ("Skipped because no successful artifact was available: " ++ reason)))
+          (some ("Not run: " ++ scrub ctx.secrets reason)))
       | .ok contents => do
         let source := dir / s!"check-{index}-artifact.jsonl"
         IO.FS.writeFile source contents
@@ -748,7 +778,7 @@ private def compareRun (runtime : Runtime) (ctx : Context) (name : String)
       | _ => none
   let check := match diff with
     | .ok d => { check_id := differentialId, passed := d.passed, detail := some d.summary }
-    | .error e => { check_id := differentialId, passed := false, detail := some e }
+    | .error e => { check_id := differentialId, passed := false, detail := some ("Not run: " ++ scrub ctx.secrets e) }
   return (check, truth)
 
 /-- The exact MCP argument shape is `RunRequest`. Refusals happen before any
@@ -773,7 +803,8 @@ def run (runtime : Runtime) (ctx : Context) (request : RunRequest) : IO (Except 
     let traceResult := candidate.trace
     let (diff, truth) ← compareRun runtime ctx name baselineAllow candidate
     let lessonResults ← runChecks runtime ctx name request allow dir candidate.artifact truth
-    let checks := lessonResults ++ [diff]
+    let checks := (lessonResults ++ [diff]).map fun check =>
+      { check with detail := check.detail.map (clip 2048 ∘ scrub ctx.secrets) }
     let observations ← if successful candidate.verdict && checks.all (·.passed) then
       match traceResult with
       | none => pure none
@@ -795,14 +826,16 @@ def run (runtime : Runtime) (ctx : Context) (request : RunRequest) : IO (Except 
     return {
       run_id := runId, verdict := candidate.verdict, checks
       passed := successful candidate.verdict && checks.all (·.passed)
-      summary := summary candidate.verdict
+      summary := match candidate.artifact with
+        | .ok _ => summary candidate.verdict
+        | .error reason => summary candidate.verdict ++ " Verification unavailable: " ++ scrub ctx.secrets reason
     } : ExceptT String IO Report).run
 
 /-- Adapter for the service's MCP handler once session state is wired. -/
 def call (runtime : Runtime) (ctx : Context) (args : Json) : IO (Except String String) :=
   match fromJson? args with
   | .error _ => pure (.error "invalid sandbox request")
-  | .ok request => return (← run runtime ctx request).map (fun r => (toJson r).compress)
+  | .ok request => return (← run runtime ctx request).mapError (fun e => clip 2048 (scrub ctx.secrets e)) |>.map (fun r => (toJson r).compress)
 
 
 private def verify (condition : Bool) (message : String) : IO Unit :=
@@ -967,7 +1000,12 @@ def fixtureRuntime (calls : IO.Ref (List String)) (variant : String)
             else if ["single_page", "short_page_stop", "lesson_only"].contains variant then
               String.join ((List.range 100).map row)
             else truth
-          pure ("artifact", fixtureResult data)
+          let result := match variant with
+            | "missing_artifact" => { fixtureResult "" with exitCode := some 3 }
+            | "symlink_artifact" => { fixtureResult "" with exitCode := some 4 }
+            | "backend_artifact" => { fixtureResult "" with exitCode := some 17, stderr := "test-secret".toUTF8 }
+            | _ => fixtureResult data
+          pure ("artifact", result)
         else throw (.userError "unexpected exec")
       | ["msb", "remove", "-f", name] => do
         let cleanup := variant == "create-timeout" && !name.contains "-check-" && !name.endsWith "-v1"
@@ -991,18 +1029,19 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
     checkWorkspace := "/checks"
     artifact := "payouts.jsonl"
     checks := [{ id := "exactly-once", assertion := "Each ID appears once", command := ["python3", "lesson.py"] }]
-    maxCaps := caps, allowedNet := allow, secrets := [], aashaanHost := "/trusted/aashaan"
+    maxCaps := caps, allowedNet := allow, secrets := ["test-secret"], aashaanHost := "/trusted/aashaan"
     evidence := store, sessionId := "test-session", changeKinds := ["pagination_changed"]
   }
   let truth := String.join ((List.range 2431).map row)
   let duplicateRows := String.join ((List.range 24).map fun i => row ((i + 1) * 99))
-  for variant in ["cursor_loop", "no_dedupe", "correct", "single_page", "short_page_stop", "v1_unchanged", "tamper"] do
+  for variant in ["cursor_loop", "no_dedupe", "correct", "single_page", "short_page_stop", "v1_unchanged", "tamper", "missing_artifact", "symlink_artifact", "backend_artifact"] do
     let calls ← IO.mkRef []
     let tampered ← IO.mkRef false
     let existsRef ← IO.mkRef false
     let runtime := fixtureRuntime calls variant caps truth duplicateRows tampered existsRef
     let request := { req with command := ["python3", s!"/candidate/{variant}.py"] }
     let text ← expectOk (← call runtime ctx (toJson request))
+    verify (!text.contains "test-secret") "secret in report"
     let payload ← expectOk (Json.parse text)
     let id ← expectOk (payload.getObjValAs? String "run_id")
     let verdict ← expectOk (payload.getObjValAs? Verdict "verdict")
@@ -1019,7 +1058,13 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
       verify (current == ["resolve", "resolve", "pull", "create-v2"] ++ setup ++ ["remove-v2"])
         "timeout ran checks, retrieved artifact, or leaked sandbox"
       let message ← expectOk (payload.getObjValAs? String "summary")
-      verify (message == "The aashaan killed the run when it reached the time cap.") "timeout message"
+      verify (message.startsWith "The aashaan killed the run when it reached the time cap.") "timeout message"
+    else if ["missing_artifact", "symlink_artifact", "backend_artifact"].contains variant then do
+      verify (verdict.exit_code == some 0 && !passed && !lesson.passed && !diff.passed) "artifact failure verdict"
+      verify (current == first) "artifact failure ran checks or leaked sandbox"
+      let message ← expectOk (payload.getObjValAs? String "summary")
+      let expected := if variant == "missing_artifact" then "no artifact:" else if variant == "symlink_artifact" then "is a symlink" else "msb exec failed"
+      verify (message.contains expected && message.contains "payouts.jsonl" == (variant != "backend_artifact")) "artifact summary"
     else if variant == "v1_unchanged" then do
       verify (verdict.verdict == "exited" && verdict.exit_code == some 1 && !passed &&
         !lesson.passed && !diff.passed) "unchanged v1 consumer outcome"
@@ -1056,9 +1101,10 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
   verify ((collision matches .error "setup: candidate artifact name is reserved for trusted v1 truth") &&
     (← calls.get).isEmpty) "reserved truth artifact collision reached runtime"
   let denied := { req with command := ["python3", "correct.py"], allowlist := [{ host := "other.test", port := 18080 }] }
+  let beforeRefusal := (← Kalari.Evidence.load store).records.length
   let rejected ← run (fixtureRuntime calls "correct" caps truth truth tampered existsRef) ctx denied
   verify ((rejected matches .error "refused: allowlist") && (← calls.get).isEmpty) "refusal reached runtime"
-  verify ((← Kalari.Evidence.load store).records.length == 21) "refusal wrote evidence"
+  verify ((← Kalari.Evidence.load store).records.length == beforeRefusal) "refusal wrote evidence"
   IO.println "run refused: allowlist, runner and resolver calls=0, no evidence appended"
   for variant in ["create-timeout", "create-duplicate"] do
     let createCalls ← IO.mkRef []
@@ -1423,6 +1469,41 @@ private def realObserver : IO Unit := IO.FS.withTempDir fun dir => do
   IO.println "observer raising reply: a 400 and 501 both leave events, and the parser rejects them"
 
 #eval realObserver
+
+private def artifactDiagnostics : IO Unit := do
+  let base := fixtureResult "valid"
+  let cases : List (Except String Result × String) := [
+    (.ok base, "valid"),
+    (.ok { base with exitCode := some 3 }, "no artifact:"),
+    (.ok { base with exitCode := some 4 }, "is a symlink"),
+    (.ok { base with exitCode := some 5 }, "not a regular file"),
+    (.ok { base with stdout := ByteArray.mk #[255] }, "not UTF-8"),
+    (.ok { base with stdout := ByteArray.mk (Array.replicate (artifactCap + 1) 65), cap := .output }, "size limit"),
+    (.ok { base with cap := .timeout, exitCode := none }, "cap=timeout"),
+    (.ok { base with cap := .output, exitCode := none }, "cap=output"),
+    (.ok { base with exitCode := some 17, stderr := "secret-value".toUTF8 }, "exit_code="),
+    (.error "backend secret-value", "backend error:")]
+  for (result, expected) in cases do
+    let backend : Kalari.Backend.SandboxBackend := {
+      create := fun _ _ _ => pure result
+      copyIn := fun _ _ _ => pure result
+      copyOut := fun _ _ _ => pure result
+      destroy := fun _ => pure result
+      exec := fun _ argv => do
+        verify (argv.drop 3 == ["sh", "/workspace/records.jsonl", toString (artifactCap + 1)]) "artifact path or bound"
+        verify ((argv[2]!).startsWith "if test -L") "symlink check must precede existence"
+        pure result
+    }
+    let actual ← (readArtifact backend "test" "records.jsonl" ["secret-value"]).run
+    match actual with
+    | .ok text => verify (expected == "valid" && text == "valid") "artifact success"
+    | .error reason =>
+      verify (reason.contains expected && !reason.contains "secret-value") "artifact classification or secret leak"
+      if expected == "no artifact:" then
+        verify (reason.contains "records.jsonl" && !reason.contains "msb exec failed") "missing artifact remedy"
+  IO.println "artifact diagnostics: missing, symlink, non-file, size, UTF-8, backend, timeout, output cap, redaction passed"
+
+#eval artifactDiagnostics
 
 end Kalari.Tools.Run
 

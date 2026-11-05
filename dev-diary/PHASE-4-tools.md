@@ -92,6 +92,8 @@ A run that hangs is killed by the aashaan, and the agent is told so in one line.
 
 The build-time fake replay uses the three payouts consumer commands with 2,431 IDs and the 24 boundary overlaps. It verifies the exact network and supervisor arguments, that a timed-out consumer skips checks and artifact collection, forced cleanup, the recalled check and differential outcomes, run and check evidence, and zero backend or DNS effects for a refusal. Comparator guards exercise changed content under the same ID, missing and extra IDs, and JSON object field ordering. The standard gate also runs the actual reference consumers against the benchmark API fixtures. This task performed no live sandbox run.
 
+**Artifact diagnostics follow-up:** Showcase probe commands exposed missing artifacts reported as backend failures. Artifact reads now distinguish missing files, symlinks, non-files, oversized output, invalid UTF-8, and backend failures. The response names the required artifact and explains verification failure while preserving the process verdict. Diagnostics are bounded and scrubbed before output or evidence. The earlier footage and frozen builds remain unchanged.
+
 ---
 
 ### T4.5b: `run_in_sandbox`, live
