@@ -247,6 +247,8 @@ Demonstrate the complete cross-upgrade path through the actual dispatcher: a ver
 
 **Done when:** the no-inference transcript shows observe → publish → recall → enforce end to end, including a non-empty published lesson and the failing partial-output case; unproven guest-source isolation still fails closed; every started process and sandbox is removed; the test and sanitized transcript are committed.
 
+**Orchestrator note:** the Lesson.lean scope above is narrowed to the artifact binding because the re-review showed `recordUnlocked` can select a same-ID check naming another artifact. The service pre-check covers the served path today, but the predicate must state the binding itself so a future caller cannot inherit the gap. No other Lesson.lean change is owned.
+
 ---
 
 ## Exit Criteria
