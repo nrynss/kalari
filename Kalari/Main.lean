@@ -5,9 +5,8 @@ import Kalari.Proc
 import Kalari.Backend
 import Kalari.Fake
 import Kalari
+import Kalari.Version
 /-! kalari: the main service. A stub until P1; see product.md and docs/architecture.md. -/
-
-def version : String := "0.1.2"
 
 def usage : String :=
   "usage: kalari <command>\n\n" ++
@@ -44,7 +43,7 @@ def offlineSelfTest : IO Unit := do
 
 def main (argv : List String) : IO UInt32 := do
   match argv with
-  | ["--version"] => IO.println s!"kalari {version}"; return 0
+  | ["--version"] => IO.println s!"kalari {Kalari.version}"; return 0
   | ["--help"] => IO.print usage; return 0
   | ["--offline-self-test"] =>
     try offlineSelfTest; return 0 catch e => IO.eprintln s!"{e}"; return 1

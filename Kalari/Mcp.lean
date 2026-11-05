@@ -1,4 +1,5 @@
 import Lean.Data.Json
+import Kalari.Version
 
 /-! MCP over newline-delimited JSON-RPC. Tool implementations are injected by
 `serve`'s caller; this module does not grant them access to any backend. -/
@@ -97,11 +98,11 @@ def handle (handler : Handler) (msg : Json) : IO (Option Json) := do
   let some id := id | return none
   match method with
   | "initialize" =>
-    let requested := (params.getObjValAs? String "protocolVersion").toOption.getD "2025-11-25"
-    let version := if requested == "2025-11-25" then requested else "2025-11-25"
-    return some <| result id <| obj [("protocolVersion", Json.str version),
+    -- Only this protocol version is supported; every initialize gets it back.
+    let protocolVersion := "2025-11-25"
+    return some <| result id <| obj [("protocolVersion", Json.str protocolVersion),
       ("capabilities", obj [("tools", obj [])]),
-      ("serverInfo", obj [("name", "kalari"), ("version", "0.1.0")])]
+      ("serverInfo", obj [("name", "kalari"), ("version", Json.str Kalari.version)])]
   | "tools/list" => return some <| result id <| obj [("tools", tools)]
   | "ping" => return some <| result id (obj [])
   | "tools/call" =>
