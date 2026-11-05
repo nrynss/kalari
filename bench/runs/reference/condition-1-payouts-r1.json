@@ -1,0 +1,274 @@
+{
+  "condition": 1,
+  "upgrade": "payouts",
+  "arm": "reference",
+  "setup": "OpenCode 2.2.5 with microsandbox-mcp, no Kalari tools",
+  "api_base": "the VM's public address",
+  "live_port": 18080,
+  "grading_port": 18090,
+  "prompt": "upgrade.txt",
+  "opencode_version": "opencode v2.2.5",
+  "session_continued": false,
+  "session_id": "ses_e5661fd49ffejNWoteToNtT5X4",
+  "resumed_session_id": "",
+  "session_id_expected": "",
+  "session_identity_ok": null,
+  "workspace": "~/kalari-harness/workspaces/condition-1",
+  "workspace_digest": "23f08b535f135979cc34d9ae759ea0645d33da0dbcd602e71772a20b612e5669",
+  "workspace_identity_ok": true,
+  "condition1_workspace": "~/kalari-harness/workspaces/condition-1",
+  "continuation_state_consumed": false,
+  "continuation_state_consumed_at": "",
+  "notes_attached": false,
+  "session_cap_s": 1200,
+  "session_capped": false,
+  "consumer_exit": 0,
+  "output_present": true,
+  "grade_status": "ok",
+  "measures": {
+    "verdict": "PASS",
+    "right_first_time": true,
+    "sandbox_runs": 5,
+    "wall_time_s": 55.896,
+    "time_stuck_s": 0,
+    "tokens_input": 411346,
+    "tokens_output": 6933,
+    "records_lost": 0,
+    "records_duplicated": 0
+  },
+  "sandbox_runs_against_v1": 0,
+  "sandbox_runs_against_v2": 5,
+  "http_retries": {
+    "agent": {
+      "status": "ok",
+      "b5_429_responses": 2,
+      "matching_retry_attempts": 2,
+      "successful_matching_retries": 2
+    },
+    "grading": {
+      "status": "ok",
+      "b5_429_responses": 2,
+      "matching_retry_attempts": 2,
+      "successful_matching_retries": 2
+    },
+    "note": "an HTTP retry inside one consumer process is not a sandbox run",
+    "null_means": "unknown, not zero"
+  },
+  "retry_measure": {
+    "source": "API retry journals, truncated at each phase start and read at each phase end",
+    "note": "an HTTP retry inside one consumer process is not a sandbox run",
+    "phases": {
+      "agent": {
+        "apis": {
+          "api-payouts-grading": {
+            "b5_429_responses": 0,
+            "clients": 0,
+            "matching_retry_attempts": 0,
+            "requests": 0,
+            "status": "ok",
+            "successful_matching_retries": 0
+          },
+          "api-payouts-live": {
+            "b5_429_responses": 2,
+            "clients": 1,
+            "matching_retry_attempts": 2,
+            "requests": 56,
+            "status": "ok",
+            "successful_matching_retries": 2
+          }
+        },
+        "b5_429_responses": 2,
+        "clients": 1,
+        "matching_retry_attempts": 2,
+        "phase": "agent",
+        "requests": 56,
+        "status": "ok",
+        "successful_matching_retries": 2
+      },
+      "grading": {
+        "apis": {
+          "api-payouts-grading": {
+            "b5_429_responses": 2,
+            "clients": 1,
+            "matching_retry_attempts": 2,
+            "requests": 52,
+            "status": "ok",
+            "successful_matching_retries": 2
+          },
+          "api-payouts-live": {
+            "b5_429_responses": 0,
+            "clients": 0,
+            "matching_retry_attempts": 0,
+            "requests": 0,
+            "status": "ok",
+            "successful_matching_retries": 0
+          }
+        },
+        "b5_429_responses": 2,
+        "clients": 1,
+        "matching_retry_attempts": 2,
+        "phase": "grading",
+        "requests": 52,
+        "status": "ok",
+        "successful_matching_retries": 2
+      }
+    }
+  },
+  "records_extra": 0,
+  "records_mismatched": 0,
+  "grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "expected": 2431,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0,
+    "consumer_exit": 0,
+    "grade_status": "ok",
+    "output_bytes": 300899,
+    "stale_output_ignored": false,
+    "note": "grading ran on fresh output"
+  },
+  "first_v2_grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "expected": 2431,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0,
+    "consumer_exit": 0,
+    "grade_status": "ok",
+    "output_bytes": 300899,
+    "stale_output_ignored": false,
+    "note": "grading ran on fresh output"
+  },
+  "grading": {
+    "final": {
+      "workspace_checked": "~/kalari-harness/workspaces/condition-1"
+    },
+    "first": {
+      "workspace_checked": "~/kalari-harness/runs/c728c674a058/first-v2-src"
+    }
+  },
+  "right_first_time_basis": "snapshot",
+  "cost_usd": 0.065862,
+  "cost_note": "DeepSeek V4.1 Flash list price, cached input counted as input, no cache discount",
+  "usage_delta": [
+    {
+      "model": "clef",
+      "input": 0,
+      "output": 0
+    },
+    {
+      "model": "deepseek-v4.1-flash-1017",
+      "input": 411346,
+      "output": 6933
+    },
+    {
+      "model": "qwen3-embedding-4b",
+      "input": 0,
+      "output": 0
+    }
+  ],
+  "opencode_tokens": {
+    "steps": 18,
+    "input": 25682,
+    "output": 3905,
+    "reasoning": 3028,
+    "cache_read": 385664
+  },
+  "consumer_runs": [
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 3.756,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 0.453,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 2.27,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 2.034,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 1.71,
+      "timed_out": false,
+      "basis": "snapshot"
+    }
+  ],
+  "event_summary": {
+    "lines": 60,
+    "unparsed_lines": 0,
+    "types": {
+      "step_start": 18,
+      "tool_use": 23,
+      "step_finish": 18,
+      "text": 1
+    },
+    "tools": {
+      "read": 9,
+      "execute": 12,
+      "write": 1,
+      "edit": 1
+    },
+    "steps": 18,
+    "bash_denied": 0,
+    "shell_denied": 0,
+    "consumer_denied": 0,
+    "sandbox_names": [
+      "payout-sync-dev"
+    ],
+    "last_reason": "stop",
+    "final_answer": "Upgraded `payout_sync.py` from v1 to the v2 export API and verified it against the live v2 server.\n\n### Changes\n- Uses `GET /v2/payouts` instead of `/v1/payouts`.\n- Follows the opaque `cursor` through every window until `drained: true` \u2014 it does not guess completion from window size.\n- Deduplicates on payout `id`, since v2 windows overlap at their edges.\n- On `429`, reads `Retry-After`, waits, and resends the identical request.\n- On `400 invalid_cursor`, restarts the export without a cursor; the accumulated ID set prevents duplicates.\n- Keeps payout creation order in the output.\n\n### Verification\nAgainst `http://the VM's public address:18080`:\n\n- v2 sync produced **2,431** payouts\n- All 2,431 IDs were unique\n- Result exactly matched the full v1 payout list (same order and content)\n- Mock tests confirmed cursor pagination, edge-overlap deduplication, `Retry-After` handling, and invalid-cursor recovery",
+    "stderr_excerpt": "",
+    "diff_stat": "payout_sync.py | 52 ++++++++++++++++++++++++++++++++++++++++++++++++++--\n 1 file changed, 50 insertions(+), 2 deletions(-)"
+  },
+  "grader_runs": {
+    "final": {
+      "status": "EXIT 0",
+      "log_excerpt": "synced 2431 payouts\n"
+    },
+    "first": {
+      "status": "EXIT 0",
+      "log_excerpt": "synced 2431 payouts\n"
+    }
+  },
+  "cleanup": {
+    "sandboxes_removed": [],
+    "sandboxes_left": [],
+    "processes_left": []
+  },
+  "process_elapsed_s": 58.0,
+  "opencode_exit": 0
+}

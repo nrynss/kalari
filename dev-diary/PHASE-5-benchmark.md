@@ -197,13 +197,18 @@ requires:   [T5.3]
 fixture-ok: no
 size:       M · mid
 owns:       bench/runs/reference/
-status:     claimed:t5-5
+status:     in-review:t5-5
 ```
+
 Conditions 1, 2, 3 and 6, five repeats each, on the frozen pair. Only T5.2b's harder-pair rows may count, and only if they were made on the frozen files (the hashes decide). The original T5.2 rows belong to the old pair and cannot count.
 
 **Live budget: $10.** Check the first session's measured cost against the cap before the rest. Stop and report if the projection would exceed it.
 
 **Done when:** every run committed; `FROZEN.md`'s hashes still match.
+
+**Notes (in review):** Zero live spend. All 40 rows are byte-identical copies of T5.2b's harder-pair condition rows (`bench/pilot/harder/results/condition-{1,2,3,6}-{payouts,settlements}-r{1..5}.json`) into `bench/runs/reference/`. Reuse is legitimate by the hash rule: every frozen-file change predates the harder runs (server changes `59507d1` etc. are ancestors of the row commits; `git diff <row-commit>..HEAD` over all 19 frozen files is empty), and the working-tree hashes matched `FROZEN.md` before the copy and again after. The 10 B5-only rows were excluded; the 70 old-pair rows were not touched and cannot count.
+
+Validation over the 40 copied rows: filename agrees with `condition`/`upgrade` in every file; `arm` is reference; all 40 verdicts PASS with right first time true; `http_retries` (agent + grading) is reported apart from integer `sandbox_runs` in every file; `cleanup` shows no sandboxes or processes left in any file; every file carries a `usage_delta` with the DeepSeek model; all five condition-1 settlements rows show `session_continued` with identity checks true. List-price total of the 40 rows is $3.26, spent under T5.2b's budget; this task spent $0.00 of its $10 (no live session started, so no VM mutual-exclusion wait was needed and the T5.4 agent's work was never disturbed). No key, IPv4 address, or bearer token in any committed file. Old pilot unchanged (`git status` shows only `bench/runs/`); `./tools/check.sh` passes.
 
 ---
 
