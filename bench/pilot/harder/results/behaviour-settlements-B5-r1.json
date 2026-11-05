@@ -1,0 +1,229 @@
+{
+  "condition": 3,
+  "behaviour": "B5",
+  "repeat": 1,
+  "sandbox_setup": "isolated pilot adapter; restricted tool surface and network",
+  "upgrade": "settlements",
+  "arm": "reference",
+  "setup": "OpenCode 2.2.5 with isolated pilot MCP adapter, no Kalari tools",
+  "api_base": "the VM's public address",
+  "live_port": 19121,
+  "grading_port": 19122,
+  "prompt": "upgrade.txt",
+  "opencode_version": "opencode v2.2.5",
+  "session_continued": false,
+  "notes_attached": false,
+  "session_cap_s": 1200,
+  "session_capped": false,
+  "measures": {
+    "verdict": "PASS",
+    "right_first_time": true,
+    "sandbox_runs": 2,
+    "wall_time_s": 57.836,
+    "time_stuck_s": 0,
+    "tokens_input": 241430,
+    "tokens_output": 10478,
+    "records_lost": 0,
+    "records_duplicated": 0
+  },
+  "sandbox_runs_against_v1": 0,
+  "sandbox_runs_against_v2": 2,
+  "http_retries": {
+    "agent": {
+      "status": "ok",
+      "b5_429_responses": 6,
+      "matching_retry_attempts": 6,
+      "successful_matching_retries": 6
+    },
+    "grading": {
+      "status": "ok",
+      "b5_429_responses": 2,
+      "matching_retry_attempts": 2,
+      "successful_matching_retries": 2
+    },
+    "note": "an HTTP retry inside one consumer process is not a sandbox run",
+    "null_means": "unknown, not zero"
+  },
+  "retry_measure": {
+    "source": "API retry journals, truncated at each phase start and read at each phase end",
+    "note": "an HTTP retry inside one consumer process is not a sandbox run",
+    "phases": {
+      "agent": {
+        "apis": {
+          "kalari-pilot-grade68ec9bb8abab": {
+            "b5_429_responses": 0,
+            "clients": 0,
+            "matching_retry_attempts": 0,
+            "requests": 0,
+            "status": "ok",
+            "successful_matching_retries": 0
+          },
+          "kalari-pilot-live68ec9bb8abab": {
+            "b5_429_responses": 6,
+            "clients": 1,
+            "matching_retry_attempts": 6,
+            "requests": 149,
+            "status": "ok",
+            "successful_matching_retries": 6
+          }
+        },
+        "b5_429_responses": 6,
+        "clients": 1,
+        "matching_retry_attempts": 6,
+        "phase": "agent",
+        "requests": 149,
+        "status": "ok",
+        "successful_matching_retries": 6
+      },
+      "grading": {
+        "apis": {
+          "kalari-pilot-grade68ec9bb8abab": {
+            "b5_429_responses": 2,
+            "clients": 1,
+            "matching_retry_attempts": 2,
+            "requests": 40,
+            "status": "ok",
+            "successful_matching_retries": 2
+          },
+          "kalari-pilot-live68ec9bb8abab": {
+            "b5_429_responses": 0,
+            "clients": 0,
+            "matching_retry_attempts": 0,
+            "requests": 0,
+            "status": "ok",
+            "successful_matching_retries": 0
+          }
+        },
+        "b5_429_responses": 2,
+        "clients": 1,
+        "matching_retry_attempts": 2,
+        "phase": "grading",
+        "requests": 40,
+        "status": "ok",
+        "successful_matching_retries": 2
+      }
+    }
+  },
+  "records_extra": 0,
+  "records_mismatched": 0,
+  "grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 1873,
+    "unique": 1873,
+    "expected": 1873,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "first_v2_grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 1873,
+    "unique": 1873,
+    "expected": 1873,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "right_first_time_basis": "snapshot",
+  "cost_usd": 0.042501,
+  "cost_note": "DeepSeek V4.1 Flash list price, cached input counted as input, no cache discount",
+  "usage_delta": [
+    {
+      "model": "clef",
+      "input": 0,
+      "output": 0
+    },
+    {
+      "model": "deepseek-v4.1-flash-1017",
+      "input": 241430,
+      "output": 10478
+    },
+    {
+      "model": "qwen3-embedding-4b",
+      "input": 0,
+      "output": 0
+    }
+  ],
+  "opencode_tokens": {
+    "steps": 20,
+    "input": 13846,
+    "output": 5726,
+    "reasoning": 4752,
+    "cache_read": 227584
+  },
+  "consumer_runs": [
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 1.559,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 1.439,
+      "timed_out": false,
+      "basis": "snapshot"
+    }
+  ],
+  "event_summary": {
+    "lines": 65,
+    "unparsed_lines": 0,
+    "types": {
+      "step_start": 20,
+      "tool_use": 24,
+      "step_finish": 20,
+      "text": 1
+    },
+    "tools": {
+      "read": 7,
+      "execute": 16,
+      "write": 1
+    },
+    "steps": 20,
+    "bash_denied": 0,
+    "shell_denied": 0,
+    "consumer_denied": 0,
+    "sandbox_names": [
+      "reconcile"
+    ],
+    "last_reason": "stop",
+    "final_answer": "Upgraded `settlement_reconcile.py` from v1 to v2.\n\n**Changes**\n- Switched endpoint to `/v2/graphql`.\n- Uses cursor pagination with `first`/`after`, continuing until `pageInfo.hasNextPage` is false.\n- Handles short/empty pages correctly.\n- Deduplicates by `id`, keeping the last version received (amended settlements).\n- Retries `429` responses after `Retry-After` with a byte-identical request.\n- Restarts from the beginning without `after` on cursor errors.\n\n**Verification**\n- Ran against the live v2 server: `reconciled 1873 settlements`.\n- Confirmed 1,873 unique IDs, valid JSONL records, and values matching an independent v2 traversal using a different page size.\n- Ran a mock-server check covering `429` retry, empty pages, amended settlement replacement, and cursor-expiry restart.",
+    "stderr_excerpt": "",
+    "diff_stat": "settlement_reconcile.py | 79 +++++++++++++++++++++++++++++++++++++++++++------\n 1 file changed, 70 insertions(+), 9 deletions(-)"
+  },
+  "grader_runs": {
+    "final": {
+      "status": "EXIT 0",
+      "log_excerpt": "reconciled 1873 settlements\n"
+    },
+    "first": {
+      "status": "EXIT 0",
+      "log_excerpt": "reconciled 1873 settlements\n"
+    }
+  },
+  "cleanup": {
+    "sandboxes_left": [],
+    "processes_left": [],
+    "owned_names": [
+      "kalari-grade-final-68ec9bb8abab",
+      "kalari-grade-first-68ec9bb8abab",
+      "kalari-pilot-68ec9bb8abab",
+      "kalari-pilot-grade68ec9bb8abab",
+      "kalari-pilot-live68ec9bb8abab",
+      "kalari-preflight-68ec9bb8abab"
+    ],
+    "scope_verified": true
+  },
+  "process_elapsed_s": 60.0,
+  "opencode_exit": 0
+}

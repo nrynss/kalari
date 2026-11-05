@@ -1,0 +1,229 @@
+{
+  "condition": 3,
+  "behaviour": "B5",
+  "repeat": 3,
+  "sandbox_setup": "isolated pilot adapter; restricted tool surface and network",
+  "upgrade": "payouts",
+  "arm": "reference",
+  "setup": "OpenCode 2.2.5 with isolated pilot MCP adapter, no Kalari tools",
+  "api_base": "the VM's public address",
+  "live_port": 19121,
+  "grading_port": 19122,
+  "prompt": "upgrade.txt",
+  "opencode_version": "opencode v2.2.5",
+  "session_continued": false,
+  "notes_attached": false,
+  "session_cap_s": 1200,
+  "session_capped": false,
+  "measures": {
+    "verdict": "PASS",
+    "right_first_time": true,
+    "sandbox_runs": 2,
+    "wall_time_s": 107.036,
+    "time_stuck_s": 62.15,
+    "tokens_input": 280821,
+    "tokens_output": 11814,
+    "records_lost": 0,
+    "records_duplicated": 0
+  },
+  "sandbox_runs_against_v1": 0,
+  "sandbox_runs_against_v2": 2,
+  "http_retries": {
+    "agent": {
+      "status": "ok",
+      "b5_429_responses": 2,
+      "matching_retry_attempts": 2,
+      "successful_matching_retries": 2
+    },
+    "grading": {
+      "status": "ok",
+      "b5_429_responses": 2,
+      "matching_retry_attempts": 2,
+      "successful_matching_retries": 2
+    },
+    "note": "an HTTP retry inside one consumer process is not a sandbox run",
+    "null_means": "unknown, not zero"
+  },
+  "retry_measure": {
+    "source": "API retry journals, truncated at each phase start and read at each phase end",
+    "note": "an HTTP retry inside one consumer process is not a sandbox run",
+    "phases": {
+      "agent": {
+        "apis": {
+          "kalari-pilot-gradee401b86ee70c": {
+            "b5_429_responses": 0,
+            "clients": 0,
+            "matching_retry_attempts": 0,
+            "requests": 0,
+            "status": "ok",
+            "successful_matching_retries": 0
+          },
+          "kalari-pilot-livee401b86ee70c": {
+            "b5_429_responses": 2,
+            "clients": 1,
+            "matching_retry_attempts": 2,
+            "requests": 75,
+            "status": "ok",
+            "successful_matching_retries": 2
+          }
+        },
+        "b5_429_responses": 2,
+        "clients": 1,
+        "matching_retry_attempts": 2,
+        "phase": "agent",
+        "requests": 75,
+        "status": "ok",
+        "successful_matching_retries": 2
+      },
+      "grading": {
+        "apis": {
+          "kalari-pilot-gradee401b86ee70c": {
+            "b5_429_responses": 2,
+            "clients": 1,
+            "matching_retry_attempts": 2,
+            "requests": 8,
+            "status": "ok",
+            "successful_matching_retries": 2
+          },
+          "kalari-pilot-livee401b86ee70c": {
+            "b5_429_responses": 0,
+            "clients": 0,
+            "matching_retry_attempts": 0,
+            "requests": 0,
+            "status": "ok",
+            "successful_matching_retries": 0
+          }
+        },
+        "b5_429_responses": 2,
+        "clients": 1,
+        "matching_retry_attempts": 2,
+        "phase": "grading",
+        "requests": 8,
+        "status": "ok",
+        "successful_matching_retries": 2
+      }
+    }
+  },
+  "records_extra": 0,
+  "records_mismatched": 0,
+  "grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "expected": 2431,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "first_v2_grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "expected": 2431,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0
+  },
+  "right_first_time_basis": "snapshot",
+  "cost_usd": 0.049212,
+  "cost_note": "DeepSeek V4.1 Flash list price, cached input counted as input, no cache discount",
+  "usage_delta": [
+    {
+      "model": "clef",
+      "input": 0,
+      "output": 0
+    },
+    {
+      "model": "deepseek-v4.1-flash-1017",
+      "input": 280821,
+      "output": 11814
+    },
+    {
+      "model": "qwen3-embedding-4b",
+      "input": 0,
+      "output": 0
+    }
+  ],
+  "opencode_tokens": {
+    "steps": 20,
+    "input": 18805,
+    "output": 5443,
+    "reasoning": 6371,
+    "cache_read": 262016
+  },
+  "consumer_runs": [
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 0.275,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 1.327,
+      "timed_out": false,
+      "basis": "snapshot"
+    }
+  ],
+  "event_summary": {
+    "lines": 66,
+    "unparsed_lines": 0,
+    "types": {
+      "step_start": 20,
+      "tool_use": 25,
+      "step_finish": 20,
+      "text": 1
+    },
+    "tools": {
+      "read": 9,
+      "execute": 15,
+      "write": 1
+    },
+    "steps": 20,
+    "bash_denied": 0,
+    "shell_denied": 0,
+    "consumer_denied": 0,
+    "sandbox_names": [
+      "payout-sync"
+    ],
+    "last_reason": "stop",
+    "final_answer": "Upgraded `payout_sync.py` to the v2 export API.\n\nWhat changed:\n- Calls `GET /v2/payouts` instead of `/v1/payouts`.\n- Follows the returned `cursor` until `drained: true`.\n- Deduplicates overlapping windows by payout `id`, preserving creation order.\n- Retries `429` responses honoring `Retry-After`, resending the identical request.\n- Restarts the export without a cursor on `400 invalid_cursor`.\n- Keeps the existing CLI and output format unchanged.\n\nVerification against `http://the VM's public address:19121`:\n- Default sync: **2431 payouts**, matching v1 exactly.\n- Paginated run with `limit=37`: **2431 payouts, 2431 unique**, exact record-for-record match with v1.\n- A local mock test also confirmed handling of overlapping windows, short pages, `429` retries, and cursor expiry/restart.",
+    "stderr_excerpt": "",
+    "diff_stat": "payout_sync.py | 76 +++++++++++++++++++++++++++++++++++++++++++++++++++++++---\n 1 file changed, 73 insertions(+), 3 deletions(-)"
+  },
+  "grader_runs": {
+    "final": {
+      "status": "EXIT 0",
+      "log_excerpt": "synced 2431 payouts\n"
+    },
+    "first": {
+      "status": "EXIT 0",
+      "log_excerpt": "synced 2431 payouts\n"
+    }
+  },
+  "cleanup": {
+    "sandboxes_left": [],
+    "processes_left": [],
+    "owned_names": [
+      "kalari-grade-final-e401b86ee70c",
+      "kalari-grade-first-e401b86ee70c",
+      "kalari-pilot-e401b86ee70c",
+      "kalari-pilot-gradee401b86ee70c",
+      "kalari-pilot-livee401b86ee70c",
+      "kalari-preflight-e401b86ee70c"
+    ],
+    "scope_verified": true
+  },
+  "process_elapsed_s": 110.0,
+  "opencode_exit": 0
+}
