@@ -2,12 +2,12 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import mdx from '@astrojs/mdx';
 
-// Build for two homes from one source.
+// Build for two homes from one source. Defaults ship the public Pages site,
+// so a bare build never stamps localhost canonicals onto public pages.
 // GitHub Pages: ASTRO_SITE=https://nrynss.github.io ASTRO_BASE=/kalari
 // VM docs:      ASTRO_SITE=https://kalari.nryn.dev ASTRO_BASE=/docs
-// Local check:  no env set, serves at the loopback root.
-const site = process.env.ASTRO_SITE ?? 'http://127.0.0.1:4321';
-const base = process.env.ASTRO_BASE ?? '/';
+const site = process.env.ASTRO_SITE ?? 'https://nrynss.github.io';
+const base = process.env.ASTRO_BASE ?? '/kalari';
 
 export default defineConfig({
   site,
