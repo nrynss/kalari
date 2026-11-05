@@ -155,6 +155,8 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 
 ## Handoff Log
 
+- **Redeploy: re-theme live.** Synced `web/site/` to the VM after T7.5a. The demo serves the Laterite theme (`--accent #a63a2b`), the pit favicon, and the wordmark. Old name still redirects. No restart was needed.
+
 - **T7.5a closed.** Chaaya wears the Laterite Pit and Ola Paper tokens, the pit favicon, and the wordmark. Snapshots regenerated, `web/check.sh` passes, privacy scan clean. T5.6a goes next on `web/` (serial, same shells), then T7.5 brings the docs site and the `/docs/` link.
 
 - **T5.6 closed.** `bench/RESULTS.md` publishes the frozen comparison with every number traced to its row files: the zero-lesson finding leads, cost/attempts/containment lead the table, both T5.4 qualifications are preserved, token and cost bases are explained, sandbox attempts stay apart from HTTP retries, and reference provenance plus five-repeat limits are stated. The traceability script recomputes all 12 group aggregates from the 60 rows. T5.6a containment demonstration is next, then P7.
