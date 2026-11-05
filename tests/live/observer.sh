@@ -2,11 +2,21 @@
 # Live observer rehearsal: payouts page observation -> retry lesson ->
 # settlements recall -> trusted-check enforcement. Not part of the gate.
 #
-# Budget: zero model calls. The only traffic is loopback on the host and
-# local microVM traffic through msb. The Lambo store uses the fixture
-# embedder. No inference key is read or sent.
+# Production `kalari serve` refuses every observer. This rehearsal uses a
+# harness-only entry point, tests/live/observer-harness.lean, that calls the
+# same dispatcher with an observer setup. `kalari serve` cannot reach it.
 #
-# Requires TOOL_BIN with: kalari, kalari-aashaan, msb, vimanam 2.1.0, lambo 0.9.x.
+# The alias egress rule is the msb pool (172.16.0.0/12), not a /32. The runtime
+# allocates the /30 at create and has no post-create rule change. A second
+# sandbox reaches the observer because the msb gateway proxy presents every
+# sandbox as 127.0.0.1. A host firewall on the observer port cannot tell them
+# apart. The test prints that result and does not claim isolation.
+#
+# Budget: zero model calls. Clef calls are counted and redirected to a local
+# fake. The Lambo store uses the fixture embedder. No inference key is read.
+#
+# Requires TOOL_BIN with: kalari, kalari-aashaan, msb, vimanam 2.1.0, lambo
+# 0.9.x built with the embed-fixture feature, and lake on PATH (or LAKE set).
 # Run after `lake build`:
 #
 #   TOOL_BIN=/absolute/tool/dir tests/live/observer.sh
@@ -20,9 +30,12 @@ repo=$(pwd -P)
 for bin in kalari kalari-aashaan msb vimanam lambo; do
   [[ -x "$TOOL_BIN/$bin" ]] || { echo "missing $bin in TOOL_BIN" >&2; exit 2; }
 done
+LAKE=${LAKE:-lake}
+command -v "$LAKE" >/dev/null || { echo 'lake not found; set LAKE' >&2; exit 2; }
+LAKE=$(command -v "$LAKE")
 unset VULTR_INFERENCE_API_KEY 2>/dev/null || true
 # The service requires a non-empty key environment name at startup. This is a
-# placeholder, not a key: no model or decision call is made by this rehearsal.
+# placeholder, not a key: no model call is made by this rehearsal.
 export KALARI_LIVE_DUMMY=live-test-placeholder
 vimanam_version=$("$TOOL_BIN/vimanam" --version)
 lambo_version=$("$TOOL_BIN/lambo" --version)
@@ -34,6 +47,7 @@ transcript="tests/live/observer-transcript.txt"
 api_pids=()
 sandbox_before="$work/sandboxes-before.json"
 sandbox_after="$work/sandboxes-after.json"
+sandbox_before_failed=0
 
 say() {
   printf '%s\n' "$*"
@@ -79,6 +93,12 @@ start_api() {
   wait_api "$port" "$name"
 }
 
+# An observer is a payouts server with a trusted trace filter. A killed service
+# can leave one behind, so kill by its unique arguments and fail if one remains.
+observer_pids() {
+  ps -eo pid,args | awk '$2 ~ /python/ && index($0, "bench/apis/payouts/server.py") && index($0, "--trace-client 127.0.0.1") { print $1 }'
+}
+
 cleanup() {
   local status=$?
   trap - EXIT
@@ -92,7 +112,7 @@ cleanup() {
     wait "$service_pid" 2>/dev/null || true
   fi
   local pids
-  pids=$(ps -eo pid,args | awk -v cfg="$work/config.json" 'index($0, "kalari serve") && index($0, cfg) { print $1 }')
+  pids=$(ps -eo pid,args | awk -v cfg="$work/config.json" '$2 ~ /kalari/ && index($0, "kalari serve") && index($0, cfg) { print $1 }')
   if [[ -n "$pids" ]]; then
     kill $pids 2>/dev/null || true
   fi
@@ -103,16 +123,46 @@ cleanup() {
     pids=$(ps -eo pid,args | awk -v cfg="$work/lambo.toml" '$2 ~ /lambo/ && index($0, cfg) { print $1 }')
     [[ -z "$pids" ]] || kill -9 $pids 2>/dev/null || true
   fi
-  if [[ -f "$sandbox_before" ]]; then
-    "$TOOL_BIN/msb" list --format json >"$sandbox_after" 2>/dev/null || echo '[]' >"$sandbox_after"
-    python3 -I - "$sandbox_before" "$sandbox_after" "$TOOL_BIN/msb" "$work/sandboxes-left.json" <<'PY'
+  pids=$(ps -eo pid,args | awk -v cfg="$work/config.json" '($2 ~ /lake/ || $2 ~ /lean/) && index($0, "observer-harness.lean") && index($0, cfg) { print $1 }')
+  if [[ -n "$pids" ]]; then
+    kill $pids 2>/dev/null || true
+    sleep 0.5
+    pids=$(ps -eo pid,args | awk -v cfg="$work/config.json" '($2 ~ /lake/ || $2 ~ /lean/) && index($0, "observer-harness.lean") && index($0, cfg) { print $1 }')
+    [[ -z "$pids" ]] || kill -9 $pids 2>/dev/null || true
+  fi
+  pids=$(observer_pids)
+  if [[ -n "$pids" ]]; then
+    kill $pids 2>/dev/null || true
+    sleep 0.5
+    pids=$(observer_pids)
+    [[ -z "$pids" ]] || kill -9 $pids 2>/dev/null || true
+  fi
+  pids=$(observer_pids)
+  if [[ -n "$pids" ]]; then
+    echo "cleanup: observer process(es) remain:" >&2
+    ps -eo pid,args | awk '$2 ~ /python/ && index($0, "bench/apis/payouts/server.py") && index($0, "--trace-client 127.0.0.1")' >&2
+    status=1
+  else
+    say "cleanup: observers_remaining=0"
+  fi
+  if [[ "$sandbox_before_failed" == 1 ]]; then
+    echo "cleanup: initial msb list failed; sandbox cleanup is unproven" >&2
+    status=1
+  elif [[ -f "$sandbox_before" ]]; then
+    if ! "$TOOL_BIN/msb" list --format json >"$sandbox_after" 2>"$work/msb-list-after.err"; then
+      echo "cleanup: msb list failed; sandbox cleanup is unproven" >&2
+      status=1
+    else
+      python3 -I - "$sandbox_before" "$sandbox_after" "$TOOL_BIN/msb" "$work/sandboxes-left.json" <<'PY'
 import json, subprocess, sys
 before_path, after_path, msb, left_path = sys.argv[1:]
 def names(path):
     try:
-        return {row.get("name", "") for row in json.load(open(path))}
-    except Exception:
-        return set()
+        with open(path) as stream:
+            return {row.get("name", "") for row in json.load(stream)}
+    except Exception as exc:
+        print(f"cleanup: cannot read {path}: {exc}", file=sys.stderr)
+        raise SystemExit(1)
 removed = sorted(name for name in names(after_path) - names(before_path)
                  if name.startswith("kalari-"))
 for name in removed:
@@ -121,23 +171,30 @@ json.dump(removed, open(left_path, "w"))
 if removed:
     print("cleanup: removed leftover sandboxes:", ",".join(removed))
 PY
-    "$TOOL_BIN/msb" list --format json >"$sandbox_after" 2>/dev/null || echo '[]' >"$sandbox_after"
-    left=$(python3 -I - "$sandbox_before" "$sandbox_after" <<'PY'
+      if ! "$TOOL_BIN/msb" list --format json >"$sandbox_after" 2>>"$work/msb-list-after.err"; then
+        echo "cleanup: msb list failed; sandbox cleanup is unproven" >&2
+        status=1
+      else
+        left=$(python3 -I - "$sandbox_before" "$sandbox_after" <<'PY'
 import json, sys
 def names(path):
     try:
-        return {row.get("name", "") for row in json.load(open(path))}
-    except Exception:
-        return set()
+        with open(path) as stream:
+            return {row.get("name", "") for row in json.load(stream)}
+    except Exception as exc:
+        print(f"cleanup: cannot read {path}: {exc}", file=sys.stderr)
+        raise SystemExit(1)
 print(len({name for name in names(sys.argv[2]) - names(sys.argv[1])
            if name.startswith("kalari-")}))
 PY
 )
-    if [[ "$left" != 0 ]]; then
-      echo "cleanup: ${left} kalari sandbox(es) remain" >&2
-      status=1
-    else
-      say "cleanup: sandboxes_remaining=0"
+        if [[ "$left" != 0 ]]; then
+          echo "cleanup: ${left} kalari sandbox(es) remain" >&2
+          status=1
+        else
+          say "cleanup: sandboxes_remaining=0"
+        fi
+      fi
     fi
   fi
   if [[ "${KEEP_WORK:-}" == 1 ]]; then
@@ -151,10 +208,38 @@ trap cleanup EXIT
 
 exec > >(sanitize | tee "$transcript") 2>&1
 
-say "observer rehearsal: budget model_calls=0 inference_key=absent placeholder=set"
+say "observer rehearsal: no inference; Clef calls are counted and blocked by a local fake"
 say "versions: ${vimanam_version}, ${lambo_version}, msb $("$TOOL_BIN/msb" --version | head -1)"
 say "embedder: fixture (local, no external model calls)"
-"$TOOL_BIN/msb" list --format json >"$sandbox_before" 2>/dev/null || echo '[]' >"$sandbox_before"
+
+# The local Lambo 0.9.x build must include the fixture embedder. Provision and
+# derive one concept before any session starts.
+preflight="$work/lambo-preflight"
+mkdir -p "$preflight"
+cat >"$preflight/lambo.toml" <<TOML
+promotion_policy = "Solo"
+[store]
+kind = "sqlite"
+path = "$preflight/lambo.db"
+[embedder]
+kind = "fixture"
+[serve]
+default_session = "preflight"
+TOML
+if ! "$TOOL_BIN/lambo" provision --config "$preflight/lambo.toml" >/dev/null 2>"$preflight/provision.err" ||
+   ! "$TOOL_BIN/lambo" derive --config "$preflight/lambo.toml" --session preflight --agent preflight \
+       --content preflight-kind --kind resource >/dev/null 2>"$preflight/derive.err"; then
+  echo "preflight: lambo fixture embedder failed; rebuild lambo with embed-fixture" >&2
+  sed -E 's/[0-9]{1,3}(\.[0-9]{1,3}){3}/<ip>/g' "$preflight"/*.err >&2 || true
+  exit 2
+fi
+say "preflight: lambo fixture embedder provisioned and derived one concept"
+
+if ! "$TOOL_BIN/msb" list --format json >"$sandbox_before" 2>"$work/msb-list-before.err"; then
+  echo "observer rehearsal: initial msb list failed; sandbox cleanup is unproven" >&2
+  sandbox_before_failed=1
+  echo '[]' >"$sandbox_before"
+fi
 
 payouts_live=$(free_port)
 observer_port=$(free_port)
@@ -211,17 +296,22 @@ cp bench/workspaces/settlement-reconcile/specs/schema-v1.graphql "$work/settleme
 cp bench/workspaces/settlement-reconcile/specs/schema-v2.graphql "$work/settlements/new.graphql"
 
 python3 -I - "$work" "$TOOL_BIN" "$repo" "$payouts_live" "$observer_port" \
-  "$settlements_live" "$settlements_grading" <<'PY'
+  "$settlements_live" "$settlements_grading" "$LAKE" <<'PY'
 import json
 import os
 from pathlib import Path
+import signal
+import socket
 import subprocess
 import sys
+import time
 
 work = Path(sys.argv[1])
 tools = Path(sys.argv[2])
 repo = Path(sys.argv[3])
 payouts_live, observer_port, settlements_live, settlements_grading = map(int, sys.argv[4:8])
+lake = sys.argv[8]
+msb = str(tools / "msb")
 caps = {"timeout_ms": 30000, "output_cap_bytes": 65536, "memory_mib": 512}
 alias = "host.microsandbox.internal"
 endpoint = lambda port: {"host": alias, "port": port}
@@ -269,6 +359,9 @@ settlements_setup = session("live-settlements", "settlements", settlements_live,
 bad = json.loads(json.dumps(payouts_setup))
 bad["observer"]["endpoint"]["host"] = "127.0.0.1"
 (work / "bad-session.json").write_text(json.dumps(bad, indent=2) + "\n")
+missing = json.loads(json.dumps(payouts_setup))
+missing["observer"]["server"] = str(work / "missing-server.py")
+(work / "missing-server-session.json").write_text(json.dumps(missing, indent=2) + "\n")
 
 env = {
     "PATH": str(tools) + ":/usr/local/bin:/usr/bin:/bin",
@@ -281,22 +374,76 @@ env = {
 def line(text):
     print(text, flush=True)
 
+def free_port():
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    return port
+
+def wait_port(port):
+    for _ in range(200):
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=0.2):
+                return
+        except OSError:
+            time.sleep(0.05)
+    raise SystemExit(f"port {port} did not open")
+
+def observer_rows(port=None):
+    listing = subprocess.run(["ps", "-eo", "pid,args"], capture_output=True, text=True).stdout
+    found = []
+    for row in listing.splitlines():
+        if "bench/apis/payouts/server.py" not in row:
+            continue
+        if "--trace-client 127.0.0.1" not in row:
+            continue
+        if port is not None and f"--port {port}" not in row:
+            continue
+        found.append(row.strip())
+    return found
+
+def observer_pids(port=None):
+    return [int(row.split(None, 1)[0]) for row in observer_rows(port)]
+
+def lambo_children():
+    listing = subprocess.run(["ps", "-eo", "args"], capture_output=True, text=True).stdout
+    config = str(work / "lambo.toml")
+    return [row for row in listing.splitlines() if config in row and "lambo" in row]
+
+def harness_processes():
+    listing = subprocess.run(["ps", "-eo", "args"], capture_output=True, text=True).stdout
+    return [row for row in listing.splitlines() if "observer-harness.lean" in row]
+
 class Service:
-    def __init__(self, tag, setup_path):
+    def __init__(self, tag, setup_path, harness=True):
         self.tag = tag
         self.index = 0
+        self.model_calls = None
+        self.count_path = work / f"model-calls-{tag}.txt"
         self.stderr = open(work / f"{tag}.stderr", "wb")
+        service_env = dict(env)
+        if harness:
+            command = [lake, "env", "lean", "--run", "tests/live/observer-harness.lean",
+                       str(work / "config.json"), str(setup_path)]
+            service_env["KALARI_OBSERVER_HARNESS"] = "1"
+            service_env["KALARI_HARNESS_COUNT_FILE"] = str(self.count_path)
+            service_env["KALARI_HARNESS_DECISIONS_URL"] = fake_url
+        else:
+            command = [str(tools / "kalari"), "serve", str(work / "config.json"), str(setup_path)]
         self.proc = subprocess.Popen(
-            [str(tools / "kalari"), "serve", str(work / "config.json"), str(setup_path)],
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.stderr,
-            text=True, cwd=repo, env=env)
+            command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.stderr,
+            text=True, cwd=repo, env=service_env, start_new_session=True)
 
-    def call(self, name, args):
+    def send(self, name, args):
         self.index += 1
         request = {"jsonrpc": "2.0", "id": self.index, "method": "tools/call",
                    "params": {"name": name, "arguments": args}}
         self.proc.stdin.write(json.dumps(request) + "\n")
         self.proc.stdin.flush()
+
+    def call(self, name, args):
+        self.send(name, args)
         reply = self.proc.stdout.readline()
         if not reply:
             self.stderr.flush()
@@ -314,10 +461,10 @@ class Service:
     def close(self):
         self.proc.stdin.close()
         try:
-            reply, _ = self.proc.communicate(timeout=60)
+            reply, _ = self.proc.communicate(timeout=120)
             status = self.proc.returncode
         except subprocess.TimeoutExpired:
-            self.proc.kill()
+            self.kill()
             reply, _ = self.proc.communicate()
             status = -1
         self.stderr.close()
@@ -325,12 +472,21 @@ class Service:
             raise SystemExit(f"{self.tag}: unexpected stdout after close: {reply[:200]}")
         if status != 0:
             raise SystemExit(f"{self.tag}: service exited {status}")
+        if self.count_path.exists():
+            text = self.count_path.read_text().strip()
+            line(f"harness: {self.tag} {text} measured_clef_calls")
+            self.model_calls = int(text.split("=", 1)[1])
         return status
 
-def lambo_children():
-    listing = subprocess.run(["ps", "-eo", "args"], capture_output=True, text=True).stdout
-    config = str(work / "lambo.toml")
-    return [row for row in listing.splitlines() if config in row and "lambo" in row]
+    def kill(self):
+        try:
+            os.killpg(os.getpgid(self.proc.pid), signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        try:
+            self.proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            pass
 
 def check_names(report):
     return {item["check_id"]: item for item in report["checks"]}
@@ -348,133 +504,342 @@ def evidence(path):
                 records.append(json.loads(raw))
     return records
 
-# 1. Verified payouts run. The observer must see the B5 retry trace and the
-#    run must pass every check before a lesson can be published.
-payouts = Service("payouts", work / "payouts-session.json")
-changed = payouts.call("what_changed", {
-    "old_spec": payouts_setup["old_spec"], "new_spec": payouts_setup["new_spec"]})
-payout_kinds = [change["kind"] for change in changed["changes"]]
-line(f"payouts what_changed: kinds={','.join(sorted(set(payout_kinds)))}")
-command = ["python3", str(work / "payouts/candidate/consumer.py"),
-           "--base-url", f"http://{alias}:{observer_port}", "--out", "payouts.jsonl"]
-report = payouts.call("run_in_sandbox", {
-    "workspace": payouts_setup["workspace"], "command": command,
-    "caps": caps, "allowlist": [endpoint(observer_port)]})
-show_run("payouts run_in_sandbox", report)
-if not report["passed"]:
-    raise SystemExit("payouts run did not pass")
-payouts_run = report["run_id"]
+def production_refusal(name, setup_path):
+    result = subprocess.run(
+        [str(tools / "kalari"), "serve", str(work / "config.json"), str(setup_path)],
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, cwd=repo, env=env)
+    message = result.stderr.strip().splitlines()[-1] if result.stderr.strip() else ""
+    if result.returncode == 0 or "observer requires verified exclusive guest source isolation" not in result.stderr:
+        raise SystemExit(f"production service did not refuse {name}")
+    line(f"refusal: {name} exit={result.returncode} message={message!r}")
 
-lessons = payouts.call("record_lesson", {"run_id": payouts_run})
-if not lessons:
-    raise SystemExit("payouts run published no lesson")
-for lesson in lessons:
-    observation = lesson["observation"]
-    if "429" not in observation or "identical request" not in observation:
-        raise SystemExit("payouts lesson does not carry the retry observation")
-    if lesson["check"]["id"] != "candidate-v1-truth-v1" or lesson["check"]["command"][2] != "payouts.jsonl":
-        raise SystemExit("payouts lesson does not keep its payouts check")
-    line(f"payouts record_lesson: observation={observation!r}")
-    line(f"payouts record_lesson: check={lesson['check']['id']} command={lesson['check']['command']}")
-    line(f"payouts record_lesson: memory_concept_id={lesson['memory_concept_id']}")
-payouts.close()
-if lambo_children():
-    raise SystemExit("payouts service left a Lambo child")
+FAKE_DECISIONS = r"""
+import http.server, sys
+class H(http.server.BaseHTTPRequestHandler):
+    def do_POST(self):
+        with open(sys.argv[2], "a") as stream:
+            stream.write("call\n")
+        self.send_response(500)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(b'{"error":{"message":"harness blocks model calls"}}')
+    def log_message(self, *args):
+        pass
+http.server.ThreadingHTTPServer(("127.0.0.1", int(sys.argv[1])), H).serve_forever()
+"""
 
-# 2. Settlements recalls the linked constraint as a required check, then the
-#    trusted checker is rebound to settlements.jsonl for this upgrade.
-settlements = Service("settlements", work / "settlements-session.json")
-changed = settlements.call("what_changed", {
-    "old_spec": settlements_setup["old_spec"], "new_spec": settlements_setup["new_spec"]})
-settlement_kinds = sorted({change["kind"] for change in changed["changes"]})
-line(f"settlements what_changed: kinds={','.join(settlement_kinds)}")
-recalled = settlements.call("recall_lessons", {"change_kinds": settlement_kinds})
-required = [entry for entry in recalled if entry["status"] == "required"]
-if not any(entry["lesson"]["check"]["id"] == "candidate-v1-truth-v1" and
-           entry["lesson"]["observation"] for entry in required):
-    raise SystemExit("settlements did not recall the payouts lesson as required")
-for entry in required:
-    if entry["lesson"]["check"]["id"] == "candidate-v1-truth-v1":
-        line(f"settlements recall_lessons: status={entry['status']} check={entry['lesson']['check']['id']} "
-             f"command={entry['lesson']['check']['command']}")
-        line(f"settlements recall_lessons: observation={entry['lesson']['observation']!r}")
+PROBE = r"""
+import http.server, json, sys
+class H(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        row = {"peer": self.client_address[0], "xff": self.headers.get("X-Forwarded-For")}
+        with open(sys.argv[2], "a") as stream:
+            stream.write(json.dumps(row) + "\n")
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"ok")
+    def log_message(self, *args):
+        pass
+http.server.ThreadingHTTPServer(("127.0.0.1", int(sys.argv[1])), H).serve_forever()
+"""
 
-def settlements_run(tag, consumer, expected):
-    command = ["python3", str(work / "settlements/candidate/consumer.py"),
-               "--base-url", f"http://{alias}:{settlements_grading}", "--out", "settlements.jsonl"]
-    command[1] = str(work / "settlements/candidate" / consumer)
-    report = settlements.call("run_in_sandbox", {
-        "workspace": settlements_setup["workspace"], "command": command,
-        "caps": caps, "allowlist": [endpoint(settlements_grading)]})
-    show_run(tag, report)
-    if report["passed"] != expected:
-        raise SystemExit(f"{tag}: passed={report['passed']}, want {expected}")
-    return report
+def apply_firewall(port, gateway):
+    # Allow the observed gateway on the observer port, then drop the rest of
+    # the pool. -I inserts the last rule first, so the ACCEPT stays above DROP.
+    drop = ["iptables", "-w", "-I", "INPUT", "-p", "tcp", "--dport", str(port),
+            "-s", "172.16.0.0/12", "-j", "DROP"]
+    allow = ["iptables", "-w", "-I", "INPUT", "-p", "tcp", "--dport", str(port),
+             "-s", gateway, "-j", "ACCEPT"]
+    rules = [drop, allow]
+    try:
+        for rule in rules:
+            result = subprocess.run(rule, capture_output=True, text=True)
+            if result.returncode != 0:
+                detail = (result.stderr or result.stdout).strip().splitlines()
+                reason = detail[-1] if detail else f"exit {result.returncode}"
+                return rules, f"unavailable: {reason}"
+    except FileNotFoundError:
+        return rules, "unavailable: iptables not found"
+    return rules, "installed"
 
-correct = settlements_run("settlements correct", "consumer.py", True)
-partial = settlements_run("settlements partial_output", "partial_output.py", False)
-for report, tag in ((correct, "correct"), (partial, "partial")):
-    checks = check_names(report)
-    truth = checks.get("candidate-v1-truth-v1")
-    diff = checks.get("differential-v1")
-    if truth is None or diff is None:
-        raise SystemExit(f"{tag}: recalled or differential check missing")
-    if tag == "correct" and not (truth["passed"] and diff["passed"]):
-        raise SystemExit("correct settlements run did not pass the recalled and differential checks")
-    if tag == "partial":
-        if truth["passed"] or diff["passed"]:
-            raise SystemExit("partial-output run passed a recalled or differential check")
-        line(f"settlements partial_output: recalled_detail={truth['detail']!r}")
-        line(f"settlements partial_output: differential_detail={diff['detail']!r}")
-settlements.close()
-if lambo_children():
-    raise SystemExit("settlements service left a Lambo child")
+def second_sandbox_test():
+    port = free_port()
+    log = work / "observer-peers.jsonl"
+    probe = subprocess.Popen(["python3", "-I", "-c", PROBE, str(port), str(log)],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    names = ["kalari-observer-probe-a", "kalari-observer-probe-b"]
+    rules, firewall = [], "not attempted"
+    try:
+        wait_port(port)
+        for name in names:
+            subprocess.run([msb, "remove", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run([msb, "create", "--name", name, "--cpus", "1", "--memory", "256M", "--no-net",
+                "--net-rule", f"allow@172.16.0.0/12:tcp:{port}", "--pull", "never", "python:3.13-slim"],
+                check=True, stdout=subprocess.DEVNULL)
+        gateway = subprocess.run([msb, "exec", names[0], "--", "sh", "-c",
+            "grep 'host.microsandbox' /etc/hosts | head -1 | cut -f1"],
+            capture_output=True, text=True, check=True).stdout.strip()
+        if not gateway:
+            raise SystemExit("probe sandbox has no host gateway")
+        results = []
+        for name in names:
+            run = subprocess.run([msb, "exec", name, "--", "python3", "-c",
+                f"import urllib.request; print(urllib.request.urlopen('http://host.microsandbox.internal:{port}/x', timeout=5).status)"],
+                capture_output=True, text=True)
+            results.append(run.stdout.strip() or f"exit={run.returncode}")
+        peers = []
+        if log.exists():
+            peers = [json.loads(row)["peer"] for row in log.read_text().splitlines() if row.strip()]
+        rules, firewall = apply_firewall(port, gateway)
+        rule_text = f"INPUT -p tcp --dport {port} -s {gateway} -j ACCEPT, INPUT -p tcp --dport {port} -s 172.16.0.0/12 -j DROP"
+        line(f"egress: alias_rule=allow@172.16.0.0/12:tcp:{port} observed_gateway={gateway}")
+        line(f"firewall: rules=\"{rule_text}\" result={firewall}")
+        line(f"second sandbox: probe_a={results[0]} probe_b={results[1]} peers={','.join(peers)} xff=absent isolation=not-established")
+        if results != ["200", "200"]:
+            raise SystemExit("second sandbox probe did not reach the observer")
+        if set(peers) != {"127.0.0.1"}:
+            raise SystemExit(f"unexpected observer peer: {peers}")
+    finally:
+        if firewall == "installed":
+            for rule in reversed(rules):
+                subprocess.run(["iptables", "-w", "-D"] + rule[3:], capture_output=True, text=True)
+        for name in names:
+            subprocess.run([msb, "remove", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            os.killpg(os.getpgid(probe.pid), signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        probe.wait()
 
-# 3. The evidence store proves the rebind and the published lesson.
-store = evidence(work / "evidence/.kalari/evidence.jsonl")
-page = [r for r in store if r["kind"] == "page-observation" and r["run_id"] == payouts_run]
-if not page or "rate_limit_retry" not in page[0]["payload"]["behaviors"]:
-    raise SystemExit("payouts page observation does not carry rate_limit_retry")
-line(f"evidence: payouts page observation behaviors={page[0]['payload']['behaviors']}")
-lesson_records = [r for r in store if r["kind"] == "lesson" and r["run_id"] == payouts_run]
-if not lesson_records or not lesson_records[0]["payload"]["observation"]:
-    raise SystemExit("payouts lesson evidence is empty")
-line(f"evidence: published lesson={lesson_records[0]['payload']['observation']!r}")
+def mid_run_kill_test():
+    root = work / "kill"
+    (root / "candidate").mkdir(parents=True, exist_ok=True)
+    (root / "baseline").mkdir(parents=True, exist_ok=True)
+    (root / "candidate/sleep.py").write_text("import time\ntime.sleep(60)\n")
+    setup = json.loads(json.dumps(payouts_setup))
+    setup["session_id"] = "live-kill"
+    setup["workspace"] = str(root / "candidate")
+    setup["baseline"]["workspace"] = str(root / "baseline")
+    setup["baseline"]["command"] = ["python3", str(root / "baseline/consumer.py")]
+    setup["artifact"] = "kill.jsonl"
+    (work / "kill-session.json").write_text(json.dumps(setup, indent=2) + "\n")
+    service = Service("kill", work / "kill-session.json", harness=True)
+    try:
+        service.call("what_changed", {"old_spec": setup["old_spec"], "new_spec": setup["new_spec"]})
+        service.send("run_in_sandbox", {
+            "workspace": setup["workspace"],
+            "command": ["python3", str(root / "candidate/sleep.py")],
+            "caps": caps, "allowlist": [endpoint(observer_port)]})
+        found = []
+        deadline = time.time() + 60
+        while time.time() < deadline:
+            found = observer_pids(observer_port)
+            if found:
+                break
+            time.sleep(0.2)
+        if not found:
+            raise SystemExit("mid-run kill test did not start an observer")
+        line("mid-run kill: observer_started=1")
+        pgid = os.getpgid(service.proc.pid)
+        os.kill(service.proc.pid, signal.SIGKILL)
+        service.proc.wait(timeout=10)
+        service.stderr.close()
+        time.sleep(0.5)
+        leaked = observer_pids(observer_port)
+        line(f"mid-run kill: after_service_sigkill observer_leaked={len(leaked)}")
+        os.killpg(pgid, signal.SIGKILL)
+        deadline = time.time() + 10
+        while time.time() < deadline:
+            if not observer_pids(observer_port):
+                break
+            time.sleep(0.1)
+        remaining = observer_pids(observer_port)
+        if remaining:
+            raise SystemExit(f"observer survived its process group: {remaining}")
+        line("mid-run kill: after_group_cleanup observer_remaining=0")
+    finally:
+        if service.proc.poll() is None:
+            service.kill()
+        service.stderr.close()
 
-run_records = {r["run_id"]: r for r in store if r["kind"] == "run"}
-for report, tag in ((correct, "correct"), (partial, "partial")):
-    record = run_records.get(report["run_id"])
-    if record is None:
-        raise SystemExit(f"{tag}: evidence run missing")
-    check = next((c for c in record["payload"]["checks"] if c["id"] == "candidate-v1-truth-v1"), None)
-    if check is None:
-        raise SystemExit(f"{tag}: evidence has no candidate truth check")
-    if "settlements.jsonl" not in check["command"] or "payouts.jsonl" in check["command"]:
-        raise SystemExit(f"{tag}: check was not rebound to settlements.jsonl: {check['command']}")
-    if tag == "correct":
-        line(f"evidence: settlements check rebound command={check['command']}")
+services = []
+fake_log = work / "fake-decisions.jsonl"
+fake_port = free_port()
+fake = subprocess.Popen(["python3", "-I", "-c", FAKE_DECISIONS, str(fake_port), str(fake_log)],
+    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+fake_url = f"http://127.0.0.1:{fake_port}/v1/systemone"
+try:
+    wait_port(fake_port)
+    line(f"decisions: local_fake=loopback:{fake_port} real_endpoint=blocked")
 
-# 4. Agent and grading HTTP retries are separate from sandbox B5 retries.
-journal_path = work / "settlements-grading-journal.jsonl"
-journal = [json.loads(row) for row in journal_path.read_text().splitlines() if row.strip()] if journal_path.exists() else []
-throttled = sum(1 for row in journal if row.get("status") == 429)
-retried = sum(1 for row in journal if row.get("matching_retry"))
-line(f"retries: agent_http=0 grading_http=0 sandbox_payouts=1 sandbox_settlements_429={throttled} "
-     f"sandbox_settlements_retries={retried}")
+    # 1. Production refuses every observer configuration.
+    production_refusal("valid observer", work / "payouts-session.json")
+    production_refusal("caller address", work / "bad-session.json")
+    production_refusal("missing server", work / "missing-server-session.json")
 
-# 5. A caller-supplied guest address cannot establish exclusivity.
-bad_config = work / "bad-session.json"
-bad = subprocess.run(
-    [str(tools / "kalari"), "serve", str(work / "config.json"), str(bad_config)],
-    stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-    text=True, cwd=repo, env=env)
-message = bad.stderr.strip().splitlines()[-1] if bad.stderr.strip() else ""
-if bad.returncode == 0 or "observer requires verified exclusive guest source isolation" not in bad.stderr:
-    raise SystemExit("unproven observer configuration was not refused")
-line(f"refusal: exit={bad.returncode} message={message!r}")
+    # 2. Verified payouts run through the harness. The observer must see the B5
+    #    retry trace and the run must pass every check before a lesson can publish.
+    payouts = Service("payouts", work / "payouts-session.json")
+    services.append(payouts)
+    changed = payouts.call("what_changed", {
+        "old_spec": payouts_setup["old_spec"], "new_spec": payouts_setup["new_spec"]})
+    payout_kinds = [change["kind"] for change in changed["changes"]]
+    line(f"payouts what_changed: kinds={','.join(sorted(set(payout_kinds)))}")
+    command = ["python3", str(work / "payouts/candidate/consumer.py"),
+               "--base-url", f"http://{alias}:{observer_port}", "--out", "payouts.jsonl"]
+    report = payouts.call("run_in_sandbox", {
+        "workspace": payouts_setup["workspace"], "command": command,
+        "caps": caps, "allowlist": [endpoint(observer_port)]})
+    show_run("payouts run_in_sandbox", report)
+    if not report["passed"]:
+        raise SystemExit("payouts run did not pass")
+    payouts_run = report["run_id"]
 
-# 6. Every service process is gone. The shell cleans up APIs and sandboxes.
-line("services: payouts=reaped settlements=reaped lambo=reaped")
+    lessons = payouts.call("record_lesson", {"run_id": payouts_run})
+    if not lessons:
+        raise SystemExit("payouts run published no lesson")
+    for lesson in lessons:
+        observation = lesson["observation"]
+        if "429" not in observation or "identical request" not in observation:
+            raise SystemExit("payouts lesson does not carry the retry observation")
+        if lesson["check"]["id"] != "candidate-v1-truth-v1" or lesson["check"]["command"][2] != "payouts.jsonl":
+            raise SystemExit("payouts lesson does not keep its payouts check")
+        line(f"payouts record_lesson: observation={observation!r}")
+        line(f"payouts record_lesson: check={lesson['check']['id']} command={lesson['check']['command']}")
+        line(f"payouts record_lesson: memory_concept_id={lesson['memory_concept_id']}")
+    payouts.close()
+    if observer_pids(observer_port):
+        raise SystemExit("payouts service left its observer")
+    line("processes: payouts_observer_reaped=1")
+    if lambo_children():
+        raise SystemExit("payouts service left a Lambo child")
+
+    # 3. Settlements recalls the linked constraint as a required check, then the
+    #    trusted checker is rebound to settlements.jsonl for this upgrade.
+    settlements = Service("settlements", work / "settlements-session.json")
+    services.append(settlements)
+    changed = settlements.call("what_changed", {
+        "old_spec": settlements_setup["old_spec"], "new_spec": settlements_setup["new_spec"]})
+    settlement_kinds = sorted({change["kind"] for change in changed["changes"]})
+    line(f"settlements what_changed: kinds={','.join(settlement_kinds)}")
+    recalled = settlements.call("recall_lessons", {"change_kinds": settlement_kinds})
+    required = [entry for entry in recalled if entry["status"] == "required"]
+    if not any(entry["lesson"]["check"]["id"] == "candidate-v1-truth-v1" and
+               entry["lesson"]["observation"] for entry in required):
+        raise SystemExit("settlements did not recall the payouts lesson as required")
+    for entry in required:
+        if entry["lesson"]["check"]["id"] == "candidate-v1-truth-v1":
+            line(f"settlements recall_lessons: status={entry['status']} check={entry['lesson']['check']['id']} "
+                 f"command={entry['lesson']['check']['command']}")
+            line(f"settlements recall_lessons: observation={entry['lesson']['observation']!r}")
+
+    def settlements_run(tag, consumer, expected):
+        command = ["python3", str(work / "settlements/candidate/consumer.py"),
+                   "--base-url", f"http://{alias}:{settlements_grading}", "--out", "settlements.jsonl"]
+        command[1] = str(work / "settlements/candidate" / consumer)
+        report = settlements.call("run_in_sandbox", {
+            "workspace": settlements_setup["workspace"], "command": command,
+            "caps": caps, "allowlist": [endpoint(settlements_grading)]})
+        show_run(tag, report)
+        if report["passed"] != expected:
+            raise SystemExit(f"{tag}: passed={report['passed']}, want {expected}")
+        return report
+
+    correct = settlements_run("settlements correct", "consumer.py", True)
+    partial = settlements_run("settlements partial_output", "partial_output.py", False)
+    for report, tag in ((correct, "correct"), (partial, "partial")):
+        checks = check_names(report)
+        truth = checks.get("candidate-v1-truth-v1")
+        diff = checks.get("differential-v1")
+        if truth is None or diff is None:
+            raise SystemExit(f"{tag}: recalled or differential check missing")
+        if tag == "correct" and not (truth["passed"] and diff["passed"]):
+            raise SystemExit("correct settlements run did not pass the recalled and differential checks")
+        if tag == "partial":
+            if truth["passed"] or diff["passed"]:
+                raise SystemExit("partial-output run passed a recalled or differential check")
+            line(f"settlements partial_output: recalled_detail={truth['detail']!r}")
+            line(f"settlements partial_output: differential_detail={diff['detail']!r}")
+    settlements.close()
+    if lambo_children():
+        raise SystemExit("settlements service left a Lambo child")
+
+    # 4. The evidence store proves the rebind and the published lesson.
+    store = evidence(work / "evidence/.kalari/evidence.jsonl")
+    page = [r for r in store if r["kind"] == "page-observation" and r["run_id"] == payouts_run]
+    if not page or "rate_limit_retry" not in page[0]["payload"]["behaviors"]:
+        raise SystemExit("payouts page observation does not carry rate_limit_retry")
+    line(f"evidence: payouts page observation behaviors={page[0]['payload']['behaviors']}")
+    lesson_records = [r for r in store if r["kind"] == "lesson" and r["run_id"] == payouts_run]
+    if not lesson_records or not lesson_records[0]["payload"]["observation"]:
+        raise SystemExit("payouts lesson evidence is empty")
+    line(f"evidence: published lesson={lesson_records[0]['payload']['observation']!r}")
+
+    run_records = {r["run_id"]: r for r in store if r["kind"] == "run"}
+    for report, tag in ((correct, "correct"), (partial, "partial")):
+        record = run_records.get(report["run_id"])
+        if record is None:
+            raise SystemExit(f"{tag}: evidence run missing")
+        check = next((c for c in record["payload"]["checks"] if c["id"] == "candidate-v1-truth-v1"), None)
+        if check is None:
+            raise SystemExit(f"{tag}: evidence has no candidate truth check")
+        if "settlements.jsonl" not in check["command"] or "payouts.jsonl" in check["command"]:
+            raise SystemExit(f"{tag}: check was not rebound to settlements.jsonl: {check['command']}")
+        if tag == "correct":
+            line(f"evidence: settlements check rebound command={check['command']}")
+
+    # 5. Retry counts are derived from the evidence and the grading journal.
+    journal_path = work / "settlements-grading-journal.jsonl"
+    if not journal_path.exists():
+        raise SystemExit("settlements grading journal missing")
+    journal = [json.loads(row) for row in journal_path.read_text().splitlines() if row.strip()]
+    throttled = sum(1 for row in journal if row.get("status") == 429)
+    retried = sum(1 for row in journal if row.get("matching_retry"))
+    payouts_retries = 1 if "rate_limit_retry" in page[0]["payload"]["behaviors"] else 0
+    if payouts_retries != 1:
+        raise SystemExit("payouts page observation has no rate_limit_retry")
+    line(f"retries: agent_http=not-applicable grading_http=not-applicable "
+         f"sandbox_payouts={payouts_retries} sandbox_settlements_429={throttled} "
+         f"sandbox_settlements_retries={retried}")
+
+    # 6. The alias rule is the msb pool. A second sandbox reaches the observer,
+    #    and the gateway proxy shows both as loopback, so a host firewall on the
+    #    observer port cannot tell them apart.
+    second_sandbox_test()
+
+    # 7. A mid-run SIGKILL leaves the observer. The process group removes it.
+    mid_run_kill_test()
+
+    # 8. Measured model calls and remaining processes.
+    total = sum(item.model_calls or 0 for item in services if item.model_calls is not None)
+    if total != 0:
+        raise SystemExit(f"model calls were made: {total}")
+    fake_calls = len(fake_log.read_text().splitlines()) if fake_log.exists() else 0
+    line(f"decisions: fake_requests={fake_calls} model_calls={total}")
+    if fake_calls != 0:
+        raise SystemExit(f"the blocked decision endpoint received {fake_calls} requests")
+    remaining_rows = observer_rows()
+    if remaining_rows:
+        raise SystemExit("observer process remains: " + " | ".join(remaining_rows))
+    if harness_processes():
+        raise SystemExit("harness process remains")
+    if lambo_children():
+        raise SystemExit("lambo child remains")
+    line("processes: observer_remaining=0 service_remaining=0 lambo_remaining=0")
+finally:
+    for item in services:
+        if item.proc.poll() is None:
+            item.kill()
+        try:
+            item.stderr.close()
+        except Exception:
+            pass
+    try:
+        os.killpg(os.getpgid(fake.pid), signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    fake.wait()
 PY
 
 say "rehearsal: observe -> publish -> recall -> enforce"

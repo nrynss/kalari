@@ -361,6 +361,18 @@ private def admit (ctx : Context) (request : RunRequest) : Except String Unit :=
   for check in ctx.checks do
     permit ctx { request with workspace := ctx.checkWorkspace, command := check.command }
 
+/-- A lesson may publish from a run only when every candidate truth check in
+that run names the session's trusted artifact. The check program and the truth
+artifact are fixed, so the artifact argument is the remaining binding. -/
+def verifyCandidateTruthArtifact (record : RunRecord) (artifact : String) : Except String Unit := do
+  let checks := record.checks.filter fun check =>
+    check.command.length == 4 && check.command[0]? == some "python3" &&
+    check.command[3]? == some trustedTruthArtifactName
+  if checks.isEmpty then throw "run has no candidate truth check"
+  for check in checks do
+    unless check.command[2]? == some artifact do
+      throw "candidate truth check does not name the trusted artifact"
+
 private def resolveAllowlist (runtime : Runtime) (hosts : List AllowHost) :
     ExceptT String IO (List AllowHost) := do
   let mut rules := []
@@ -407,7 +419,8 @@ private def ipv4Nat? (value : String) : Option Nat :=
     | _, _, _, _ => none
   | _ => none
 
-private def isolationMessage : String :=
+/-- The production refusal. The service and the harness share this message. -/
+def isolationMessage : String :=
   "observer requires verified exclusive guest source isolation"
 
 /-- A guest address is exclusive when the runtime reports a private /30 with
@@ -458,7 +471,7 @@ private def verifySandboxPolicy (name expectedCidr : String) (port : Nat) (raw :
   let [range] := ports.toList | throw isolationMessage
   let start ← (range.getObjVal? "start" >>= Json.getNat?).mapError fun _ => isolationMessage
   let stop ← (range.getObjVal? "end" >>= Json.getNat?).mapError fun _ => isolationMessage
-  let protocolOk := protocols.toList.all fun protocol =>
+  let protocolOk := !protocols.toList.isEmpty && protocols.toList.all fun protocol =>
     match protocol.getStr? with
     | .ok "tcp" => true
     | _ => false
@@ -837,6 +850,32 @@ private def fixtureResult (stdout : String := "") : Result :=
 private def fixtureFailure (stderr : String) : Result :=
   { (fixtureResult "") with exitCode := some 1, stderr := stderr.toUTF8 }
 
+private def fixtureRule (cidr : String := "203.0.113.10/32") (port : Nat := 18080)
+    (protocols : List String := ["tcp"]) : Json :=
+  Json.mkObj [
+    ("action", toJson "allow"),
+    ("direction", toJson "egress"),
+    ("destination", Json.mkObj [("cidr", toJson cidr)]),
+    ("protocols", toJson protocols),
+    ("ports", toJson [Json.mkObj [
+      ("start", toJson port),
+      ("end", toJson port)]])]
+
+private def fixtureInspect (name : String) (status : String := "Running")
+    (rules : List Json := [fixtureRule]) (published : List Json := []) : String :=
+  let policy : Json := Json.mkObj [
+    ("default_egress", toJson "deny"),
+    ("default_ingress", toJson "deny"),
+    ("rules", toJson rules)]
+  let network : Json := Json.mkObj [
+    ("enabled", toJson true),
+    ("ports", toJson published),
+    ("policy", policy)]
+  (Json.mkObj [
+    ("name", toJson name),
+    ("status", toJson status),
+    ("active_config", Json.mkObj [("network", network)])]).compress
+
 def fixtureRuntime (calls : IO.Ref (List String)) (variant : String)
     (caps : Caps) (truth duplicates : String) (tampered existsRef : IO.Ref Bool) : Runtime where
   resolve := fun host => do
@@ -845,28 +884,7 @@ def fixtureRuntime (calls : IO.Ref (List String)) (variant : String)
     return ["203.0.113.10", "203.0.113.10"]
   wait := fun _ => throw (.userError "unexpected image retry")
   network := fun _ => pure (.ok { guest := "172.16.0.6", gateway := "172.16.0.5" })
-  inspect := fun name =>
-    let range : Json := Json.mkObj [
-      ("start", toJson (18080 : Nat)),
-      ("end", toJson (18080 : Nat))]
-    let rule : Json := Json.mkObj [
-      ("action", toJson "allow"),
-      ("direction", toJson "egress"),
-      ("destination", Json.mkObj [("cidr", toJson "203.0.113.10/32")]),
-      ("protocols", toJson ["tcp"]),
-      ("ports", toJson [range])]
-    let policy : Json := Json.mkObj [
-      ("default_egress", toJson "deny"),
-      ("default_ingress", toJson "deny"),
-      ("rules", toJson [rule])]
-    let network : Json := Json.mkObj [
-      ("enabled", toJson true),
-      ("ports", toJson ([] : List Json)),
-      ("policy", policy)]
-    pure (.ok (Json.mkObj [
-      ("name", toJson name),
-      ("status", toJson "Running"),
-      ("active_config", Json.mkObj [("network", network)])]).compress)
+  inspect := fun name => pure (.ok (fixtureInspect name))
   runner := fun argv timeout output => do
     let (stage, reply) ← match argv with
       | ["msb", "pull", image] =>
@@ -1198,9 +1216,38 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
   let badPolicyRun ← run badPolicy observed { req with command := ["python3", "/candidate/correct.py"] }
   verify (match badPolicyRun with | .error e => e == isolationMessage | .ok _ => false)
     "sandbox without a verifiable policy was accepted"
+  let crafted (label : String) (inspect : String → String) : IO Unit := do
+    let craftedCalls ← IO.mkRef []
+    let craftedRuntime : Runtime := {
+      (fixtureRuntime craftedCalls "correct" caps truth duplicateRows obsTamper obsExists) with
+      inspect := fun name => pure (.ok (inspect name)) }
+    stopped.set false
+    let craftedRun ← run craftedRuntime observed { req with command := ["python3", "/candidate/correct.py"] }
+    verify (match craftedRun with | .error e => e == isolationMessage | .ok _ => false)
+      s!"crafted inspect case {label} was accepted"
+    verify ((← craftedCalls.get) == ["resolve", "resolve", "pull", "create-v2", "remove-v2"])
+      s!"crafted inspect case {label} ran the guest or leaked its sandbox"
+    verify (!(← stopped.get)) s!"crafted inspect case {label} started the observer"
+  crafted "second egress rule" fun name => fixtureInspect name (rules := [fixtureRule, fixtureRule])
+  crafted "published port" fun name => fixtureInspect name
+    (published := [Json.mkObj [("host", toJson (8080 : Nat)), ("guest", toJson (80 : Nat))]])
+  crafted "stopped sandbox" fun name => fixtureInspect name (status := "Stopped")
+  crafted "empty protocol list" fun name => fixtureInspect name (rules := [fixtureRule (protocols := [])])
+  crafted "non-tcp protocol" fun name => fixtureInspect name (rules := [fixtureRule (protocols := ["udp"])])
   verify ((← Kalari.Evidence.load store).records.length == beforeUnknown)
     "an unproven observer appended evidence"
   IO.println "run observer: linked retry trace accepted; mismatched fingerprint, failed differential, passing lesson check with a failed differential, malformed trace, and unproven guest isolation rejected"
+  IO.println "run inspect: a second rule, a published port, a stopped sandbox and an empty or non-tcp protocol list all fail closed"
+  let goodCheck : Check := { id := "candidate-v1-truth-v1", assertion := "candidate matches trusted v1", command := ["python3", "kalari_candidate_truth_check.py", "payouts.jsonl", trustedTruthArtifactName] }
+  let badCheck := { goodCheck with command := ["python3", "kalari_candidate_truth_check.py", "other.jsonl", trustedTruthArtifactName] }
+  let baseRecord : RunRecord := { request := req, verdict := fixtureVerdict "exited" (some 0), checks := [goodCheck], check_results := [], timings := { wall_ms := 0 } }
+  verify ((verifyCandidateTruthArtifact baseRecord "payouts.jsonl").isOk)
+    "the trusted artifact check was rejected"
+  verify (!((verifyCandidateTruthArtifact { baseRecord with checks := [badCheck] } "payouts.jsonl").isOk))
+    "a candidate truth check for another artifact was accepted"
+  verify (!((verifyCandidateTruthArtifact { baseRecord with checks := [] } "payouts.jsonl").isOk))
+    "a run without a candidate truth check was accepted"
+  IO.println "run artifact: the candidate truth check must name the trusted artifact"
 
 #guard (compareRecords
   "{\"id\":\"A\",\"amount\":2}\n{\"id\":\"B\",\"amount\":4}\n"

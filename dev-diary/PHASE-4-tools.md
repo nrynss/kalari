@@ -249,6 +249,14 @@ Demonstrate the complete cross-upgrade path through the actual dispatcher: a ver
 
 **Orchestrator note:** the Lesson.lean scope above is narrowed to the artifact binding because the re-review showed `recordUnlocked` can select a same-ID check naming another artifact. The service pre-check covers the served path today, but the predicate must state the binding itself so a future caller cannot inherit the gap. No other Lesson.lean change is owned.
 
+**Notes (in review):** Production `kalari serve` refuses every observer configuration, including a fully formed one. The earlier acceptance is reverted. The rehearsal runs through `tests/live/observer-harness.lean`, a live-test entry point that calls the same dispatcher and is not reachable from `serve`. `tests/live/observer.sh` proves the refusal with three observer setups before it starts the harness.
+
+The alias egress rule stays the msb pool `172.16.0.0/12`. The runtime allocates the `/30` at create and `msb modify` has no network rule option. The rehearsal prints the host firewall rule for the observer port. A host firewall needs root, and the msb gateway proxy presents every sandbox as `127.0.0.1` with no forwarded header. The rule matches pool sources and the proxy connection does not carry one. The second-sandbox test therefore returns `200` for both sandboxes and states `isolation=not-established`. The README and the transcript state this. No exclusivity is claimed.
+
+A mid-run `SIGKILL` of the harness leaves the observer. The rehearsal puts the harness in its own session, kills the process group, and checks that no observer process remains. The shell cleanup also kills any observer by its unique arguments and fails if `msb list` fails. The transcript derives the sandbox payouts retry from the evidence page observation, counts the settlements grading journal entries, and prints `not-applicable` for the agent and grading counts. Clef calls are counted and redirected to a local fake. The test fails on any call.
+
+The gate covers the dispatcher allowlist overwrite. `Run.exercise` covers a second egress rule, a published port, a stopped sandbox and an empty or non-tcp protocol list. The service fixture rejects a run record whose candidate truth check names another artifact.
+
 ---
 
 ## Exit Criteria

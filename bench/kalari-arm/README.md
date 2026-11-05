@@ -19,16 +19,23 @@ Lambo store and pinned tools must be prepared separately. The inference key
 belongs in the environment, never in these files. See `tests/live/run.sh` for
 trusted-session construction and private dependency staging.
 
-The service accepts an optional `observer` in the trusted session. The caller
-names the payouts server and the guest-visible msb gateway alias. It cannot
-supply a guest address. For each run the service reads the guest and gateway
-from the runtime, requires one private /30 and one egress rule for the observer
-port, and starts the observer only then. A runtime that cannot report the
-network, a sandbox with another rule or a caller-supplied address keeps the
-refusal. `tests/live/observer.sh` rehearses observe, publish, recall and
-enforce with a private fixture-embedder Lambo store and no model calls. A
-`record_lesson` call alone is still not evidence that a lesson was published.
-The run must have produced the trusted observation.
+The service refuses every `observer` setup. The msb gateway presents every
+sandbox request to the host as loopback. The runtime cannot prove an exclusive
+guest source. A second sandbox can reach the observer and enter the trusted
+trace. A host firewall on the observer port cannot tell the sandboxes apart,
+because the proxy connection carries no per-sandbox marker. The observer is not
+enabled in production.
+
+`tests/live/observer.sh` rehearses observe, publish, recall and enforce through
+a harness-only entry point, `tests/live/observer-harness.lean`. It calls the
+same dispatcher with an observer setup that `kalari serve` refuses. The
+rehearsal uses a private fixture-embedder Lambo store, counts Clef calls and
+points them at a local fake. It states one deviation. The alias egress rule is
+the msb pool `172.16.0.0/12`, not a `/32`, because the runtime allocates the
+`/30` at create and has no post-create rule change. The rehearsal proves a
+second sandbox is not blocked. It does not claim isolation. A `record_lesson`
+call alone is still not evidence that a lesson was published. The run must have
+produced the trusted observation.
 
 `session.py` prepares separate candidate, baseline, check, and evidence
 workspaces plus a private fixture-embedder Lambo configuration. Provision and
