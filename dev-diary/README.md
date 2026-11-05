@@ -149,11 +149,13 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P4 | 13 / 13 | All done. T4.6b adds the trusted retry trace and lesson. T4.7c closed the production memory path with the observer refused and the harness-only rehearsal |
 | P5 | 10 / 10 | All done. T5.6 published the traced comparison: zero learned-memory benefit observed, cost/attempts/containment lead. T5.6a added two containment runs outside it (live publication held) |
 | P6 | 4 / 4 | All done. Live demo serves the frozen comparison with working run links |
-| P7 | 1 / 6 | T7.5a re-theme done. A judges-page polish is in progress (user's agent). T7.1 and T7.2 ready. T7.3, T7.4, T7.5 wait |
+| P7 | 2 / 6 | T7.5a and T7.5 done. T7.1 and T7.2 ready. T7.3 and T7.4 wait |
 
 ---
 
 ## Handoff Log
+
+- **T7.5 closed.** Docs site builds for Pages and the VM, privacy scan clean on both, both gates pass. The deploy wiring is committed but never executed.
 
 - **Snippet panel fixed.** The MCP config block in section 1 was a dark panel with light-on-light chips. It is now a light paper panel with ink text and no chip backgrounds, matching the quiet panels. Re-rendered, both checks green.
 

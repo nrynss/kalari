@@ -80,7 +80,7 @@ requires:   [T5.6, T5.6a, T6.3, T7.3]
 fixture-ok: yes
 size:       M · mid
 owns:       site/, .github/workflows/pages.yml, deploy/vultr/install.sh, web/site/, web/fixture/rendered/
-status:     in-review:t7-5
+status:     done
 ```
 Build a static Astro and Starlight documentation site in `site/` and serve it on **both** GitHub Pages (`.github/workflows/pages.yml`) and the Vultr VM at `https://kalari.nryn.dev/docs/` alongside the live Chaaya judge console at `https://kalari.nryn.dev/`:
 
