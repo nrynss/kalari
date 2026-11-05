@@ -230,6 +230,22 @@ The table product.md promises, per condition, as counts, leading with cost, cons
 
 ---
 
+### T5.6a: Deliberate containment demonstration ★
+```yaml
+requires:   [T5.6]
+fixture-ok: no
+size:       S · mid
+owns:       tests/live/containment.sh, tests/live/containment-transcript.txt, web/ (judges containment link only), bench/RESULTS.md (containment label only)
+status:     not-started
+```
+Run the cursor_loop consumer through production `run_in_sandbox` on the VM and publish the cap as evidence. The loop never ends on its own; the aashaan time cap must kill it with verdict `killed_timeout`. Capture the verdict, the wall time against the configured cap, the output cap behavior, and the cleanup proof that no sandbox or process remains. Commit the runner and a sanitized transcript under `tests/live/`. Link the run from the judges page and label it in `bench/RESULTS.md` as a deliberate containment demonstration. Keep its measurements separate from the frozen comparison: it is not a benchmark row, it carries no verdict count, and it never merges into condition tallies.
+
+**Live budget: $1.** One run plus verification. No inference calls are expected; stop and report if any appear.
+
+**Done when:** the transcript shows `killed_timeout` from a production `run_in_sandbox` call with cleanup verified; the judges page links the run; `RESULTS.md` labels it deliberate and separate; `./tools/check.sh` passes.
+
+---
+
 ## Exit Criteria
 
 - [ ] The pilot ran before the Kalari arm, and the pair was frozen in between.
