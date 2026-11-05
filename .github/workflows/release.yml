@@ -1,0 +1,116 @@
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version, matching lakefile.toml (for example 0.1.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: kalari-release
+  cancel-in-progress: false
+
+jobs:
+  green:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.verify.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require successful main CI on this exact commit
+        id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == refs/heads/main ]]
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          python3 - <<'PY'
+          import os, tomllib
+          with open("lakefile.toml", "rb") as source:
+              assert tomllib.load(source)["version"] == os.environ["VERSION"]
+          PY
+          gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs" \
+            -f head_sha="$SHA" -f branch=main -f event=push -f status=success \
+            --jq '.workflow_runs | length > 0' | grep -qx true
+          if git rev-parse "refs/tags/v$VERSION" >/dev/null 2>&1; then
+            test "$(git rev-list -n 1 "v$VERSION")" = "$SHA"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  package:
+    needs: green
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Lean toolchain
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Build release executables
+        run: lake build kalari kalari-aashaan
+      - name: Package Linux x86-64 archive and Debian installer
+        env:
+          VERSION: ${{ needs.green.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          name="kalari-$VERSION-linux-x86_64"
+          mkdir -p "dist/$name/bin" deb/usr/bin deb/DEBIAN
+          install -m755 .lake/build/bin/kalari .lake/build/bin/kalari-aashaan "dist/$name/bin/"
+          cp deploy/vultr/kalari.json.example deploy/vultr/session.json.example "dist/$name/"
+          cp "dist/$name/bin/"* deb/usr/bin/
+          printf '%s\n' \
+            'Install bin/kalari and bin/kalari-aashaan into a directory on PATH.' \
+            'Requires Linux x86-64 with glibc 2.39 or newer.' \
+            'Sandbox execution additionally requires Microsandbox and working KVM.' \
+            'Configure Lambo, Vimanam, curl, API credentials and session paths before use.' \
+            'The example JSON files require editing for your environment.' > "dist/$name/INSTALL.txt"
+          mkdir -p deb/usr/share/doc/kalari
+          cp "dist/$name/INSTALL.txt" deb/usr/share/doc/kalari/
+          printf 'Package: kalari\nVersion: %s\nArchitecture: amd64\nMaintainer: Kalari contributors\nDepends: libc6 (>= 2.39), libgmp10, libuv1t64, libssl3t64, zlib1g, curl\nDescription: Sandboxed API migration verification MCP tools\n' "$VERSION" > deb/DEBIAN/control
+          tar -C dist -czf "dist/$name.tar.gz" "$name"
+          dpkg-deb --root-owner-group --build deb "dist/$name.deb"
+          ldd .lake/build/bin/kalari .lake/build/bin/kalari-aashaan > dist/runtime-libraries.txt
+          ! grep -q 'not found' dist/runtime-libraries.txt
+          (cd dist && sha256sum *.tar.gz *.deb > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-packages
+          path: |
+            dist/*.tar.gz
+            dist/*.deb
+            dist/SHA256SUMS
+            dist/runtime-libraries.txt
+
+  publish:
+    needs: [green, package]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-packages
+          path: dist
+      - name: Publish draft for inspection
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.green.outputs.version }}
+          SHA: ${{ github.sha }}
+        run: |
+          gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" \
+            --target "$SHA" --draft --title "Kalari $VERSION" \
+            --notes "Linux x86-64 packages built on Ubuntu 24.04. Requires glibc 2.39 or newer. External tools and sandbox configuration are required." \
+            dist/*
