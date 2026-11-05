@@ -162,8 +162,8 @@ retry_grading = retry_summary('grading')
 
 if verdict == 'PASS' and first_run_passed:
     right, basis = True, 'first trusted run passed (candidate-truth and differential checks)'
-elif n_evidence_runs == 0 and verdict != 'PASS':
-    right, basis = False, 'no consumer run against v2' if verdict in ('FAIL',) else 'no consumer run against v2'
+elif n_evidence_runs == 0:
+    right, basis = False, 'no consumer run against v2'
 elif verdict == 'PASS':
     right, basis = False, 'first trusted run did not pass'
 else:
