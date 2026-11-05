@@ -74,20 +74,34 @@ size:       M · mid
 owns:       site/, .github/workflows/pages.yml, deploy/vultr/install.sh, web/site/, web/fixture/rendered/
 status:     not-started
 ```
-Build a static Astro and Starlight documentation site in `site/` and serve it on **both** GitHub Pages (`.github/workflows/pages.yml`) and the Vultr VM at `https://kalai.nryn.dev/docs/` alongside the live Chaaya judge console at `https://kalai.nryn.dev/`:
+Build a static Astro and Starlight documentation site in `site/` and serve it on **both** GitHub Pages (`.github/workflows/pages.yml`) and the Vultr VM at `https://kalari.nryn.dev/docs/` alongside the live Chaaya judge console at `https://kalari.nryn.dev/`:
 
-- **Dual deployment (`ASTRO_SITE` / `ASTRO_BASE`).** Parameterize `site/astro.config.mjs` via `ASTRO_SITE` and `ASTRO_BASE` so `.github/workflows/pages.yml` builds for GitHub Pages (with CTAs and run links pointing to `https://kalai.nryn.dev/`), while `deploy/vultr/install.sh` builds with `ASTRO_BASE=/docs` and syncs `site/dist/` into `/srv/kalari/www/docs/` behind the existing Caddy `file_server`. Add a same-origin `/docs/` link in `web/site/index.html` so Chaaya and the docs cross-link without violating `web/check.sh`'s zero-external-URL or `default-src 'self'` CSP rules.
+- **Dual deployment (`ASTRO_SITE` / `ASTRO_BASE`).** Parameterize `site/astro.config.mjs` via `ASTRO_SITE` and `ASTRO_BASE` so `.github/workflows/pages.yml` builds for GitHub Pages (with CTAs and run links pointing to `https://kalari.nryn.dev/`), while `deploy/vultr/install.sh` builds with `ASTRO_BASE=/docs` and syncs `site/dist/` into `/srv/kalari/www/docs/` behind the existing Caddy `file_server`. Add a same-origin `/docs/` link in `web/site/index.html` so Chaaya and the docs cross-link without violating `web/check.sh`'s zero-external-URL or `default-src 'self'` CSP rules.
 - **Visual identity (`dev-diary/design/`).** Use the canonical SVG and CSS files in [`design/`](design/README.md) — do not invent new icons, colors, or diagrams:
   - Copy [`design/kalari-mark.svg`](design/kalari-mark.svg) (`128×128` **Kuzhikalari Pit & Urumi** emblem) to `site/src/assets/kalari-mark.svg`.
   - Copy [`design/favicon.svg`](design/favicon.svg) (`32×32` compact emblem) to both `web/site/favicon.svg` and `site/public/favicon.svg`, and replace the inline header `<svg>` in `web/site/index.html`, `web/site/session.html`, and `web/site/run.html` with the `24×24` wordmark snippet in [`design/README.md`](design/README.md).
   - Apply `SECTION A` of [`design/kalari-palette.css`](design/kalari-palette.css) (**Laterite Pit & Ola Paper** `:root` tokens: `--paper: #f5f1e8`, `--ink: #171a1c`, `--accent: #a63a2b`, `--brass: #d99b38`, `--pass: #1f5a46`, `--dark: #121514`) to `web/site/app.css` and regenerate `web/fixture/rendered/` via `node web/fixture/render.mjs`.
   - Copy `SECTION B` of [`design/kalari-palette.css`](design/kalari-palette.css) to `site/src/styles/kalari.css` and wire [`design/containment-loop.svg`](design/containment-loop.svg) and [`design/architecture.svg`](design/architecture.svg) into `site/src/components/ContainmentLoopSvg.astro` and `site/src/components/ArchitectureSvg.astro`.
-- **Start here.** Explain the use case, walk judges through the live console at `https://kalai.nryn.dev/`, and link to the repository and video when available.
+- **Start here.** Explain the use case, walk judges through the live console at `https://kalari.nryn.dev/`, and link to the repository and video when available.
 - **How it works.** Explain the Lean 4 gate (linking the 4 proved theorems in `Kalari/Gate.lean`), the `kalari-aashaan` and Microsandbox microVM boundary, and how Lambo recall informs a run.
 - **Run it yourself.** Document both presets, configuration, and `./tools/check.sh`. Keep the README usable on its own.
-- **Evidence and limits.** Explain the benchmark method, cite T5.6 for measured claims and link to individual runs on `https://kalai.nryn.dev/`. Distinguish the observer rehearsal from current production behavior.
+- **Evidence and limits.** Explain the benchmark method, cite T5.6 for measured claims and link to individual runs on `https://kalari.nryn.dev/`. Distinguish the observer rehearsal from current production behavior.
 
-**Done when:** the Pages build and `/docs/` build both pass, `./web/check.sh` passes with the updated Chaaya theme and `/docs/` link, navigation and links work on both GitHub Pages and `https://kalai.nryn.dev/docs/`, the judge walkthrough reaches the public demo and run evidence, and the published site passes the same privacy scan as the repository.
+**Done when:** the Pages build and `/docs/` build both pass, `./web/check.sh` passes with the updated Chaaya theme and `/docs/` link, navigation and links work on both GitHub Pages and `https://kalari.nryn.dev/docs/`, the judge walkthrough reaches the public demo and run evidence, and the published site passes the same privacy scan as the repository.
+
+---
+
+### T7.5a: Chaaya re-theme ★
+```yaml
+requires:   [T5.6a]
+fixture-ok: yes
+size:       S · mid
+owns:       web/site/, web/fixture/rendered/
+status:     not-started
+```
+Apply the decided visual identity to the live console, ahead of the docs site. Copy SECTION A of `dev-diary/design/kalari-palette.css` (Laterite Pit and Ola Paper `:root` tokens) into `web/site/app.css`. Copy `dev-diary/design/favicon.svg` to `web/site/favicon.svg` and replace the inline header SVG in `web/site/index.html`, `web/site/session.html`, and `web/site/run.html` with the wordmark snippet in `dev-diary/design/README.md`. Regenerate with `node web/fixture/render.mjs`. No new icons, colors, or diagrams. No `/docs/` link here; that ships with T7.5 once `site/` exists.
+
+**Done when:** `./web/check.sh` passes with the new theme; the rendered snapshots match; the privacy scan stays clean. No live spend.
 
 ---
 
