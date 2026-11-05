@@ -20,7 +20,11 @@ status:     not-started
 ```
 Setup docs for both presets; which Vultr services are used and how they power the solution (the rules require it); the architecture; the use case; the result with its numbers and links; what is proved and what isn't (the gate and the aashaan, not the agent's code); the libraries named with their licences (Vimanam Apache-2.0, Lambo, Microsandbox, graphql-core MIT).
 
-**Done when:** a reader can set up the Vultr preset from the README alone; every claim links to evidence.
+Installation must start with a verified release archive and checksum. Explain binary placement, supported hosts, external dependencies, configuration, and MCP registration. Include source-build instructions for contributors.
+
+Show one complete migration on a supported local machine and the Vultr path. Link detailed setup and troubleshooting from T7.5. Keep enough instructions here for independent setup.
+
+**Done when:** a reader can install and configure the Vultr preset from the README alone. The documented release exists and its checksum verifies. Every claim links to evidence.
 
 ---
 
@@ -89,6 +93,25 @@ Build a static Astro and Starlight documentation site in `site/` and serve it on
 - **Start here.** Explain the use case, walk judges through the live console at `https://kalari.nryn.dev/`, and link to the repository and video when available.
 - **How it works.** Explain the Lean 4 gate (linking the 4 proved theorems in `Kalari/Gate.lean`), the `kalari-aashaan` and Microsandbox microVM boundary, and how Lambo recall informs a run.
 - **Run it yourself.** Document both presets, configuration, and `./tools/check.sh`. Keep the README usable on its own.
+
+  Installation and setup must cover the following topics. Derive commands from the implementation and verify them. Mark unavailable release assets and untested platforms explicitly.
+
+  - **Release installation.** Link the published version, archive, and checksums. Show checksum verification, extraction, executable permissions, PATH setup, version checks, upgrade, and removal. Cover both executables. Do not require Lean for binary users. Document the actual architecture, operating system, libc floor, and dynamic libraries from release validation.
+  - **Host requirements.** Explain CPU virtualization, accessible `/dev/kvm`, disk needs, and `msb doctor`. Distinguish the host running the coding agent from the host running Kalari. State what has been tested on Linux. Explain macOS, Windows, WSL, and remote Linux options only where verified. Do not imply a remote MCP connection exists without working transport instructions.
+  - **Dependencies and ownership.** Give tested versions and installation checks for Microsandbox, Lambo, Vimanam, curl, and required language runtimes. Explain which host needs each tool. Explain how Lambo runs as a child process. Identify optional model and deployment components. State who pays for each service.
+  - **Sandbox preparation.** Document `umask 0022`, writable storage, image caching with retries, and execution with `--pull never`. Explain guest `vm.overcommit_memory=1` and how the production path sets it. Show how runtimes, dependencies, code, and the aashaan reach the guest. Identify unsupported consumer runtimes and dependency installation limits.
+  - **Network setup.** Explain host endpoints versus guest endpoints, API reachability, and separate baseline and candidate allowlists. Show IP-and-port rules and hostname resolution. Explain the recorded TLS domain-rule limitation. Cover local APIs and remote APIs with working examples. Keep keys outside guests.
+  - **Configuration reference.** Document every supported field in both JSON files, its type, default, constraints, and path interpretation. Cover model endpoints, key environment names, Lambo configuration, sandbox limits, and executable paths. Use `deploy/vultr/*.example`, `Kalari/Model.lean`, and the actual parser as sources. Explain that deployment placeholders need replacement.
+  - **Bring your own migration.** List required inputs: old and new specifications, baseline and candidate workspaces, consumer command and arguments, output artifact, check workspace, evidence workspace, session identity, and repository scope. Explain baseline isolation, comparable input data, credentials, and API availability. Show how to preserve a baseline before editing.
+  - **Verification harness.** Explain the candidate and baseline executions, trusted checks, differential comparison, artifact format, and pass criteria. State current comparison assumptions and supported specification formats. Explain which checks Kalari supplies and which adapters the developer must write. Show a minimal consumer adapter that emits the supported artifact. Keep benchmark hidden grading distinct from a user's verification harness.
+  - **Coding-agent integration.** Give copyable OpenCode MCP configuration invoking `kalari serve <config.json> <session.json>`. Use absolute paths and show environment handling. Verify initialization and discovery of all five tools. Explain agent restart and how the agent selects tools. Add other clients only after testing their configuration.
+  - **First successful run.** Provide a small reproducible migration using recorded or local replies without production credentials. Show the initial request, expected tool sequence, successful artifact, failed check, and timeout interpretation. State exactly which steps require network access, KVM, or paid services.
+  - **Evidence and interface.** Explain where records and logs live, how sessions map to runs, and how developers inspect them. Document the current read-only web deployment and API shim accurately. Distinguish starting the MCP server from serving the web interface.
+  - **Limits and troubleshooting.** Explain observer rejection and zero published lessons in measured production runs. Cover missing KVM, image pulls, permissions, guest PATH, TLS allowlists, absent artifacts, baseline failures, and interrupted-run cleanup. Use real errors and recovery commands. Avoid presenting planned `kalari check` as implemented.
+  - **Contributor and deployment paths.** Include pinned Lean source builds and `./tools/check.sh`. Separate offline checks from optional live tests and their budgets. Explain the Vultr service user, key delivery, restart, and public HTTPS setup.
+
+  **Setup acceptance.** Record exact host versions and commands used to validate the guide. A clean supported host must install the release without Lean, discover five MCP tools, and complete the documented sample. Verify one failure and evidence inspection. Report every unverified platform or step. If an example needs new code outside task ownership, request an ownership extension before implementing it.
+
 - **Containment walkthrough.** Use T5.6a for one cursor-loop timeout scene, followed by boundary and cleanup evidence. Show configured and measured timing together. Link its evidence separately from benchmark rows.
 - **Evidence and limits.** Explain the benchmark method, cite T5.6 for measured claims and link to individual runs on `https://kalari.nryn.dev/`. Distinguish the observer rehearsal from current production behavior.
 
