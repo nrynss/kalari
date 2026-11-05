@@ -181,7 +181,7 @@ requires:   [T5.3, T4.7, T4.7c]
 fixture-ok: no
 size:       M · mid
 owns:       bench/runs/kalari/
-status:     not-started
+status:     claimed:t5-4
 ```
 Conditions 4 and 5, five repeats each, on the frozen pair, through the harness. Condition 5's lesson comes from that repeat's own upgrade-one session, never copied from another.
 
@@ -197,7 +197,7 @@ requires:   [T5.3]
 fixture-ok: no
 size:       M · mid
 owns:       bench/runs/reference/
-status:     not-started
+status:     claimed:t5-5
 ```
 Conditions 1, 2, 3 and 6, five repeats each, on the frozen pair. Only T5.2b's harder-pair rows may count, and only if they were made on the frozen files (the hashes decide). The original T5.2 rows belong to the old pair and cannot count.
 
