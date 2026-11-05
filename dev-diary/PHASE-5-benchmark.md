@@ -181,13 +181,17 @@ requires:   [T5.3, T4.7, T4.7c]
 fixture-ok: no
 size:       M · mid
 owns:       bench/runs/kalari/
-status:     claimed:t5-4
+status:     in-review
 ```
 Conditions 4 and 5, five repeats each, on the frozen pair, through the harness. Condition 5's lesson comes from that repeat's own upgrade-one session, never copied from another.
 
 **Live budget: $8.** Check the first session's measured cost against the cap before the rest. Stop and report if the projection would exceed it.
 
 **Done when:** every run committed with its result file; `FROZEN.md`'s hashes still match.
+
+**Notes (in review):** All 20 sessions ran on the VM through `bench/runs/kalari/_harness/` (new remote driver reusing the proven `runner.py`/`session.py`/`prepare.py`/`grade.sh` flow, extended for settlements, per-repeat Lambo stores, phase-split retry journals, suite-aware grading; plus a local `run-kalari.sh` driver with keyring key over SSH stdin, VM mutual exclusion, and per-session result assembly in `to_result.py`). Every row is PASS; condition 4 is 10/10 right first time, condition 5 is 6/10. Total spend $0.38 against the $8 budget (first case $0.0150, projection about $0.30).
+
+Zero lessons were published in any upgrade-one session: production `serve` refuses the observer, so `record_lesson` always returned `[]` and every condition-5 recall was empty — condition 5 collapses to condition 4 in memory terms, and the comparison rests on cost, attempts and containment as the benchmark design anticipates. The four non-RFT condition-5 rows are the interesting data: one fail-then-fix recovery through the enforced checks, two sessions where the gate refused shell-wrapped commands and the harness stopped on repeated tool failure while the final (never verified) consumer still graded PASS, and one six-run session that passed on run five and kept experimenting. Settlements agent retry windows measured 1–3 throttled 429s with matching retries; all ten payouts agent windows read unknown because the payouts-live journal counter is process-global and saturated (every request now appends only the overflow marker; grading journals still record). Cleanup is clean on all 20 rows. `FROZEN.md` hashes matched before the first and after the last session; the old pilot rows are untouched. Surprise: `sh -c`-wrapped consumer commands are refused by the gate in some sessions yet executed (and failed on guest PATH) in another; direct `python3 consumer.py` commands always ran.
 
 ---
 
