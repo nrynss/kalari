@@ -135,13 +135,25 @@ requires:   [T5.2a]
 fixture-ok: no
 size:       M · mid
 owns:       bench/pilot/harder/
-status:     claimed:t5-2b
+status:     in-review
 ```
 Run exactly 50 reference sessions on the harder pair: five fresh B5-only sessions for each upgrade, then conditions 1, 2, 3 and 6 on the full pair, five repeats each (40 sessions). The 10 isolated rows diagnose retry alone; the 40 full-pair rows answer the benchmark question after the condition-1 repair. The old 70 rows remain published separately and are never merged into harder-pair counts. B5-in-both remains the pair even if the baseline passes every row.
 
 **Live budget: $12.** The first case's measured cost and the remaining projection must fit that cap before any further session. Stop and report otherwise. Usage deltas and cleanup are checked after every session. The cap is roughly twice the old pair's mean cost per session, with a reserve for one expensive row.
 
 **Done when:** all 50 result files and their sanitized transcript are committed under `bench/pilot/harder/`; counts include every existing measure plus HTTP retries reported separately from consumer sandbox runs; the old pilot is unchanged; no process, scope or sandbox started by the pilot remains.
+
+**Notes (in review):** All 50 sessions ran; every committed row is PASS, right first time, with zero records lost or duplicated and no capped session. `bench/pilot/harder/results/` holds the 50 files; `bench/pilot/harder/SUMMARY.md` counts every measure plus agent/grading HTTP retries (429s / matching attempts / successful matches) apart from sandbox runs; `bench/pilot/harder/TRANSCRIPT.md` is the sanitized jsonl transcript. `validate.py --b5` passes 50/50; `./tools/check.sh` passes; `git diff --stat` shows no change under `bench/pilot/results/`; no process, scope or sandbox from the pilot remains on the VM.
+
+Spend: $3.74 list price across the 50 committed rows (first case $0.066, projection $3.31, inside the cap). Total live spend about $4.17 including two discarded misruns, still inside the $12 cap. Wall 3,864 s over the 50 rows, 861 s stuck (three sessions with a hung run that recovered: condition-3 payouts r3 600 s, condition-6 payouts r2 122 s, condition-3 payouts r5 61 s). One agent retry window is `unknown` (condition-6 payouts r5 overflowed the live journal); every other phase is `ok`.
+
+Pre-step done first: the four API microVMs were redeployed (`deploy.sh down` then `up`) because the running servers lacked `--retry-journal`; all four now run with the flag and their journals record digest-only events. The T5.1a repair held live: all five condition-1 settlements rows show `session_continued`, identity and workspace checks true, and the continuation state consumed.
+
+Two harness-operation mistakes, both contained and reported: (1) the first condition-1 invocation omitted `--repeat`, running all five payouts halves in one go; each payouts run resets the stable XDG base, so repeats 1-4 lost their sessions and only repeat 5 could be continued. The four orphaned payouts rows were deleted and the pairs re-run properly alternating `--repeat` payouts/settlements (about $0.27 of discarded spend). (2) A tracked T5.1 scratch file (`bench/harness/results/c3-payouts.json`) was overwritten by the harness and then deleted as if it were scratch; restored with `git checkout`. After that every run ended with `git checkout -- bench/harness/results/` plus removal of untracked scratch, and `git status` stayed clean outside `bench/pilot/harder/`. The harness writing its intermediate result to a tracked path is a routing gap worth a task: scratch should go somewhere untracked.
+
+Surprise: an unknown second runner executed one condition-6 payouts session on the shared VM and inference account inside my condition-6 repeat-1 window (run dir with a foreign session id, `condition-6.txt` prompt, opencode 2.2.5). It shared the `c6-payouts.json` scratch path, so its FAIL content overwrote my PASS dest, and its tokens polluted both my repeat-1 usage deltas (one showed 388k input tokens in a 5 s session, impossible alone). Both repeat-1 rows were deleted and re-run clean with single-new-run-dir and session-identity checks; every later row passed the same provenance check. The 79-run history on the VM shows no other foreign run. Recommend the orchestrator identify the second runner; concurrent sharing of the scratch path and the account-wide usage endpoint breaks both result attribution and cost attribution.
+
+What the numbers say: the reference setup passes the harder pair 50/50, right first time 50/50, including every B5 retry. The baseline pilot's lesson stands: with B5 in both upgrades the comparison rests on cost, attempts and containment, not the pass rate. Retry behaviour observed: B5-only settlements agents retried up to 7 times in a session (all matching); grading always shows exactly 2 throttled 429s with 2 matching retries per upgrade.
 
 ---
 
