@@ -16,7 +16,7 @@ requires:   [T5.6, T6.3]
 fixture-ok: yes
 size:       S · frontier
 owns:       README.md
-status:     not-started
+status:     done
 ```
 Setup docs for both presets; which Vultr services are used and how they power the solution (the rules require it); the architecture; the use case; the result with its numbers and links; what is proved and what isn't (the gate and the aashaan, not the agent's code); the libraries named with their licences (Vimanam Apache-2.0, Lambo, Microsandbox, graphql-core MIT).
 
@@ -52,7 +52,7 @@ requires:   [T7.1]
 fixture-ok: yes
 size:       XS · user
 owns:       (none)
-status:     not-started
+status:     done
 ```
 Before the user makes it public: a scan for any key value (file names only), IP address, instance ID, account detail or private repository name in the tree and the history.
 
@@ -66,8 +66,10 @@ requires:   [T7.2, T7.3]
 fixture-ok: no
 size:       XS · user
 owns:       (none)
-status:     not-started
+status:     done
 ```
+
+**Notes:** Submitted on lablab.ai as Kalari: Contained Rehearsals for API Upgrades.
 The user submits on lablab.ai: title, short and long descriptions, **Vultr's technology tagged** (VM, Serverless Inference, the sandbox; not the coding tools), cover image, video, slides, the public repository, the demo URL.
 
 **Done when:** submitted.
