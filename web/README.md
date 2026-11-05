@@ -15,7 +15,7 @@ sits outside it and has no HTTP route. The fixture server serves `web/site/` and
 
 | File | Address | What it shows |
 |---|---|---|
-| `web/site/index.html` | `/` | For judges: start here. The pilot baseline, every condition in the fixture, the containment moment and every run. |
+| `web/site/index.html` | `/` | For judges: start here. The pilot baseline, every condition in the fixture, the deliberate containment demonstration and every run. |
 | `web/site/session.html` | `/session.html?id=<id>` | One session: the change list, the blast radius, the recalled checks, each run with logs, the retry loop and the lesson written. |
 | `web/site/run.html` | `/run.html?id=<id>` | One run: its verdict, checks, logs, Clef answer and evidence record. |
 
@@ -91,8 +91,9 @@ loopback and stops it on exit. It reads the rendered snapshots from
     when the record holds a value.
 12. The check derives the table cells, the measure-link count, the not-run rows
     and the repeat counts from the records the snapshot was rendered from. The
-    measure-link count covers table cells, median lines, the frozen worst-run
-    lines and the containment panel. A new record changes the page and the
+    measure-link count covers table cells, median lines and the frozen worst-run
+    lines. The containment panel has its own links, checked against its own
+    record (item 21). A new record changes the page and the
     expectation together. The snapshots cover a second pilot row for one
     condition, a single frozen condition-five record, a complete frozen pair and
     a split frozen store.
@@ -121,6 +122,16 @@ loopback and stops it on exit. It reads the rendered snapshots from
     decision question. It covers a full URL and a scheme-relative URL.
 19. An empty `/api/benchmark` renders the not-yet-published state.
 20. An absent store returns empty arrays and shows a clear state.
+21. The containment panel matches its record: the four figures link the run, every
+    number sits inside a run link, the failure, the polling note, the
+    configuration-only caps, the separate requested, effective and observed
+    policy, the second-guest probe and the verified cleanup are all stated, and
+    a zero-blast-radius claim appears only as a denial. The record passes its
+    contract: `killed_timeout`, `passed=false`, no output-cap claim, no breach,
+    verified cleanup, and a run and check record with the same wall time and
+    cap. The run page shows the creation arguments and the three policy views.
+    The committed evidence under `tests/live/containment-evidence/` and the
+    transcript are scanned for an IP address, an email, a URL and a key pattern.
 
 ## Browser check
 
@@ -141,7 +152,11 @@ part of the gate.
 
 `web/fixture/evidence.jsonl` is the append-only store the fixture server reads.
 `web/fixture/build.py` writes it from the committed pilot results and the
-walkthrough records. Run the build only when the fixture sources change.
+walkthrough records. It also appends the containment demonstration: the
+sanitised evidence under `tests/live/containment-evidence/evidence.jsonl` when
+that file is committed, and otherwise the synthetic sample in
+`web/fixture/sources/containment-sample.jsonl` (marked `synthetic`). Run the
+build only when the fixture sources change.
 
 `web/fixture/rendered/` holds snapshots of the view output. The check parses
 these snapshots from disk. They are made by the same `web/site/app/views.mjs`
@@ -185,9 +200,13 @@ condition five and condition three in the same upgrade. The pilot files are in
   baseline until the frozen pair exists.
 - The single-behaviour rows are `diagnostic`. They used a narrower isolated
   adapter, so the page does not compare them with the condition rows.
-- The containment moment is `condition-3-payouts-r5.json`. Its record has
-  `session_capped` true, wall time 1202.0 s, verdict `PASS`, and 2,431 graded
-  records. The page links that run like every other figure.
+- The containment panel is the deliberate containment demonstration, not a
+  benchmark row. No frozen row was capped (`bench/RESULTS.md` section 6), so the
+  panel never shows a session cap. It reads a `containment` record from its own
+  session, `containment-demo`, and shows the aashaan's per-run time cap, the
+  measured wall time, `killed_timeout` and `passed=false`; then the boundary
+  (requested, effective and observed network policy, kept apart) and the cleanup
+  proof. The panel is absent when the store has no such session.
 - The walkthrough session is illustrative. The change facts and IDs come from
   `testdata/vimanam/2.1.0/payouts.json`. The call site comes from
   `bench/workspaces/payout-sync/payout_sync.py`. The Clef answer comes from
@@ -387,6 +406,7 @@ reads, and the web check checks it on every record every route returns.
 | `lesson-policy` | `Kalari.Tools.Lesson.PolicyProvenance` | The policy check writes it. |
 | `session` | `{title, summary, arm, illustrative, notes}` | No producer yet. The fixture supplies it. |
 | `change` | `{id, kind, severity, title, summary, endpoint, source}` | No producer yet. The fixture supplies it. |
+| `containment` | `kalari.containment.v1`, written by `tests/live/containment.sh` | The containment demonstration's own summary. It shares the run id of the production `run` record. |
 | `blast-radius` | `Kalari.Model.BlastRadius` | The search tool writes links to Lambo, not the evidence store. |
 | `decision` | `{question, question_set, model, answer}` | No producer yet. The fixture supplies it. |
 

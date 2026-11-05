@@ -531,8 +531,24 @@ def illustrative_records() -> list[dict[str, Any]]:
     return records
 
 
+CONTAINMENT_EVIDENCE = REPO / "tests" / "live" / "containment-evidence" / "evidence.jsonl"
+CONTAINMENT_SAMPLE = HERE / "sources" / "containment-sample.jsonl"
+
+
+def containment_records() -> list[dict[str, Any]]:
+    """The deliberate containment demonstration, in its own session.
+
+    The real, sanitised evidence from the live run is used when it is
+    committed. Until then the fixture carries a synthetic sample with the same
+    shape, marked `synthetic` in the containment payload.
+    """
+    path = CONTAINMENT_EVIDENCE if CONTAINMENT_EVIDENCE.is_file() else CONTAINMENT_SAMPLE
+    with path.open(encoding="utf-8") as handle:
+        return [json.loads(line) for line in handle if line.strip()]
+
+
 def main() -> None:
-    records = pilot_records() + illustrative_records()
+    records = pilot_records() + illustrative_records() + containment_records()
     with OUT.open("w", encoding="utf-8", newline="\n") as handle:
         for item in records:
             handle.write(json.dumps(item, ensure_ascii=False, separators=(",", ":")))

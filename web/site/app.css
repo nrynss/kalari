@@ -879,6 +879,48 @@ td.num {
   font-size: 0.95rem;
 }
 
+.containment-step {
+  margin: 2.25rem 0 0.5rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dark-muted);
+}
+
+.containment-measure-sub {
+  font-size: 0.85rem;
+  color: var(--dark-muted);
+}
+
+.containment-list {
+  margin: 0.75rem 0;
+  padding-left: 1.25rem;
+  max-width: 62ch;
+  color: var(--dark-ink);
+  font-size: 0.95rem;
+}
+
+.containment-caveat {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--dark-rule);
+  color: var(--dark-ink);
+}
+
+.containment code {
+  color: var(--dark-ink);
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-size: 0.92em;
+}
+
+.plain-list {
+  margin: 0.5rem 0 1rem;
+  padding-left: 1.25rem;
+  max-width: 70ch;
+}
+
 .containment-links {
   display: flex;
   align-items: center;
@@ -1892,6 +1934,11 @@ td.num {
   .containment-lede,
   .containment-note,
   .containment-context,
+  .containment-step,
+  .containment-measure-sub,
+  .containment-list,
+  .containment-caveat,
+  .containment code,
   .containment-measure-label {
     color: #000;
   }

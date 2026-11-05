@@ -410,6 +410,10 @@ try {
   if (!runs.includes("pilot-c3-payouts-r5")) {
     throw new Error("the fixture has no pilot-c3-payouts-r5 run");
   }
+  const containment = await getJson(base, "api/sessions/containment-demo");
+  const containmentRunId = containment.find((record) => record.kind === "containment")?.run_id;
+  if (!containmentRunId) throw new Error("the fixture has no containment demonstration");
+  const containmentRunRecords = await getJson(base, `api/runs/${containmentRunId}`);
   const sessionRecords = await getJson(base, "api/sessions/payouts-upgrade");
   const runRecords = await getJson(base, "api/runs/pilot-c3-payouts-r5");
   const illustrativeRunRecords = await getJson(base, "api/runs/payouts-attempt-1");
@@ -431,8 +435,8 @@ try {
   const snapshots = {
     judges: {
       view: "judges",
-      args: { benchmark, runs, sessions, lessons, runDetails },
-      inputs: { benchmark, runs, sessions, lessons },
+      args: { benchmark, runs, sessions, lessons, runDetails, containment },
+      inputs: { benchmark, runs, sessions, lessons, containment },
     },
     "judges-empty": {
       view: "judges",
@@ -446,8 +450,8 @@ try {
     },
     "judges-extra-run": {
       view: "judges",
-      args: { benchmark: benchmarkWithExtra, runs: runsWithExtra, sessions, lessons },
-      inputs: { benchmark: benchmarkWithExtra, runs: runsWithExtra, sessions, lessons },
+      args: { benchmark: benchmarkWithExtra, runs: runsWithExtra, sessions, lessons, containment },
+      inputs: { benchmark: benchmarkWithExtra, runs: runsWithExtra, sessions, lessons, containment },
     },
     "judges-frozen-after": {
       view: "judges",
@@ -493,6 +497,11 @@ try {
       view: "run",
       args: { runId: "payouts-attempt-1", records: illustrativeRunRecords, runs },
       inputs: { runId: "payouts-attempt-1", records: illustrativeRunRecords, runs },
+    },
+    "run-containment": {
+      view: "run",
+      args: { runId: containmentRunId, records: containmentRunRecords, runs },
+      inputs: { runId: containmentRunId, records: containmentRunRecords, runs },
     },
     "run-endpoint": {
       view: "run",

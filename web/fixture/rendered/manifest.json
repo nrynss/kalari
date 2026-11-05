@@ -5,7 +5,7 @@
   "pages": {
     "judges": {
       "path": "web/fixture/rendered/judges.html",
-      "sha256": "f2c0a06e1141a28383142726e93bb59eed52854f233c9516a08657e6f8f77dff"
+      "sha256": "4af471357eb33066531a1213bea721c6db122b5118289ba9eb4d81277011fa7f"
     },
     "judges-empty": {
       "path": "web/fixture/rendered/judges-empty.html",
@@ -17,19 +17,19 @@
     },
     "judges-extra-run": {
       "path": "web/fixture/rendered/judges-extra-run.html",
-      "sha256": "f128af65fa272365b3866a45af24ffe49068e131c76660d03e408e56b8e2cb4c"
+      "sha256": "ff33bc39f544fb43b6f666bac1102d0fb31a31a80859e0512b30248ef703eec2"
     },
     "judges-frozen-after": {
       "path": "web/fixture/rendered/judges-frozen-after.html",
-      "sha256": "7bc1a9199a69824ac0ffe34582cd917dbf5a7a5566a8cc583936c418989d2b5b"
+      "sha256": "23887f00a0c48cdb0ebee8d40f46c52c251ba5e71bf397542f47e6c6fbc600f4"
     },
     "judges-frozen-pair": {
       "path": "web/fixture/rendered/judges-frozen-pair.html",
-      "sha256": "22795262ee8a145e444fe2a1119c084a6c55ed7d1dd1778e7fd88c3de2ddf838"
+      "sha256": "4ae386aace71cb0863be09b819f969ff78e02e875b2de8cc71a86cc96df38440"
     },
     "judges-frozen-split": {
       "path": "web/fixture/rendered/judges-frozen-split.html",
-      "sha256": "a1375b45a264d5e67d05726a41b838e47a110e652b36bbe4eecfe5dd11ca5241"
+      "sha256": "8825957c1fe83e3b759b58cfa7f586a456403d94ad4b8987cc2a1a63b8872a4e"
     },
     "session": {
       "path": "web/fixture/rendered/session.html",
@@ -55,25 +55,29 @@
       "path": "web/fixture/rendered/run-illustrative.html",
       "sha256": "40269b4f197e8a47a9f8aad2813d992896b9d417da33cc379eb2c6d07f43c5d2"
     },
+    "run-containment": {
+      "path": "web/fixture/rendered/run-containment.html",
+      "sha256": "687e007623b603f503ffdf16f0793c027eec4eaf520cb6e4ec079d9e146e2f61"
+    },
     "run-endpoint": {
       "path": "web/fixture/rendered/run-endpoint.html",
       "sha256": "8df8fcce9bb90da89730e7c52b1bec76f7fc9102a9605cb37e91f3fd323ad1c1"
     },
     "run-redaction": {
       "path": "web/fixture/rendered/run-redaction.html",
-      "sha256": "366b773cf214a0650326304fd7a8f856d89f665b483cd09f5cf02d26665bb766"
+      "sha256": "56b1f9f98f520c34909866368a62e8771718c2224b1a9bf35d6f573b3d90cd55"
     }
   },
   "sha256": {
-    "app.css": "13818231f4cdd493d2d93e17fd7278e65701087cbf866a039438f465cffdfe48",
-    "app/api.mjs": "1537f7279829b14192541dada9fe456cdc1d92243e69469b43fc174eb9617cd9",
+    "app.css": "898fcaf61282fc74713e8d266ce39133a36ab1cd543a3539896cde1d893afdaf",
+    "app/api.mjs": "a8b6c09afb442375a74e62ee9e6ee0e03b13a4b7e4b46d9763fb51ecd31bc8eb",
     "app/boot.mjs": "52ed3a653d7826d3d9080c9d50aedee1570a3bce7fba91bd69bb627d9253ce81",
     "app/format.mjs": "d6b60b8861907518dd39cae928b9e13250f61d311f111845d8524b6ca8710975",
     "app/judges.mjs": "a130bc07c443a17e3532ad82a40f553e9d9944774b5ac96ddc13deb4d1d9e744",
     "app/labels.mjs": "4352e35e17bc43ef5247269d0b600ac330c97f8955eb49dbae9e462ae6291f4a",
     "app/run.mjs": "714aa943c55dc4244ef1fc1fe8730256cf84e220d3ef3a23226e4a040688c4b1",
     "app/session.mjs": "1ed6aec3c10f3b7fb641c8de9efb3a35b1639d477d09e99e0bb612402dcecc4f",
-    "app/views.mjs": "38e2f300163e026a1b56893c0240bcae672a26a68b9744c9a3f139b85c85541c",
+    "app/views.mjs": "122486b1726e54181f37ce321d6146b15b3aa98cd574ab84377e811b0ce2e92e",
     "favicon.svg": "39bc2680150226e985565c8138030fe3dc788427d3b3a04c0ae934c8e6e9f0d2",
     "index.html": "6bcb7d0247e0ee2b95379540bae751daeed9d9db55e14b0eea81f71cf7156067",
     "run.html": "bf66a88983e33abdc0616c71c04f7fe331b89202138204b38d88844daf9dc799",
@@ -81,10 +85,10 @@
   },
   "inputs": {
     "path": "web/fixture/rendered/inputs.json",
-    "sha256": "824f7eedeeee6479c57b97875c8979ccc6a0bdea1dcdfea245f3d37971c9815e"
+    "sha256": "3aa3a594c517677cb0155c6eafb4adb0de94e22e1a6ac51718993a91242d0088"
   },
   "evidence": {
     "path": "web/fixture/evidence.jsonl",
-    "sha256": "d0847b63d95e1637360623c9170e958bef168af01cb507212edf0db6ca5fd59d"
+    "sha256": "99546fcccd429af301705beaee9250d15b7175d271e3a41f68f870f1e99c1f35"
   }
 }

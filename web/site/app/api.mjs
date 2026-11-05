@@ -67,12 +67,17 @@ function warningsFrom(entries) {
     .map((entry) => `${entry.label}: ${describeError(entry.error).message}`);
 }
 
+/* The deliberate containment demonstration keeps its own session, apart from
+   the benchmark records. A 404 means it is not published, which is not an error. */
+const CONTAINMENT_SESSION = "containment-demo";
+
 export async function loadJudgesData() {
-  const [benchmark, runs, sessions, lessons] = await Promise.allSettled([
+  const [benchmark, runs, sessions, lessons, containment] = await Promise.allSettled([
     getJson("api/benchmark"),
     getJson("api/runs"),
     getJson("api/sessions"),
     getJson("api/lessons"),
+    getJson(`api/sessions/${encodeURIComponent(CONTAINMENT_SESSION)}`),
   ]);
   if (benchmark.status === "rejected") {
     throw benchmark.reason;
@@ -97,6 +102,10 @@ export async function loadJudgesData() {
     { label: "The session index", error: errorOf(sessions) },
     { label: "The lesson index", error: errorOf(lessons) },
   ];
+  const containmentError = errorOf(containment);
+  if (containmentError && !(containmentError instanceof ApiError && containmentError.status === 404)) {
+    entries.push({ label: "The containment demonstration", error: containmentError });
+  }
   detailResults.forEach((result, index) => {
     if (result.status === "fulfilled") runDetails[otherRunIds[index]] = result.value;
     else entries.push({ label: "A run detail", error: result.reason });
@@ -106,6 +115,7 @@ export async function loadJudgesData() {
     runs: runsValue,
     sessions: valueOf(sessions),
     lessons: valueOf(lessons),
+    containment: valueOf(containment),
     runDetails,
     warnings: warningsFrom(entries),
   };
