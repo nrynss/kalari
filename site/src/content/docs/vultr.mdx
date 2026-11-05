@@ -3,16 +3,14 @@ title: Vultr
 description: What Vultr runs for Kalari, service by service.
 ---
 
-import figures from '../../data/figures.json';
 import Diagram from '../../components/Diagram.astro';
+import RepoLink from '../../components/RepoLink.astro';
 
-export const blob = `${figures.repo}/blob/${figures.commit}`;
-
-Kalari is generic. Vultr is the deployment we demo, not a dependency. The Lean code knows an OpenAI-compatible endpoint and a sandbox backend. Vultr fills those slots in production. The rule comes from [product.md]({blob}/product.md). The line holds: runs on Vultr, and anywhere else you point it.
+Kalari is generic. Vultr is the deployment we demo, not a dependency. The Lean code knows an OpenAI-compatible endpoint and a sandbox backend. Vultr fills those slots in production. The rule comes from <RepoLink path="product.md">product.md</RepoLink>. The line holds: runs on Vultr, and anywhere else you point it.
 
 ## What we run on
 
-One VX1 virtual machine holds the whole demo. The plan is `vx1-g-2c-8g-120s` with 2 vCPU, 8 GB of RAM, and Ubuntu 24.04. The choice is recorded in [dev-diary/research/vultr-vm.md]({blob}/dev-diary/research/vultr-vm.md). That host runs `kalari serve`, Lambo as a child process, the read-only evidence API, Caddy with automatic HTTPS, and the Microsandbox microVM fleet. The setup order lives in [deploy/vultr/README.md]({blob}/deploy/vultr/README.md). The installer lives in [deploy/vultr/install.sh]({blob}/deploy/vultr/install.sh).
+One VX1 virtual machine holds the whole demo. The plan is `vx1-g-2c-8g-120s` with 2 vCPU, 8 GB of RAM, and Ubuntu 24.04. The choice is recorded in <RepoLink path="dev-diary/research/vultr-vm.md">dev-diary/research/vultr-vm.md</RepoLink>. That host runs `kalari serve`, Lambo as a child process, the read-only evidence API, Caddy with automatic HTTPS, and the Microsandbox microVM fleet. The setup order lives in <RepoLink path="deploy/vultr/README.md">deploy/vultr/README.md</RepoLink>. The installer lives in <RepoLink path="deploy/vultr/install.sh">deploy/vultr/install.sh</RepoLink>.
 
 Vultr Serverless Inference answers every model call. No team member manages a GPU anywhere. Three jobs use three models:
 
@@ -20,7 +18,7 @@ Vultr Serverless Inference answers every model call. No team member manages a GP
 - Clef answers three fixed questions at the System One endpoint. Its answers stay opinion, never verdict.
 - Qwen3 embeddings back Lambo lesson search at 2560 dimensions.
 
-The model map lives in [docs/architecture.md]({blob}/docs/architecture.md). The endpoint shapes live in [Kalari/Config.lean]({blob}/Kalari/Config.lean). Keys stay in environment names in config, never in values.
+The model map lives in <RepoLink path="docs/architecture.md">docs/architecture.md</RepoLink>. The endpoint shapes live in <RepoLink path="Kalari/Config.lean">Kalari/Config.lean</RepoLink>. Keys stay in environment names in config, never in values.
 
 ## How it helps
 

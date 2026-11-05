@@ -4,6 +4,7 @@ description: What Kalari does, where to see it run, and where to read next.
 ---
 
 import ContainmentLoopSvg from '../../components/ContainmentLoopSvg.astro';
+import DocLink from '../../components/DocLink.astro';
 
 Kalari plugs into the coding agent you already use. It turns API upgrades into checks that must pass, runs the agent code in a throwaway microVM, and records what broke so the next upgrade lands clean.
 
@@ -14,7 +15,7 @@ An API consumer has to move to a new version. A coding agent can write the migra
 The live console shows every run and its evidence:
 
 - [For judges: start here](https://kalari.nryn.dev/) runs the demo on the public host.
-- The [Judges walkthrough](./judges/) orders every result the way the demo video does.
+- <DocLink to="judges/">Judges walkthrough</DocLink> orders every result the way the demo video does.
 - Each run links to its logs, its checks, and its verdict.
 
 ## How one upgrade flows
@@ -28,12 +29,12 @@ The live console shows every run and its evidence:
 </details>
 </figure>
 
-The agent does the coding. Kalari decides what has to be checked, what is at stake, what was learned, and whether the result is proved. Read the [Architecture](./architecture/) page for the full picture in five minutes.
+The agent does the coding. Kalari decides what has to be checked, what is at stake, what was learned, and whether the result is proved. Read the <DocLink to="architecture/">Architecture</DocLink> page for the full picture in five minutes.
 
 ## Where next
 
-- Judges start at the [Judges walkthrough](./judges/). It links every figure to a live run and a repo file.
-- Engineers start at [Run it yourself](./run-it-yourself/). It covers both presets, the config files, and the check script.
-- Operators start at [Vultr](./vultr/). It names each service and what Kalari uses it for.
+- Judges start at <DocLink to="judges/">Judges walkthrough</DocLink>. It links every figure to a live run and a repo file.
+- Engineers start at <DocLink to="run-it-yourself/">Run it yourself</DocLink>. It covers both presets, the config files, and the check script.
+- Operators start at <DocLink to="vultr/">Vultr</DocLink>. It names each service and what Kalari uses it for.
 
 The source lives at [github.com/nrynss/kalari](https://github.com/nrynss/kalari). The demo video is not recorded yet. Its link lands here when the recording is ready.

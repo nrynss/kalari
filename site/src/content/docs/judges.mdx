@@ -8,17 +8,16 @@ import HeadlineStats from '../../components/HeadlineStats.astro';
 import FrozenTable from '../../components/FrozenTable.astro';
 import ShowcaseTable from '../../components/ShowcaseTable.astro';
 import Diagram from '../../components/Diagram.astro';
+import DocLink from '../../components/DocLink.astro';
+import RepoLink from '../../components/RepoLink.astro';
 
-export const demo = figures.demo;
-export const repo = figures.repo;
-
-This page walks every result in the order of the demo video. Each figure links to its run on the [live console](https://kalari.nryn.dev/) and to its file on GitHub, pinned to commit `{figures.commit.slice(0, 12)}`. A build-time step recomputes every number from the committed evidence. The build fails when a figure disagrees with `bench/RESULTS.md`.
+This page walks every result in the order of the demo video. Each figure links to its run on the [live console](https://kalari.nryn.dev/) and to its file on GitHub, pinned to commit {figures.commit.slice(0, 12)}. A build-time step recomputes every number from the committed evidence. The build fails when a figure disagrees with `bench/RESULTS.md`.
 
 Both arms run the same OpenCode 2 with the same model, DeepSeek V4.1 Flash on Vultr Serverless Inference. The only difference is whether Kalari is plugged in.
 
 ## The problem
 
-The reference run motivates the whole project. A v1 consumer exits 0 with `imported 100 items`. The hidden grader counts 2,431 records and finds 2,331 missing. The process said success and lost the data. The setup is documented in [bench/reference-paging/README.md](https://github.com/nrynss/kalari/blob/main/bench/reference-paging/README.md). It is a stack check, not a comparison.
+The reference run motivates the whole project. A v1 consumer exits 0 with `imported 100 items`. The hidden grader counts 2,431 records and finds 2,331 missing. The process said success and lost the data. The setup is documented in <RepoLink path="bench/reference-paging/README.md">bench/reference-paging/README.md</RepoLink>. It is a stack check, not a comparison.
 
 ## The frozen comparison
 
@@ -40,7 +39,7 @@ No lesson was published in the frozen runs. Production refused the observer conf
 
 ## Containment
 
-Two runs stand outside the comparison. They are ordinary published runs with the same caps and the same allowlist shape as a Kalari consumer run. No agent wrote either consumer. Read the full scene at [Containment](./containment/).
+Two runs stand outside the comparison. They are ordinary published runs with the same caps and the same allowlist shape as a Kalari consumer run. No agent wrote either consumer. Read the full scene at <DocLink to="containment/">Containment</DocLink>.
 
 - Run 1: the reference cursor loop crashed on the API 429 after 437 ms. The cap never came into play. Verdict `exited` with exit code 1.
 - Run 2: the paced retry loop fetched 68 pages, then the aashaan killed it at 5,009 ms against the 5,000 ms cap. Verdict `killed_timeout`.
@@ -52,7 +51,7 @@ The showcase is a manufactured scenario, not a frozen pair. It demos the differe
 
 <ShowcaseTable />
 
-Without Kalari, four sessions ship silent corruption. The agent deduplicates keeping the first delivery, the API self-check passes on ids only, and the session ends in success with 23 wrong amounts. With Kalari, the enforced differential reports 23 changed in every affected session. One of four then fixes the consumer and reaches 0 changed before the session ends. The other three ship the broken file anyway, but the failure is surfaced and recorded. On DeepSeek the arms do not diverge: the strong model compares against v1 unasked. MiMo could not drive the harness at all, a loud failure, not a silent one. Costs and walls come from the committed files. [QUIRKS.md](https://github.com/nrynss/kalari/blob/main/bench/showcase/disbursements/QUIRKS.md) maps each behaviour to server code.
+Without Kalari, four sessions ship silent corruption. The agent deduplicates keeping the first delivery, the API self-check passes on ids only, and the session ends in success with 23 wrong amounts. With Kalari, the enforced differential reports 23 changed in every affected session. One of four then fixes the consumer and reaches 0 changed before the session ends. The other three ship the broken file anyway, but the failure is surfaced and recorded. On DeepSeek the arms do not diverge: the strong model compares against v1 unasked. MiMo could not drive the harness at all, a loud failure, not a silent one. Costs and walls come from the committed files. <RepoLink path="bench/showcase/disbursements/QUIRKS.md">QUIRKS.md</RepoLink> maps each behaviour to server code.
 
 ## What this does not show
 
@@ -61,8 +60,8 @@ The table shows cost, attempts, containment, and correctness under zero-lesson c
 ## Where to look next
 
 - The live judges page and the run pages on the [demo host](https://kalari.nryn.dev/).
-- The [Architecture](./architecture/) page for the gate, the tools, and the run pipeline.
-- The [Containment](./containment/) page for the timeout scene, the boundary, and the cleanup.
+- The <DocLink to="architecture/">Architecture</DocLink> page for the gate, the tools, and the run pipeline.
+- The <DocLink to="containment/">Containment</DocLink> page for the timeout scene, the boundary, and the cleanup.
 - The demo video. The recording is not ready yet. Its link lands here when it is done.
 
 <Diagram

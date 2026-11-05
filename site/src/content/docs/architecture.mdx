@@ -3,14 +3,13 @@ title: Architecture
 description: The full picture in five minutes, every claim linked to its source file.
 ---
 
-import figures from '../../data/figures.json';
 import ArchitectureSvg from '../../components/ArchitectureSvg.astro';
 import ContainmentLoopSvg from '../../components/ContainmentLoopSvg.astro';
 import Diagram from '../../components/Diagram.astro';
+import DocLink from '../../components/DocLink.astro';
+import RepoLink from '../../components/RepoLink.astro';
 
-export const blob = `${figures.repo}/blob/${figures.commit}`;
-
-Every statement below names its source. Links point at the pinned commit `{figures.commit.slice(0, 12)}`. Proofs cover the gate and the aashaan. They do not cover the agent code or the sandbox backend.
+Every statement below names its source. Links point at the pinned commit. Proofs cover the gate and the aashaan. They do not cover the agent code or the sandbox backend.
 
 ## The picture
 
@@ -19,7 +18,7 @@ Every statement below names its source. Links point at the pinned commit `{figur
 <figcaption>Three planes: the trusted Lean host, the untrusted microVM guests, and the outside services.</figcaption>
 </figure>
 
-The coding agent connects over MCP. `kalari serve` runs on the VM. Each run gets one Microsandbox microVM with `kalari-aashaan` inside. Vultr Serverless Inference answers every model call. Lambo runs as a child process. Vimanam and `msb` run as subprocesses. Caddy terminates TLS in front of the read-only web app. The layout above is drawn from [docs/architecture.md]({blob}/docs/architecture.md).
+The coding agent connects over MCP. `kalari serve` runs on the VM. Each run gets one Microsandbox microVM with `kalari-aashaan` inside. Vultr Serverless Inference answers every model call. Lambo runs as a child process. Vimanam and `msb` run as subprocesses. Caddy terminates TLS in front of the read-only web app. The layout above is drawn from <RepoLink path="docs/architecture.md">docs/architecture.md</RepoLink>.
 
 <figure class="kalari-diagram">
 <ContainmentLoopSvg />
@@ -36,19 +35,19 @@ The coding agent connects over MCP. `kalari serve` runs on the VM. Each run gets
 
 Kalari ships two executables, both Lean 4 natives:
 
-- [kalari]({blob}/Kalari/Main.lean) is the main service on the VM. It serves the MCP endpoint, runs the gate, drives the run pipeline, and keeps the evidence store.
-- [kalari-aashaan]({blob}/Aashaan/) is the supervisor inside each microVM. It runs the untrusted job, enforces the time and output caps, and prints one JSON verdict.
+- <RepoLink path="Kalari/Main.lean">kalari</RepoLink> is the main service on the VM. It serves the MCP endpoint, runs the gate, drives the run pipeline, and keeps the evidence store.
+- <RepoLink path="Aashaan/">kalari-aashaan</RepoLink> is the supervisor inside each microVM. It runs the untrusted job, enforces the time and output caps, and prints one JSON verdict.
 
 Lean carries the containment logic as theorems checked at build time. A broken proof fails `lake build`, so the binary cannot ship with a weaker gate. The supervisor imports `Std` only, never the compiler library, so it stays a small static binary that starts inside each guest. State this plainly: the proofs cover the gate decision and the aashaan caps. They do not cover the agent generated code or the sandbox backend.
 
 ## The gate and its four theorems
 
-Every `run_in_sandbox` call passes [Kalari.Gate.decide]({blob}/Kalari/Gate.lean#L125) before it reaches any backend. It returns allow or refuse with a named reason. Four theorems pin what allow means:
+Every `run_in_sandbox` call passes the gate decision before it reaches any backend. It returns allow or refuse with a named reason. Four theorems pin what allow means:
 
-- [decide_workspace]({blob}/Kalari/Gate.lean#L189) keeps writes inside the workspace. Absolute paths and `..` segments must resolve under it on a segment boundary.
-- [decide_network]({blob}/Kalari/Gate.lean#L201) keeps network use inside the allowlist. Each requested host and port must match an entry exactly.
-- [decide_caps]({blob}/Kalari/Gate.lean#L211) keeps all three caps within the configured maximum. Time, output bytes, and memory each compare with `<=`.
-- [decide_secrets]({blob}/Kalari/Gate.lean#L222) keeps secrets out of the call. No non-empty secret may appear in the workspace or any argument.
+- Workspace: keeps writes inside the workspace. Absolute paths and `..` segments must resolve under it on a segment boundary. See <RepoLink path="Kalari/Gate.lean">decide_workspace in Kalari/Gate.lean</RepoLink>.
+- Network: keeps network use inside the allowlist. Each requested host and port must match an entry exactly. See <RepoLink path="Kalari/Gate.lean">decide_network in Kalari/Gate.lean</RepoLink>.
+- Caps: keeps all three caps within the configured maximum. Time, output bytes, and memory each compare within bounds. See <RepoLink path="Kalari/Gate.lean">decide_caps in Kalari/Gate.lean</RepoLink>.
+- Secrets: keeps secrets out of the call. No non-empty secret may appear in the workspace or any argument. See <RepoLink path="Kalari/Gate.lean">decide_secrets in Kalari/Gate.lean</RepoLink>.
 
 A fifth check refuses 32-character alphanumeric runs, the shape of a pasted key. A refusal never reaches `msb`.
 
@@ -63,7 +62,7 @@ A fifth check refuses 32-character alphanumeric runs, the shape of a pasted key.
 7. The trusted checks run in fresh guests: the candidate truth check and the differential against v1. The artifact must sit at the workspace root. Exploratory commands without an artifact report `passed=false`.
 8. The verdict and logs go to the evidence store. Teardown stops and removes the guest.
 
-The [T5.6a runs](./containment/) are the worked example. They show both the crash path and the kill path with measured timings.
+The <DocLink to="containment/">Containment</DocLink> runs are the worked example. They show both the crash path and the kill path with measured timings.
 
 <Diagram
   name="run-sequence"
@@ -79,7 +78,7 @@ The [T5.6a runs](./containment/) are the worked example. They show both the cras
 
 ## The five tools
 
-The [tool schemas]({blob}/Kalari/Mcp.lean#L22) and the [request handler]({blob}/Kalari/Mcp.lean#L82) live in one file, so schema and routing cannot drift:
+The tool schemas and the request handler live in one file, so schema and routing cannot drift. See <RepoLink path="Kalari/Mcp.lean">Kalari/Mcp.lean</RepoLink>.
 
 - `what_changed` lists the changes between two specs with stable change IDs. It calls Vimanam as a subprocess.
 - `blast_radius` finds the callers, tests, and earlier decisions each change touches. Statuses stay per ID: searched, not searchable, or unknown. Links go to Lambo.
@@ -89,7 +88,7 @@ The [tool schemas]({blob}/Kalari/Mcp.lean#L22) and the [request handler]({blob}/
 
 ## Memory
 
-Kalari is Lambo single writer. OpenCode never talks to Lambo directly. Lessons key by change kind, such as `pagination_changed`. Recall walks from the change kind to the lesson, not through recall ranking. The measured limit is honest: the frozen runs published zero lessons, so memory showed no benefit there. Read [Evidence and limits](./evidence/) for what that means.
+Kalari is Lambo single writer. OpenCode never talks to Lambo directly. Lessons key by change kind, such as `pagination_changed`. Recall walks from the change kind to the lesson, not through recall ranking. The measured limit is honest: the frozen runs published zero lessons, so memory showed no benefit there. Read <DocLink to="evidence/">Evidence and limits</DocLink> for what that means.
 
 ## Judgement calls
 
@@ -104,7 +103,7 @@ Clef answers three fixed questions on Vultr Inference at the System One endpoint
 
 ## Deployment
 
-The Vultr preset lives in [deploy/vultr/]({blob}/deploy/vultr/README.md). One VX1 VM holds `kalari serve`, Lambo, the evidence API, Caddy, and the microVM fleet. Systemd units carry `UMask=0022`, which Microsandbox storage requires. The key travels to the VM over SSH stdin only. The generic local preset lives in [deploy/local/]({blob}/deploy/local/README.md) with a Docker backend for hosts without KVM. The line holds: runs on Vultr, and anywhere else you point it.
+The Vultr preset lives in <RepoLink path="deploy/vultr/README.md">deploy/vultr/README.md</RepoLink>. One VX1 VM holds `kalari serve`, Lambo, the evidence API, Caddy, and the microVM fleet. Systemd units carry `UMask=0022`, which Microsandbox storage requires. The key travels to the VM over SSH stdin only. The generic local preset lives in <RepoLink path="deploy/local/README.md">deploy/local/README.md</RepoLink> with a Docker backend for hosts without KVM. The line holds: runs on Vultr, and anywhere else you point it.
 
 <Diagram
   name="deployment"
@@ -114,7 +113,7 @@ The Vultr preset lives in [deploy/vultr/]({blob}/deploy/vultr/README.md). One VX
 
 ## Dependencies
 
-Each entry names its version, how Kalari invokes it, and why, from [docs/architecture.md]({blob}/docs/architecture.md):
+Each entry names its version, how Kalari invokes it, and why, from <RepoLink path="docs/architecture.md">docs/architecture.md</RepoLink>:
 
 - Lean 4.35.0 with `Std`: the executables and the proofs.
 - Vimanam 2.1.0 as a CLI subprocess: change facts across OpenAPI, GraphQL, and protobuf.

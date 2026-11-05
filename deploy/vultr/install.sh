@@ -115,6 +115,15 @@ for attempt in 1 2 3; do
 done'
 
 rsync -az "$SOURCE/web/site/" "$HOST:kalari-site/"
+if [[ -d "$SOURCE/site" ]]; then
+  say "== local: build the docs site for /docs/"
+  command -v node >/dev/null 2>&1 || { echo "node is required to build site/" >&2; exit 1; }
+  (cd "$SOURCE/site" && npm install --no-audit --no-fund \
+    && ASTRO_SITE=https://kalari.nryn.dev ASTRO_BASE=/docs npm run build)
+  rsync -az --delete "$SOURCE/site/dist/" "$HOST:kalari-docs/"
+else
+  echo "site/ is absent; skipping the docs build" >&2
+fi
 rsync -az "$SOURCE/deploy/vultr/kalari-api.py" "$SOURCE/deploy/vultr/Caddyfile" "$SOURCE/deploy/vultr/kalari.service" "$SOURCE/deploy/vultr/kalari-api.service" "$SOURCE/deploy/vultr/kalari.json.example" "$SOURCE/deploy/vultr/session.json.example" "$SOURCE/deploy/vultr/lambo.toml.example" "$HOST:kalari-deploy/"
 ssh "$HOST" 'set -euo pipefail; umask 022
 sudo install -o root -g root -m 644 "$HOME/kalari-deploy/Caddyfile" /etc/caddy/Caddyfile
@@ -132,6 +141,11 @@ sudo chmod 600 /etc/kalari/spec-v1.yaml /etc/kalari/spec-v2.yaml
 sudo rm -rf /srv/kalari/www
 sudo mkdir -p /srv/kalari/www
 sudo cp -r "$HOME/kalari-site/." /srv/kalari/www/
+if [[ -d "$HOME/kalari-docs" ]]; then
+  sudo rm -rf /srv/kalari/www/docs
+  sudo mkdir -p /srv/kalari/www/docs
+  sudo cp -r "$HOME/kalari-docs/." /srv/kalari/www/docs/
+fi
 sudo chmod -R a+rX /srv/kalari/www'
 
 say "== $HOST: inference key to /etc/kalari/kalari.env over SSH stdin"

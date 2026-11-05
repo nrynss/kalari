@@ -3,14 +3,13 @@ title: Evidence and limits
 description: The benchmark method, what is measured, and what is not claimed.
 ---
 
-import figures from '../../data/figures.json';
 import Diagram from '../../components/Diagram.astro';
-
-export const blob = `${figures.repo}/blob/${figures.commit}`;
+import DocLink from '../../components/DocLink.astro';
+import RepoLink from '../../components/RepoLink.astro';
 
 ## Method
 
-The comparison runs six conditions across two upgrades. The frozen pair is payouts B1 plus B2 plus B4 plus B5, then settlements B1 plus B2 plus B3 plus B5. [bench/FROZEN.md]({blob}/bench/FROZEN.md) pins the commit and every hash. Both arms use the same OpenCode 2 with the same DeepSeek V4.1 Flash on Vultr Serverless Inference. Only Kalari differs between arms.
+The comparison runs six conditions across two upgrades. The frozen pair is payouts B1 plus B2 plus B4 plus B5, then settlements B1 plus B2 plus B3 plus B5. <RepoLink path="bench/FROZEN.md">bench/FROZEN.md</RepoLink> pins the commit and every hash. Both arms use the same OpenCode 2 with the same DeepSeek V4.1 Flash on Vultr Serverless Inference. Only Kalari differs between arms.
 
 Five repeats run per condition. Each session caps at 20 minutes. An HTTP retry inside one consumer process never counts as a sandbox run. Cost multiplies input tokens by 0.15 USD per million and output tokens by 0.60 USD per million, with cached input at full price. Both arms use the same rule.
 
@@ -22,7 +21,7 @@ Five repeats run per condition. Each session caps at 20 minutes. An HTTP retry i
 
 ## What is measured
 
-The table on the [Judges walkthrough](./judges/) reports cost, sandbox runs, wall time, stuck time, containment, verdicts, and right-first-time counts. Every figure traces to one of 60 row files under `bench/runs/kalari/` and `bench/runs/reference/`. The [traceability script]({blob}/bench/RESULTS.md) recomputes every aggregate from those files and proves the zero-lesson claim, the token basis, byte-identical provenance, and clean cleanup.
+The table on the <DocLink to="judges/">Judges walkthrough</DocLink> reports cost, sandbox runs, wall time, stuck time, containment, verdicts, and right-first-time counts. Every figure traces to one of 60 row files under `bench/runs/kalari/` and `bench/runs/reference/`. The <RepoLink path="bench/RESULTS.md">traceability script in bench/RESULTS.md</RepoLink> recomputes every aggregate from those files and proves the zero-lesson claim, the token basis, byte-identical provenance, and clean cleanup.
 
 The observer rehearsal differs from current production behavior. Rehearsal notes describe an older observation path. Production refused that configuration, so the frozen runs carry zero published lessons. Read rehearsal documents as history, not as current behavior.
 
@@ -32,8 +31,8 @@ Learned memory showed no benefit in the frozen comparison because no lesson exis
 
 ## Where the runs live
 
-- The frozen rows: [bench/runs/kalari/]({blob}/bench/runs/kalari/) and [bench/runs/reference/]({blob}/bench/runs/reference/).
-- The showcase rows: [bench/showcase/disbursements/runs/]({blob}/bench/showcase/disbursements/runs/).
-- The containment runs: [tests/live/containment-evidence/]({blob}/tests/live/containment-evidence/).
-- The reference problem: [bench/reference-paging/]({blob}/bench/reference-paging/).
+- The frozen rows: <RepoLink path="bench/runs/kalari/">bench/runs/kalari/</RepoLink> and <RepoLink path="bench/runs/reference/">bench/runs/reference/</RepoLink>.
+- The showcase rows: <RepoLink path="bench/showcase/disbursements/runs/">bench/showcase/disbursements/runs/</RepoLink>.
+- The containment runs: <RepoLink path="tests/live/containment-evidence/">tests/live/containment-evidence/</RepoLink>.
+- The reference problem: <RepoLink path="bench/reference-paging/">bench/reference-paging/</RepoLink>.
 - Every figure above links to the live run pages on the [demo host](https://kalari.nryn.dev/).

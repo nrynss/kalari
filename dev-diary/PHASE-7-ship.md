@@ -80,7 +80,7 @@ requires:   [T5.6, T5.6a, T6.3, T7.3]
 fixture-ok: yes
 size:       M · mid
 owns:       site/, .github/workflows/pages.yml, deploy/vultr/install.sh, web/site/, web/fixture/rendered/
-status:     claimed:t7-5
+status:     in-review:t7-5
 ```
 Build a static Astro and Starlight documentation site in `site/` and serve it on **both** GitHub Pages (`.github/workflows/pages.yml`) and the Vultr VM at `https://kalari.nryn.dev/docs/` alongside the live Chaaya judge console at `https://kalari.nryn.dev/`:
 
@@ -141,6 +141,9 @@ Build a static Astro and Starlight documentation site in `site/` and serve it on
 - **Evidence and limits.** Explain the benchmark method, cite T5.6 for measured claims and link to individual runs on `https://kalari.nryn.dev/`. Distinguish the observer rehearsal from current production behavior.
 
 **Done when:** the Pages build and `/docs/` build both pass, `./web/check.sh` passes with the updated Chaaya theme and `/docs/` link, navigation and links work on both GitHub Pages and `https://kalari.nryn.dev/docs/`, the judge walkthrough reaches the public demo and run evidence, the Architecture page is in the navigation with both diagrams and every claim linked to its source, the Judges walkthrough's figures are computed from the committed evidence and match `RESULTS.md`, every Mermaid diagram renders at build time in the palette with a caption and text alternative, and the published site passes the same privacy scan as the repository.
+
+Notes (T7.5 report). Built a static Astro and Starlight site in `site/`. The Pages build uses base `/kalari`. The VM build uses base `/docs`. Both produce 9 pages. A build-time data step reads only committed evidence and fails on mismatch with `RESULTS.md`. Six Mermaid diagrams render at build time with `mmdc` and system Chrome. No Mermaid runs in the browser. Canonical SVGs ship as Astro components. The Chaaya shells link `/docs/` with same-origin paths, and `./web/check.sh` passes. The installer builds the docs and syncs `site/dist/` into `/srv/kalari/www/docs/`. The Vultr page names Cloud Compute, Serverless Inference, and the firewall group with repo links. Setup acceptance records verified steps on the laptop and names each unverified step on its page. The video link stays text until the recording lands.
+- `site/`, `.github/workflows/pages.yml`, `deploy/vultr/install.sh`, `web/site/`, `web/fixture/rendered/`
 
 ---
 

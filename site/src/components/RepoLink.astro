@@ -1,0 +1,12 @@
+---
+// GitHub link pinned to the commit the figures step recorded.
+import figures from '../data/figures.json';
+
+interface Props {
+  path: string;
+}
+const { path } = Astro.props;
+const href = `${figures.repo}/blob/${figures.commit}/${path}`;
+---
+
+<a href={href}><slot /></a>

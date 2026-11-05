@@ -4,11 +4,12 @@ description: The timeout scene, the network boundary, and the verified cleanup.
 ---
 
 import figures from '../../data/figures.json';
+import RepoLink from '../../components/RepoLink.astro';
 
 export const c1 = figures.containment[0];
 export const c2 = figures.containment[1];
 
-Two runs show what containment means in practice. They are ordinary published runs, not benchmark rows. No agent wrote either consumer. The evidence files sit at [run-1.jsonl]({c1.evidenceUrl}) and [run-2.jsonl]({c2.evidenceUrl}). The transcript is `tests/live/containment-transcript.txt`.
+Two runs show what containment means in practice. They are ordinary published runs, not benchmark rows. No agent wrote either consumer. The evidence files sit at <RepoLink path="tests/live/containment-evidence/run-1.jsonl">run-1.jsonl</RepoLink> and <RepoLink path="tests/live/containment-evidence/run-2.jsonl">run-2.jsonl</RepoLink>. The transcript is `tests/live/containment-transcript.txt`.
 
 ## The timeout scene
 

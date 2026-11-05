@@ -1,0 +1,11 @@
+---
+// Same-site docs link that respects the build base (/kalari or /docs).
+interface Props {
+  to: string;
+}
+const { to } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const root = base.endsWith('/') ? base.slice(0, -1) : base;
+---
+
+<a href={`${root}/${to}`}><slot /></a>

@@ -95,9 +95,9 @@
     "app/session.mjs": "1ed6aec3c10f3b7fb641c8de9efb3a35b1639d477d09e99e0bb612402dcecc4f",
     "app/views.mjs": "665d5263a0847442c5358032664fb7096579b748d845dd74c3bd0f20446af9e4",
     "favicon.svg": "39bc2680150226e985565c8138030fe3dc788427d3b3a04c0ae934c8e6e9f0d2",
-    "index.html": "eee6c9f72729e71c783fe2b1c27b5a3d6eec67aa4ab88d83a7239e4a826b03d9",
-    "run.html": "b290cdfdaa2a68999a6d4659af140dd9850c2bd52074b3e035ba3997e854599f",
-    "session.html": "9df7a54664674c45736de5aa9d013fd34f4e2d5b892babc9ee4f8fb1e9857c34"
+    "index.html": "e91527a90462329922d3ca78a19b170658731940f5a469270fb629ede51ab366",
+    "run.html": "88a2b9e611c364ea97e3d4272b6bf5c360655ddab65a719a4e1531d1b4527d6a",
+    "session.html": "78426d2a045bf98edc121491aca4bf1ed84e0aa417509cfe898261bd405639e3"
   },
   "inputs": {
     "path": "web/fixture/rendered/inputs.json",
