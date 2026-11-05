@@ -165,8 +165,8 @@ sudo systemctl is-active caddy kalari kalari-api'
 
 say "== $HOST: local check through Caddy"
 ssh "$HOST" 'set -euo pipefail
-R="--resolve kalai.nryn.dev:443:127.0.0.1"
-curl -sS --max-time 10 $R https://kalai.nryn.dev/ | grep -o "<title>[^<]*</title>"
-curl -sS --max-time 10 $R https://kalai.nryn.dev/api/runs; echo'
+R="--resolve kalari.nryn.dev:443:127.0.0.1"
+curl -sS --max-time 10 $R https://kalari.nryn.dev/ | grep -o "<title>[^<]*</title>"
+curl -sS --max-time 10 $R https://kalari.nryn.dev/api/runs; echo'
 
-say "done. Verify from the laptop: curl https://kalai.nryn.dev and the judges page."
+say "done. Verify from the laptop: curl https://kalari.nryn.dev and the judges page."

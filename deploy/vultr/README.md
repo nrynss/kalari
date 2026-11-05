@@ -6,7 +6,7 @@ API behind Caddy. The benchmark APIs run beside it in their own microVMs
 (see `bench/apis/deploy.sh`).
 
 ```text
-internet ── 80/443 ──▶ Caddy (kalai.nryn.dev, automatic HTTPS)
+internet ── 80/443 ──▶ Caddy (kalari.nryn.dev, automatic HTTPS)
                         ├── / ── /srv/kalari/www (web/site/, static)
                         └── /api/* ── 127.0.0.1:18001 ── kalari-api (read-only)
 kalari.service: kalari serve as user kalari (MCP over stdio, Lambo child)
@@ -26,9 +26,11 @@ The VM is Ubuntu 24.04 with KVM (`vx1-g-2c-8g-120s`, `ewr`). SSH to it works
 (`ssh kalari` below stands for the SSH target). VM creation and tailnet
 setup are in `dev-diary/research/commands.md` and `dev-diary/research/vultr-vm.md`.
 
-1. Point DNS at the VM: a `kalai.nryn.dev` A record with the VM's public IP.
+1. Point DNS at the VM: a `kalari.nryn.dev` A record with the VM's public IP.
    Caddy will not serve HTTPS until this resolves to the VM from the public
-   internet (`dig +short kalai.nryn.dev` from the laptop).
+   internet (`dig +short kalari.nryn.dev` from the laptop). The older
+   `kalai.nryn.dev` A record is kept and redirects permanently to the
+   primary name.
 2. Open the web ports. This step is the operator's own call; SSH stays
    tailnet-only, so no SSH rule is added:
 
@@ -78,9 +80,9 @@ setup are in `dev-diary/research/commands.md` and `dev-diary/research/vultr-vm.m
 5. Verify from the laptop's public path (not the tailnet):
 
    ```sh
-   curl -sS https://kalai.nryn.dev/ | head -c 300; echo
-   curl -sS https://kalai.nryn.dev/api/runs; echo
-   curl -sS https://kalai.nryn.dev/api/benchmark; echo
+   curl -sS https://kalari.nryn.dev/ | head -c 300; echo
+   curl -sS https://kalari.nryn.dev/api/runs; echo
+   curl -sS https://kalari.nryn.dev/api/benchmark; echo
    ```
 
    The first page is titled "For judges · Kalari". `/api/benchmark` answers
@@ -115,7 +117,7 @@ refuses to start without the variables its config names.
 
 | File here | Installed path | Notes |
 |---|---|---|
-| `Caddyfile` | `/etc/caddy/Caddyfile` | `kalai.nryn.dev` only; static root plus `/api` reverse proxy |
+| `Caddyfile` | `/etc/caddy/Caddyfile` | `kalari.nryn.dev` primary (static root plus `/api` reverse proxy); `kalai.nryn.dev` redirects permanently |
 | `kalari-api.py` | `/opt/kalari/bin/kalari-api.py` | Loopback-only evidence API; no key, no writes |
 | `kalari.service` | `/etc/systemd/system/kalari.service` | `kalari serve` as `kalari`, key from `kalari.env` |
 | `kalari-api.service` | `/etc/systemd/system/kalari-api.service` | The evidence API as `kalari` |
