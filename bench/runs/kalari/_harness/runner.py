@@ -17,7 +17,7 @@ import tempfile
 import time
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parent.parent
+ROOT = HERE.parent.parent.parent.parent
 p = argparse.ArgumentParser()
 p.add_argument('--live', action='store_true', help='one approved live payout case; key on stdin')
 p.add_argument('--offline-fixture', action='store_true', help='require local fake executables and loopback API')
