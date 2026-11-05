@@ -5,6 +5,42 @@ info:
 servers:
   - url: https://disbursements.example.test
 paths:
+  /v2/verify:
+    post:
+      operationId: verifyDisbursements
+      summary: Verify a completed sync
+      description: Checks a sync's records against the server by id. Authoritative for completeness and duplication; compares ids only, never field values.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [disbursements]
+              properties:
+                disbursements:
+                  type: array
+                  items: { $ref: "#/components/schemas/Disbursement" }
+      responses:
+        "200":
+          description: The verification result.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ids_expected, ids_seen, missing, extra, duplicates, each_once]
+                properties:
+                  ids_expected: { type: integer }
+                  ids_seen: { type: integer }
+                  missing: { type: integer }
+                  extra: { type: integer }
+                  duplicates: { type: integer }
+                  each_once: { type: boolean }
+        "400":
+          description: Malformed body.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /v2/disbursements:
     get:
       operationId: exportDisbursements

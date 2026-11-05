@@ -37,6 +37,7 @@ if [[ -e "$DEST" ]]; then
   echo "refusing to overwrite $DEST" >&2
   exit 1
 fi
+mkdir -p bench/showcase/disbursements/runs/kalari
 
 echo "status=verify_frozen" >&2
 bash bench/runs/kalari/_harness/verify-frozen.sh >&2

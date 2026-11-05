@@ -11,6 +11,7 @@ which delivery of a repeated record is current.
 | A token on every page, the last included; `drained` ends the traversal | `mint(end - 1)` on every window, drained included | "Every response includes a `cursor`…"; "`drained: true` means the export has caught up" |
 | Windows overlap: the next window begins with the record that ended the previous one | the next window starts at `end - 1` | "Windows overlap at their edges… that disbursement appears in both responses… deduplicate on `id`" |
 | **The trap**: the record's first delivery (closing a window) is its window-edge version; the re-delivery (opening the next window) is its final version | `page[-1] = edge(page[-1])` on every non-final window; every other delivery final | Nothing. The docs never say the two deliveries are equal, and never say which is current |
+| **The sanctioned oracle**: `POST /v2/verify` honestly checks ids only (every id exactly once) and never field values | `do_POST` compares the posted ids against `FINAL`'s ids | "Verifying an export": "It is the authoritative check that an export has captured every disbursement exactly once. It compares ids only, never field values." A keep-first sync passes it with 23 stale records |
 
 **Truth:** 2,341 disbursements, `ds_00001` to `ds_02341`, final versions in `data.py` (`FINAL`);
 the window-edge version of a record is its amount before a late 1,250-cent adjustment. v1

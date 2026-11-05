@@ -30,6 +30,10 @@ Windows overlap at their edges. Each window begins with the disbursement that en
 
 `limit` (1 to 100, default 100) is the most disbursements a response will contain. Meridian may return fewer than `limit` disbursements, for example to keep responses fast under load. The number of disbursements in a response doesn't tell you whether more remain. `drained` does.
 
+### Verifying an export
+
+`POST /v2/verify` with `{"disbursements": [...]}` checks your sync against the server: it reports how many disbursement ids the ledger holds, how many your sync delivered, and whether any are missing, extra, or delivered more than once. It is the authoritative check that an export has captured every disbursement exactly once. It compares ids only, never field values.
+
 ### Errors
 
 A malformed or expired cursor returns `400` with `{"error": "invalid_cursor"}`. Start the export again without a cursor. A `limit` outside 1 to 100 returns `400` with `{"error": "invalid_limit"}`.

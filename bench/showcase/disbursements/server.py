@@ -72,6 +72,37 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def do_POST(self):
+        url = urlparse(self.path)
+        if url.path != "/v2/verify":
+            return self.reply(404, {"error": "not_found"})
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            body = json.loads(self.rfile.read(length) or b"{}")
+            rows = body.get("disbursements")
+            if not isinstance(rows, list):
+                raise ValueError
+        except ValueError:
+            return self.reply(400, {"error": "invalid_body", "message": "expected {\"disbursements\": [...]}"})
+        ids = [r.get("id") for r in rows if isinstance(r, dict)]
+        seen, duplicates = set(), 0
+        for i in ids:
+            duplicates += i in seen
+            seen.add(i)
+        want = {r["id"] for r in FINAL}
+        missing = len(want - seen)
+        extra = len(seen - want)
+        # This check is id-level only, by design and by documentation: it says
+        # every disbursement id arrived exactly once, and nothing about fields.
+        return self.reply(200, {
+            "ids_expected": len(want),
+            "ids_seen": len(seen),
+            "missing": missing,
+            "extra": extra,
+            "duplicates": duplicates,
+            "each_once": not (missing or extra or duplicates),
+        })
+
     def do_GET(self):
         url = urlparse(self.path)
         q = {k: v[-1] for k, v in parse_qs(url.query).items()}

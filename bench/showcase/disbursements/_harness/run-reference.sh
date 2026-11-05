@@ -47,6 +47,7 @@ fi
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"; unset VULTR_INFERENCE_API_KEY' EXIT
+mkdir -p bench/showcase/disbursements/runs/reference
 fetch_usage > "$tmp/usage-before.json"
 echo "status=usage_before" >&2
 
