@@ -222,7 +222,7 @@ requires:   [T5.4, T5.5]
 fixture-ok: yes
 size:       S · frontier
 owns:       bench/RESULTS.md
-status:     not-started
+status:     claimed:t5-6
 ```
 The table product.md promises, per condition, as counts, leading with cost, consumer sandbox attempts, wall time, time stuck and containment. Also publish verdicts, right first time, tokens, records lost or duplicated, B5 429 responses and matching HTTP retry attempts. HTTP retries inside one consumer process are never counted as extra sandbox runs. What it shows and what it doesn't, plainly: if condition 1 or 6 matches 5, say so. Every number links to its runs.
 
