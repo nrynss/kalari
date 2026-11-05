@@ -6,6 +6,7 @@ Reference specification:
 - [`../product.md`](../product.md): the product, the tools, the demo, the comparison, the hackathon rules, the cautions.
 - [`../docs/architecture.md`](../docs/architecture.md): the executables, a sandbox run, the models, the configuration, the dependencies.
 - [`research/`](research/README.md): what was measured on the real stack before any code: Vultr Inference, the VM, Microsandbox, Lean, Lambo, the coding agent. **Read the file for your area first.**
+- [`design/`](design/README.md): the canonical SVG marks, diagrams, and CSS palette (`Kuzhikalari Pit & Urumi` + `Laterite Pit & Ola Paper`) for the public documentation site and Chaaya (`T7.5`).
 - [`ORCHESTRATOR.md`](ORCHESTRATOR.md): how the orchestrator dispatches, validates, lands and closes, with the brief template.
 - [`../AGENTS.md`](../AGENTS.md): the rules every agent follows.
 
@@ -148,7 +149,7 @@ Every task here ships. A task that turns out to be blocked becomes a finding, no
 | P4 | 13 / 13 | All done. T4.6b adds the trusted retry trace and lesson. T4.7c closed the production memory path with the observer refused and the harness-only rehearsal |
 | P5 | 4 / 9 | T5.1, T5.1a, T5.2 and T5.2a done. T5.2b claimed: 50-session harder-pair pilot running with a $12 cap, then the freeze |
 | P6 | 2 / 3 | T6.1 and T6.2 done. T6.3 claimed: public demo with HTTPS, HTTP startup and benchmark evidence production in progress |
-| P7 | 0 / 4 | Waits for P5, P6 |
+| P7 | 0 / 5 | Waits for P5, P6 |
 
 ---
 
