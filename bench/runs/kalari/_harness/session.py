@@ -59,7 +59,7 @@ for name in ('checks', 'evidence'):
     (root / name).mkdir(mode=0o700)
 lambo_db = a.lambo_db.resolve() if a.lambo_db.exists() else a.lambo_db.absolute()
 lambo_db.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-(root / 'lambo.toml').write_text('[store]\nkind = "sqlite"\npath = '+json.dumps(str(lambo_db))+'\n[embedder]\nkind = "fixture"\n[serve]\ndefault_session = "kalari-live"\npromotion_policy = "Solo"\n')
+(root / 'lambo.toml').write_text('promotion_policy = "Solo"\n[store]\nkind = "sqlite"\npath = '+json.dumps(str(lambo_db))+'\n[embedder]\nkind = "fixture"\n[serve]\ndefault_session = "kalari-live"\n')
 caps = {'timeout_ms': 30000, 'output_cap_bytes': 65536, 'memory_mib': 512}
 net = [{'host': host, 'port': a.api_port}]
 endpoint = {'endpoint': 'https://api.vultrinference.com/v1', 'model': 'deepseek-v4.1-flash-1017', 'api_key_env': a.key_env}
