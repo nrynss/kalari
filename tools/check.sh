@@ -8,6 +8,8 @@ echo "-- lake build"
 lake build
 echo "-- kalari --version"
 .lake/build/bin/kalari --version
+echo "-- kalari offline self-test"
+.lake/build/bin/kalari --offline-self-test
 echo "-- kalari-aashaan cases"
 tests/aashaan-cases.sh
 echo "-- examples"

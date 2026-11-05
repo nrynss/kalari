@@ -239,7 +239,7 @@ requires:   [T4.6b, T4.7a, T4.7]
 fixture-ok: no
 size:       M · frontier
 owns:       Kalari/Service.lean, Kalari/Tools/Run.lean (production observer wiring and candidate-truth artifact binding only), Kalari/Tools/Lesson.lean (isCandidateTruthCheck artifact binding and recordUnlocked plumbing only), bench/kalari-arm/, tests/live/observer.sh, tests/live/observer-harness.lean
-status:     in-review
+status:     done
 ```
 The production service currently rejects observer configuration and constructs `Run.Context` without an observer, so a tool call or an offline observer fixture cannot establish the learning path. Wire the observer only after verifying exclusive guest-source isolation; keep refusing configurations that cannot establish it. Rehearse the real service and sandbox route without inference, using a private Lambo fixture embedder and no external model calls.
 
@@ -249,7 +249,7 @@ Demonstrate the complete cross-upgrade path through the actual dispatcher: a ver
 
 **Orchestrator note:** the Lesson.lean scope above is narrowed to the artifact binding because the re-review showed `recordUnlocked` can select a same-ID check naming another artifact. The service pre-check covers the served path today, but the predicate must state the binding itself so a future caller cannot inherit the gap. No other Lesson.lean change is owned.
 
-**Notes (in review):** Production `kalari serve` refuses every observer configuration, including a fully formed one. The earlier acceptance is reverted. The rehearsal runs through `tests/live/observer-harness.lean`, a live-test entry point that calls the same dispatcher and is not reachable from `serve`. `tests/live/observer.sh` proves the refusal with three observer setups before it starts the harness.
+**Notes:** Production `kalari serve` refuses every observer configuration, including a fully formed one. The earlier acceptance is reverted. The rehearsal runs through `tests/live/observer-harness.lean`, a live-test entry point that calls the same dispatcher and is not reachable from `serve`. `tests/live/observer.sh` proves the refusal with three observer setups before it starts the harness.
 
 The alias egress rule stays the msb pool `172.16.0.0/12`. The runtime allocates the `/30` at create and `msb modify` has no network rule option. The rehearsal prints the host firewall rule for the observer port. A host firewall needs root, and the msb gateway proxy presents every sandbox as `127.0.0.1` with no forwarded header. The rule matches pool sources and the proxy connection does not carry one. The second-sandbox test uses the real payouts observer with its trace filter. It applies the firewall before the second request. The trace holds both events and the probe log records no forwarded header. Both sandboxes reach the observer. The test states `isolation=not-established`. The README and the transcript state this. No exclusivity is claimed.
 
@@ -257,7 +257,7 @@ A mid-run `SIGKILL` of the harness leaves the observer. The rehearsal puts the h
 
 The gate covers the dispatcher allowlist overwrite. `Run.exercise` covers a second egress rule, a published port, a stopped sandbox and an empty or non-tcp protocol list. The service fixture rejects a run record whose candidate truth check names another artifact.
 
-**Re-review N1 to N12:** The test removes the known observer sandboxes by name and asserts a clean before list. The second-sandbox test uses the real observer trace and reads the forwarded-header value. The firewall is applied before the second request. The mid-run test kills the Lean harness and removes the kill sandbox in its own cleanup. A partial firewall install is rolled back. `Run.verifyCandidateTruthArtifact` filters by check ID and program as well as the artifact. The check ID and program have one definition in Run.lean, and Lesson.lean uses those constants. The verified-behavior path also applies the artifact check. The before list removes every `kalari-` sandbox and the test creates and removes a stray `kalari-extra`. `Lesson.isCandidateTruthCheck` takes the artifact and checks `command[2]`. `recordUnlocked` and `record` pass it through, and `Service.record_lesson` passes the session artifact. The predicate and plumbing are the only Lesson.lean logic changes.
+**Re-review N1 to N12:** The test removes the known observer sandboxes by name and asserts a clean before list. The second-sandbox test uses the real observer trace and reads the forwarded-header value. The firewall is applied before the second request. The mid-run test kills the Lean harness and removes the kill sandbox in its own cleanup. A partial firewall install is rolled back. `Run.verifyCandidateTruthArtifact` filters by check ID and program as well as the artifact. The check ID and program have one definition in Run.lean, and Lesson.lean uses those constants. The verified-behavior path also applies the artifact check. The before list removes every `kalari-` sandbox and the test creates and removes a stray `kalari-extra`. `Lesson.isCandidateTruthCheck` takes the artifact and checks `command[2]`. `recordUnlocked` and `record` pass it through, and `Service.record_lesson` passes the session artifact. The predicate and plumbing are the only Lesson.lean logic changes. The gate now runs `kalari --offline-self-test`, so the forged-artifact end-to-end path is protected.
 
 ---
 
