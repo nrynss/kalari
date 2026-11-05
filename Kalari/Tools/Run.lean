@@ -18,10 +18,10 @@ private def artifactCap := 4 * 1024 * 1024
 same run's differential comparison. -/
 def trustedTruthArtifactName : String := "kalari-v1-truth.jsonl"
 
-/-- The candidate truth check identity. The lesson writer binds the same ID,
+/-- The candidate truth check identity. The lesson writer uses the same ID,
 program and artifact. -/
-private def candidateTruthCheckId : String := "candidate-v1-truth-v1"
-private def candidateTruthCheckProgram : String := "kalari_candidate_truth_check.py"
+def candidateTruthCheckId : String := "candidate-v1-truth-v1"
+def candidateTruthCheckProgram : String := "kalari_candidate_truth_check.py"
 
 /-- The guest-visible name of the msb host gateway. Every observed endpoint
 uses this name so the trusted service, not the caller, fixes the destination. -/

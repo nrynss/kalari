@@ -34,10 +34,10 @@ private def amendedCheckAssertion :=
   "The controlled amended-record fixture distinguishes first from last delivery by ID; keep-last matches final truth."
 private def amendedCheckProgram := "kalari_amended_policy_check.py"
 private def amendedCheckFixture := "kalari_amended_policy_fixture.json"
-private def candidateTruthCheckId := "candidate-v1-truth-v1"
 private def candidateTruthCheckAssertion :=
   "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison."
-private def candidateTruthCheckProgram := "kalari_candidate_truth_check.py"
+def candidateTruthCheckId : String := Kalari.Tools.Run.candidateTruthCheckId
+def candidateTruthCheckProgram : String := Kalari.Tools.Run.candidateTruthCheckProgram
 def trustedTruthArtifactName : String := Kalari.Tools.Run.trustedTruthArtifactName
 
 structure PolicyProvenance where
@@ -262,6 +262,8 @@ private def recordUnlocked (store : Kalari.Evidence.Store) (session runId artifa
     if !entry.change_kinds.contains signalChange || signalChange.isEmpty ||
         !validId signalCheck.id || signalCheck.assertion.isEmpty || signalCheck.command.isEmpty ||
         signalCheck.command.headD "" == "" then return .error "invalid verified behavior evidence"
+    if signalCheck.id == candidateTruthCheckId && !isCandidateTruthCheck artifact signalCheck then
+      return .error "verified behavior check does not name the trusted artifact"
     if !run.checks.contains signalCheck ||
         !(run.check_results.any fun c => c.check_id == signalCheck.id && c.passed) then
       return .error "behavior check was not verified by the passing run"
@@ -445,6 +447,31 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
   let resolvedRetry ← IO.ofExcept (← Kalari.Tools.Recall.resolveEvidence store retryRef)
   unless resolvedRetry.check == truthCheck && resolvedRetry.observation == retryLesson.observation do
     throw <| .userError "recall did not resolve the retry lesson to the truth check"
+
+  -- A verified-behavior lesson that claims the candidate truth check ID must
+  -- name the trusted artifact.
+  let badArtifactCheck : Check := { truthCheck with command :=
+    ["python3", candidateTruthCheckProgram, "other.jsonl", trustedTruthArtifactName] }
+  let badArtifactRunId := "page-bad-artifact"
+  appendRun badArtifactRunId { pageRun with checks := [badArtifactCheck], check_results := [
+    { check_id := badArtifactCheck.id, passed := true },
+    { check_id := "differential-v1", passed := true }] }
+  let badArtifactSignal : VerifiedBehavior := {
+    change_kind := "pagination_changed", check := badArtifactCheck,
+    behaviors := ["final_page_token"], failed_run_id := none }
+  let badArtifactRecord : Kalari.Evidence.Record := {
+    kind := "verified-behavior", session_id := "s", run_id := badArtifactRunId,
+    change_kinds := ["pagination_changed"], payload := toJson badArtifactSignal }
+  Kalari.Evidence.append store badArtifactRecord
+  let badArtifactResult ← record store "s" badArtifactRunId checkedContext.artifact classify write
+  unless (match badArtifactResult with
+      | .error e => e == "verified behavior check does not name the trusted artifact"
+      | .ok _ => false) do
+    throw <| .userError "a verified behavior check for another artifact was accepted"
+  unless !(← Kalari.Evidence.load store).records.any (fun r =>
+      r.kind == "lesson" && r.run_id == badArtifactRunId) do
+    throw <| .userError "a verified behavior check for another artifact wrote a lesson"
+  IO.println "lesson: a verified behavior check must name the trusted artifact"
 
   -- A run may carry several passing checks. The lesson must take the candidate
   -- truth check, not the first passing check. The weaker check carries the same

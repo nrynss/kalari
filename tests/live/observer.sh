@@ -109,6 +109,25 @@ remove_known_sandboxes() {
   done
 }
 
+# The observer test owns the kalari- namespace. Remove every sandbox in it,
+# including a stray one from an earlier run.
+remove_kalari_sandboxes() {
+  local names name
+  names=$("$TOOL_BIN/msb" list --format json 2>/dev/null | python3 -I -c 'import json, sys
+try:
+    rows = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+for row in rows:
+    name = row.get("name", "")
+    if name.startswith("kalari-"):
+        print(name)') || true
+  for name in $names; do
+    "$TOOL_BIN/msb" remove -f "$name" >/dev/null 2>&1 || true
+    say "sandboxes: removed $name"
+  done
+}
+
 cleanup() {
   local status=$?
   trap - EXIT
@@ -160,6 +179,7 @@ cleanup() {
     status=1
   elif [[ -f "$sandbox_before" ]]; then
     remove_known_sandboxes
+    remove_kalari_sandboxes
     if ! "$TOOL_BIN/msb" list --format json >"$sandbox_after" 2>"$work/msb-list-after.err"; then
       echo "cleanup: msb list failed; sandbox cleanup is unproven" >&2
       status=1
@@ -248,7 +268,20 @@ if ! "$TOOL_BIN/lambo" provision --config "$preflight/lambo.toml" >/dev/null 2>"
 fi
 say "preflight: lambo fixture embedder provisioned and derived one concept"
 
+# A stray kalari-extra sandbox must not survive. Create one when possible,
+# then remove every kalari- entry before the before-list.
+stray_created=0
+if ! "$TOOL_BIN/msb" list --format json 2>/dev/null | grep -q '"name": "kalari-extra"'; then
+  if "$TOOL_BIN/msb" create --name kalari-extra --cpus 1 --memory 256M --no-net \
+      --pull never python:3.13-slim >/dev/null 2>&1; then
+    stray_created=1
+  fi
+fi
+if [[ "$stray_created" == 1 ]]; then
+  say "sandboxes: stray kalari-extra created"
+fi
 remove_known_sandboxes
+remove_kalari_sandboxes
 if ! "$TOOL_BIN/msb" list --format json >"$sandbox_before" 2>"$work/msb-list-before.err"; then
   echo "observer rehearsal: initial msb list failed; sandbox cleanup is unproven" >&2
   sandbox_before_failed=1
@@ -258,7 +291,7 @@ else
 import json, sys
 names = {row.get("name", "") for row in json.load(open(sys.argv[1]))}
 known = set(sys.argv[2:])
-left = sorted(names & known)
+left = sorted(name for name in names if name.startswith("kalari-") or name in known)
 if left:
     raise SystemExit("observer test sandboxes remain: " + ",".join(left))
 PY
@@ -931,13 +964,18 @@ try:
         raise SystemExit("harness process remains")
     if lambo_children():
         raise SystemExit("lambo child remains")
-    if set(known_sandboxes) & sandbox_names():
+    remaining_sandboxes = sandbox_names()
+    if set(known_sandboxes) & remaining_sandboxes or any(
+        name.startswith("kalari-") for name in remaining_sandboxes):
         raise SystemExit("observer test sandbox remains")
     line("sandboxes: observer_test_remaining=0")
     line("processes: observer_remaining=0 service_remaining=0 lambo_remaining=0")
 finally:
     for name in known_sandboxes:
         subprocess.run([msb, "remove", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    for name in sandbox_names():
+        if name.startswith("kalari-"):
+            subprocess.run([msb, "remove", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for item in services:
         if item.proc.poll() is None:
             item.kill()

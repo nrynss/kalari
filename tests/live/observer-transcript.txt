@@ -2,10 +2,12 @@ observer rehearsal: no inference; Clef calls are counted and blocked by a local 
 versions: vimanam 2.1.0, lambo 0.9.0, msb msb 0.7.13
 embedder: fixture (local, no external model calls)
 preflight: lambo fixture embedder provisioned and derived one concept
+sandboxes: stray kalari-extra created
+sandboxes: removed kalari-extra
 sandboxes: before list has no observer test sandboxes
-apis: payouts live=loopback:36379, payouts observer=loopback:38131, settlements live=loopback:37835, settlements grading=loopback:36323
+apis: payouts live=loopback:59897, payouts observer=loopback:42095, settlements live=loopback:36837, settlements grading=loopback:43431
 lambo: private fixture store provisioned, change kinds seeded: argument_added,field_added,field_required_changed,field_type_changed,operation_moved,operation_renamed,pagination_changed,result_added,type_added
-decisions: local_fake=loopback:40127 real_endpoint=blocked
+decisions: local_fake=loopback:34757 real_endpoint=blocked
 refusal: valid observer exit=1 message='kalari serve: observer requires verified exclusive guest source isolation'
 refusal: caller address exit=1 message='kalari serve: observer requires verified exclusive guest source isolation'
 refusal: missing server exit=1 message='kalari serve: observer requires verified exclusive guest source isolation'
@@ -13,7 +15,7 @@ payouts what_changed: kinds=argument_added,field_added,field_required_changed,op
 payouts run_in_sandbox: passed=true verdict=exited exit=0 checks=[candidate-v1-truth-v1=pass, differential-v1=pass]
 payouts record_lesson: observation='Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.'
 payouts record_lesson: check=candidate-v1-truth-v1 command=['python3', 'kalari_candidate_truth_check.py', 'payouts.jsonl', 'kalari-v1-truth.jsonl']
-payouts record_lesson: memory_concept_id=3ea5a0e1-d27f-457b-9f80-dfe47057eda9
+payouts record_lesson: memory_concept_id=ff5897b5-71f9-4a06-b09e-43f22cb34d37
 harness: payouts model_calls=0 measured_clef_calls
 processes: payouts_observer_reaped=1
 settlements what_changed: kinds=argument_added,field_type_changed,pagination_changed,type_added
@@ -28,8 +30,8 @@ evidence: payouts page observation behaviors=['boundary_overlap_one', 'final_pag
 evidence: published lesson='Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.'
 evidence: settlements check rebound command=['python3', 'kalari_candidate_truth_check.py', 'settlements.jsonl', 'kalari-v1-truth.jsonl']
 retries: agent_http=not-applicable grading_http=not-applicable sandbox_payouts=1 sandbox_settlements_429=2 sandbox_settlements_retries=1
-egress: alias_rule=allow@<ip>/12:tcp:50015 observed_gateway=<ip>
-firewall: rules="INPUT -p tcp --dport 50015 -s <ip> -j ACCEPT, INPUT -p tcp --dport 50015 -s <ip>/12 -j DROP" result=unavailable: iptables v1.8.13 (nf_tables): Could not fetch rule set generation id: Permission denied (you must be root) applied_before_second=1
+egress: alias_rule=allow@<ip>/12:tcp:56321 observed_gateway=<ip>
+firewall: rules="INPUT -p tcp --dport 56321 -s <ip> -j ACCEPT, INPUT -p tcp --dport 56321 -s <ip>/12 -j DROP" result=unavailable: iptables v1.8.13 (nf_tables): Could not fetch rule set generation id: Permission denied (you must be root) applied_before_second=1
 second sandbox: probe_a=200 probe_b=200 trace_counts=[1, 2] xff=[None, None] firewall_blocked=0
 second sandbox: second_event=present isolation=not-established
 mid-run kill: observer_started=1
