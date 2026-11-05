@@ -58,6 +58,8 @@ jobs:
         run: |
           curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Install build dependency
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
       - name: Build release executables
         run: lake build kalari kalari-aashaan
       - name: Package Linux x86-64 archive
