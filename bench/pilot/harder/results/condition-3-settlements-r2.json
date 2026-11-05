@@ -1,0 +1,260 @@
+{
+  "condition": 3,
+  "upgrade": "settlements",
+  "arm": "reference",
+  "setup": "OpenCode 2.2.5 with microsandbox-mcp, no Kalari tools",
+  "api_base": "the VM's public address",
+  "live_port": 18081,
+  "grading_port": 18091,
+  "prompt": "upgrade.txt",
+  "opencode_version": "opencode v2.2.5",
+  "session_continued": false,
+  "session_id": "ses_e563c3c48ffepi06oxrjljdzqz",
+  "resumed_session_id": "",
+  "session_id_expected": "",
+  "session_identity_ok": null,
+  "workspace": "~/kalari-harness/runs/ea98a5531c7b/workspace",
+  "workspace_digest": "4644db633707408f6a1a8838431162adcfda2c1bf4be3dcf29e56c4a7c32abaf",
+  "workspace_identity_ok": true,
+  "condition1_workspace": null,
+  "continuation_state_consumed": null,
+  "continuation_state_consumed_at": null,
+  "notes_attached": false,
+  "session_cap_s": 1200,
+  "session_capped": false,
+  "consumer_exit": 0,
+  "output_present": true,
+  "grade_status": "ok",
+  "measures": {
+    "verdict": "PASS",
+    "right_first_time": true,
+    "sandbox_runs": 3,
+    "wall_time_s": 49.932,
+    "time_stuck_s": 0,
+    "tokens_input": 491308,
+    "tokens_output": 9784,
+    "records_lost": 0,
+    "records_duplicated": 0
+  },
+  "sandbox_runs_against_v1": 0,
+  "sandbox_runs_against_v2": 3,
+  "http_retries": {
+    "agent": {
+      "status": "ok",
+      "b5_429_responses": 3,
+      "matching_retry_attempts": 3,
+      "successful_matching_retries": 3
+    },
+    "grading": {
+      "status": "ok",
+      "b5_429_responses": 2,
+      "matching_retry_attempts": 2,
+      "successful_matching_retries": 2
+    },
+    "note": "an HTTP retry inside one consumer process is not a sandbox run",
+    "null_means": "unknown, not zero"
+  },
+  "retry_measure": {
+    "source": "API retry journals, truncated at each phase start and read at each phase end",
+    "note": "an HTTP retry inside one consumer process is not a sandbox run",
+    "phases": {
+      "agent": {
+        "apis": {
+          "api-settlements-grading": {
+            "b5_429_responses": 0,
+            "clients": 0,
+            "matching_retry_attempts": 0,
+            "requests": 0,
+            "status": "ok",
+            "successful_matching_retries": 0
+          },
+          "api-settlements-live": {
+            "b5_429_responses": 3,
+            "clients": 1,
+            "matching_retry_attempts": 3,
+            "requests": 88,
+            "status": "ok",
+            "successful_matching_retries": 3
+          }
+        },
+        "b5_429_responses": 3,
+        "clients": 1,
+        "matching_retry_attempts": 3,
+        "phase": "agent",
+        "requests": 88,
+        "status": "ok",
+        "successful_matching_retries": 3
+      },
+      "grading": {
+        "apis": {
+          "api-settlements-grading": {
+            "b5_429_responses": 2,
+            "clients": 1,
+            "matching_retry_attempts": 2,
+            "requests": 56,
+            "status": "ok",
+            "successful_matching_retries": 2
+          },
+          "api-settlements-live": {
+            "b5_429_responses": 0,
+            "clients": 0,
+            "matching_retry_attempts": 0,
+            "requests": 0,
+            "status": "ok",
+            "successful_matching_retries": 0
+          }
+        },
+        "b5_429_responses": 2,
+        "clients": 1,
+        "matching_retry_attempts": 2,
+        "phase": "grading",
+        "requests": 56,
+        "status": "ok",
+        "successful_matching_retries": 2
+      }
+    }
+  },
+  "records_extra": 0,
+  "records_mismatched": 0,
+  "grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 1873,
+    "unique": 1873,
+    "expected": 1873,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0,
+    "consumer_exit": 0,
+    "grade_status": "ok",
+    "output_bytes": 206185,
+    "stale_output_ignored": false,
+    "note": "grading ran on fresh output"
+  },
+  "first_v2_grade": {
+    "verdict": "PASS",
+    "output_present": true,
+    "records": 1873,
+    "unique": 1873,
+    "expected": 1873,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "mismatched": 0,
+    "unreadable_lines": 0,
+    "consumer_exit": 0,
+    "grade_status": "ok",
+    "output_bytes": 206185,
+    "stale_output_ignored": false,
+    "note": "grading ran on fresh output"
+  },
+  "grading": {
+    "final": {
+      "workspace_checked": "~/kalari-harness/runs/ea98a5531c7b/workspace"
+    },
+    "first": {
+      "workspace_checked": "~/kalari-harness/runs/ea98a5531c7b/first-v2-src"
+    }
+  },
+  "right_first_time_basis": "snapshot",
+  "cost_usd": 0.079567,
+  "cost_note": "DeepSeek V4.1 Flash list price, cached input counted as input, no cache discount",
+  "usage_delta": [
+    {
+      "model": "clef",
+      "input": 0,
+      "output": 0
+    },
+    {
+      "model": "deepseek-v4.1-flash-1017",
+      "input": 491308,
+      "output": 9784
+    },
+    {
+      "model": "qwen3-embedding-4b",
+      "input": 0,
+      "output": 0
+    }
+  ],
+  "opencode_tokens": {
+    "steps": 19,
+    "input": 30892,
+    "output": 4229,
+    "reasoning": 5555,
+    "cache_read": 460416
+  },
+  "consumer_runs": [
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 1.514,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 1.702,
+      "timed_out": false,
+      "basis": "snapshot"
+    },
+    {
+      "version": "v2",
+      "tool": "execute",
+      "status": "completed",
+      "duration_s": 2.456,
+      "timed_out": false,
+      "basis": "snapshot"
+    }
+  ],
+  "event_summary": {
+    "lines": 63,
+    "unparsed_lines": 0,
+    "types": {
+      "step_start": 19,
+      "tool_use": 24,
+      "step_finish": 19,
+      "text": 1
+    },
+    "tools": {
+      "skill": 1,
+      "read": 8,
+      "glob": 1,
+      "execute": 12,
+      "write": 1,
+      "edit": 1
+    },
+    "steps": 19,
+    "bash_denied": 0,
+    "shell_denied": 0,
+    "consumer_denied": 0,
+    "sandbox_names": [
+      "agent-settlement-verify"
+    ],
+    "last_reason": "stop",
+    "final_answer": "Upgraded `settlement_reconcile.py` from v1 to v2.\n\nChanges:\n- Switched from `/v1/graphql` to `/v2/graphql`.\n- Replaced the single unpaged query with a cursor-paged `settlements(first: 100, after: ...)` traversal.\n- Continues while `pageInfo.hasNextPage` is true, including short/empty pages.\n- Deduplicates by `id`, keeping the last/amended version received.\n- Retries `429 Too Many Requests` after the `Retry-After` delay using the identical request.\n- Restarts the traversal without a cursor when GraphQL reports an invalid/expired cursor.\n- Writes one settlement per line, so every id appears exactly once.\n\nVerification against `http://the VM's public address:18081`:\n- Completed successfully with **1,873 settlements**.\n- Output had **1,873 unique ids**, no missing or extra ids.\n- All values matched the v1 server\u2019s 1,873 settlements exactly.\n- A repeat run produced byte-identical output.",
+    "stderr_excerpt": "",
+    "diff_stat": "settlement_reconcile.py | 86 +++++++++++++++++++++++++++++++++++++++++++++----\n 1 file changed, 79 insertions(+), 7 deletions(-)"
+  },
+  "grader_runs": {
+    "final": {
+      "status": "EXIT 0",
+      "log_excerpt": "reconciled 1873 settlements\n"
+    },
+    "first": {
+      "status": "EXIT 0",
+      "log_excerpt": "reconciled 1873 settlements\n"
+    }
+  },
+  "cleanup": {
+    "sandboxes_removed": [],
+    "sandboxes_left": [],
+    "processes_left": []
+  },
+  "process_elapsed_s": 52.0,
+  "opencode_exit": 0
+}
