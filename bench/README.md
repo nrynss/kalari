@@ -48,17 +48,32 @@ Sources: [Zendesk: using the incremental export API](https://developer.zendesk.c
 
 **This table is for the benchmark's readers, never for the arms.** What an arm sees uses neutral field names and our own wording, so the model can't recognise a vendor and recall its behaviour from training. The vendors' docs are paraphrased for structure, never copied.
 
-## The upgrade pair (proposed; the pilot decides)
+## The upgrade pair (frozen)
+
+The user chose this pair.
+We froze it in bench/FROZEN.md.
+Payouts runs B1 plus B2 plus B4 plus B5.
+Settlements runs B1 plus B2 plus B3 plus B5.
+B5 in both upgrades is the final hardness change.
+We make no change after the freeze.
 
 | | Upgrade 1: teaches the lesson | Upgrade 2: measures the comparison |
 |---|---|---|
 | Domain | **Merchant payout ledger** (`payout-sync`): a lost record is an unpaid merchant, a duplicate is a double payment | **Settlement batches** (`settlement-reconcile`): reconciling daily settlements |
-| Format | REST, OpenAPI 3.0. v1 returns every payout in one response; v2 is a time-windowed export | GraphQL. v1 returns a plain list; v2 is a Relay-style connection whose `endCursor` is never null |
-| Behaviours | B1 + B2 + B4 | B1 + B2 (amended repeats: the later copy is the final version) + B3 (empty pages that continue) |
+| Format | REST, OpenAPI 3.0. v1 returns every payout in one response. v2 is a time-windowed export | GraphQL. v1 returns a plain list. v2 is a Relay-style connection whose `endCursor` is never null |
+| Behaviours | B1 plus B2 plus B4 plus B5 | B1 plus B2 (amended repeats: the later copy is the final version) plus B3 (empty pages that continue) plus B5 |
 | Vimanam reports | `pagination_changed` on the payouts operation | `pagination_changed` on the settlements query |
-| The lesson | A `constraint` on `pagination_changed`: "stop on the end flag, never on the token's presence or a short or empty page; key records by ID, the last delivery wins", with a check: exact count against v1, zero duplicate IDs, every record equal to v1's | Recalled by traversal from `pagination_changed` before the first run in condition 5 |
+| The lesson | A `constraint` on `pagination_changed`: "stop on the end flag, never on the token presence or a short or empty page and key records by ID, the last delivery wins", with a check of exact count against v1 and zero duplicate IDs and every record equal to v1 | Recalled by traversal from `pagination_changed` before the first run in condition 5 |
 
-The dataset is fixed for a run, so records are keyed by ID. **Which copy to keep matters only in upgrade 2:** payouts' overlapping records are identical, so keeping the first copy passes there, but settlements' first copy of an amended record is the old version, and keeping it fails on 19 records. A lesson worded "dedupe by ID" from upgrade 1's passing code would carry that mistake over; "the last delivery wins" doesn't. Upgrade 2 also adds B3, which the lesson covers ("never … an empty page") but which upgrade 1 never showed: a fair test of whether a lesson generalises, not just whether it is replayed.
+The dataset stays fixed for a run, so we key records by ID.
+Which copy to keep matters only in upgrade 2.
+Payout overlap copies are identical, so the first copy passes there.
+The settlements first copy of an amended record is the old version, and it fails 19 records.
+A lesson that says only dedupe by ID would carry that mistake forward.
+The lesson says keep the last delivery, so it avoids that mistake.
+Upgrade 2 also adds B3, and the lesson covers empty pages even though upgrade 1 never shows one.
+This tests whether a lesson generalises, not only whether the agent replays it.
+Both upgrades add B5, and the docs describe the retry contract.
 
 ## Conditions
 
@@ -68,23 +83,43 @@ Conditions 1–5 are in product.md. One control is added:
 |---|---|
 | **6** | **Reference setup with a better prompt:** the same task, plus "verify v2's records against v1's, record by record: none missing, none extra, each exactly once". Fresh session, no notes |
 
-If condition 6 matches condition 5, Kalari's value is mostly a good prompt, and we say so. If it doesn't, the claim is stronger: Kalari enforces the check and remembers what it found; a prompt only asks.
+If condition 6 matches condition 5, Kalari value is mostly a good prompt, and we say so.
+If it does not match, the claim is stronger.
+Kalari enforces the check and remembers what it found.
+A prompt only asks.
 
 ## Measures
 
-Defined once, the same for every arm:
+We define each measure once and use it for every arm.
+We lead with cost and attempts and containment.
+We keep verdicts and right first time.
+We report HTTP retry attempts apart from sandbox runs.
 
 | Measure | Definition |
 |---|---|
-| **Verdict** | The hidden grader's result on the consumer as it stands at the end of the session: every record exactly once, against the dataset's truth |
-| **Right first time** | The first run of the consumer against v2, in any sandbox, already passes the grader (checked by grading the code as it stood at that run) |
+| **Cost** | List price in USD for the session, from usage |
 | **Sandbox runs** | Runs of the consumer against v1 or v2, by the agent or by Kalari |
-| **Wall time** | Session start to the agent's final answer, including time stuck in a hung run |
-| **Time stuck** | Time spent in runs that ended by a timeout, the agent's or the aashaan's |
+| **HTTP retries** | B5 429 responses and matching retry attempts, agent phase and grading phase apart. Never count them as sandbox runs. Unknown stays unknown, never zero |
+| **Wall time** | Session start to the agent final answer, including time stuck in a hung run |
+| **Time stuck** | Time spent in runs that ended by a timeout, the agent or the aashaan |
+| **Containment** | What each sandbox could reach while it worked |
+| **Verdict** | The hidden grader result on the consumer at the end of the session. Every record exactly once, against the dataset truth |
+| **Right first time** | The first run of the consumer against v2 already passes the grader |
 | **Tokens** | Input and output, from `/v1/usage` before and after the session |
-| **Records lost or duplicated** | For a session whose consumer fails the grader: how many, so "it said done but lost 2,331 payouts" is a number |
+| **Records lost or duplicated** | For a session whose consumer fails the grader, how many |
 
-Every session, in every arm, is capped at 20 minutes. Results are reported as counts ("4 of 5 against 1 of 5"), never as percentages or "always": five runs is a small sample.
+The baseline passed all 50 harder pair sessions first time.
+Right first time reached 50 of 50.
+Zero records were lost or duplicated.
+One agent retry window reads unknown from journal overflow.
+The measured edge will come from cost and attempts and containment, not from pass rate.
+Conditions 1 and 2 and 3 and 6 each passed all their rows.
+If condition 1 or condition 6 matches condition 5, we say so.
+
+Every session in every arm caps at 20 minutes.
+We report results as counts, such as 4 of 5 against 1 of 5.
+We never report percentages.
+Five runs is a small sample.
 
 ## Protocol
 
@@ -93,8 +128,8 @@ Every session, in every arm, is capped at 20 minutes. Results are reported as co
 3. **No arm can read the servers.** The v1 and v2 APIs run as their own service, outside every workspace and outside every path the agents may read. The workspace holds the consumer, the specs and the docs; never server code, never a changelog written for the task.
 4. **The docs are the weakest point, so they are fixed first.** Written before the pilot, following the structure of the real vendor's docs, with a record (here, not in the docs) of which sentence describes each behaviour. Frozen with the pair. Never edited after seeing a result.
 5. **The hidden grader** runs after each session in a fresh `--no-net` microVM. No arm sees it or is told what it checks.
-6. **Pilot the baseline first.** The reference setup only: each behaviour alone in a fresh session, five runs each; then the proposed pair under conditions 1–3 and 6, five runs each. Record every measure.
-7. **Freeze before Kalari runs.** Choose the pair from the pilot's numbers, then freeze and commit the APIs, the docs, the prompt and the grader before the Kalari arm's first run.
+6. **Pilot the baseline first.** The reference setup only ran the harder pair. It ran B5 alone and the full pair under conditions 1 and 2 and 3 and 6. It recorded every measure.
+7. **Freeze before Kalari runs.** We chose the pair from the pilot numbers. We froze the APIs and the docs and the prompt and the grader in bench/FROZEN.md before any Kalari run.
 8. **Publish every run**, baseline passes included, with its log, verdict and measures.
 
 ## The network route (proved)
@@ -125,12 +160,14 @@ So every benchmark run:
 - gets its **own `XDG_DATA_HOME`, `XDG_STATE_HOME` and `XDG_CACHE_HOME`** (verified: the shared database is untouched), so a "fresh session" is really fresh, and condition 1's continuous session is a deliberate `--session` on the same directory;
 - ends with a check that no `opencode` or `microsandbox-mcp` process is left.
 
-## If the baseline passes the pilot anyway
+## The baseline passed
 
-Both (decided, to revisit after the pilot):
-
-- **Harder, still real behaviours.** Combine more of B1–B5 in one upgrade, or add B5. Nothing invented: every behaviour keeps a real source.
-- **Lead with cost, attempts and containment** instead of the pass rate: sandbox runs, time stuck, wall time and tokens to a verified result, and what each arm's sandbox could reach while it worked.
+The baseline passed all 50 harder pair sessions first time.
+We chose harder yet real behaviours, and we froze B5 in both upgrades.
+Every behaviour keeps a real source.
+We lead with cost and attempts and containment instead of the pass rate.
+We report sandbox runs and time stuck and wall time and tokens to a verified result.
+We report what each sandbox could reach while it worked.
 
 ## Budget
 
@@ -152,5 +189,6 @@ bench/
 ├── graders/                 built: grade.py, the hidden grader
 ├── tests/quirks.sh          built, in the gate: every obvious consumer fails as predicted, the correct one passes
 ├── pilot/                   to build: pilot runs, scripts and results
+├── FROZEN.md                frozen pair and hashes
 └── runs/                    to build: the frozen comparison, every run with its log, verdict and measures
 ```

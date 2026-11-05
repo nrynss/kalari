@@ -63,9 +63,26 @@ Both arms run **the same OpenCode 2 with the same model**, DeepSeek V4.1 Flash o
 | 5 | OpenCode + Kalari, with the lesson from upgrade one |
 | 6 | Reference setup with a better prompt: the task plus "verify v2's records against v1's, record by record". A control: if it matches 5, Kalari's value is mostly the prompt, and we say so |
 
-**Kalari's checks include a differential check against the old API**: the v1 API stays live during the migration, and the old consumer's records on v1 are compared with the new consumer's on v2 (none missing, none extra, each exactly once, each equal to v1's version). Every arm gets the same specs, the same vendor-style prose docs, the same prompt, and the same reach to **both** v1 and v2: Kalari's edge is that it runs the comparison unasked, not that it can. No arm can read the servers, and what arms see uses neutral names, so the model can't recognise the vendor a behaviour comes from. **The baseline is piloted first, and the upgrade pair, docs, prompt and grader are frozen before the Kalari arm runs.** Every run is published (bench/README.md, Protocol).
+Kalari checks include a differential check against the old API.
+The v1 API stays live during the migration.
+We compare the old consumer records on v1 with the new consumer records on v2.
+We require none missing and none extra and each exactly once and each equal to v1 version.
+Every arm gets the same specs and the same vendor style prose docs and the same prompt and the same reach to both v1 and v2.
+Kalari edge is that it runs the comparison unasked, not that it alone can reach v1.
+No arm can read the servers, and what arms see uses neutral names, so the model cannot recognise the vendor a behaviour comes from.
+We piloted the baseline first, and we froze the pair and docs and prompt and grader before any Kalari run.
+bench/FROZEN.md records the commit and every hash.
+We publish every run as bench/README.md Protocol describes.
 
-Measured on upgrade two, as defined in bench/README.md (Measures): the hidden grader's verdict at the end of the session, right first time (the headline), sandbox runs, wall time, time stuck in hung runs, tokens, and records lost or duplicated by any version that "succeeded" but fails the grader. Five repeats per condition, every session capped at 20 minutes, reported as counts. If condition 1 also passes first time, the edge is durability, sharing and enforcement, not first-attempt recall: say so plainly.
+We measure upgrade two as bench/README.md defines.
+We lead with cost and consumer sandbox attempts and wall time and time stuck and containment.
+We keep verdicts and right first time.
+We report HTTP retry attempts apart from sandbox runs.
+Five repeats run per condition, and every session caps at 20 minutes.
+We report results as counts, never as percentages.
+The baseline passed all 50 harder pair sessions first time.
+The measured edge will come from cost and attempts and containment, not from pass rate.
+If condition 1 or condition 6 matches condition 5, we say so.
 
 **A containment difference the reference setup can't close:** there, the agent chooses each sandbox's network setting. In the reference run it chose none, so its sandbox could reach the internet and the VM's own public IP. Kalari's `run_in_sandbox` sets the network policy itself.
 
