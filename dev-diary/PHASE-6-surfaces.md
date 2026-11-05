@@ -54,7 +54,7 @@ requires:   [T6.2, T2.3b]
 fixture-ok: no
 size:       M · mid
 owns:       deploy/vultr/
-status:     not-started
+status:     claimed:t6-3
 ```
 The Vultr preset: `kalari serve` as a systemd unit (`UMask=0022`, its own user, the key from a credentials file only that user reads, never in the unit), Caddy for TLS in front of the HTTP API, Lambo's store on the VM, and the benchmark APIs (`bench/apis/deploy.sh`). **Opening ports 80 and 443 in the Vultr firewall is the user's call**; SSH stays Tailscale-only. A domain name for the demo URL is the user's choice.
 
