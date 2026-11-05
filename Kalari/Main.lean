@@ -23,7 +23,7 @@ def offlineSelfTest : IO Unit := do
       ("params", obj [("name", Lean.Json.str name), ("arguments", args)])]).compress
   let caps := obj [("timeout_ms", Lean.toJson (1000 : Nat)), ("output_cap_bytes", Lean.toJson (4096 : Nat)), ("memory_mib", Lean.toJson (128 : Nat))]
   let requests := [request 1 "what_changed" (obj [("old_spec", "old"), ("new_spec", "new")]),
-    request 2 "blast_radius" (obj [("change_ids", Lean.toJson ([] : List String))]),
+    request 2 "blast_radius" (obj [("change_ids", Lean.toJson (["unknown-fixture-id"] : List String))]),
     request 3 "recall_lessons" (obj [("change_kinds", Lean.toJson (["pagination_changed"] : List String))]),
     request 4 "run_in_sandbox" (obj [("workspace", "/candidate"), ("command", Lean.toJson (["python3", "/candidate/correct.py"] : List String)), ("caps", caps), ("allowlist", Lean.toJson ([obj [("host", "api.example.test"), ("port", Lean.toJson (18080 : Nat))]] : List Lean.Json))]),
     request 5 "record_lesson" (obj [("run_id", "latest")])]

@@ -104,25 +104,63 @@ def whatChanged (runner : Kalari.Vimanam.Runner) (oldSpec newSpec : String) :
 
 private def siteJson (site : Kalari.Model.CallSite) : Json := toJson site
 
-/-- Each known change is searched and linked to its confirmed and uncertain
-sites. Unknown IDs or changes without an operation fail explicitly. -/
+private def emptyReport (id status : String) (extra : List (String × Json) := []) : Json :=
+  Json.mkObj ([("change_id", Json.str id), ("status", Json.str status),
+    ("confirmed", toJson ([] : List Json)), ("uncertain", toJson ([] : List Json))] ++ extra)
+
+private def skippedReport (session : Session) (id : String) : Json :=
+  match session.changes.find? (fun c => c.fact.id == id) with
+  | none => emptyReport id "unknown_change_id" [
+      ("note", Json.str "not an ID from what_changed in this session")]
+  | some change =>
+    if change.operation.isSome then emptyReport id "searched"
+    else emptyReport id "not_searchable" [
+      ("kind", Json.str change.fact.kind),
+      ("note", Json.str "this change has no operation to search for in code; review it by hand")]
+
+/-- Search each operation and link its sites. Return one status per requested ID,
+including unknown and non-searchable changes. Reject an oversized minimum response
+before side effects; shorten site lists with an explicit marker when needed. -/
 def blastRadius (session : Session) (runner : Kalari.Search.Runner)
     (confirm : Kalari.Search.Confirmer) (write : ScopedWrite)
     (repoScope workspace : String) (ids : List String) : IO (Except String Json) := do
   if repoScope.isEmpty then return .error "empty repo_scope"
-  let mut reports : List Json := []
-  for id in ids do
-    let some change := session.changes.find? (fun c => c.fact.id == id)
-      | return .error s!"unknown change ID: {id}"
-    let some op := change.operation
-      | return .error s!"change has no searchable operation: {id}"
+  if ids.isEmpty then return .error "empty change_ids"
+  let minimum := ids.map (skippedReport session)
+  -- Reserve space for truncation markers before any search or graph write.
+  let reserved := minimum.map fun j =>
+    match j.getObjValAs? String "status" with
+    | .ok "searched" => emptyReport ((j.getObjValAs? String "change_id").toOption.getD "")
+        "searched" [("truncated", Json.bool true)]
+    | _ => j
+  if (Json.mkObj [("reports", toJson reserved)]).compress.utf8ByteSize > outputBudget then
+    return .error "change_ids response exceeds byte budget; request fewer or shorter IDs"
+  let mut reports := minimum.toArray
+  for index in [:ids.length] do
+    let id := ids[index]!
+    let some change := session.changes.find? (fun c => c.fact.id == id) | continue
+    let some op := change.operation | continue
     let report ← match ← Kalari.Search.search runner confirm change.fact op workspace with
       | .error e => return .error e
       | .ok r => pure r
     let uncertain := report.uncertain.map fun u => Json.mkObj [
       ("site", siteJson u.site), ("probability", toJson u.probability)]
-    reports := reports ++ [Json.mkObj [("change_id", Json.str id),
-      ("confirmed", toJson report.radius.call_sites), ("uncertain", toJson uncertain)]]
+    let mut confirmed := report.radius.call_sites.map siteJson
+    let mut remaining := uncertain
+    let mut truncated := false
+    -- Future reports retain their reserved minimum space.
+    let tail := reserved.drop (index + 1)
+    for _ in [:confirmed.length + remaining.length + 1] do
+      let current := Json.mkObj ([("change_id", Json.str id), ("status", Json.str "searched"),
+        ("confirmed", toJson confirmed), ("uncertain", toJson remaining)] ++
+        if truncated then [("truncated", Json.bool true)] else [])
+      let trial := reports.toList.take index ++ [current] ++ tail
+      if (Json.mkObj [("reports", toJson trial)]).compress.utf8ByteSize ≤ outputBudget then
+        reports := reports.set! index current
+        break
+      truncated := true
+      if !remaining.isEmpty then remaining := remaining.take (remaining.length - 1)
+      else confirmed := confirmed.take (confirmed.length - 1)
     let changeId ← match ← write repoScope s!"change {id}" [] with
       | .error e => return .error e
       | .ok v => pure v
@@ -155,7 +193,33 @@ private def test : IO Unit := do
     let (session, changes) ← IO.ofExcept (← whatChanged replay oldSpec newSpec)
     unless changes.compress.contains "pagination_changed" && changes.compress.utf8ByteSize ≤ outputBudget do throw <| .userError "changes output"
     let some page := session.changes.find? (fun c => c.fact.kind == "pagination_changed") | throw <| .userError "no pagination change"
-    let radius ← IO.ofExcept (← blastRadius session (Kalari.Search.live "/usr/bin:/bin") confirm writer "kalari/test" workspace [page.fact.id])
+    let some skipped := session.changes.find? (fun c => c.operation.isNone)
+      | throw <| .userError "no non-searchable change"
+    writes.set []
+    let radius ← IO.ofExcept (← blastRadius session (Kalari.Search.live "/usr/bin:/bin") confirm writer "kalari/test" workspace [page.fact.id, skipped.fact.id, "made-up-id"])
+    let reports ← IO.ofExcept (radius.getObjValAs? (List Json) "reports")
+    unless reports.length == 3 do throw <| .userError "report count"
+    for (item, id, status) in reports.zip [page.fact.id, skipped.fact.id, "made-up-id"] |>.zip ["searched", "not_searchable", "unknown_change_id"] |>.map (fun ((item, id), status) => (item, id, status)) do
+      unless (item.getObjValAs? String "change_id").toOption == some id &&
+          (item.getObjValAs? String "status").toOption == some status do
+        throw <| .userError "report order or status"
+    let log ← writes.get
+    unless log.filter (fun (_, _, deps) => deps.isEmpty) == [("kalari/test", s!"change {page.fact.id}", [])] do
+      throw <| .userError "skipped change wrote graph links"
+    IO.println s!"mixed blast_radius: {radius.compress}"
+    for ids in [[], [String.ofList (List.replicate outputBudget 'x')]] do
+      writes.set []
+      match ← blastRadius session (Kalari.Search.live "/usr/bin:/bin") confirm writer "kalari/test" workspace ids with
+      | .ok _ => throw <| .userError "invalid request succeeded"
+      | .error _ => pure ()
+      unless (← writes.get).isEmpty do throw <| .userError "invalid request wrote links"
+    writes.set []
+    let skippedOnly ← IO.ofExcept (← blastRadius session (Kalari.Search.live "/usr/bin:/bin") confirm writer "kalari/test" workspace ["made-up-id", skipped.fact.id, "made-up-id"])
+    unless (← IO.ofExcept (skippedOnly.getObjValAs? (List Json) "reports")).length == 3 &&
+        (← writes.get).isEmpty do throw <| .userError "skipped-only request"
+    -- Restore a searched write for the shared scoped-link assertion below.
+    discard <| IO.ofExcept (← blastRadius session (Kalari.Search.live "/usr/bin:/bin") confirm writer "kalari/test" workspace [page.fact.id])
+
     unless radius.compress.contains file && radius.compress.utf8ByteSize ≤ outputBudget do throw <| .userError "blast radius output"
   let log ← writes.get
   unless log.all (fun (scope, _, _) => scope == "kalari/test") && log.any (fun (_, _, deps) => deps == ["change-concept"]) do

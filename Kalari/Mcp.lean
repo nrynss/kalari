@@ -31,7 +31,7 @@ def schema (name : String) : Option Json :=
 
 private def descriptions : List (String × String) := [
   ("what_changed", "List changes between two API specs."),
-  ("blast_radius", "Find callers touched by change IDs."),
+  ("blast_radius", "Find callers touched by change IDs. You may pass every ID from what_changed. Each requested ID returns a status: searched, not_searchable, or unknown_change_id. Confirmed and uncertain callers remain separate. Truncated site lists are marked."),
   ("recall_lessons", "Find checks for change kinds."),
   ("run_in_sandbox", "Run and check a migration in a contained sandbox."),
   ("record_lesson", "Propose lessons from a verified run.")]

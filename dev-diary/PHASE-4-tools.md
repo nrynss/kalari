@@ -54,6 +54,8 @@ status:     done
 
 The build-time check replays both Vimanam 2.1.0 diffs and GraphQL context, searches both real benchmark workspaces with `rg`, and checks pagination, caller paths, output byte caps and the scope/dependency arguments supplied to the fake writer. The task does not modify the MCP schema or make a live Lambo write.
 
+**Follow-up:** Mixed blast-radius requests return a status for every ID. Unknown and non-searchable changes no longer discard valid caller results. GLM showcase sessions exposed repeated tool failures on these inputs. Oversized minimum responses fail before side effects. Site lists are shortened explicitly when needed. Frozen rows used the earlier behavior and remain unchanged.
+
 ---
 
 ### T4.4: `recall_lessons` ★
