@@ -25,16 +25,20 @@ structure Observer where
   start : String → System.FilePath → IO (Except String (IO (Except String String)))
 
 /-- Start a dedicated observed payouts server on the trusted host. The caller
-must reserve the IP/port and supply the candidate guest's exclusive IPv4 address. -/
-def payoutsObserver (serverPath : String) (endpoint : AllowHost) (guestIp : String) : Observer := {
+must reserve the IP/port and supply the candidate guest's exclusive IPv4 address.
+An optional behaviour list lets the gate replay a B5-off trace. -/
+def payoutsObserver (serverPath : String) (endpoint : AllowHost) (guestIp : String)
+    (behaviours : Option String := none) : Observer := {
   endpoint
   start := fun _ dir => do
     if (Std.Net.IPv4Addr.ofString endpoint.host).isNone ||
         (Std.Net.IPv4Addr.ofString guestIp).isNone || endpoint.port == 0 || endpoint.port > 65535 then
       return .error "observer requires IPv4 addresses and a valid port"
     let trace := dir / "payouts-pages.jsonl"
+    let args := #["-I", serverPath, "--bind", endpoint.host, "--port", toString endpoint.port, "--v1", "off", "--trace", trace.toString, "--trace-client", guestIp]
+    let args := match behaviours with | some value => args ++ #["--behaviours", value] | none => args
     try
-      let child ← IO.Process.spawn { cmd := "python3", args := #["-I", serverPath, "--bind", endpoint.host, "--port", toString endpoint.port, "--v1", "off", "--trace", trace.toString, "--trace-client", guestIp], stdin := .null, stdout := .piped, stderr := .inherit }
+      let child ← IO.Process.spawn { cmd := "python3", args := args, stdin := .null, stdout := .piped, stderr := .inherit }
       let ready ← IO.asTask child.stdout.getLine Task.Priority.dedicated
       let started ← IO.monoMsNow
       repeat
@@ -98,10 +102,10 @@ private def traceRetry (json : Json) : Except String Bool :=
 private def isDigest (value : String) : Bool :=
   value.length == 32 && value.toList.all (fun c => c.isDigit || ('a' ≤ c && c ≤ 'f'))
 
-/-- The full-request fingerprint must be a digest. A raw request cannot pass it. -/
+/-- A 429 must name the full-request fingerprint. `parseTraceEvent` has already
+validated the shape of every present fingerprint. -/
 private def traceFingerprint (fingerprint : Option String) : Except String String := do
   let some fingerprint := fingerprint | throw "trace event has no request fingerprint"
-  unless isDigest fingerprint do throw "trace request fingerprint is not a digest"
   return fingerprint
 
 /-- The request field is a cursor digest. The first request of a traversal has no cursor. -/
@@ -116,7 +120,14 @@ private def parseTraceEvent (line : String) : Except String TraceEvent := do
   let status ← traceStatus json
   let request ← traceRequest json
   let fingerprint ← optionalString json "fingerprint"
+  if let some value := fingerprint then
+    unless isDigest value do throw "trace request fingerprint is not a digest"
   let retry ← traceRetry json
+  let api ← optionalString json "api"
+  match api with
+  | none => pure ()
+  | some "v1" => throw "traced v1 response is not a v2 page"
+  | some _ => throw "unexpected trace api marker"
   if status == 429 then do
     if ["response", "first", "last", "count", "ids", "drained"].any (fun key => (optional json key).isSome) then
       throw "throttled event carries a page"
@@ -632,9 +643,11 @@ private def traceThrottle (request fingerprint : String) (retryAfter : String :=
     ("fingerprint", toJson fingerprint), ("retry_after", toJson retryAfter)]).compress ++ "\n"
 
 /-- One non-page event. A request that is not a served v2 page carries its status
-and its incoming cursor digest, and no page. -/
-private def traceOther (status : Nat) (request : String) : String :=
-  (Json.mkObj [("status", toJson status), ("request", toJson request)]).compress ++ "\n"
+and its incoming cursor digest, and no page. A v1 reply carries `api: "v1"`. -/
+private def traceOther (status : Nat) (request : String) (api : Option String := none) : String :=
+  let fields : List (String × Json) := [("status", toJson status), ("request", toJson request)]
+  let fields := match api with | some value => ("api", toJson value) :: fields | none => fields
+  (Json.mkObj fields).compress ++ "\n"
 
 private def fixtureVerdict (kind : String) (code : Option Nat) (out : String := "") : Verdict :=
   { verdict := kind, exit_code := code, stdout := out, stderr := "", wall_ms := 800
@@ -877,6 +890,18 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
   -- A 400 between the 429 and the retry must fail closed, not vanish from the trace.
   verify (expectError (pageObservations (head ++ throttle ++ traceOther 400 "" ++ retryTail))
     "unexpected trace status") "a 400 between the 429 and the retry was accepted"
+  -- A reset reply still leaves its event, and every other status fails closed.
+  verify (expectError (pageObservations (head ++ throttle ++ traceOther 501 "" ++ retryTail))
+    "unexpected trace status") "a 501 between the 429 and the retry was accepted"
+  -- A v1 response is marked and rejected, not read as a v2 page.
+  verify (expectError (pageObservations (head ++ traceOther 200 "" (some "v1")))
+    "traced v1 response is not a v2 page") "traced v1 200 read as a page"
+  verify (expectError (pageObservations (head ++ traceOther 200 "" (some "other")))
+    "unexpected trace api marker") "unknown trace api marker accepted"
+  -- A present fingerprint is a digest on every event, not only on the 429.
+  verify (expectError (pageObservations (head ++
+    tracePage cursor1 cursor2 ["2", "3"] true (some "garbage") (some false) (some 200)))
+    "trace request fingerprint is not a digest") "garbage page fingerprint accepted"
   let mismatched := head ++ throttle ++ tracePage cursor1 cursor2 ["2", "3"] true (some otherFingerprint) (some true) (some 200)
   verify ((pageObservations mismatched).isOk == false) "mismatched retry fingerprint accepted"
   verify ((pageObservations (head ++ throttle ++ tail)).isOk == false) "throttled request without a retry accepted"
@@ -958,9 +983,86 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
   some ⟨0, 0, 0, 0⟩
 
 #eval exercise
+
+private def freePort : IO Nat := do
+  let result ← IO.Process.output { cmd := "python3", args := #["-c", "import socket; s=socket.socket(); s.bind(('127.0.0.1',0)); print(s.getsockname()[1]); s.close()"] }
+  let some port := result.stdout.trimAscii.toString.toNat? | throw <| .userError "no test port"
+  return port
+
+/-- A driver that resets the connection on a 400 and a 501 between the 429 and
+the identical retry. The server sees both requests, and the reply write fails. -/
+private def resetDriver : String := String.intercalate "\n" [
+  "import http.client, json, socket, struct, sys, time",
+  "port = int(sys.argv[1])",
+  "conn = http.client.HTTPConnection(\"127.0.0.1\", port, timeout=10)",
+  "def get(path):",
+  "    conn.request(\"GET\", path)",
+  "    r = conn.getresponse()",
+  "    return r.status, json.loads(r.read() or b\"{}\")",
+  "status, body = get(\"/v2/payouts?limit=1000\")",
+  "assert status == 200, status",
+  "cursor = body[\"cursor\"]",
+  "while True:",
+  "    status, body = get(f\"/v2/payouts?limit=1000&cursor={cursor}\")",
+  "    if status == 429:",
+  "        break",
+  "    assert status == 200, status",
+  "    cursor = body[\"cursor\"]",
+  "def reset(method, path):",
+  "    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)",
+  "    s.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack(\"ii\", 1, 0))",
+  "    s.settimeout(2)",
+  "    s.connect((\"127.0.0.1\", port))",
+  "    s.sendall(f\"{method} {path} HTTP/1.1\\r\\nHost: x\\r\\n\\r\\n\".encode())",
+  "    s.close()",
+  "    time.sleep(0.1)",
+  "reset(\"GET\", \"/v2/payouts?limit=0\")",
+  "reset(\"POST\", \"/v2/payouts?limit=1000\")",
+  "status, body = get(f\"/v2/payouts?limit=1000&cursor={cursor}\")",
+  "assert status == 200, status",
+  "while not body[\"drained\"]:",
+  "    status, body = get(f\"/v2/payouts?limit=1000&cursor={body['cursor']}\")",
+  "    assert status == 200, status"
+]
+
+/-- A driver that forces `traced_reply` and `send_error` to raise on the reply,
+then checks that the trace still holds the 400 and 501 events. -/
+private def resetHandlerDriver : String := String.intercalate "\n" [
+  "import importlib.util, sys",
+  "spec = importlib.util.spec_from_file_location(\"payouts_server\", sys.argv[1])",
+  "server = importlib.util.module_from_spec(spec)",
+  "spec.loader.exec_module(server)",
+  "server.TRACE = open(sys.argv[2], \"w\")",
+  "server.Handler.trace_client = \"127.0.0.1\"",
+  "handler = object.__new__(server.Handler)",
+  "handler.client_address = (\"127.0.0.1\", 1234)",
+  "handler.command = \"GET\"",
+  "handler.path = \"/v2/payouts?limit=0\"",
+  "handler.request_version = \"HTTP/1.1\"",
+  "handler.close_connection = False",
+  "handler._headers_buffer = []",
+  "class Failing:",
+  "    def write(self, data):",
+  "        raise ConnectionResetError(104, \"reset\")",
+  "handler.wfile = Failing()",
+  "def failing_reply(status, obj):",
+  "    raise ConnectionResetError(104, \"reset\")",
+  "handler.reply = failing_reply",
+  "try:",
+  "    handler.traced_reply(400, {\"error\": \"invalid_limit\"}, \"\")",
+  "except ConnectionResetError:",
+  "    pass",
+  "handler.command = \"POST\"",
+  "handler.requestline = \"POST /v2/payouts HTTP/1.1\"",
+  "try:",
+  "    handler.send_error(501, \"Unsupported method\")",
+  "except ConnectionResetError:",
+  "    pass",
+  "server.TRACE.close()"
+]
+
 private def realObserver : IO Unit := IO.FS.withTempDir fun dir => do
-  let portResult ← IO.Process.output { cmd := "python3", args := #["-c", "import socket; s=socket.socket(); s.bind(('127.0.0.1',0)); print(s.getsockname()[1]); s.close()"] }
-  let some port := portResult.stdout.trimAscii.toString.toNat? | throw <| .userError "no test port"
+  let port ← freePort
   let observer := payoutsObserver "bench/apis/payouts/server.py" { host := "127.0.0.1", port } "127.0.0.1"
   let stop ← expectOk (← observer.start "real-payouts" dir)
   let denied ← IO.Process.output { cmd := "python3", args := #["-c", "import socket,sys; s=socket.create_connection(('127.0.0.1',int(sys.argv[1])), source_address=('127.0.0.2',0)); s.sendall(b'GET /v2/payouts HTTP/1.0\\r\\n\\r\\n'); assert b' 403 ' in s.recv(128)", toString port] }
@@ -978,6 +1080,59 @@ private def realObserver : IO Unit := IO.FS.withTempDir fun dir => do
   let grade ← IO.Process.output { cmd := "python3", args := #["-I", "bench/graders/grade.py", "payouts", (dir / "payouts.jsonl").toString] }
   unless grade.exitCode == 0 && grade.stdout.contains "\"verdict\": \"PASS\"" do throw <| .userError "observed reference did not pass grader"
   IO.println "observer actual B5 server, reference consumer and grader: PASS with a verified retry trace"
+
+  -- A real B5-off server. The page events carry the new fields, and the same
+  -- Lean parser must keep the old facts.
+  let offPort ← freePort
+  let offDir := dir / "b5off"
+  IO.FS.createDirAll offDir
+  let offObserver := payoutsObserver "bench/apis/payouts/server.py" { host := "127.0.0.1", port := offPort } "127.0.0.1" (some "B1,B2,B4")
+  let offStop ← expectOk (← offObserver.start "real-payouts-b5off" offDir)
+  let offRun ← IO.Process.output { cmd := "python3", args := #["-I", "bench/apis/payouts/reference/correct.py", "--base-url", s!"http://127.0.0.1:{offPort}", "--out", (dir / "payouts-b5off.jsonl").toString] }
+  let offTrace ← expectOk (← offStop)
+  unless offRun.exitCode == 0 &&
+      (pageObservations offTrace).toOption == some ["boundary_overlap_one", "final_page_token"] do
+    throw <| .userError "real B5-off trace did not keep the old facts"
+  unless !offTrace.contains "\"status\":429" do
+    throw <| .userError "real B5-off trace throttled a request"
+  IO.println "observer real B5-off: the parsed trace keeps the old facts"
+
+  -- A client reset on a 400 and a 501 between the 429 and the retry. The events
+  -- must survive the failed reply, and the parser must reject the trace.
+  let resetPort ← freePort
+  let resetDir := dir / "reset"
+  IO.FS.createDirAll resetDir
+  let resetObserver := payoutsObserver "bench/apis/payouts/server.py" { host := "127.0.0.1", port := resetPort } "127.0.0.1"
+  let resetStop ← expectOk (← resetObserver.start "real-payouts-reset" resetDir)
+  IO.FS.writeFile (dir / "reset.py") resetDriver
+  let resetRun ← IO.Process.output { cmd := "python3", args := #["-I", (dir / "reset.py").toString, toString resetPort] }
+  let resetTrace ← expectOk (← resetStop)
+  unless resetRun.exitCode == 0 do
+    throw <| .userError "reset driver did not finish the traversal"
+  unless resetTrace.contains "\"status\":400" && resetTrace.contains "\"status\":501" do
+    throw <| .userError "a reset reply hid a traced 400 or 501"
+  unless (match pageObservations resetTrace with
+      | .error e => e == "unexpected trace status"
+      | .ok _ => false) do
+    throw <| .userError "reset trace with a 400 and a 501 was accepted"
+  IO.println "observer reset: a reset 400 and 501 both leave events, and the parser rejects them"
+
+  -- The same reply-raise path, forced and deterministic: both handlers must
+  -- append their event before the reset error leaves the handler.
+  let handlerTrace := dir / "reset-handler.jsonl"
+  IO.FS.writeFile (dir / "reset_handler.py") resetHandlerDriver
+  let handlerRun ← IO.Process.output { cmd := "python3", args := #["-I", (dir / "reset_handler.py").toString,
+    "bench/apis/payouts/server.py", handlerTrace.toString] }
+  unless handlerRun.exitCode == 0 do
+    throw <| .userError "raising-reply handler test did not finish"
+  let handlerText ← IO.FS.readFile handlerTrace
+  unless handlerText.contains "\"status\":400" && handlerText.contains "\"status\":501" do
+    throw <| .userError "a raising reply hid a traced 400 or 501"
+  unless (match pageObservations handlerText with
+      | .error e => e == "unexpected trace status"
+      | .ok _ => false) do
+    throw <| .userError "raising-reply trace with a 400 and a 501 was accepted"
+  IO.println "observer raising reply: a 400 and 501 both leave events, and the parser rejects them"
 
 #eval realObserver
 

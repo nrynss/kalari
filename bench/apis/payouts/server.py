@@ -38,10 +38,13 @@ retry flag and the page the API sent. A 429 event carries the status, the incomi
 cursor digest, the fingerprint digest, the retry flag and the `Retry-After` value,
 and no page. A request that is not a served v2 page carries its status and the
 incoming cursor digest, and no page. That covers a 400, a 404, a 410 and a status
-the base handler returns, such as 501 for another method. A request from another
-client gets a 403 and leaves no trace event. The matching retry repeats the
-throttled request digest and fingerprint and is the only event marked `retry`.
-The trace never carries a raw cursor, a raw request or a token.
+the base handler returns, such as 501 for another method. A v1 reply also carries
+`api: "v1"`. A request from another client gets a 403 and leaves no trace event.
+Every reply and append pair runs under the same lock, and the append runs in a
+`finally`, so a client reset that makes the reply raise still leaves the event.
+The matching retry repeats the throttled request digest and fingerprint and is
+the only event marked `retry`. The trace never carries a raw cursor, a raw
+request or a token.
 """
 import argparse
 import base64
@@ -229,18 +232,25 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
-    def traced_reply(self, status, obj, request):
+    def traced_reply(self, status, obj, request, api=None):
         """Reply, then trace a request that is not a served v2 page.
 
         The event carries the status and the incoming cursor digest, and no page.
         A 403 for another client does not reach this method, so it leaves no event.
+        The event is appended in a `finally`, so a client reset that makes the
+        reply raise still leaves the event.
         """
         if TRACE is None:
             self.reply(status, obj)
             return
+        event = {"status": status, "request": request}
+        if api is not None:
+            event["api"] = api
         with TRACE_LOCK:
-            self.reply(status, obj)
-            trace_event({"status": status, "request": request})
+            try:
+                self.reply(status, obj)
+            finally:
+                trace_event(event)
 
     def send_error(self, code, message=None, explain=None):
         """Trace a request the base handler rejects, such as another method."""
@@ -248,8 +258,10 @@ class Handler(BaseHTTPRequestHandler):
             return super().send_error(code, message, explain)
         cursor = parse_qs(urlparse(getattr(self, "path", "")).query).get("cursor", [""])[-1]
         with TRACE_LOCK:
-            super().send_error(code, message, explain)
-            trace_event({"status": int(code), "request": digest(cursor)})
+            try:
+                super().send_error(code, message, explain)
+            finally:
+                trace_event({"status": int(code), "request": digest(cursor)})
 
     def do_GET(self):
         url = urlparse(self.path)
@@ -262,9 +274,9 @@ class Handler(BaseHTTPRequestHandler):
         request = digest(q.get("cursor", ""))
         if url.path == "/v1/payouts":
             if not self.v1_enabled:
-                self.traced_reply(410, {"error": "gone", "message": "API v1 has been retired. Use /v2/payouts."}, request)
+                self.traced_reply(410, {"error": "gone", "message": "API v1 has been retired. Use /v2/payouts."}, request, api="v1")
                 return self.journal(410, fingerprint, "", api="v1")
-            self.traced_reply(200, {"payouts": PAYOUTS}, request)
+            self.traced_reply(200, {"payouts": PAYOUTS}, request, api="v1")
             return self.journal(200, fingerprint, "", api="v1")
         if url.path == "/v2/payouts":
             return self.v2(q, fingerprint)
@@ -300,8 +312,10 @@ class Handler(BaseHTTPRequestHandler):
                 event = {"status": 429, "request": digest(q.get("cursor", "")),
                          "fingerprint": fingerprint, "retry": False, "retry_after": RETRY_AFTER}
                 with TRACE_LOCK:
-                    self.reply(429, body, retry_after=RETRY_AFTER)
-                    trace_event(event)
+                    try:
+                        self.reply(429, body, retry_after=RETRY_AFTER)
+                    finally:
+                        trace_event(event)
             return self.journal(429, fingerprint, traversal, throttled=True, retry_candidate=candidate)
         if self.b1 and self.b2 and self.b4:
             # All three paging behaviours: the original paging, unchanged.
@@ -327,14 +341,16 @@ class Handler(BaseHTTPRequestHandler):
                                 retry_candidate=candidate)
         # Serialize response completion and trace appends so the host can reject
         # branching or interleaving instead of guessing an order.
+        event = {"status": 200, "request": digest(q.get("cursor", "")),
+                 "fingerprint": fingerprint, "retry": action == "retry",
+                 "response": digest(cursor),
+                 "first": page[0]["id"] if page else "", "last": page[-1]["id"] if page else "",
+                 "ids": [p["id"] for p in page], "count": len(page), "drained": drained}
         with TRACE_LOCK:
-            self.reply(200, response)
-            event = {"status": 200, "request": digest(q.get("cursor", "")),
-                     "fingerprint": fingerprint, "retry": action == "retry",
-                     "response": digest(cursor),
-                     "first": page[0]["id"] if page else "", "last": page[-1]["id"] if page else "",
-                     "ids": [p["id"] for p in page], "count": len(page), "drained": drained}
-            trace_event(event)
+            try:
+                self.reply(200, response)
+            finally:
+                trace_event(event)
         return self.journal(200, fingerprint, traversal, matching_retry=action == "retry",
                             retry_candidate=candidate)
 
