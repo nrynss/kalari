@@ -13,6 +13,8 @@ Checks:
     with no trace growth.
  4. Empty close and incomplete tunnel write nothing (issue 2): no
     observation, no inner 200, no /empty line.
+ 4b. Oversize CONNECT and oversize inner fail 400 with zero trace
+    growth (16 KiB header cap).
  5. Both runs live at once; traces stay separate.
  6. Owner-death: killing broker A (observer still running) fails closed;
     broker B keeps serving.
@@ -313,6 +315,33 @@ def main():
         e5 = "/empty" not in open(trace_a).read() and "/empty" not in open(trace_b).read()
         note("empty-close", all([e1, e2, e3, e4, e5]),
              "no observation, no inner bytes, no /empty")
+
+        # C4b: header cap — oversize CONNECT and oversize inner fail 400
+        # with zero trace growth. Mirrors the empty-close snapshot pattern.
+        cap_a = open(trace_a, "rb").read()
+        cap_b = open(trace_b, "rb").read()
+        s = socket.create_connection(("127.0.0.1", port_a), timeout=TIMEOUT)
+        s.settimeout(TIMEOUT)
+        s.sendall(f"CONNECT {ALLOW} HTTP/1.1\r\nHost: {ALLOW}\r\n".encode()
+                  + b"X-Pad: " + b"A" * 17000 + b"\r\n\r\n")
+        st = status_line(recv_until(s, b"\r\n\r\n"))
+        s.close()
+        o1 = st == "HTTP/1.1 400 Bad Request"
+        print(f"RESP oversize-connect: {st}", flush=True)
+        time.sleep(1)
+        o2 = open(trace_a, "rb").read() == cap_a and open(trace_b, "rb").read() == cap_b
+        s, st = connect_tunnel(port_a, "run-a", pw_a, ALLOW)
+        o3 = st == "HTTP/1.1 200 Connection Established"
+        s.sendall(b"GET /oversize HTTP/1.1\r\nHost: x\r\nX-Pad: " + b"B" * 17000 + b"\r\n\r\n")
+        st_in = status_line(recv_until(s, b"\r\n\r\n"))
+        s.close()
+        o3 = o3 and st_in == "HTTP/1.1 400 Bad Request"
+        print(f"RESP oversize-inner: {st_in}", flush=True)
+        time.sleep(1)
+        o4 = open(trace_a, "rb").read() == cap_a and open(trace_b, "rb").read() == cap_b
+        o5 = "/oversize" not in open(trace_a).read() and "/oversize" not in open(trace_b).read()
+        note("header-cap", all([o1, o2, o3, o4, o5]),
+             "oversize CONNECT/inner 400, zero trace growth")
 
         # C5: both runs live at once.
         sa, sta = connect_tunnel(port_a, "run-a", pw_a, ALLOW)
