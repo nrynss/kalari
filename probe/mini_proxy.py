@@ -1,6 +1,11 @@
 import sys, socket, threading
 listen_port=int(sys.argv[1]) if len(sys.argv)>1 else 18990
 target_port=int(sys.argv[2]) if len(sys.argv)>2 else 18991
+def redact(line):
+    name, sep, _value = line.partition(":")
+    if sep and name.strip().lower() == "proxy-authorization":
+        return name.strip() + ": [REDACTED]"
+    return line
 def handle(c):
     try:
         data=c.recv(8192)
@@ -9,7 +14,7 @@ def handle(c):
         print("PROXY-REQ:"+txt.split("\r\n")[0], flush=True)
         for line in txt.split("\r\n")[1:8]:
             if line.lower().startswith("proxy-") or line.lower().startswith("host"):
-                print("PROXY-HDR:"+line, flush=True)
+                print("PROXY-HDR:"+redact(line), flush=True)
             if not line: break
         # Simple: forward GET http://... or / to target
         s=socket.create_connection(("127.0.0.1", target_port), timeout=5)
