@@ -5,7 +5,7 @@
   "pages": {
     "judges": {
       "path": "web/fixture/rendered/judges.html",
-      "sha256": "68ba2f96cf1f4e25752580dd6f806270d6232470f058ffb0ce89fea9da04150e"
+      "sha256": "8335c6b672ca77553f2d42cbe4bbeec5935b7c182edc22ce0f87fdfb7006ec72"
     },
     "judges-empty": {
       "path": "web/fixture/rendered/judges-empty.html",
@@ -17,19 +17,19 @@
     },
     "judges-extra-run": {
       "path": "web/fixture/rendered/judges-extra-run.html",
-      "sha256": "645f9e0ae830c336249eefac66ebddddfb087183ff1c8baeafc555b8f6566df0"
+      "sha256": "48ba26c22edd49469db2a33997a5e9b4dbef39c873fd674cdf78e2b0f3fd99dd"
     },
     "judges-frozen-after": {
       "path": "web/fixture/rendered/judges-frozen-after.html",
-      "sha256": "6b6ee84a0ef6ed82b0a10ae8092874fe12db45b64e06f89c87ecb3e11b67b000"
+      "sha256": "ba7c78e19781dd72d3bb48ff96587f1e03262afc3d5cc3f1a227a76bb96a29cc"
     },
     "judges-frozen-pair": {
       "path": "web/fixture/rendered/judges-frozen-pair.html",
-      "sha256": "e1b1e60d58500a2cc21eecb073f3576fc66c0e11b8bd404d30de56ae9a2429a9"
+      "sha256": "0f048d4ed117a532a3cd5c8ad2ab6578e7bbedba1afa8c0c43d61abe759e26a5"
     },
     "judges-frozen-split": {
       "path": "web/fixture/rendered/judges-frozen-split.html",
-      "sha256": "e72ebc4553b07cc360b4f59f02dac1c584a5c14efcbe621bb5470d10d81244a7"
+      "sha256": "2b4d16263a4a2aeaec8d5556c01db9da016b0206d05803af5ee5e2103c28404a"
     },
     "session": {
       "path": "web/fixture/rendered/session.html",
@@ -65,11 +65,11 @@
     },
     "run-containment": {
       "path": "web/fixture/rendered/run-containment.html",
-      "sha256": "9819b38a98c1ee302cf4fce899a2cc9881fb37766a81c7ff0899f0b51aceae1f"
+      "sha256": "d0cb2366cdd72e13a4799357d7ecbe7c6095e44855cdf8e261b8076f42ebf922"
     },
     "run-containment-earlier": {
       "path": "web/fixture/rendered/run-containment-earlier.html",
-      "sha256": "f4157a03ca6c2be4c0ba68c809e3ede7729143979fc1aea3ed0c454eadadbb43"
+      "sha256": "30e2c5f0150b9d800d52a2626e460703ff858afe45f35c3d554878a05b79d2ad"
     },
     "run-endpoint": {
       "path": "web/fixture/rendered/run-endpoint.html",
@@ -93,11 +93,13 @@
     "app/labels.mjs": "4352e35e17bc43ef5247269d0b600ac330c97f8955eb49dbae9e462ae6291f4a",
     "app/run.mjs": "714aa943c55dc4244ef1fc1fe8730256cf84e220d3ef3a23226e4a040688c4b1",
     "app/session.mjs": "1ed6aec3c10f3b7fb641c8de9efb3a35b1639d477d09e99e0bb612402dcecc4f",
-    "app/views.mjs": "665d5263a0847442c5358032664fb7096579b748d845dd74c3bd0f20446af9e4",
+    "app/views.mjs": "5edc55711ae51c09159e3288f55a7e8db7eb81cc204c4f763ad8fa1d33c5dbca",
     "favicon.svg": "39bc2680150226e985565c8138030fe3dc788427d3b3a04c0ae934c8e6e9f0d2",
-    "index.html": "e91527a90462329922d3ca78a19b170658731940f5a469270fb629ede51ab366",
-    "run.html": "88a2b9e611c364ea97e3d4272b6bf5c360655ddab65a719a4e1531d1b4527d6a",
-    "session.html": "78426d2a045bf98edc121491aca4bf1ed84e0aa417509cfe898261bd405639e3"
+    "index.html": "b068f8d13b27eb39865ce6f54538b1fa18204e018b4edaed1dcaa1ba3efd2226",
+    "llms.txt": "40ecbdef9528587066f9bb324def32f9875bb13bdc625eb85e1b3343e8fe99cb",
+    "run.html": "34f103395aaa3d7966d2b5ae752bfb9d51a9ef1994e8663e6404ab507225dbe1",
+    "session.html": "9f44cc96a656df28902a0c9f1e647be4b8e21ace2ac6da26dc451ba282843134",
+    "share.png": "1bdfd10ad9ed1b4a0e1a305c68ead67ac7bf842a6f187ac3b56d2935ff47c46b"
   },
   "inputs": {
     "path": "web/fixture/rendered/inputs.json",

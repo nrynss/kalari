@@ -6,12 +6,27 @@
     <title>For judges · Kalari</title>
     <meta
       name="description"
-      content="The evidence index for Kalari: the pilot baseline, every condition in the fixture, the containment moment, and every run."
+      content="Recorded API migration results, verification checks, containment evidence, and links to every run."
     />
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"
     />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Kalari" />
+    <meta property="og:title" content="Kalari · Verified API migrations" />
+    <meta property="og:description" content="Inspect API migration results, sandbox checks, and containment evidence from Kalari." />
+    <meta property="og:url" content="https://kalari.nryn.dev/" />
+    <meta property="og:image" content="https://kalari.nryn.dev/share.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Kalari. Verify the migration. Inspect the evidence." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Kalari · Verified API migrations" />
+    <meta name="twitter:description" content="Inspect API migration results, sandbox checks, and containment evidence from Kalari." />
+    <meta name="twitter:image:alt" content="Kalari. Verify the migration. Inspect the evidence." />
+    <meta name="twitter:image" content="https://kalari.nryn.dev/share.png" />
+    <link rel="alternate" type="text/plain" href="/llms.txt" title="Kalari machine-readable guide" />
     <link rel="stylesheet" href="app.css" />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <script type="module" src="app/judges.mjs"></script>
@@ -44,8 +59,16 @@
         <a href="/docs/">Documentation</a>
       </nav>
     </header>
-    <main id="app" class="app" aria-busy="true">
-      <p class="loading" role="status">Loading the evidence…</p>
+    <main id="app" class="app" aria-busy="false">
+      <section class="panel" aria-labelledby="summary-title">
+        <h1 id="summary-title">Verify the migration. Inspect the evidence.</h1>
+        <p>Kalari gives coding agents tools to inspect API changes and verify consumer output against a preserved baseline.</p>
+        <p>Each execution passes a Lean admission gate and runs inside a disposable microVM under the aashaan supervisor.</p>
+        <p>The published evidence includes a frozen benchmark, deliberate containment runs, and a manufactured migration showcase.</p>
+        <p>The frozen benchmark published no lessons. Its results measure cost, attempts, correctness, and containment under empty recall.</p>
+        <p><a href="/docs/judges/">Read the judges walkthrough</a> · <a href="/docs/evidence/">Evidence and limits</a> · <a href="/llms.txt">Machine-readable guide</a></p>
+      </section>
+      <p class="loading" role="status">Loading the interactive evidence…</p>
     </main>
     <footer class="site-foot" role="contentinfo">
       <p>The evidence store is append-only. It keeps the run, the checks, the Clef answers and the lessons.</p>
@@ -53,7 +76,7 @@
     </footer>
     <noscript>
       <p class="noscript">
-        This page reads the evidence API with JavaScript. Enable it to see the records.
+        Use the machine-readable guide and docs to inspect the evidence directly. JavaScript enables the interactive viewer.
       </p>
     </noscript>
   </body>

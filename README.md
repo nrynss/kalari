@@ -66,20 +66,20 @@ Exploratory commands are allowed. Verification still requires the configured art
 
 ## Install
 
-The release archive supports **Linux x86-64 with glibc 2.39 or newer**. Binary users do not need Lean.
+The release archive supports **Linux x86-64 with glibc 2.35 or newer**. Binary users do not need Lean.
 
 ```sh
 mkdir -p kalari-download
 cd kalari-download
 
-curl -fLO https://github.com/nrynss/kalari/releases/download/v0.1.2/kalari-0.1.2-linux-x86_64.tar.gz
-curl -fLO https://github.com/nrynss/kalari/releases/download/v0.1.2/SHA256SUMS
+curl -fLO https://github.com/nrynss/kalari/releases/download/v0.1.3/kalari-0.1.3-linux-x86_64.tar.gz
+curl -fLO https://github.com/nrynss/kalari/releases/download/v0.1.3/SHA256SUMS
 sha256sum -c SHA256SUMS
 
-tar -xzf kalari-0.1.2-linux-x86_64.tar.gz
+tar -xzf kalari-0.1.3-linux-x86_64.tar.gz
 mkdir -p "$HOME/.local/bin"
-install -m755 kalari-0.1.2-linux-x86_64/bin/kalari "$HOME/.local/bin/kalari"
-install -m755 kalari-0.1.2-linux-x86_64/bin/kalari-aashaan "$HOME/.local/bin/kalari-aashaan"
+install -m755 kalari-0.1.3-linux-x86_64/bin/kalari "$HOME/.local/bin/kalari"
+install -m755 kalari-0.1.3-linux-x86_64/bin/kalari-aashaan "$HOME/.local/bin/kalari-aashaan"
 export PATH="$HOME/.local/bin:$PATH"
 
 kalari --version

@@ -6,12 +6,27 @@
     <title>Run · Kalari</title>
     <meta
       name="description"
-      content="One Kalari run: the verdict, the checks, the logs and the evidence record that produced it."
+      content="One recorded Kalari run with its process verdict, verification checks, logs, and supporting evidence."
     />
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; connect-src 'self'; img-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"
     />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Kalari" />
+    <meta property="og:title" content="Kalari · Run evidence" />
+    <meta property="og:description" content="Inspect a recorded run, its process verdict, verification checks, and evidence." />
+    <meta property="og:url" content="https://kalari.nryn.dev/run.html" />
+    <meta property="og:image" content="https://kalari.nryn.dev/share.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Kalari. Verify the migration. Inspect the evidence." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Kalari · Run evidence" />
+    <meta name="twitter:description" content="Inspect a recorded run, its process verdict, verification checks, and evidence." />
+    <meta name="twitter:image:alt" content="Kalari. Verify the migration. Inspect the evidence." />
+    <meta name="twitter:image" content="https://kalari.nryn.dev/share.png" />
+    <link rel="alternate" type="text/plain" href="/llms.txt" title="Kalari machine-readable guide" />
     <link rel="stylesheet" href="app.css" />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <script type="module" src="app/run.mjs"></script>
@@ -44,8 +59,14 @@
         <a href="/docs/">Documentation</a>
       </nav>
     </header>
-    <main id="app" class="app" aria-busy="true">
-      <p class="loading" role="status">Loading the run…</p>
+    <main id="app" class="app" aria-busy="false">
+      <section class="panel" aria-labelledby="summary-title">
+        <h1 id="summary-title">Kalari run evidence</h1>
+        <p>This viewer reads the selected run from the evidence API and displays its recorded checks and outcomes.</p>
+        <p>Read the machine-readable guide to locate the same records directly.</p>
+        <p><a href="/llms.txt">API and agent guide</a> · <a href="/docs/judges/">Judges walkthrough</a> · <a href="index.html">Evidence index</a></p>
+      </section>
+      <p class="loading" role="status">Loading the interactive evidence…</p>
     </main>
     <footer class="site-foot" role="contentinfo">
       <p>The evidence store is append-only. It keeps the run, the checks, the Clef answers and the lessons.</p>
@@ -53,7 +74,7 @@
     </footer>
     <noscript>
       <p class="noscript">
-        This page reads the evidence API with JavaScript. Enable it to see the records.
+        Use the machine-readable guide and docs to inspect the evidence directly. JavaScript enables the interactive viewer.
       </p>
     </noscript>
   </body>

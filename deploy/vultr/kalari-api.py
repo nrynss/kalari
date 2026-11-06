@@ -8,10 +8,11 @@ static files and never writes to the store.
     python3 kalari-api.py --store /var/lib/kalari/evidence/.kalari/evidence.jsonl \
         --host 127.0.0.1 --port 18001
 
-The route contract follows Kalari/Http.lean: GET on /api/sessions, /api/runs,
+GET routes follow Kalari/Http.lean. This deployment shim also accepts HEAD
+on those routes and returns the same headers without a response body. GET on /api/sessions, /api/runs,
 /api/lessons, /api/benchmark, /api/sessions/<id> and /api/runs/<id> returns
 JSON; any nonempty request body is 400; a body over 4096 bytes is 413; a
-method other than GET, an unknown resource, or an unknown id is 404; a
+method other than GET or HEAD, an unknown resource, or an unknown id is 404; a
 malformed target or id is 400. Like Evidence.decode, a final line without its
 newline is not a committed record and is skipped, as is any line that is not
 a JSON object.
@@ -112,7 +113,7 @@ class Handler(BaseHTTPRequestHandler):
         if "?" in target or "#" in target or not target.startswith("/"):
             self.send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid request target"})
             return
-        if method != "GET":
+        if method not in ("GET", "HEAD"):
             self.send_json(HTTPStatus.NOT_FOUND, {"error": "not found"})
             return
         records = read_records(self.server.state_store)  # type: ignore[attr-defined]

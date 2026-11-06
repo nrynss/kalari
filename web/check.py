@@ -12,6 +12,9 @@ runs. The fixture server never serves a snapshot.
 
 from __future__ import annotations
 
+import importlib.util
+import tempfile
+import threading
 import hashlib
 import html as html_module
 import json
@@ -773,6 +776,38 @@ def assert_manifest() -> None:
     )
 
 
+def assert_share_content(base: str) -> None:
+    class Metadata(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.values = {}
+
+        def handle_starttag(self, tag, attrs):
+            if tag == "meta":
+                data = dict(attrs)
+                self.values[data.get("property", data.get("name"))] = data.get("content")
+
+    for route in ("/", "/run.html", "/session.html"):
+        text = get_text(base, route)
+        metadata = Metadata()
+        metadata.feed(text)
+        for key in ("og:title", "og:description", "og:url", "og:image",
+                    "twitter:title", "twitter:description", "twitter:image"):
+            check(bool(metadata.values.get(key)), f"{route} missing {key}")
+        check(metadata.values.get("twitter:card") == "summary_large_image", "missing sharing card")
+        image = metadata.values["og:image"]
+        check(image == "https://kalari.nryn.dev/share.png", "unexpected sharing image")
+        main = re.search(r"<main[^>]*>(.*?)</main>", text, re.DOTALL).group(1)
+        check("<h1" in main and "/llms.txt" in main and "/docs/" in main, "empty crawler summary")
+    status, image, content_type, _ = request(base, "/share.png")
+    check(status == 200 and content_type == "image/png" and image.startswith(b"\x89PNG"), "sharing image unavailable")
+    check(int.from_bytes(image[16:20], "big") == 1200 and int.from_bytes(image[20:24], "big") == 630, "sharing image dimensions differ")
+    guide = get_text(base, "/llms.txt")
+    for path in ("/api/runs", "/api/sessions", "/api/benchmark", "/api/lessons", "/docs/mcp/"):
+        check(path in guide, f"machine-readable guide missing {path}")
+    say("sharing metadata, no-JavaScript summaries, image and machine-readable guide verified")
+
+
 def assert_live_entry_points(base: str) -> None:
     judges = get_text(base, "/")
     session = get_text(base, "/session.html?id=payouts-upgrade")
@@ -1327,6 +1362,8 @@ def assert_values_match_records(name: str, html: str, benchmark: list[dict], run
                 text == run_id,
                 f"the run link for {run_id!r} shows {text!r} instead of the run id",
             )
+        elif title == "Open containment run":
+            pass  # assert_containment verifies the display label against the record
         elif title in CONTAINMENT_TITLES:
             pass  # assert_containment checks these against the containment record
         elif title in HERO_TITLES or title in REFERENCE_TITLES:
@@ -1441,6 +1478,17 @@ def plain_text(fragment: str) -> str:
 
 
 def assert_containment(name: str, html: str, records: list[dict], run_ids: set[str]) -> None:
+    labels = JudgesParser()
+    labels.feed(html)
+    for link in labels.anchors:
+        if link["attrs"].get("title") != "Open containment run":
+            continue
+        run_id = link["attrs"].get("data-run-link")
+        matches = [record for record in containment_records_of(records) if record["run_id"] == run_id]
+        check(len(matches) == 1, "containment display label has no source record")
+        verdict = matches[0]["payload"]["result"]["verdict"]
+        expected = "Containment · time cap enforced" if verdict == "killed_timeout" else "Containment · consumer failure"
+        check(link["text"] == expected, "containment label differs from its verdict")
     """The judges containment panel matches its records, links each run and the
     session, and keeps its claims qualified."""
     record = containment_record_of(records)
@@ -3154,8 +3202,45 @@ def assert_page_shapes(inputs: dict) -> None:
     say("every page carries the table cells and links its records require")
 
 
+def assert_head_routes(base: str, detail: str) -> None:
+    paths = ["/api/sessions", "/api/runs", "/api/lessons", "/api/benchmark",
+             detail, "/api/runs/does-not-exist", "/api/runs/", "/api/runs?bad"]
+    for path in paths:
+        status, body, content_type, headers = request(base, path)
+        head_status, head_body, head_type, head_headers = request(base, path, method="HEAD")
+        check(head_status == status, f"HEAD status differs for {path}")
+        check(head_body == b"", f"HEAD returned a body for {path}")
+        check(head_type == content_type, f"HEAD content type differs for {path}")
+        check(head_headers.get("Content-Length") == headers.get("Content-Length") == str(len(body)),
+              f"HEAD content length differs for {path}")
+    for size, expected in [(1, 400), (4097, 413)]:
+        status, body, _, _ = request(base, "/api/runs", method="HEAD", data=b"x" * size)
+        check(status == expected and body == b"", "HEAD body validation failed")
+
+
+def assert_deployment_head() -> None:
+    spec = importlib.util.spec_from_file_location("kalari_api", REPO / "deploy/vultr/kalari-api.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    with tempfile.TemporaryDirectory() as directory:
+        store = Path(directory) / "evidence.jsonl"
+        store.write_text(json.dumps({"kind": "run", "session_id": "s", "run_id": "r"}) + "\n")
+        server = module.Server(("127.0.0.1", 0), module.Handler)
+        server.state_store = store
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            assert_head_routes(f"http://127.0.0.1:{server.server_port}", "/api/runs/r")
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join()
+    say("deployment HEAD matches GET status and headers, with no body")
+
+
 def main() -> int:
     print("web check")
+    assert_deployment_head()
     assert_no_external_urls()
     assert_github_pins()
     assert_private_data_is_absent()
@@ -3168,9 +3253,11 @@ def main() -> int:
     assert_inputs_valid(inputs)
     with Server() as server:
         assert_live_entry_points(server.base)
+        assert_share_content(server.base)
         assert_csp_headers(server.base)
         assert_fixture_isolation(server.base)
         assert_api_contract(server.base)
+        assert_head_routes(server.base, "/api/runs/pilot-c3-payouts-r5")
         assert_inputs_match_api(server.base, inputs)
         errors = validate_containment_records(get_json(server.base, f"/api/sessions/{CONTAINMENT_SESSION}"))
         check(not errors, "the containment evidence contract: " + "; ".join(errors[:6]))

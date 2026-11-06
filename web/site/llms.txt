@@ -1,0 +1,32 @@
+# Kalari
+
+> API migration verification for coding agents. MCP tools inspect changes and run consumers inside disposable microVMs.
+
+## Read first
+
+- [Judges walkthrough](/docs/judges/): A text guide to the published evidence.
+- [Evidence and limits](/docs/evidence/): Benchmark scope, measurement basis, and limitations.
+- [Installation](/docs/run-it-yourself/): Releases, configuration, and machine requirements.
+- [MCP commands](/docs/mcp/): Setup and complete arguments for all tools.
+- [Vultr deployment](/docs/vultr/): Hosting, inference, and operational commands.
+
+## Read records directly
+
+These public endpoints return JSON. They support GET and HEAD. Reads do not start a consumer or invoke a model.
+
+- [Run IDs](/api/runs): Fetch each returned ID at /api/runs/ID.
+- [Session IDs](/api/sessions): Fetch each returned ID at /api/sessions/ID.
+- [Benchmark records](/api/benchmark): Each record carries its measurement payload.
+- [Published lessons](/api/lessons): An empty list means no lesson records were returned.
+
+Run details include evidence records with kind, session_id, run_id, and payload.
+The interactive run viewer uses run.html?id=ID. The session viewer uses session.html?id=ID.
+
+## Interpret the evidence
+
+The frozen comparison and manufactured showcase are separate datasets.
+The containment demonstration deliberately triggers a runaway cursor loop. It stays separate from benchmark totals.
+A process can exit zero while verification fails. Read the checks and passed value alongside the process verdict.
+Clef probabilities express a model's opinion. They are separate from measured outcomes.
+Production published no lessons during the frozen comparison. Those rows provide no measured learned-memory benefit.
+The original benchmark and filming runs used earlier builds. New release fixes do not rewrite those rows.

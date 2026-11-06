@@ -1,5 +1,5 @@
 name = "kalari"
-version = "0.1.2"
+version = "0.1.3"
 defaultTargets = ["kalari", "kalari-aashaan", "Examples", "example-http", "example-jsonrpc", "example-curl"]
 
 # The main service on the VM: MCP for the coding agent, HTTP for the web app,

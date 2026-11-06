@@ -1080,15 +1080,21 @@ function otherRunsGroup(runs, bench, runDetails, runIds) {
       const runRecord = ofKind(detail, "run")[0];
       const payload = payloadOf(runRecord);
       const verdict = payload.verdict?.verdict;
+      const contained = containmentOf(detail);
+      const label = contained
+        ? payloadOf(contained).result?.verdict === "killed_timeout"
+          ? "Containment · time cap enforced"
+          : "Containment · consumer failure"
+        : runId;
       const illustrative = payload.illustrative === true;
       const checkState = runRecord ? runCheckState(runRecord, ofKind(detail, "check")) : "none";
       const checkText =
         checkState === "passed" ? "Checks passed" : checkState === "failed" ? "Checks failed" : "No checks";
       return `<li>${runLink(
         runId,
-        `<code>${h(runId)}</code>`,
+        `${h(label)}`,
         runIds,
-        `Open run ${runId}`,
+        contained ? "Open containment run" : `Open run ${runId}`,
       )}${illustrative ? badge("Illustrative", "draft") : ""}<span class="run-index-verdict ${
         checkState === "passed" ? "is-pass" : checkState === "failed" ? "is-fail" : ""
       }">${h(verdict ? `${verdictWord(verdict)}. ${checkText}` : "Run record not loaded")}</span></li>`;
@@ -2684,7 +2690,9 @@ export function runView({ runId = "", records = [], runs = null, warnings = [] }
   const title = bench.length
     ? `${provenanceTitle} run: ${upgradeLabel(firstPayload.upgrade)}`
     : shown
-      ? "Containment evidence"
+      ? payloadOf(shown).result?.verdict === "killed_timeout"
+        ? "Containment · time cap enforced"
+        : "Containment · consumer failure"
       : reference
         ? "Reference evidence"
         : showcase.length

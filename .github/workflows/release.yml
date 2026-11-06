@@ -74,7 +74,7 @@ jobs:
           cp deploy/vultr/kalari.json.example deploy/vultr/session.json.example "dist/$name/"
           printf '%s\n' \
             'Install bin/kalari and bin/kalari-aashaan into a directory on PATH.' \
-            'Requires Linux x86-64 with glibc 2.39 or newer.' \
+            'Requires Linux x86-64 with glibc 2.35 or newer.' \
             'Sandbox execution additionally requires Microsandbox and working KVM.' \
             'Configure Lambo, Vimanam, curl, API credentials and session paths before use.' \
             'The example JSON files require editing for your environment.' > "dist/$name/INSTALL.txt"
@@ -86,6 +86,21 @@ jobs:
         run: |
           .lake/build/bin/kalari --version
           ldd .lake/build/bin/kalari-aashaan
+      - name: Verify compatibility with Ubuntu 22.04
+        run: |
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 256 --memory 512m \
+            -v "$PWD/.lake/build/bin:/opt/kalari:ro" ubuntu:22.04 \
+            sh -c 'set -eu; getconf GNU_LIBC_VERSION; /opt/kalari/kalari --version; /opt/kalari/kalari-aashaan 1000 1024 /bin/true' \
+            > dist/compatibility.txt
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          lines = Path("dist/compatibility.txt").read_text().splitlines()
+          verdict = json.loads(lines[-1])
+          assert lines[0] == "glibc 2.35"
+          assert verdict["verdict"] == "exited" and verdict["exit_code"] == 0
+          PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-packages
@@ -93,6 +108,7 @@ jobs:
             dist/*.tar.gz
             dist/SHA256SUMS
             dist/runtime-libraries.txt
+            dist/compatibility.txt
 
   publish:
     needs: [green, package]
@@ -112,5 +128,5 @@ jobs:
         run: |
           gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" \
             --target "$SHA" --draft --title "Kalari $VERSION" \
-            --notes "Linux x86-64 packages built on Ubuntu 24.04. Requires glibc 2.39 or newer. External tools and sandbox configuration are required." \
+            --notes "Linux x86-64 packages built on Ubuntu 24.04. Requires glibc 2.35 or newer. External tools and sandbox configuration are required." \
             dist/*

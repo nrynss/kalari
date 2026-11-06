@@ -174,7 +174,7 @@ class Handler(BaseHTTPRequestHandler):
         if "?" in target or "#" in target or not target.startswith("/"):
             self.send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid request target"})
             return
-        if method != "GET":
+        if method not in ("GET", "HEAD"):
             self.send_json(HTTPStatus.NOT_FOUND, {"error": "not found"})
             return
         raw = urlsplit(target).path
