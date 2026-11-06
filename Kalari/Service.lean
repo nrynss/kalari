@@ -1,5 +1,6 @@
 import Kalari.Mcp
 import Kalari.Config
+import Kalari.Http
 import Kalari.Tools.Changes
 import Kalari.Tools.Recall
 import Kalari.Tools.Run
@@ -192,6 +193,67 @@ def serveWithLamboCleanup (client : Kalari.Lambo.Client) (handler : Kalari.Mcp.H
     (input output : IO.FS.Stream) : IO Unit :=
   withLamboCleanup client (Kalari.Mcp.serve handler input output)
 
+/-- Loopback port for the read-only evidence API behind Caddy. -/
+def httpPortDefault : UInt16 := 18001
+
+/-- HTTP port from `KALARI_HTTP_PORT`, or `fallback` when unset. `0` picks an
+ephemeral port; anything else must be 1-65535. -/
+def httpPortFromEnv (fallback : UInt16) : IO UInt16 := do
+  match ← IO.getEnv "KALARI_HTTP_PORT" with
+  | none => pure fallback
+  | some s =>
+    match s.toNat? with
+    | some n =>
+      if n ≤ 65535 then pure n.toUInt16
+      else throw <| IO.userError "KALARI_HTTP_PORT must be 0-65535"
+    | none => throw <| IO.userError "KALARI_HTTP_PORT must be 0-65535"
+
+/-- Serve MCP over stdio and the read-only HTTP API on loopback together. The
+HTTP server runs on its own task, bound to loopback only, re-reading the
+shared evidence store per request. Stdin EOF ends MCP, which then shuts the
+HTTP server down. Logs go to stderr only: stdout is the MCP protocol. -/
+def serveBoth (client : Kalari.Lambo.Client) (handler : Kalari.Mcp.Handler)
+    (store : Kalari.Evidence.Store) (port : UInt16)
+    (input output : IO.FS.Stream) : IO Unit := do
+  let serverRef ← IO.mkRef (none : Option Std.Http.Server)
+  let httpTask ← IO.asTask do
+    Std.Async.Async.block do
+      let addr : Std.Net.SocketAddress := .v4 ⟨.ofParts 127 0 0 1, port⟩
+      let server ← Std.Http.Server.serve addr ({ store := store : Kalari.Http.App })
+      let bound := match server.localAddr with
+        | some (.v4 ⟨_, p⟩) => p
+        | _ => port
+      liftM (IO.eprintln s!"kalari http: listening on 127.0.0.1:{bound}" : IO Unit)
+      liftM (serverRef.set (some server) : IO Unit)
+      server.waitShutdown
+  let rec waitReady : Nat → IO Unit
+    | 0 => throw <| IO.userError "kalari http: server did not start"
+    | n + 1 => do
+      if (← serverRef.get).isSome then return
+      if ← IO.hasFinished httpTask then
+        IO.ofExcept httpTask.get
+        throw <| IO.userError "kalari http: server exited before ready"
+      IO.sleep 50
+      waitReady n
+  waitReady 100
+  try
+    serveWithLamboCleanup client handler input output
+  finally
+    -- Only the HTTP task waits on the server's shutdown promise. A second
+    -- waiter (shutdownAndWait here) would starve: one send wakes one waiter.
+    match ← serverRef.get with
+    | some server => Std.Async.Async.block server.shutdown
+    | none => pure ()
+    let rec waitDone : Nat → IO Unit
+      | 0 => throw <| IO.userError "kalari http: server did not stop"
+      | n + 1 => do
+        if ← IO.hasFinished httpTask then
+          IO.ofExcept httpTask.get
+        else
+          IO.sleep 50
+          waitDone n
+    waitDone 100
+
 /-- Serve one session sequentially, with a single Lambo child and writer.
 `clefCall` runs before each Clef transport attempt, so the harness can count
 model calls. Production passes the default no-op. -/
@@ -226,9 +288,11 @@ private def runLive (cfg : Kalari.Config.Config) (setup : Setup)
     writer, evidence, secrets
   }
   let handler ← dispatcher cfg setup deps
-  serveWithLamboCleanup client handler (← IO.getStdin) (← IO.getStdout)
+  let port ← httpPortFromEnv httpPortDefault
+  serveBoth client handler evidence port (← IO.getStdin) (← IO.getStdout)
 
-/-- Serve one session sequentially. Production refuses every observer. -/
+/-- Serve one session sequentially: MCP over stdio plus the HTTP API on
+loopback. Production refuses every observer. -/
 def serve (configPath setupPath : System.FilePath) : IO Unit := do
   let cfg ← Kalari.Config.load configPath
   let setupJson ← IO.ofExcept (Json.parse (← IO.FS.readFile setupPath))
@@ -475,7 +539,13 @@ def fixture : IO Unit := IO.FS.withTempDir fun dir => do
       return result
     else handler name args
 
-  serveWithLamboCleanup lamboChild stdioHandler (← IO.getStdin) (← IO.getStdout)
+  -- The offline fixture serves both paths together, like production: MCP over
+  -- stdio plus the HTTP API on loopback. The port comes from KALARI_HTTP_PORT
+  -- (ephemeral when unset, so the self-test never conflicts); the evidence
+  -- path goes to stderr so a test can point the shim at the same store.
+  IO.eprintln s!"kalari evidence: {evidence.path}"
+  let port ← httpPortFromEnv 0
+  serveBoth lamboChild stdioHandler evidence port (← IO.getStdin) (← IO.getStdout)
   let pid ← IO.FS.readFile pidPath
   let alive ← IO.Process.output { cmd := "/bin/kill", args := #["-0", pid.trimAscii.toString] }
   unless alive.exitCode != 0 do throw <| .userError "service EOF did not reap its fake Lambo child"

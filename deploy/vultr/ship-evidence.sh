@@ -8,8 +8,9 @@
 # Merges the evidence file into /var/lib/kalari/evidence/.kalari/evidence.jsonl
 # on the VM. The merge preserves every non-benchmark record (in particular the
 # existing lesson-policy provenance record) and is idempotent: previously
-# shipped benchmark records are replaced by run id, never duplicated. Then it
-# restarts kalari-api and verifies every shipped record over the loopback API
+# shipped benchmark records are replaced by run id, never duplicated. kalari
+# serve re-reads the store on every request, so no restart is needed. Then it
+# verifies every shipped record over the loopback API
 # on the VM and over the public demo URL from here.
 #
 # No inference, no spend, no key: SSH uses the existing Tailscale auth only.
@@ -91,15 +92,14 @@ assert kinds.get("benchmark") == 60, "store must hold 60 benchmark records"
 assert kinds.get("lesson-policy", 0) >= 1, "lesson-policy provenance record must survive"
 EOF
 
-say "== restart kalari-api"
-$SSH 'sudo systemctl restart kalari-api'
+say "== verify kalari serves the merged store (no restart: it re-reads per request)"
 for _ in $(seq 1 12); do
-  if [[ "$($SSH 'sudo systemctl is-active kalari-api')" == "active" ]]; then
+  if [[ "$($SSH 'sudo systemctl is-active kalari')" == "active" ]]; then
     break
   fi
   sleep 1
 done
-$SSH 'sudo systemctl is-active kalari-api'
+$SSH 'sudo systemctl is-active kalari'
 
 say "== verify on the VM (loopback API)"
 $SSH 'python3 - /tmp/frozen-evidence-upload.jsonl' <<'EOF'

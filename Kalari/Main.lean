@@ -10,7 +10,7 @@ import Kalari.Version
 
 def usage : String :=
   "usage: kalari <command>\n\n" ++
-  "  serve <config.json> <session.json>  MCP endpoint over stdio\n" ++
+  "  serve <config.json> <session.json>  MCP over stdio plus HTTP API on loopback (KALARI_HTTP_PORT, default 18001)\n" ++
   "  check      load and validate the config, reach each backend (planned)\n" ++
   "  --version  print the version\n"
 

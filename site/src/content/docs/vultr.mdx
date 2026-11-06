@@ -118,7 +118,7 @@ The default session is an idle deployment example. Configure real specifications
 | `/srv/kalari/www/` | Static judges' interface |
 | `/srv/kalari/www/docs/` | Built documentation |
 
-The read-only API listens on loopback. Caddy routes `/api/*` to that service.
+The read-only API listens on loopback from `kalari serve`. Caddy routes `/api/*` to that service.
 
 The web interface reads stored evidence. A fresh installation does not contain the demo's published benchmark records.
 
@@ -127,12 +127,12 @@ The web interface reads stored evidence. A fresh installation does not contain t
 An install refreshes files. Explicitly restart the running services when replacing binaries.
 
 ```sh
-ssh kalari 'sudo systemctl restart kalari kalari-api caddy'
-ssh kalari 'sudo systemctl is-active caddy kalari kalari-api'
+ssh kalari 'sudo systemctl restart kalari caddy'
+ssh kalari 'sudo systemctl is-active caddy kalari'
 ssh kalari '/opt/kalari/bin/kalari --version'
 ```
 
-Expect three `active` lines and the installed release version. Check HTTPS from outside the management network.
+Expect two `active` lines and the installed release version. Check HTTPS from outside the management network.
 
 ```sh
 curl -fsS -o /dev/null -w 'site %{http_code}\n' https://kalari.nryn.dev/
@@ -177,14 +177,14 @@ Caddy serves the updated static files without a restart. Keep the interface, ser
 Inspect unit logs without printing the credential file.
 
 ```sh
-ssh kalari 'sudo journalctl -u kalari -u kalari-api -u caddy -n 80 --no-pager'
-ssh kalari 'sudo systemctl status kalari kalari-api caddy --no-pager'
+ssh kalari 'sudo journalctl -u kalari -u caddy -n 80 --no-pager'
+ssh kalari 'sudo systemctl status kalari caddy --no-pager'
 ```
 
 | Symptom | Check |
 |---|---|
 | Certificate issuance fails | Public DNS and inbound 80/443 |
-| HTTPS works but `/api/runs` fails | `kalari-api` status and Caddy proxy |
+| HTTPS works but `/api/runs` fails | `kalari` status and Caddy proxy |
 | MCP exits during startup | Config paths, service permissions, and credential variable |
 | Sandbox creation fails | KVM access, image cache, and storage permissions |
 | Docs assets return 404 | Rebuild with `ASTRO_BASE=/docs` |

@@ -1,5 +1,5 @@
 [Unit]
-Description=Kalari MCP service (stdio endpoint with its Lambo child)
+Description=Kalari service (MCP over stdio plus read-only HTTP API on loopback, with its Lambo child)
 After=network.target
 
 [Service]
@@ -10,9 +10,10 @@ Group=kalari
 # Ubuntu's default 0002 umask.
 UMask=0022
 EnvironmentFile=/etc/kalari/kalari.env
-# kalari serve speaks MCP over stdio, so there is no socket peer under
-# systemd. stdin is held open so the process supervises its Lambo child
-# instead of exiting on EOF; agents reach it through a local OpenCode run.
+# kalari serve speaks MCP over stdio and the HTTP API on 127.0.0.1:18001
+# (Caddy's /api proxy) from one process, supervising its Lambo child.
+# stdin is held open so the process supervises its Lambo child instead of
+# exiting on EOF; agents reach it through a local OpenCode run.
 ExecStart=/bin/sh -c 'exec /usr/bin/sleep infinity | exec /opt/kalari/bin/kalari serve /etc/kalari/kalari.json /etc/kalari/session.json'
 Restart=always
 RestartSec=5

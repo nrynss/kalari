@@ -1,8 +1,8 @@
 # Caddyfile for the Kalari demo at kalari.nryn.dev.
 #
-# Caddy terminates TLS (automatic HTTPS, ports 80 and 443) in front of two
-# loopback services: the primary site's static root for web/site/, and the
-# read-only evidence API (deploy/vultr/kalari-api.py) for /api.
+# Caddy terminates TLS (automatic HTTPS, ports 80 and 443) in front of a
+# loopback service: the primary site's static root for web/site/, and the
+# read-only evidence API that kalari serve holds on 127.0.0.1:18001 for /api.
 #
 # Installs at /etc/caddy/Caddyfile. The old kalai.nryn.dev name is kept as a
 # permanent redirect to the primary name. The admin

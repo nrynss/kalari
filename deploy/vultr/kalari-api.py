@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """Kalari evidence API for the Vultr demo deployment.
 
+Retired from production: `kalari serve` holds the same read-only routes on
+loopback itself (Kalari/Http.lean). This file stays because `web/check.py`
+imports it for its HEAD assertions, and the gate's `tests/http-api.sh`
+proves Lean matches it on every route and status.
+
 Serves the read-only routes of Kalari/Http.lean over the shared evidence
 store, on loopback only, for Caddy to reverse-proxy at /api. It serves no
 static files and never writes to the store.

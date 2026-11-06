@@ -5,11 +5,11 @@
 #
 # Builds kalari from --source on the VM itself (a laptop glibc is newer than
 # the VM's, so a laptop binary would not run there), installs Caddy, Lambo
-# 0.9.0, the systemd units, the static site and the loopback evidence API,
-# then starts everything. Re-running refreshes binaries, units, the site and
-# the API without touching the evidence store, the Lambo store, or the
-# benchmark API sandboxes. It never touches the Vultr firewall group: opening
-# ports 80 and 443 is the operator's own step (see README.md).
+# 0.9.0, the systemd unit and the static site, then starts everything.
+# kalari serve holds the loopback evidence API itself. Re-running refreshes
+# binaries, the unit and the site without touching the evidence store, the
+# Lambo store, or the benchmark API sandboxes. It never touches the Vultr
+# firewall group: opening ports 80 and 443 is the operator's own step (see README.md).
 #
 # The inference key comes from VULTR_INFERENCE_API_KEY or the system keyring
 # (service vultr-inference, account kalari). It travels to the VM over SSH
@@ -124,12 +124,10 @@ if [[ -d "$SOURCE/site" ]]; then
 else
   echo "site/ is absent; skipping the docs build" >&2
 fi
-rsync -az "$SOURCE/deploy/vultr/kalari-api.py" "$SOURCE/deploy/vultr/Caddyfile" "$SOURCE/deploy/vultr/kalari.service" "$SOURCE/deploy/vultr/kalari-api.service" "$SOURCE/deploy/vultr/kalari.json.example" "$SOURCE/deploy/vultr/session.json.example" "$SOURCE/deploy/vultr/lambo.toml.example" "$HOST:kalari-deploy/"
+rsync -az "$SOURCE/deploy/vultr/Caddyfile" "$SOURCE/deploy/vultr/kalari.service" "$SOURCE/deploy/vultr/kalari.json.example" "$SOURCE/deploy/vultr/session.json.example" "$SOURCE/deploy/vultr/lambo.toml.example" "$HOST:kalari-deploy/"
 ssh "$HOST" 'set -euo pipefail; umask 022
 sudo install -o root -g root -m 644 "$HOME/kalari-deploy/Caddyfile" /etc/caddy/Caddyfile
 sudo install -o root -g root -m 644 "$HOME/kalari-deploy/kalari.service" /etc/systemd/system/kalari.service
-sudo install -o root -g root -m 644 "$HOME/kalari-deploy/kalari-api.service" /etc/systemd/system/kalari-api.service
-sudo install -o kalari -g kalari -m 755 "$HOME/kalari-deploy/kalari-api.py" /opt/kalari/bin/kalari-api.py
 sudo install -o kalari -g kalari -m 600 "$HOME/kalari-deploy/kalari.json.example" /etc/kalari/kalari.json
 sudo install -o kalari -g kalari -m 600 "$HOME/kalari-deploy/session.json.example" /etc/kalari/session.json
 sudo install -o kalari -g kalari -m 600 "$HOME/kalari-deploy/lambo.toml.example" /etc/kalari/lambo.toml
@@ -166,7 +164,7 @@ if ! sudo -u kalari /opt/kalari/bin/lambo provision --config /etc/kalari/lambo.t
   echo "lambo provision needs attention (keeps an existing store)" >&2
 fi
 sudo systemctl daemon-reload
-sudo systemctl enable --now kalari kalari-api
+sudo systemctl enable --now kalari
 sudo systemctl enable caddy
 # enable --now is a no-op for an already-running Caddy, so a stock config from
 # the package install would survive a new Caddyfile. Restart, not reload: a
@@ -175,7 +173,7 @@ sudo systemctl enable caddy
 # on loopback for inspection.
 sudo systemctl restart caddy
 sleep 2
-sudo systemctl is-active caddy kalari kalari-api'
+sudo systemctl is-active caddy kalari'
 
 say "== $HOST: local check through Caddy"
 ssh "$HOST" 'set -euo pipefail

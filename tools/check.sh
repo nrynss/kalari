@@ -14,6 +14,8 @@ echo "-- kalari-aashaan cases"
 tests/aashaan-cases.sh
 echo "-- examples"
 tests/examples.sh
+echo "-- http api"
+tests/http-api.sh
 echo "-- benchmark quirks"
 bench/tests/quirks.sh
 echo "-- web evidence"

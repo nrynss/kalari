@@ -8,9 +8,9 @@ API behind Caddy. The benchmark APIs run beside it in their own microVMs
 ```text
 internet ── 80/443 ──▶ Caddy (kalari.nryn.dev, automatic HTTPS)
                         ├── / ── /srv/kalari/www (web/site/, static)
-                        └── /api/* ── 127.0.0.1:18001 ── kalari-api (read-only)
-kalari.service: kalari serve as user kalari (MCP over stdio, Lambo child)
-  evidence: /var/lib/kalari/evidence/.kalari/evidence.jsonl (shared with kalari-api)
+                        └── /api/* ── 127.0.0.1:18001 ── kalari serve (read-only HTTP API)
+kalari.service: kalari serve as user kalari (MCP over stdio plus the HTTP API on loopback, Lambo child)
+  evidence: /var/lib/kalari/evidence/.kalari/evidence.jsonl (re-read per request)
   lambo store: /var/lib/kalari/lambo.db
 ```
 
@@ -88,8 +88,8 @@ setup are in `dev-diary/research/commands.md` and `dev-diary/research/vultr-vm.m
    The first page is titled "For judges · Kalari". `/api/benchmark` answers
    `[]` until the benchmark producer writes records; the judges page shows
    its not-yet-published panel meanwhile, which is the expected state, not
-   a failure. On the VM: `systemctl is-active caddy kalari kalari-api`
-   (all `active`) and `journalctl -u kalari -u kalari-api -u caddy --since
+   a failure. On the VM: `systemctl is-active caddy kalari`
+   (both `active`) and `journalctl -u kalari -u caddy --since
    "10 minutes ago"` for the logs.
 
 ## Restart and recovery
@@ -98,8 +98,8 @@ A restart brings everything back; the benchmark sandboxes are untouched by
 these units:
 
 ```sh
-ssh kalari 'sudo systemctl restart caddy kalari kalari-api'
-ssh kalari 'sudo systemctl is-active caddy kalari kalari-api'
+ssh kalari 'sudo systemctl restart caddy kalari'
+ssh kalari 'sudo systemctl is-active caddy kalari'
 ```
 
 then repeat the public `curl` checks above. If Caddy serves HTTP but not
@@ -118,9 +118,7 @@ refuses to start without the variables its config names.
 | File here | Installed path | Notes |
 |---|---|---|
 | `Caddyfile` | `/etc/caddy/Caddyfile` | `kalari.nryn.dev` primary (static root plus `/api` reverse proxy); `kalai.nryn.dev` redirects permanently |
-| `kalari-api.py` | `/opt/kalari/bin/kalari-api.py` | Loopback-only evidence API; no key, no writes |
-| `kalari.service` | `/etc/systemd/system/kalari.service` | `kalari serve` as `kalari`, key from `kalari.env` |
-| `kalari-api.service` | `/etc/systemd/system/kalari-api.service` | The evidence API as `kalari` |
+| `kalari.service` | `/etc/systemd/system/kalari.service` | `kalari serve` as `kalari`, MCP over stdio plus the HTTP API on loopback, key from `kalari.env` |
 | `kalari.json.example` | `/etc/kalari/kalari.json` | Endpoints and `api_key_env` names only; never values |
 | `session.json.example` | `/etc/kalari/session.json` | Idle demo session; a live migration supplies its own |
 | `lambo.toml.example` | `/etc/kalari/lambo.toml` | Store, embedder, daemon, serve session |
@@ -132,10 +130,12 @@ appears in a command line, a unit file, a committed file, or a microVM.
 
 ## Notes for the next task
 
-- `/api` is served by `kalari-api.py`, a small loopback shim whose routes
-  mirror `Kalari/Http.lean`, because nothing starts `Kalari.Http.serve`
-  from `kalari serve` yet (see the T6.1 notes). When that wiring lands,
-  point the Caddy `/api` proxy at it and retire the shim.
+- `/api` is served by `kalari serve` itself (`Kalari/Http`, read-only routes
+  on 127.0.0.1:18001 for Caddy). The retired `deploy/vultr/kalari-api.py`
+  shim mirrored the same routes; `web/check.py` still imports it for its HEAD
+  assertions, and the gate's `tests/http-api.sh` proves Lean matches it on
+  every route and status (HEAD excepted: the shim answers HEAD, Lean 404s
+  its GET-only contract).
 - The first `kalari serve` start appends one `lesson-policy` provenance
   record to the evidence store (its amended-policy fixture check). It is
   not a `lesson` or `benchmark` record, and the judges page ignores it
