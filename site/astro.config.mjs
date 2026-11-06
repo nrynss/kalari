@@ -32,6 +32,7 @@ export default defineConfig({
         { label: 'Install and configure', slug: 'run-it-yourself' },
         { label: 'MCP and tool commands', slug: 'mcp' },
         { label: 'Evidence and limits', slug: 'evidence' },
+        { label: 'For agents (llms.txt)', link: 'https://kalari.nryn.dev/llms.txt' },
       ],
       social: [
         {

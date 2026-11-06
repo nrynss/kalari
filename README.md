@@ -9,6 +9,8 @@
 <p align="center">
   <a href="https://kalari.nryn.dev/">Judges' page</a> ·
   <a href="https://kalari.nryn.dev/docs/">Documentation</a> ·
+  <a href="https://lablab.build/ai-hackathons/vultr-hackathon/kalari/kalari-contained-rehearsals-for-api-upgrades">Video and submission</a> ·
+  <a href="https://kalari.nryn.dev/llms.txt">For agents</a> ·
   <a href="https://github.com/nrynss/kalari/releases/latest">Download</a> ·
   <a href="bench/RESULTS.md">Measured results</a>
 </p>
@@ -35,6 +37,8 @@ The command fails with `killed_timeout`. Kalari records the configured limit and
 
 | Explore | What you will find |
 |---|---|
+| [Demo video and submission](https://lablab.build/ai-hackathons/vultr-hackathon/kalari/kalari-contained-rehearsals-for-api-upgrades) | Watch the presentation on the submission page |
+| [Agent guide](https://kalari.nryn.dev/llms.txt) | Text documentation and direct JSON evidence routes |
 | [Live judges' page](https://kalari.nryn.dev/) | Run details, checks, logs, and containment evidence |
 | [Frozen comparison](bench/RESULTS.md) | Results from 60 runs, with links to every row |
 | [Containment transcript](tests/live/containment-transcript.txt) | A deliberate demonstration, separate from benchmark totals |

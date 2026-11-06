@@ -11,7 +11,7 @@ import Diagram from '../../components/Diagram.astro';
 import DocLink from '../../components/DocLink.astro';
 import RepoLink from '../../components/RepoLink.astro';
 
-This page walks every result in the order of the demo video. Each figure links to its run on the [live console](https://kalari.nryn.dev/) and to its file on GitHub, pinned to commit {figures.commit.slice(0, 12)}. A build-time step recomputes every number from the committed evidence. The build fails when a figure disagrees with `bench/RESULTS.md`.
+This page walks every result in the order of the [demo video on the submission page](https://lablab.build/ai-hackathons/vultr-hackathon/kalari/kalari-contained-rehearsals-for-api-upgrades). Each figure links to its run on the [live console](https://kalari.nryn.dev/) and to its file on GitHub, pinned to commit {figures.commit.slice(0, 12)}. A build-time step recomputes every number from the committed evidence. The build fails when a figure disagrees with `bench/RESULTS.md`.
 
 Both arms run the same OpenCode 2 with the same model, DeepSeek V4.1 Flash on Vultr Serverless Inference. The only difference is whether Kalari is plugged in.
 
@@ -58,6 +58,9 @@ Without Kalari, four sessions ship silent corruption. The agent deduplicates kee
 The table shows cost, attempts, containment, and correctness under zero-lesson conditions. It does not show the value of learned memory. No run here tested that value. Five repeats per condition is a small sample. Treat every count as raw. Do not generalize beyond this pair. Condition 1 and condition 6 match condition 5 on verdicts and beat it on right-first-time. The limits use the same tone as the results.
 
 ## Where to look next
+
+- [Watch the presentation and read the submission](https://lablab.build/ai-hackathons/vultr-hackathon/kalari/kalari-contained-rehearsals-for-api-upgrades).
+- [Read the machine-readable guide](https://kalari.nryn.dev/llms.txt).
 
 - The live judges page and the run pages on the [demo host](https://kalari.nryn.dev/).
 - The <DocLink to="architecture/">Architecture</DocLink> page for the gate, the tools, and the run pipeline.
