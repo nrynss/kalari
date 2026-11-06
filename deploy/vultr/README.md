@@ -141,11 +141,11 @@ appears in a command line, a unit file, a committed file, or a microVM.
 ## Notes for the next task
 
 - `/api` is served by `kalari serve` itself (`Kalari/Http`, read-only routes
-  on 127.0.0.1:18001 for Caddy). The retired `deploy/vultr/kalari-api.py`
-  shim mirrored the same routes; `web/check.py` still imports it for its HEAD
-  assertions, and the gate's `tests/http-api.sh` proves Lean matches it on
-  every route and status (HEAD excepted: the shim answers HEAD, Lean 404s
-  its GET-only contract).
+  on 127.0.0.1:18001 for Caddy). The Python shim (`deploy/vultr/kalari-api.py`)
+  is deleted: the gate's `tests/http-api.sh` asserts the Lean routes and
+  statuses directly, including the GET-only contract (HEAD answers 404).
+  `install.sh` still retires a pre-existing `kalari-api.service` on older VMs,
+  which bound the same port.
 - The first `kalari serve` start appends one `lesson-policy` provenance
   record to the evidence store (its amended-policy fixture check). It is
   not a `lesson` or `benchmark` record, and the judges page ignores it

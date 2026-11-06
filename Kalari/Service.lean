@@ -542,7 +542,7 @@ def fixture : IO Unit := IO.FS.withTempDir fun dir => do
   -- The offline fixture serves both paths together, like production: MCP over
   -- stdio plus the HTTP API on loopback. The port comes from KALARI_HTTP_PORT
   -- (ephemeral when unset, so the self-test never conflicts); the evidence
-  -- path goes to stderr so a test can point the shim at the same store.
+  -- path goes to stderr so a test can read the same store.
   IO.eprintln s!"kalari evidence: {evidence.path}"
   let port ← httpPortFromEnv 0
   serveBoth lamboChild stdioHandler evidence port (← IO.getStdin) (← IO.getStdout)

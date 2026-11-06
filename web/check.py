@@ -12,9 +12,6 @@ runs. The fixture server never serves a snapshot.
 
 from __future__ import annotations
 
-import importlib.util
-import tempfile
-import threading
 import hashlib
 import html as html_module
 import json
@@ -3203,6 +3200,9 @@ def assert_page_shapes(inputs: dict) -> None:
 
 
 def assert_head_routes(base: str, detail: str) -> None:
+    # The fixture server answers HEAD with the GET status and headers and no
+    # body. Lean itself is GET-only and 404s HEAD (proved in tests/http-api.sh);
+    # this checks the fixture server only.
     paths = ["/api/sessions", "/api/runs", "/api/lessons", "/api/benchmark",
              detail, "/api/runs/does-not-exist", "/api/runs/", "/api/runs?bad"]
     for path in paths:
@@ -3218,29 +3218,8 @@ def assert_head_routes(base: str, detail: str) -> None:
         check(status == expected and body == b"", "HEAD body validation failed")
 
 
-def assert_deployment_head() -> None:
-    spec = importlib.util.spec_from_file_location("kalari_api", REPO / "deploy/vultr/kalari-api.py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    with tempfile.TemporaryDirectory() as directory:
-        store = Path(directory) / "evidence.jsonl"
-        store.write_text(json.dumps({"kind": "run", "session_id": "s", "run_id": "r"}) + "\n")
-        server = module.Server(("127.0.0.1", 0), module.Handler)
-        server.state_store = store
-        thread = threading.Thread(target=server.serve_forever, daemon=True)
-        thread.start()
-        try:
-            assert_head_routes(f"http://127.0.0.1:{server.server_port}", "/api/runs/r")
-        finally:
-            server.shutdown()
-            server.server_close()
-            thread.join()
-    say("deployment HEAD matches GET status and headers, with no body")
-
-
 def main() -> int:
     print("web check")
-    assert_deployment_head()
     assert_no_external_urls()
     assert_github_pins()
     assert_private_data_is_absent()

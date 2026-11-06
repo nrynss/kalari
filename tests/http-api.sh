@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Prove kalari serves MCP over stdio and the HTTP API on loopback together,
-# and the Lean API matches the shim on every route and status.
+# Prove kalari serves MCP over stdio and the Lean HTTP API on loopback together.
+# The Lean routes are asserted directly: status codes plus parsed JSON shapes.
 # Offline: loopback only, no key, no network beyond the toolchain.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -8,9 +8,7 @@ B=.lake/build/bin
 fail=0
 tmp=$(mktemp -d)
 pid=""
-shimpid=""
 cleanup() {
-  if [[ -n "${shimpid:-}" ]]; then kill "$shimpid" 2>/dev/null || true; fi
   if [[ -n "${pid:-}" ]]; then kill "$pid" 2>/dev/null || true; fi
   exec 3>&- 2>/dev/null || true
   rm -rf "$tmp"
@@ -21,31 +19,38 @@ expect() {  # expect <name> <want-substring> <got>
   if [[ "$3" == *"$2"* ]]; then echo "ok   $1"; else echo "FAIL $1: wanted $2, got $3"; fail=1; fi
 }
 
-check_same() {  # check_same <name> <path> [curl args...]
-  # Status plus parsed JSON must match. Key order is exempt: Lean's `compress`
-  # sorts keys alphabetically while the shim preserves file order; values are
-  # what the contract covers (see web/check.py, which compares parsed JSON).
-  local name=$1 path=$2; shift 2
-  local lean shim lc sc lb sb
-  lean=$(curl -s -w $'\n%{http_code}' "$@" "http://127.0.0.1:$leanPort$path")
-  shim=$(curl -s -w $'\n%{http_code}' "$@" "http://127.0.0.1:$shimPort$path")
-  lc=${lean##*$'\n'}; sc=${shim##*$'\n'}
-  lb=${lean%$'\n'*}; sb=${shim%$'\n'*}
-  if [[ "$lc" != "$sc" ]]; then
-    echo "FAIL $name: status lean=$lc shim=$sc"; fail=1; return
+check_api() {  # check_api <name> <want-status> <path> [curl args...]
+  # Status must match and the body must be JSON. Values are checked by the
+  # detail helpers below; this covers every route and status of the contract.
+  local name=$1 want=$2 path=$3; shift 3
+  local out code body
+  out=$(curl -s -w $'\n%{http_code}' "$@" "http://127.0.0.1:$leanPort$path")
+  code=${out##*$'\n'}; body=${out%$'\n'*}
+  if [[ "$code" != "$want" ]]; then
+    echo "FAIL $name: wanted $want, got $code ($body)"; fail=1; return
   fi
-  if python3 - "$lb" "$sb" <<'EOF'
+  if ! python3 -c 'import json,sys; json.loads(sys.argv[1])' "$body"; then
+    echo "FAIL $name: not JSON: $body"; fail=1; return
+  fi
+  echo "ok   $name"
+}
+
+check_detail() {  # check_detail <name> <path> <key> <id>
+  # A detail route returns every record stored under that id, and nothing else.
+  local name=$1 path=$2 key=$3 id=$4
+  local body
+  body=$(curl -s "http://127.0.0.1:$leanPort$path")
+  if python3 - "$body" "$key" "$id" <<'EOF'
 import json, sys
-sys.exit(0 if json.loads(sys.argv[1]) == json.loads(sys.argv[2]) else 1)
+records = json.loads(sys.argv[1])
+sys.exit(0 if records and all(r.get(sys.argv[2]) == sys.argv[3] for r in records) else 1)
 EOF
   then echo "ok   $name"
-  else echo "FAIL $name:"; echo "--- lean ---"; printf '%s\n' "$lean"; echo "--- shim ---"; printf '%s\n' "$shim"; fail=1
+  else echo "FAIL $name: $body"; fail=1
   fi
 }
 
 leanPort=$(( 20000 + RANDOM % 20000 ))
-shimPort=$(( 20000 + RANDOM % 20000 ))
-while [[ "$shimPort" == "$leanPort" ]]; do shimPort=$(( 20000 + RANDOM % 20000 )); done
 
 # One fixture process serves both paths: MCP on stdin/stdout, HTTP on loopback.
 # stdin is a FIFO held open so both paths stay up together; closing it ends MCP.
@@ -79,7 +84,17 @@ expect "mcp concurrent with http" '"result":{}' "$pinged"
 expect "http still serving" '200' \
   "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$leanPort/api/sessions")"
 
-# Point the shim at the fixture's own store so both read the same records.
+sid=$(curl -s "http://127.0.0.1:$leanPort/api/sessions" | python3 -c "import json,sys; print(json.load(sys.stdin)[0])")
+rid=$(curl -s "http://127.0.0.1:$leanPort/api/runs" | python3 -c "import json,sys; print(json.load(sys.stdin)[0])")
+check_api "sessions" 200 "/api/sessions"
+check_api "runs" 200 "/api/runs"
+check_api "lessons" 200 "/api/lessons"
+check_api "benchmark" 200 "/api/benchmark"
+check_detail "session detail" "/api/sessions/$sid" "session_id" "$sid"
+check_detail "run detail" "/api/runs/$rid" "run_id" "$rid"
+
+# The store is re-read per request: a record appended after startup appears
+# without restarting the server.
 store=$(grep -o 'kalari evidence: .*' "$tmp/stderr.log" | head -1 | sed 's/kalari evidence: //')
 [[ -f "$store" ]] || { echo "FAIL evidence store not found: $store"; exit 1; }
 python3 - "$store" <<'EOF'
@@ -89,49 +104,30 @@ record = {"kind": "benchmark", "session_id": "parity", "run_id": "parity-bench-1
 with open(sys.argv[1], "a", encoding="utf-8") as handle:
     handle.write(json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n")
 EOF
-python3 deploy/vultr/kalari-api.py --store "$store" \
-  --host 127.0.0.1 --port "$shimPort" 3>&- >"$tmp/shim.log" 2>&1 &
-shimpid=$!
-for _ in $(seq 1 100); do
-  curl -s "http://127.0.0.1:$shimPort/api/runs" >/dev/null 2>&1 && break
-  sleep 0.1
-done
+check_detail "parity run detail" "/api/runs/parity-bench-1" "run_id" "parity-bench-1"
+check_detail "parity session" "/api/sessions/parity" "session_id" "parity"
 
-sid=$(curl -s "http://127.0.0.1:$leanPort/api/sessions" | python3 -c "import json,sys; print(json.load(sys.stdin)[0])")
-rid=$(curl -s "http://127.0.0.1:$leanPort/api/runs" | python3 -c "import json,sys; print(json.load(sys.stdin)[0])")
-check_same "sessions" "/api/sessions"
-check_same "runs" "/api/runs"
-check_same "lessons" "/api/lessons"
-check_same "benchmark" "/api/benchmark"
-check_same "session detail" "/api/sessions/$sid"
-check_same "run detail" "/api/runs/$rid"
-check_same "parity run detail" "/api/runs/parity-bench-1"
-check_same "parity session" "/api/sessions/parity"
-check_same "missing run" "/api/runs/does-not-exist-xyz"
-check_same "unknown resource" "/api/nope"
-check_same "empty run id" "/api/runs/"
-check_same "bad session id" "/api/sessions/bad!id"
-check_same "post empty" "/api/runs" -X POST
-check_same "put" "/api/runs" -X PUT
-check_same "post body" "/api/runs" --data-binary 'x'
-check_same "get body" "/api/runs" -X GET --data-binary 'x'
-check_same "query" "/api/runs?bad"
-check_same "body over cap" "/api/runs" --data-binary "$(head -c 5000 /dev/zero | tr '\0' a)"
-check_same "body at cap" "/api/runs" --data-binary "$(head -c 4096 /dev/zero | tr '\0' a)"
+check_api "missing run" 404 "/api/runs/does-not-exist-xyz"
+check_api "unknown resource" 404 "/api/nope"
+check_api "empty run id" 400 "/api/runs/"
+check_api "bad session id" 400 "/api/sessions/bad!id"
+check_api "post empty" 404 "/api/runs" -X POST
+check_api "put" 404 "/api/runs" -X PUT
+check_api "post body" 400 "/api/runs" --data-binary 'x'
+check_api "get body" 400 "/api/runs" -X GET --data-binary 'x'
+check_api "query" 400 "/api/runs?bad"
+check_api "body over cap" 413 "/api/runs" --data-binary "$(head -c 5000 /dev/zero | tr '\0' a)"
+check_api "body at cap" 400 "/api/runs" --data-binary "$(head -c 4096 /dev/zero | tr '\0' a)"
 
-# HEAD is the one known difference: the shim answers it, Lean 404s its
-# GET-only contract. Record both behaviours explicitly.
+# The contract is GET-only: HEAD on a route answers 404 like any other
+# non-GET method.
 expect "lean HEAD is 404" "404" \
   "$(curl -s -o /dev/null -w '%{http_code}' -I "http://127.0.0.1:$leanPort/api/runs")"
-expect "shim HEAD is 200" "200" \
-  "$(curl -s -o /dev/null -w '%{http_code}' -I "http://127.0.0.1:$shimPort/api/runs")"
 
 # Closing stdin ends MCP; the HTTP server must shut down and the process exit.
 exec 3>&-
 if wait "$pid"; then echo "ok   clean exit on stdin EOF"; else echo "FAIL fixture exit status"; fail=1; fi
 pid=""
-kill "$shimpid" 2>/dev/null || true
-shimpid=""
 wait 2>/dev/null || true
 
 exit $fail

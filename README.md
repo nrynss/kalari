@@ -208,7 +208,7 @@ flowchart TD
 
 The host controls workspaces and policy. The guest executes the consumer. Kalari removes the sandbox after execution.
 
-The deployed API currently uses a Python shim behind Caddy. Its evidence routes mirror the Lean implementation.
+The deployed API is `kalari serve` itself behind Caddy: the read-only evidence routes of `Kalari/Http.lean` on loopback.
 
 Read the [architecture notes](docs/architecture.md) and [measured stack findings](dev-diary/research/README.md) for implementation details and recorded limitations.
 
