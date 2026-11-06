@@ -36,3 +36,9 @@ Two brokers on host loopback. Each holds one run user and password from host env
 
 ## Notes
 Passwords lived only in host env and in 600 files under /tmp. No key entered any guest. No VM writes occurred. Sandboxes use --no-net with one allow rule and --pull never.
+
+## Dead code removed
+Legacy `probe/broker.py` (pre-fix direct-trace broker) deleted: no
+references from the runner, which uses `broker_unix.py` and `obs_unix.py`
+only. `mini_origin.py` and `mini_proxy.py` are still live — spawned by
+`run_two_guest.py` for the proxy-redaction check — so they stay.
