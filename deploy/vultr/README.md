@@ -73,9 +73,10 @@ setup are in `dev-diary/research/commands.md` and `dev-diary/research/vultr-vm.m
    0.9.0 after checking its sha256, provisions the Lambo store, copies the
    site and the configs, sends the inference key to
    `/etc/kalari/kalari.env` over SSH stdin only, and enables and starts the
-   three units. Re-running refreshes binaries, units, the site and the API
+   two units (`kalari`, `caddy`). Re-running refreshes binaries, units,
+    the site and the API
    without touching the evidence store, the Lambo store, or the benchmark
-   sandboxes. The script sets `umask 022` throughout; both units carry
+   sandboxes. It also retires a pre-existing `kalari-api.service`: stop, disable and remove its files, since `kalari serve` now holds the same `127.0.0.1:18001` the retired shim bound. The script sets `umask 022` throughout; both units carry
    `UMask=0022`, which Microsandbox's storage check requires.
 5. Verify from the laptop's public path (not the tailnet):
 
@@ -101,6 +102,15 @@ these units:
 ssh kalari 'sudo systemctl restart caddy kalari'
 ssh kalari 'sudo systemctl is-active caddy kalari'
 ```
+
+A redeploy from an older preset leaves no port contender: `install.sh`
+stops and disables a pre-existing `kalari-api.service` and removes
+`/etc/systemd/system/kalari-api.service` and
+`/opt/kalari/bin/kalari-api.py`, because `kalari serve` now holds the same
+`127.0.0.1:18001`. If `/api` answers oddly after a redeploy, confirm the
+shim is gone (`systemctl is-active kalari-api` answers `unknown`) and only
+`kalari` listens on 18001 (`ss -ltn | grep 18001`); re-running
+`install.sh` retires it.
 
 then repeat the public `curl` checks above. If Caddy serves HTTP but not
 yet HTTPS, its ACME challenge has not completed: confirm port 80 is open

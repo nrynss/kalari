@@ -8,8 +8,11 @@
 # 0.9.0, the systemd unit and the static site, then starts everything.
 # kalari serve holds the loopback evidence API itself. Re-running refreshes
 # binaries, the unit and the site without touching the evidence store, the
-# Lambo store, or the benchmark API sandboxes. It never touches the Vultr
-# firewall group: opening ports 80 and 443 is the operator's own step (see README.md).
+# Lambo store, or the benchmark API sandboxes. It also retires a
+# pre-existing kalari-api.service (stop, disable, remove its files): the
+# retired shim bound the same 127.0.0.1:18001 kalari serve now holds.
+# It never touches the Vultr firewall group: opening ports 80 and 443 is
+# the operator's own step (see README.md).
 #
 # The inference key comes from VULTR_INFERENCE_API_KEY or the system keyring
 # (service vultr-inference, account kalari). It travels to the VM over SSH
@@ -163,6 +166,14 @@ ssh "$HOST" 'set -euo pipefail
 if ! sudo -u kalari /opt/kalari/bin/lambo provision --config /etc/kalari/lambo.toml >/dev/null 2>&1; then
   echo "lambo provision needs attention (keeps an existing store)" >&2
 fi
+# The retired kalari-api.py shim bound the same 127.0.0.1:18001 that kalari
+# serve now holds. A redeploy must not leave both contending: stop and
+# disable the old unit when present, then remove its files. Each stop and
+# disable tolerates a missing unit, so a fresh VM passes through cleanly.
+sudo systemctl stop kalari-api.service 2>/dev/null || true
+sudo systemctl disable kalari-api.service 2>/dev/null || true
+sudo rm -f /etc/systemd/system/kalari-api.service /opt/kalari/bin/kalari-api.py
+sudo rm -f /etc/systemd/system/multi-user.target.wants/kalari-api.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now kalari
 sudo systemctl enable caddy
