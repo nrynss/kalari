@@ -1,0 +1,414 @@
+#!/usr/bin/env python3
+"""Reproducible two-microVM isolation test for the probe transport.
+
+Two host broker+observer pairs (distinct loopback ports, users, host-env
+passwords, Unix sockets, traces) plus two real microVM guests. Each guest
+is created with --no-net, one explicit destination rule for its own
+broker, --pull never, and bounded exec. The image is pulled once up front
+with retries (setup) and never during creates. msb commands run with
+umask 022. Guest env is empty of credentials: the guest probe script
+carries no secret and reads the Proxy-Authorization value from stdin,
+which the host pipes without logging. Broker credentials travel to the
+broker only via --pwenv host-env references. Nothing with a credential
+value reaches guest config, guest args, guest env, guest output, copied
+files, host logs, or this transcript.
+
+Verifies with actual guests:
+  A reaches own observer; B reaches own observer; traces stay separate
+  during overlap; B creds fail on A broker; missing and wrong auth fail
+  closed; wrong dest fails closed; direct (non-CONNECT) access with
+  permission to reach the broker fails closed and never reaches the
+  private Unix observer.
+
+Records sanitized creation args (env names, never values), statuses,
+trace counts, and cleanup. Checks that credential values never appear in
+guest config, args, env, output, or copied files.
+
+Exit 0 on pass, 1 on fail or on any isolation breach (stops and reports).
+"""
+import base64
+import os
+import secrets
+import shutil
+import socket
+import stat
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+BROKER = os.path.join(HERE, "broker_unix.py")
+OBS = os.path.join(HERE, "obs_unix.py")
+GUEST_PROBE = os.path.join(HERE, "guest_probe.py")
+ALLOW = "127.0.0.1:18080"
+GUEST_HOST = "host.microsandbox.internal"
+IMAGE = "python:3.13-slim"
+TIMEOUT = 8.0
+
+results = []
+
+
+def note(name, ok, detail=""):
+    results.append((name, ok, detail))
+    print(f"CHECK {name}: {'PASS' if ok else 'FAIL'} {detail}".rstrip(), flush=True)
+
+
+def free_port():
+    s = socket.socket()
+    s.bind(("127.0.0.1", 0))
+    p = s.getsockname()[1]
+    s.close()
+    return p
+
+
+def wait_tcp(port, timeout=10.0):
+    end = time.time() + timeout
+    while time.time() < end:
+        try:
+            s = socket.create_connection(("127.0.0.1", port), timeout=1)
+            s.close()
+            return True
+        except OSError:
+            time.sleep(0.1)
+    return False
+
+
+def wait_unix(path, timeout=10.0):
+    end = time.time() + timeout
+    while time.time() < end:
+        try:
+            s = socket.socket(socket.AF_UNIX)
+            s.settimeout(1)
+            s.connect(path)
+            s.close()
+            return True
+        except OSError:
+            time.sleep(0.1)
+    return False
+
+
+def trace_bytes(path):
+    if not os.path.exists(path):
+        return b""
+    with open(path, "rb") as f:
+        return f.read()
+
+
+def run_msb(argv, timeout=60, inp=None):
+    # umask 022 for every msb invocation; never logs credential values
+    # (callers pass only sanitized argv here).
+    proc = subprocess.run(
+        argv, input=inp, capture_output=True, timeout=timeout)
+    return proc
+
+
+def main():
+    os.umask(0o022)
+    base = tempfile.mkdtemp(prefix="kalari-microvm-")
+    os.chmod(base, 0o700)
+    run_dir = os.path.join(base, "run")
+    os.mkdir(run_dir, 0o700)
+
+    pw_a = secrets.token_hex(16)
+    pw_b = secrets.token_hex(16)
+    os.environ["KALARI_MICROVM_PW_A"] = pw_a
+    os.environ["KALARI_MICROVM_PW_B"] = pw_b
+    secrets_set = {pw_a, pw_b}
+    basic_a = "Basic " + base64.b64encode(f"run-a:{pw_a}".encode()).decode()
+    basic_b = "Basic " + base64.b64encode(f"run-b:{pw_b}".encode()).decode()
+    secrets_set |= {basic_a, basic_b}
+
+    def sanitized(argv):
+        return [a if a not in secrets_set else "[REDACTED]" for a in argv]
+
+    def assert_clean(text, where):
+        for s in secrets_set:
+            if s and s in text:
+                raise SystemExit(f"credential leaked in {where}")
+
+    port_a = free_port()
+    port_b = free_port()
+    sock_a = os.path.join(run_dir, "obs-a.sock")
+    sock_b = os.path.join(run_dir, "obs-b.sock")
+    trace_a = os.path.join(run_dir, "trace-a.log")
+    trace_b = os.path.join(run_dir, "trace-b.log")
+    for t in (trace_a, trace_b):
+        open(t, "w").close()
+
+    # Unique guest names target only this test's resources on cleanup.
+    uniq = f"{os.getpid()}-{int(time.time()) % 100000}"
+    guest_a = f"kalari-observe-microvm-a-{uniq}"
+    guest_b = f"kalari-observe-microvm-b-{uniq}"
+
+    procs = {}
+    msb_outputs = []  # every msb stdout/stderr for the leak scan
+
+    def spawn(name, argv, logname):
+        log = open(os.path.join(run_dir, logname), "w")
+        p = subprocess.Popen([sys.executable, *argv], stdout=log, stderr=subprocess.STDOUT)
+        procs[name] = (p, log)
+        print(f"ARGS {name}: {sanitized(argv)}", flush=True)
+        return p
+
+    guests_created = []
+
+    def cleanup():
+        cleaned = []
+        # Remove only this test's guests by exact unique name.
+        for g in (guest_a, guest_b):
+            r = run_msb(["msb", "remove", "-f", g], timeout=60)
+            msb_outputs.append((r.stdout or b"").decode("utf-8", "replace"))
+            msb_outputs.append((r.stderr or b"").decode("utf-8", "replace"))
+            cleaned.append(f"{g}=removed")
+        for name, (p, log) in procs.items():
+            try:
+                if p.poll() is None:
+                    p.terminate()
+                    try:
+                        p.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        p.kill()
+                        p.wait(timeout=5)
+                cleaned.append(f"{name}=reaped({p.poll()})")
+            except Exception as ex:
+                cleaned.append(f"{name}=ERROR({ex})")
+            try:
+                log.close()
+            except Exception:
+                pass
+        for var in ("KALARI_MICROVM_PW_A", "KALARI_MICROVM_PW_B"):
+            os.environ.pop(var, None)
+        removed = False
+        try:
+            shutil.rmtree(base, ignore_errors=True)
+            removed = not os.path.exists(base)
+        except Exception:
+            pass
+        print(f"CLEANUP {' '.join(cleaned)} dir-removed={removed}".rstrip(), flush=True)
+
+    try:
+        # Image prep, separately: pull with retries, then --pull never.
+        print("SETUP image pull with retries, creates use --pull never", flush=True)
+        pulled = False
+        for attempt, wait in ((1, 0), (2, 1), (3, 2)):
+            if wait:
+                time.sleep(wait)
+            r = run_msb(["msb", "pull", IMAGE], timeout=120)
+            out = (r.stdout or b"").decode("utf-8", "replace") + (r.stderr or b"").decode("utf-8", "replace")
+            assert_clean(out, "pull output")
+            if r.returncode == 0:
+                pulled = True
+                print(f"SETUP pull attempt {attempt}: ok", flush=True)
+                break
+            print(f"SETUP pull attempt {attempt}: rc={r.returncode}", flush=True)
+        if not pulled:
+            note("image-pull", False, "cached image pull failed after retries")
+            return 1
+        note("image-pull", True, f"{IMAGE} cached, creates use --pull never")
+
+        spawn("obs-a", [OBS, "--sock", sock_a, "--trace", trace_a], "log-obs-a.txt")
+        spawn("obs-b", [OBS, "--sock", sock_b, "--trace", trace_b], "log-obs-b.txt")
+        spawn("broker-a", [BROKER, "--port", str(port_a), "--user", "run-a",
+                           "--pwenv", "KALARI_MICROVM_PW_A", "--allow", ALLOW,
+                           "--sock", sock_a], "log-broker-a.txt")
+        spawn("broker-b", [BROKER, "--port", str(port_b), "--user", "run-b",
+                           "--pwenv", "KALARI_MICROVM_PW_B", "--allow", ALLOW,
+                           "--sock", sock_b], "log-broker-b.txt")
+        ok = wait_unix(sock_a) and wait_unix(sock_b) and wait_tcp(port_a) and wait_tcp(port_b)
+        note("host-ready", ok, f"brokers {port_a} {port_b} observers accept")
+        if not ok:
+            return 1
+
+        # Create guests: --no-net, one explicit rule for the own broker,
+        # --pull never. Sanitized args recorded (no credential values: only
+        # --pwenv names ever appear, and those are host-side only).
+        for guest, port in ((guest_a, port_a), (guest_b, port_b)):
+            argv = ["msb", "create", "--name", guest, "--cpus", "1", "--memory", "256M",
+                    "--no-net", "--net-rule", f"allow@172.16.0.0/12:tcp:{port}",
+                    "--pull", "never", IMAGE]
+            print(f"ARGS create-{guest}: {argv}", flush=True)
+            assert "--no-net" in argv and "--pull" in argv and "never" in argv
+            r = run_msb(argv, timeout=120)
+            out = (r.stdout or b"").decode("utf-8", "replace") + (r.stderr or b"").decode("utf-8", "replace")
+            msb_outputs.append(out)
+            assert_clean(out, "create output")
+            if r.returncode != 0:
+                note("guest-create", False, f"{guest} rc={r.returncode} {out[-200:]}")
+                return 1
+            guests_created.append(guest)
+        note("guest-create", True, f"{guest_a} {guest_b} --no-net + own-broker rule --pull never")
+        print(f"STATUS guests created: {guests_created}", flush=True)
+
+        # Overcommit for the Lean runtime pattern (harmless for python guests,
+        # keeps the existing pattern exercised).
+        for guest in guests_created:
+            r = run_msb(["msb", "exec", guest, "--", "sh", "-c",
+                         "echo 1 > /proc/sys/vm/overcommit_memory"], timeout=30)
+            msb_outputs.append((r.stdout or b"").decode("utf-8", "replace"))
+
+        # Copy the credential-free probe into each guest.
+        for guest in guests_created:
+            argv = ["msb", "copy", "-q", GUEST_PROBE, f"{guest}:/tmp/guest_probe.py"]
+            print(f"ARGS copy-{guest}: {argv}", flush=True)
+            r = run_msb(argv, timeout=60)
+            out = (r.stdout or b"").decode("utf-8", "replace") + (r.stderr or b"").decode("utf-8", "replace")
+            msb_outputs.append(out)
+            if r.returncode != 0:
+                note("guest-copy", False, f"{guest} rc={r.returncode}")
+                return 1
+        note("guest-copy", True, "credential-free probe copied to both guests")
+
+        def guest_exec_port(guest, broker_port, dest, path, auth_value, timeout=30):
+            argv = ["msb", "exec", guest, "--", "python3", "/tmp/guest_probe.py",
+                    GUEST_HOST, str(broker_port), dest, path]
+            inp = (auth_value + "\n").encode() if auth_value else b"\n"
+            r = run_msb(argv, timeout=timeout, inp=inp)
+            out = (r.stdout or b"").decode("utf-8", "replace")
+            err = (r.stderr or b"").decode("utf-8", "replace")
+            msb_outputs.append(out)
+            msb_outputs.append(err)
+            # Credential values must never reach guest output.
+            for s in secrets_set:
+                if s and s in out:
+                    note("cred-leak", False, f"credential value in output of {guest}")
+                    raise SystemExit("credential leaked into guest output")
+            return r.returncode, out, err
+
+        # A reaches own observer; B reaches own observer.
+        rc, out_a, _ = guest_exec_port(guest_a, port_a, ALLOW, "/a1", basic_a)
+        print(f"RESP guest-a-valid: rc={rc} {out_a.strip().replace(chr(10), ' | ')}", flush=True)
+        time.sleep(1)
+        rc, out_b, _ = guest_exec_port(guest_b, port_b, ALLOW, "/b1", basic_b)
+        print(f"RESP guest-b-valid: rc={rc} {out_b.strip().replace(chr(10), ' | ')}", flush=True)
+        time.sleep(1)
+        la = trace_bytes(trace_a)
+        lb = trace_bytes(trace_b)
+        print(f"TRACE trace-a: {la.count(bytes([10]))} lines={la.decode().splitlines()}", flush=True)
+        print(f"TRACE trace-b: {lb.count(bytes([10]))} lines={lb.decode().splitlines()}", flush=True)
+        ok_ab = (b"GET /a1 HTTP/1.1\n" in la and b"GET /b1 HTTP/1.1\n" in lb
+                 and la.count(b"\n") == 1 and lb.count(b"\n") == 1)
+        note("microvm-reach-own", ok_ab, f"trace-a={la.count(bytes([10]))} trace-b={lb.count(bytes([10]))}")
+        if not ok_ab:
+            print("STOP isolation breach or transport failure", flush=True)
+            return 1
+
+        # Overlap: both guests at once; traces stay separate.
+        snap_a = trace_bytes(trace_a)
+        snap_b = trace_bytes(trace_b)
+        holder = {}
+
+        def run_a():
+            holder["a"] = guest_exec_port(guest_a, port_a, ALLOW, "/a2", basic_a)
+
+        def run_b():
+            holder["b"] = guest_exec_port(guest_b, port_b, ALLOW, "/b2", basic_b)
+
+        ta = threading.Thread(target=run_a)
+        tb = threading.Thread(target=run_b)
+        ta.start()
+        tb.start()
+        ta.join(timeout=60)
+        tb.join(timeout=60)
+        print(f"RESP overlap-a: {holder['a'][1].strip().replace(chr(10), ' | ')}", flush=True)
+        print(f"RESP overlap-b: {holder['b'][1].strip().replace(chr(10), ' | ')}", flush=True)
+        time.sleep(1)
+        la = trace_bytes(trace_a)
+        lb = trace_bytes(trace_b)
+        overlap_ok = (la == snap_a + b"GET /a2 HTTP/1.1\n" and lb == snap_b + b"GET /b2 HTTP/1.1\n")
+        note("microvm-overlap", overlap_ok, f"trace-a={la.count(bytes([10]))} trace-b={lb.count(bytes([10]))}")
+        if not overlap_ok:
+            print("STOP traces not separate during overlap", flush=True)
+            return 1
+
+        # B creds fail on A broker; missing and wrong auth fail closed;
+        # wrong dest fails closed. Each must add no trace and no inner 200.
+        def expect_closed(label, guest, broker_port, dest, path, auth_value):
+            before_a = trace_bytes(trace_a)
+            before_b = trace_bytes(trace_b)
+            rc, out, _ = guest_exec_port(guest, broker_port, dest, path, auth_value)
+            print(f"RESP {label}: rc={rc} {out.strip().replace(chr(10), ' | ')}", flush=True)
+            time.sleep(1)
+            after_a = trace_bytes(trace_a)
+            after_b = trace_bytes(trace_b)
+            closed = ("INNER HTTP/1.1 200 OK" not in out and after_a == before_a and after_b == before_b)
+            return closed
+
+        c1 = expect_closed("b-creds-on-a", guest_a, port_a, ALLOW, "/x1", basic_b)
+        c2 = expect_closed("missing-auth", guest_a, port_a, ALLOW, "/x2", "")
+        c3 = expect_closed("wrong-auth", guest_a, port_a, ALLOW, "/x3", "Basic d3JvbmdjcmVkZW50aWFscw==")
+        c4 = expect_closed("wrong-dest", guest_a, port_a, "127.0.0.1:19999", "/x4", basic_a)
+        note("microvm-fail-closed", all([c1, c2, c3, c4]), "B-creds/missing/wrong/dest all closed, zero growth")
+        if not all([c1, c2, c3, c4]):
+            print("STOP fail-closed breach", flush=True)
+            return 1
+
+        # Direct (non-CONNECT) access with permission to reach the broker:
+        # the guest may TCP-connect to the broker port, but a plain GET must
+        # get 405 (broker only) and never reach the private Unix observer.
+        before_a = trace_bytes(trace_a)
+        # Build the one-liner without shell quoting hazards.
+        direct_code = (
+            f"import socket\ns=socket.create_connection(('{GUEST_HOST}',{port_a}),timeout=8)\n"
+            f"s.settimeout(8)\ns.sendall(b'GET /direct HTTP/1.0\\r\\n\\r\\n')\n"
+            f"d=b''\nwhile b'\\r\\n\\r\\n' not in d:\n ch=s.recv(4096)\n if not ch: break\n d+=ch\n"
+            f"print((d.split(b'\\r\\n')[0].decode() if d else 'none'))\n"
+        )
+        r = run_msb(["msb", "exec", guest_a, "--", "python3", "-c", direct_code], timeout=30)
+        out = (r.stdout or b"").decode("utf-8", "replace") + (r.stderr or b"").decode("utf-8", "replace")
+        msb_outputs.append(out)
+        print(f"RESP direct-no-connect: {out.strip().splitlines()[-1] if out.strip() else 'none'}", flush=True)
+        time.sleep(1)
+        direct_ok = ("405" in out and trace_bytes(trace_a) == before_a)
+        note("microvm-direct-closed", direct_ok, "plain GET 405, zero trace growth")
+        if not direct_ok:
+            print("STOP direct access reached observer or wrong status", flush=True)
+            return 1
+
+        # Credential hygiene across guest config, args, env, output, files.
+        insp_a = run_msb(["msb", "inspect", guest_a, "--format", "json"], timeout=30)
+        insp_b = run_msb(["msb", "inspect", guest_b, "--format", "json"], timeout=30)
+        insp_text = ((insp_a.stdout or b"") + (insp_a.stderr or b"") + (insp_b.stdout or b"")).decode("utf-8", "replace")
+        msb_outputs.append(insp_text)
+        r = run_msb(["msb", "exec", guest_a, "--", "env"], timeout=30)
+        env_a = (r.stdout or b"").decode("utf-8", "replace")
+        msb_outputs.append(env_a)
+        r = run_msb(["msb", "exec", guest_a, "--", "cat", "/tmp/guest_probe.py"], timeout=30)
+        copied = (r.stdout or b"").decode("utf-8", "replace")
+        msb_outputs.append(copied)
+        hygiene_text = insp_text + env_a + copied + "".join(msb_outputs)
+        leaked = any(s and s in hygiene_text for s in secrets_set)
+        # Also scan host broker/observer logs for credential values.
+        logs = ""
+        for fn in ("log-obs-a.txt", "log-obs-b.txt", "log-broker-a.txt", "log-broker-b.txt"):
+            p = os.path.join(run_dir, fn)
+            if os.path.exists(p):
+                logs += open(p).read()
+        leaked = leaked or any(s and s in logs for s in secrets_set) or "Basic " in logs.replace("[REDACTED]", "XX")
+        print(f"TRACE final-a: {trace_bytes(trace_a).count(bytes([10]))} final-b: {trace_bytes(trace_b).count(bytes([10]))}", flush=True)
+        note("microvm-hygiene", not leaked, "no credential value in config/args/env/output/files/logs")
+        if leaked:
+            print("STOP credential hygiene breach", flush=True)
+            return 1
+
+        # Socket/dir modes.
+        mode_a = oct(stat.S_IMODE(os.stat(sock_a).st_mode))
+        mode_b = oct(stat.S_IMODE(os.stat(sock_b).st_mode))
+        dir_mode = oct(stat.S_IMODE(os.stat(run_dir).st_mode))
+        note("microvm-modes", (mode_a, mode_b, dir_mode) == ("0o600", "0o600", "0o700"),
+             f"sock-a={mode_a} sock-b={mode_b} dir={dir_mode}")
+    finally:
+        cleanup()
+
+    failed = [n for n, ok, _ in results if not ok]
+    print(f"RESULT: {'PASS' if not failed else 'FAIL'} {len(results) - len(failed)}/{len(results)}", flush=True)
+    return 0 if not failed else 1
+
+
+def bchr():
+    return bytes([10])
+
+
+if __name__ == "__main__":
+    sys.exit(main())

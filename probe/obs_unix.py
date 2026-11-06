@@ -5,13 +5,34 @@ connection closes with no trace write and no 200. Oversize blocks are
 refused with 400 and also write nothing. The socket file is created with
 mode 600; the runner places it in a private per-run directory.
 """
-import sys, os, socket, threading
+import sys, os, socket, threading, signal, atexit
 
 READ_TIMEOUT = 10.0
 HEADER_CAP = 16384
 
 sock_path = sys.argv[sys.argv.index("--sock") + 1]
 trace = sys.argv[sys.argv.index("--trace") + 1]
+
+
+def _remove_socket():
+    try:
+        if os.path.exists(sock_path):
+            os.remove(sock_path)
+    except Exception:
+        pass
+
+
+def _on_term(signum, frame):
+    _remove_socket()
+    # Exit promptly; the owner test relies on the socket file going away
+    # when the observer process ends, even after an owner SIGKILL that the
+    # kernel turns into SIGTERM for this child (PR_SET_PDEATHSIG).
+    os._exit(0)
+
+
+signal.signal(signal.SIGTERM, _on_term)
+signal.signal(signal.SIGINT, _on_term)
+atexit.register(_remove_socket)
 if os.path.exists(sock_path):
     os.remove(sock_path)
 srv = socket.socket(socket.AF_UNIX)

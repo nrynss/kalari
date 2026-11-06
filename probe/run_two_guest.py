@@ -1,25 +1,35 @@
 #!/usr/bin/env python3
-"""Two-guest isolation runner for the probe broker (issues 2 and 3).
+"""Local broker regression suite for the probe transport (issues 2 and 3).
 
-Local loopback only. No microVM, no VM writes. Passwords live in host
+Loopback clients only, not microVMs: two broker+observer pairs run on
+127.0.0.1 with private Unix sockets, exercised by plain TCP clients.
+No microVM, no VM writes, no agent sessions, no inference. Passwords live in host
 environment variables only and are never printed, logged, or written to
 any file. Unix sockets live in a private per-run directory (mode 700)
 with socket files at mode 600.
 
 Checks:
- 1. Guest A reaches its API via its broker; trace A holds its GET.
- 2. Guest B reaches its API via its broker; traces stay separate.
+ 1. Client A reaches its API via its broker; trace A holds its GET.
+ 2. Client B reaches its API via its broker; traces stay separate.
  3. Wrong user, missing auth, wrong dest, and non-CONNECT fail closed
     with no trace growth.
  4. Empty close and incomplete tunnel write nothing (issue 2): no
     observation, no inner 200, no /empty line.
  4b. Oversize CONNECT and oversize inner fail 400 with zero trace
     growth (16 KiB header cap).
+ 4c. Framing refusals fail 400 with zero trace growth and no inner 200:
+     any Transfer-Encoding, duplicate Content-Length (even identical),
+     invalid or over-cap lengths, malformed request/header lines, and
+     other unsupported framing. Includes Repro A (chunked incomplete)
+     and Repro B (conflicting lengths).
  5. Both runs live at once; traces stay separate.
- 6. Owner-death: killing broker A (observer still running) fails closed;
-    broker B keeps serving.
+ 5b. Bytes buffered after CONNECT are preserved (pipelined send).
+ 6. Broker-death: killing broker A (observer still running) fails closed;
+     broker B keeps serving. This is a broker-only kill, not an owner
+     SIGKILL test; see probe/owner_death.py for true owner death.
  7. Socket/dir modes, logs free of passwords, mini_proxy redaction.
- 8. Real observer traces pass parser checks.
+ 8. Probe trace spot checks (request-line shape only, not the Kalari
+     page-observation parser in Kalari/Tools/Run.lean).
 
 Output is sanitized: creation args show env names (never values),
 responses show status lines and canned-body lengths, traces show counts
@@ -46,6 +56,9 @@ ORIGIN = os.path.join(HERE, "mini_origin.py")
 
 ALLOW = "127.0.0.1:18080"
 TIMEOUT = 5.0
+# Probe trace shape only: "METHOD path HTTP/x". This is not the Kalari
+# page-observation parser (Kalari/Tools/Run.lean pageObservations), which
+# validates JSON page/429 events, cursor chains, and retry linkage.
 TRACE_RE = re.compile(r"^[A-Z]+ \S+ HTTP/\d(\.\d)?$")
 
 results = []
@@ -343,6 +356,66 @@ def main():
         note("header-cap", all([o1, o2, o3, o4, o5]),
              "oversize CONNECT/inner 400, zero trace growth")
 
+        # C4c: framing refusals — every case must fail 400 (never 200),
+        # forward nothing, and leave both traces byte-identical.
+        # Repro A: authenticated CONNECT then POST /incomplete with
+        # Transfer-Encoding chunked, close with no chunks.
+        # Repro B: authenticated CONNECT then POST /conflicting with two
+        # Content-Length headers, close with no body.
+        def framing_case(label, inner_bytes, must_absent):
+            snap_a = open(trace_a, "rb").read()
+            snap_b = open(trace_b, "rb").read()
+            s, st = connect_tunnel(port_a, "run-a", pw_a, ALLOW)
+            established = st == "HTTP/1.1 200 Connection Established"
+            s.sendall(inner_bytes)
+            # Half-close like the repros: no body follows.
+            try:
+                s.shutdown(socket.SHUT_WR)
+            except OSError:
+                pass
+            tail = read_all(s)
+            s.close()
+            inner_status = status_line(tail) if tail else "<closed-no-bytes>"
+            print(f"RESP {label}: {inner_status}", flush=True)
+            time.sleep(1)
+            no_growth = open(trace_a, "rb").read() == snap_a and open(trace_b, "rb").read() == snap_b
+            no_200 = "200 OK" not in (tail.decode("iso-8859-1", errors="replace") if tail else "")
+            absent = all(tok not in open(trace_a).read() and tok not in open(trace_b).read() for tok in must_absent)
+            ok = established and no_growth and no_200 and absent
+            # A clean close means either an explicit 400 or a close with
+            # no 200; the broker must never return an inner 200 here.
+            if tail:
+                ok = ok and inner_status == "HTTP/1.1 400 Bad Request"
+            return ok
+
+        f_results = []
+        f_results.append(framing_case("repro-a-chunked",
+            b"POST /incomplete HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\n\r\n",
+            ["/incomplete"]))
+        f_results.append(framing_case("repro-b-conflict",
+            b"POST /conflicting HTTP/1.1\r\nHost: x\r\nContent-Length: 5\r\nContent-Length: 5\r\n\r\n",
+            ["/conflicting"]))
+        f_results.append(framing_case("framing-identical-dup",
+            b"POST /dup-ident HTTP/1.1\r\nHost: x\r\nContent-Length: 0\r\nContent-Length: 0\r\n\r\n",
+            ["/dup-ident"]))
+        f_results.append(framing_case("framing-te-and-cl",
+            b"POST /te-cl HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\nContent-Length: 5\r\n\r\nhello",
+            ["/te-cl"]))
+        f_results.append(framing_case("framing-bad-length",
+            b"POST /badlen HTTP/1.1\r\nHost: x\r\nContent-Length: abc\r\n\r\n",
+            ["/badlen"]))
+        f_results.append(framing_case("framing-over-cap",
+            b"POST /overcap HTTP/1.1\r\nHost: x\r\nContent-Length: 999999\r\n\r\n",
+            ["/overcap"]))
+        f_results.append(framing_case("framing-bad-line",
+            b"BADLINE\r\nHost: x\r\n\r\n",
+            ["/badline", "BADLINE"]))
+        f_results.append(framing_case("framing-bad-header",
+            b"GET /badhdr HTTP/1.1\r\nHost x\r\n\r\n",
+            ["/badhdr"]))
+        note("framing", all(f_results),
+             f"{sum(f_results)}/{len(f_results)} refused 400, zero trace growth, no inner 200")
+
         # C5: both runs live at once.
         sa, sta = connect_tunnel(port_a, "run-a", pw_a, ALLOW)
         sb, stb = connect_tunnel(port_b, "run-b", pw_b, ALLOW)
@@ -375,7 +448,9 @@ def main():
         print(f"RESP pipelined: established+inner-200 trace-a={len(la)}", flush=True)
         note("pipelined", c5b, "CONNECT+GET in one segment observed once")
 
-        # C6: owner-death — kill broker A while observer A runs.
+        # C6: broker-death — kill broker A while observer A runs.
+        # This is a broker-only kill. True owner SIGKILL ownership is
+        # covered separately by probe/owner_death.py.
         pa, _ = procs["broker-a"]
         pa.terminate()
         pa.wait(timeout=10)
@@ -395,7 +470,7 @@ def main():
         resp = inner_get(s, "/b3")
         s.close()
         alive = alive and status_line(resp) == "HTTP/1.1 200 OK" and wait_trace(trace_b, 3)
-        note("owner-death", dead and refused and same and mode_a == 0o600 and alive,
+        note("broker-death", dead and refused and same and mode_a == 0o600 and alive,
              f"broker-a reaped={dead} refused={refused} trace-stable={same} "
              f"sock={oct(mode_a)} broker-b alive={alive}")
 
