@@ -155,7 +155,7 @@ def parseJson (j : Json) : Except String Config := do
   let lambo ← parseLambo (← jsonField obj "lambo" "lambo")
   return { models, decisions, sandbox, lambo }
 
-instance : FromJson Config where
+instance configFromJson : FromJson Config where
   fromJson? := parseJson
 
 /-- Parse the text of a `kalari.json`. Does not read the environment. -/

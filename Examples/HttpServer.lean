@@ -27,7 +27,7 @@ def json (j : Json) := Response.ok |>.json j.compress
 
 structure App
 
-instance : Handler App where
+instance appHandler : Handler App where
   onRequest _ req := do
     -- The request line is `req.line` (the module docs wrongly say `req.head`).
     let target := toString req.line.uri

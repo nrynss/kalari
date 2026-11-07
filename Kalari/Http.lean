@@ -51,7 +51,7 @@ def route (loaded : Evidence.Loaded) (method target body : String) : Nat × Json
 structure App where
   store : Evidence.Store
 
-instance : Handler App where
+instance appHandler : Handler App where
   onRequest app req := do
     let body? ← try pure (some (← req.body.readAll (maximumSize := some maxBody) : String))
                 catch _ => pure none

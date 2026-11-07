@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# The gate fails if any checked declaration in Kalari/ or Aashaan/ rests on
-# `sorryAx`, or if any scanned file declares a custom `axiom`.
+# The gate fails if any checked declaration in Kalari/, Aashaan/, Examples/,
+# Kalari.lean or Examples.lean rests on `sorryAx`, or if any scanned file
+# declares a custom `axiom`.
 #
 # Method, per source file:
 # 1. Textual fail-closed scans on the original file:
@@ -15,9 +16,10 @@
 #    - `run_cmd`/`run_elab`/`initialize` would also run at elaboration and are
 #      not covered: any such line fails with a pointer to extend this script.
 # 2. Per-declaration `#print axioms` on a throwaway copy: anonymous `example`s
-#    are rewritten to generated theorems, `#eval`s dropped, then one
-#    `#print axioms <FQN>` line per `theorem`/`lemma`/`def`/`abbrev`/`opaque` is
-#    appended and the copy is elaborated with `lake env lean`. Namespaces are
+#    and anonymous `instance`s are rewritten to generated names, `#eval`s
+#    dropped, then one `#print axioms <FQN>` line per
+#    `theorem`/`lemma`/`def`/`abbrev`/`opaque`/`instance` is appended and the
+#    copy is elaborated with `lake env lean`. Namespaces are
 #    resolved by tracking `namespace`/`end` (these trees use one block each;
 #    a `section` fails closed). Every report line must match its declaration by
 #    name suffix: private names mangle to `_private.<hash>.<FQN>`, so the match
@@ -27,8 +29,10 @@
 #    rots, the pins fail closed instead of silently checking nothing.
 #
 # Known limits (fail closed, with a message pointing here):
-# - anonymous `instance`s are not renamed or checked; the checked kinds are
-#   `theorem`/`lemma`/`def`/`abbrev`/`opaque` plus rewritten `example`s.
+# - every checked kind is covered: `theorem`/`lemma`/`def`/`abbrev`/`opaque`/
+#   `instance`, plus `example`s and anonymous `instance`s rewritten to
+#   generated names. Prefer naming instances in source anyway: a generated
+#   `__axioms_instance_N` name in a report means the source left it anonymous.
 #   A declaration-looking line inside a block comment or string literal would
 #   fail as an unknown constant.
 # Offline: imports resolve from the oleans `lake build` already produced, and
@@ -52,14 +56,22 @@ Aashaan/Main.lean:killed_timeout_iff
 Aashaan/Main.lean:killed_output_cap_iff
 Aashaan/Main.lean:clampBytes_le
 Aashaan/Main.lean:jstr_quotes_are_delimiters
-Aashaan/Main.lean:jstr_no_raw_control"
+Aashaan/Main.lean:jstr_no_raw_control
+Kalari/Http.lean:Kalari.Http.appHandler
+Kalari/Config.lean:Kalari.Config.configFromJson
+Examples/Gate.lean:Examples.Gate.allowed_in_workspace
+Examples/Json.lean:Examples.Json.parse
+Examples/HttpServer.lean:Examples.HttpServer.appHandler
+Examples/Curl.lean:Examples.Curl.sendConfig
+Examples/JsonRpc.lean:Examples.JsonRpc.result"
 
-# rewrite_and_extract <src> <copy>: drop #evals, name anonymous examples,
-# write the elaboration copy, and print `DECL <kind> <FQN>` / `AXIOM <FQN>`.
+# rewrite_and_extract <src> <copy>: drop #evals, name anonymous examples and
+# anonymous instances, write the elaboration copy, and print
+# `DECL <kind> <FQN>` / `AXIOM <FQN>`.
 # Exits nonzero on `section` or an unparseable declaration line.
 rewrite_and_extract() {
   awk -v copy="$2" '
-BEGIN { nns = 0; exn = 0 }
+BEGIN { nns = 0; exn = 0; instn = 0 }
 {
   orig = $0
   s = $0; sub(/^[ \t]+/, "", s)
@@ -80,7 +92,7 @@ BEGIN { nns = 0; exn = 0 }
   t = s
   sub(/^@\[[^]]*\][ \t]*/, "", t)
   while (match(t, /^(private|protected|noncomputable|unsafe|partial)[ \t]+/)) t = substr(t, RLENGTH + 1)
-  if (match(t, /^(theorem|lemma|def|abbrev|opaque|example|axiom)([^A-Za-z0-9_'\''\.«]|$)/)) {
+  if (match(t, /^(theorem|lemma|def|abbrev|opaque|example|axiom|instance)([^A-Za-z0-9_'\''\.«]|$)/)) {
     kw = substr(t, 1, RLENGTH - 1); sub(/[^A-Za-z0-9_'\''«]+$/, "", kw)
     line = orig
     if (kw == "example") {
@@ -90,6 +102,18 @@ BEGIN { nns = 0; exn = 0 }
       line = lead pre "theorem __axioms_example_" exn substr(t, length(kw) + 1)
     }
     rest = substr(t, RLENGTH + 1)
+    if (kw == "instance") {
+      # Anonymous: `instance : ...` or with binders but no name
+      # (`instance [...] ...`, `instance (...) ...`, `instance {...} ...`).
+      if (match(rest, /^[:\[{(]/)) {
+        instn++
+        pre = substr(s, 1, length(s) - length(t))
+        lead = substr(orig, 1, length(orig) - length(s))
+        line = lead pre "instance __axioms_instance_" instn substr(t, length(kw) + 1)
+        fqn = ""; for (i = 1; i <= nns; i++) fqn = fqn nsstack[i] "."
+        print "DECL instance " fqn "__axioms_instance_" instn; print line > copy; next
+      }
+    }
     if (kw == "axiom") {
       if (match(rest, /^«[^»]*»/)) name = substr(rest, 1, RLENGTH)
       else if (match(rest, /^[A-Za-z0-9_'\''\.?!]+/)) { name = substr(rest, 1, RLENGTH); sub(/\.\{.*$/, "", name) }
@@ -237,7 +261,15 @@ check_file() {
   printf '%s\n' "$out" | grep -E "' (depends on axioms:|does not depend on any axioms)" | sed 's/^/  /'
 }
 
-files=$(find Kalari Aashaan -name '*.lean' | sort)
+# Overridable for the negative-test harness (tests/axioms-cases.sh), which
+# points it at synthetic fixtures. Default: every library source plus the two
+# library roots. The roots hold only imports today (0 declarations, textual
+# scans only); they stay listed so a future declaration there is checked.
+default_files=$(find Kalari Aashaan Examples -name '*.lean' | sort)
+default_files="$default_files
+Kalari.lean
+Examples.lean"
+files=${AXIOMS_FILES:-$default_files}
 if [ -z "$files" ]; then echo "FAIL: no source files found"; exit 1; fi
 for f in $files; do check_file "$f"; done
 

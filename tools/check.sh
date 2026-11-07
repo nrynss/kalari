@@ -8,6 +8,8 @@ echo "-- lake build"
 lake build
 echo "-- axioms (no sorryAx)"
 tools/axioms.sh
+echo "-- axioms negative cases"
+tests/axioms-cases.sh
 echo "-- kalari --version"
 .lake/build/bin/kalari --version
 echo "-- kalari offline self-test"
