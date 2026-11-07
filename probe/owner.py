@@ -4,7 +4,10 @@
 The owner starts the observer and the broker as its own children and then
 waits. Each child is created with PR_SET_PDEATHSIG=SIGTERM (via preexec),
 so the kernel delivers SIGTERM to the child if this owner dies for any
-reason, including SIGKILL. That is the explicit ownership link: no
+reason, including SIGKILL. The preexec checks the prctl return value and
+verifies the expected parent PID after registration, closing the
+fork-vs-exit race: a child reparented before prctl exits instead of
+running without the link. That is the explicit ownership link: no
 finally-block in a controller and no process-group kill is what reaps the
 children; the kernel does it when the parent goes away.
 
@@ -37,17 +40,27 @@ import time
 PR_SET_PDEATHSIG = 1
 
 
-def _die_with_parent():
-    # Runs in the forked child before exec. Ask the kernel to send
-    # SIGTERM to this child when its parent (the owner) dies, even on
-    # owner SIGKILL. Keeps no reference to any secret.
-    try:
-        libc = ctypes.CDLL("libc.so.6", use_errno=True)
-        libc.prctl(PR_SET_PDEATHSIG, signal.SIGTERM)
-    except Exception:
-        # If prctl is unavailable the ownership link is unproven; fail
-        # loudly instead of running without it.
-        os._exit(42)
+def _make_die_with_parent(expected_ppid):
+    def _die_with_parent():
+        # Runs in the forked child before exec. Ask the kernel to send
+        # SIGTERM to this child when its parent (the owner) dies, even on
+        # owner SIGKILL. Keeps no reference to any secret. Checks the
+        # prctl return value and verifies the expected parent PID after
+        # registration to close the fork-vs-exit race: if the owner died
+        # before prctl, the child is reparented and must exit instead of
+        # running without the ownership link.
+        try:
+            libc = ctypes.CDLL("libc.so.6", use_errno=True)
+            ret = libc.prctl(PR_SET_PDEATHSIG, signal.SIGTERM)
+            if ret != 0:
+                os._exit(42)
+            if os.getppid() != expected_ppid:
+                os._exit(43)
+        except Exception:
+            # If prctl is unavailable the ownership link is unproven; fail
+            # loudly instead of running without it.
+            os._exit(42)
+    return _die_with_parent
 
 
 def _wait_tcp(port, timeout=10.0):
@@ -104,13 +117,16 @@ def main():
     obs_log = open(os.path.join(a.logdir, "log-obs.txt"), "w")
     broker_log = open(os.path.join(a.logdir, "log-broker.txt"), "w")
 
+    owner_pid = os.getpid()
     obs = subprocess.Popen(
         [sys.executable, a.obs, "--sock", a.sock, "--trace", a.trace],
-        stdout=obs_log, stderr=subprocess.STDOUT, preexec_fn=_die_with_parent)
+        stdout=obs_log, stderr=subprocess.STDOUT,
+        preexec_fn=_make_die_with_parent(owner_pid))
     broker = subprocess.Popen(
         [sys.executable, a.broker, "--port", str(a.port), "--user", a.user,
          "--pwenv", a.pwenv, "--allow", a.allow, "--sock", a.sock],
-        stdout=broker_log, stderr=subprocess.STDOUT, preexec_fn=_die_with_parent)
+        stdout=broker_log, stderr=subprocess.STDOUT,
+        preexec_fn=_make_die_with_parent(owner_pid))
     try:
         with open(a.pids, "w") as f:
             f.write(f"broker={broker.pid} obs={obs.pid}\n")

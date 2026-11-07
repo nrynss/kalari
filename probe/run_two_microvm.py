@@ -1,28 +1,43 @@
 #!/usr/bin/env python3
-"""Reproducible two-microVM isolation test for the probe transport.
+"""Reproducible two-microVM isolation test with host-only proxy auth.
 
 Two host broker+observer pairs (distinct loopback ports, users, host-env
 passwords, Unix sockets, traces) plus two real microVM guests. Each guest
-is created with --no-net, one explicit destination rule for its own
-broker, --pull never, and bounded exec. The image is pulled once up front
-with retries (setup) and never during creates. msb commands run with
-umask 022. Guest env is empty of credentials: the guest probe script
-carries no secret and reads the Proxy-Authorization value from stdin,
-which the host pipes without logging. Broker credentials travel to the
-broker only via --pwenv host-env references. Nothing with a credential
-value reaches guest config, guest args, guest env, guest output, copied
-files, host logs, or this transcript.
+is created with --no-net, explicit destination rules, --pull never, plus
+host proxy auth:
+
+  --proxy http://127.0.0.1:<broker-port>
+  --http-connect-username <run-user>
+  --http-connect-password-env <host-env-var>
+
+The guest makes ordinary API requests with no credential handling: the
+guest probe script carries no secret, takes no stdin, and builds no
+Proxy-Authorization header. The host runtime builds the authenticated
+CONNECT to the broker. By design no credential value ever enters guest
+memory. Broker credentials travel to the broker only via --pwenv
+host-env references, and to the msb runtime only via
+--http-connect-password-env host-env references. Nothing with a
+credential value reaches guest config, guest args, guest env, guest
+output, copied files, host logs, or this transcript.
+
+The API destination is a non-loopback TEST-NET-1 address
+(192.0.2.1:18080) so the guest dial leaves the guest via the proxy
+instead of hitting guest loopback. The broker allowlists exactly that
+destination.
 
 Verifies with actual guests:
-  A reaches own observer; B reaches own observer; traces stay separate
-  during overlap; B creds fail on A broker; missing and wrong auth fail
-  closed; wrong dest fails closed; direct (non-CONNECT) access with
-  permission to reach the broker fails closed and never reaches the
-  private Unix observer.
+  A reaches own observer via host-injected auth; B reaches own observer;
+  traces stay separate during overlap; host-side B creds/missing/wrong
+  auth fail closed on A broker (407); guest wrong dest via proxy fails
+  closed with zero growth and no inner 200; host-side direct
+  (non-CONNECT) fails closed (405) and never reaches the private Unix
+  observer (a guest cannot send non-CONNECT: the host runtime always
+  sends CONNECT).
 
 Records sanitized creation args (env names, never values), statuses,
 trace counts, and cleanup. Checks that credential values never appear in
-guest config, args, env, output, or copied files.
+guest config, args, env, output, or copied files, and that the guest
+probe contains no credential handling by construction.
 
 Exit 0 on pass, 1 on fail or on any isolation breach (stops and reports).
 """
@@ -42,8 +57,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 BROKER = os.path.join(HERE, "broker_unix.py")
 OBS = os.path.join(HERE, "obs_unix.py")
 GUEST_PROBE = os.path.join(HERE, "guest_probe.py")
-ALLOW = "127.0.0.1:18080"
-GUEST_HOST = "host.microsandbox.internal"
+ALLOW = "192.0.2.1:18080"
+ALLOW_HOST, ALLOW_PORT = ALLOW.rsplit(":", 1)
+WRONG_DEST = "192.0.2.1:19999"
+WRONG_HOST, WRONG_PORT = WRONG_DEST.rsplit(":", 1)
 IMAGE = "python:3.13-slim"
 TIMEOUT = 8.0
 
@@ -102,6 +119,40 @@ def run_msb(argv, timeout=60, inp=None):
     proc = subprocess.run(
         argv, input=inp, capture_output=True, timeout=timeout)
     return proc
+
+
+def recv_until(s, marker, cap=65536):
+    data = b""
+    try:
+        while marker not in data:
+            ch = s.recv(4096)
+            if not ch:
+                break
+            data += ch
+            if len(data) > cap:
+                break
+    except (socket.timeout, TimeoutError):
+        pass
+    return data
+
+
+def status_line(block):
+    txt = block.decode("iso-8859-1", errors="replace")
+    return txt.split("\r\n")[0] if txt else ""
+
+
+def host_connect_status(port, dest, auth_value):
+    """Host-side loopback CONNECT to a broker; returns the status line."""
+    s = socket.create_connection(("127.0.0.1", port), timeout=TIMEOUT)
+    s.settimeout(TIMEOUT)
+    req = f"CONNECT {dest} HTTP/1.1\r\nHost: {dest}\r\n"
+    if auth_value:
+        req += f"Proxy-Authorization: {auth_value}\r\n"
+    req += "\r\n"
+    s.sendall(req.encode())
+    reply = recv_until(s, b"\r\n\r\n")
+    s.close()
+    return status_line(reply)
 
 
 def main():
@@ -221,15 +272,32 @@ def main():
         if not ok:
             return 1
 
-        # Create guests: --no-net, one explicit rule for the own broker,
-        # --pull never. Sanitized args recorded (no credential values: only
-        # --pwenv names ever appear, and those are host-side only).
-        for guest, port in ((guest_a, port_a), (guest_b, port_b)):
+        # Create guests: --no-net, destination rules for the API address
+        # (correct + wrong port so wrong-dest reaches the proxy and fails
+        # at the broker, not at the policy), --pull never, plus host
+        # proxy auth. Sanitized args recorded (no credential values: only
+        # --pwenv / --http-connect-password-env names ever appear, and
+        # those are host-side only).
+        for guest, port, user, pwenv in (
+                (guest_a, port_a, "run-a", "KALARI_MICROVM_PW_A"),
+                (guest_b, port_b, "run-b", "KALARI_MICROVM_PW_B")):
             argv = ["msb", "create", "--name", guest, "--cpus", "1", "--memory", "256M",
-                    "--no-net", "--net-rule", f"allow@172.16.0.0/12:tcp:{port}",
-                    "--pull", "never", IMAGE]
+                    "--no-net",
+                    "--net-rule", f"allow@{ALLOW_HOST}/32:tcp:{ALLOW_PORT}",
+                    "--net-rule", f"allow@{WRONG_HOST}/32:tcp:{WRONG_PORT}",
+                    "--pull", "never",
+                    "--proxy", f"http://127.0.0.1:{port}",
+                    "--http-connect-username", user,
+                    "--http-connect-password-env", pwenv,
+                    IMAGE]
             print(f"ARGS create-{guest}: {argv}", flush=True)
             assert "--no-net" in argv and "--pull" in argv and "never" in argv
+            assert "--proxy" in argv and "--http-connect-username" in argv
+            assert "--http-connect-password-env" in argv
+            # The create argv must never carry a credential value.
+            for s in secrets_set:
+                if s and s in " ".join(argv):
+                    raise SystemExit("credential value in create argv")
             r = run_msb(argv, timeout=120)
             out = (r.stdout or b"").decode("utf-8", "replace") + (r.stderr or b"").decode("utf-8", "replace")
             msb_outputs.append(out)
@@ -238,7 +306,7 @@ def main():
                 note("guest-create", False, f"{guest} rc={r.returncode} {out[-200:]}")
                 return 1
             guests_created.append(guest)
-        note("guest-create", True, f"{guest_a} {guest_b} --no-net + own-broker rule --pull never")
+        note("guest-create", True, f"{guest_a} {guest_b} --no-net + proxy host-auth --pull never")
         print(f"STATUS guests created: {guests_created}", flush=True)
 
         # Overcommit for the Lean runtime pattern (harmless for python guests,
@@ -248,7 +316,8 @@ def main():
                          "echo 1 > /proc/sys/vm/overcommit_memory"], timeout=30)
             msb_outputs.append((r.stdout or b"").decode("utf-8", "replace"))
 
-        # Copy the credential-free probe into each guest.
+        # Copy the credential-free probe into each guest. The probe takes
+        # no stdin and builds no Proxy-Authorization header.
         for guest in guests_created:
             argv = ["msb", "copy", "-q", GUEST_PROBE, f"{guest}:/tmp/guest_probe.py"]
             print(f"ARGS copy-{guest}: {argv}", flush=True)
@@ -260,11 +329,10 @@ def main():
                 return 1
         note("guest-copy", True, "credential-free probe copied to both guests")
 
-        def guest_exec_port(guest, broker_port, dest, path, auth_value, timeout=30):
+        def guest_exec(guest, dest_host, dest_port, path, timeout=30):
             argv = ["msb", "exec", guest, "--", "python3", "/tmp/guest_probe.py",
-                    GUEST_HOST, str(broker_port), dest, path]
-            inp = (auth_value + "\n").encode() if auth_value else b"\n"
-            r = run_msb(argv, timeout=timeout, inp=inp)
+                    dest_host, str(dest_port), path]
+            r = run_msb(argv, timeout=timeout)
             out = (r.stdout or b"").decode("utf-8", "replace")
             err = (r.stderr or b"").decode("utf-8", "replace")
             msb_outputs.append(out)
@@ -276,11 +344,11 @@ def main():
                     raise SystemExit("credential leaked into guest output")
             return r.returncode, out, err
 
-        # A reaches own observer; B reaches own observer.
-        rc, out_a, _ = guest_exec_port(guest_a, port_a, ALLOW, "/a1", basic_a)
+        # A reaches own observer via host-injected auth; B reaches own.
+        rc, out_a, _ = guest_exec(guest_a, ALLOW_HOST, ALLOW_PORT, "/a1")
         print(f"RESP guest-a-valid: rc={rc} {out_a.strip().replace(chr(10), ' | ')}", flush=True)
         time.sleep(1)
-        rc, out_b, _ = guest_exec_port(guest_b, port_b, ALLOW, "/b1", basic_b)
+        rc, out_b, _ = guest_exec(guest_b, ALLOW_HOST, ALLOW_PORT, "/b1")
         print(f"RESP guest-b-valid: rc={rc} {out_b.strip().replace(chr(10), ' | ')}", flush=True)
         time.sleep(1)
         la = trace_bytes(trace_a)
@@ -300,10 +368,10 @@ def main():
         holder = {}
 
         def run_a():
-            holder["a"] = guest_exec_port(guest_a, port_a, ALLOW, "/a2", basic_a)
+            holder["a"] = guest_exec(guest_a, ALLOW_HOST, ALLOW_PORT, "/a2")
 
         def run_b():
-            holder["b"] = guest_exec_port(guest_b, port_b, ALLOW, "/b2", basic_b)
+            holder["b"] = guest_exec(guest_b, ALLOW_HOST, ALLOW_PORT, "/b2")
 
         ta = threading.Thread(target=run_a)
         tb = threading.Thread(target=run_b)
@@ -322,12 +390,28 @@ def main():
             print("STOP traces not separate during overlap", flush=True)
             return 1
 
-        # B creds fail on A broker; missing and wrong auth fail closed;
-        # wrong dest fails closed. Each must add no trace and no inner 200.
-        def expect_closed(label, guest, broker_port, dest, path, auth_value):
+        # Fail-closed auth: host-side loopback CONNECTs with B creds on A,
+        # missing auth, and wrong auth. The guest path cannot present wrong
+        # auth by design (the host injects it), so these prove the broker
+        # still refuses. Each must add no trace and no inner 200.
+        def expect_host_closed(label, broker_port, dest, auth_value):
             before_a = trace_bytes(trace_a)
             before_b = trace_bytes(trace_b)
-            rc, out, _ = guest_exec_port(guest, broker_port, dest, path, auth_value)
+            st = host_connect_status(broker_port, dest, auth_value)
+            print(f"RESP {label}: {st}", flush=True)
+            time.sleep(1)
+            after_a = trace_bytes(trace_a)
+            after_b = trace_bytes(trace_b)
+            return ("200 Connection Established" not in st
+                    and after_a == before_a and after_b == before_b)
+
+        # Fail-closed wrong dest via the real guest path: the guest dials
+        # the wrong port with ordinary GET; the host builds CONNECT with
+        # the guest's correct auth and the broker refuses.
+        def expect_guest_closed(label, guest, dest_host, dest_port, path):
+            before_a = trace_bytes(trace_a)
+            before_b = trace_bytes(trace_b)
+            rc, out, _ = guest_exec(guest, dest_host, dest_port, path)
             print(f"RESP {label}: rc={rc} {out.strip().replace(chr(10), ' | ')}", flush=True)
             time.sleep(1)
             after_a = trace_bytes(trace_a)
@@ -335,48 +419,62 @@ def main():
             closed = ("INNER HTTP/1.1 200 OK" not in out and after_a == before_a and after_b == before_b)
             return closed
 
-        c1 = expect_closed("b-creds-on-a", guest_a, port_a, ALLOW, "/x1", basic_b)
-        c2 = expect_closed("missing-auth", guest_a, port_a, ALLOW, "/x2", "")
-        c3 = expect_closed("wrong-auth", guest_a, port_a, ALLOW, "/x3", "Basic d3JvbmdjcmVkZW50aWFscw==")
-        c4 = expect_closed("wrong-dest", guest_a, port_a, "127.0.0.1:19999", "/x4", basic_a)
-        note("microvm-fail-closed", all([c1, c2, c3, c4]), "B-creds/missing/wrong/dest all closed, zero growth")
-        if not all([c1, c2, c3, c4]):
+        c1 = expect_host_closed("b-creds-on-a", port_a, ALLOW, basic_b)
+        c2 = expect_host_closed("missing-auth", port_a, ALLOW, "")
+        c3 = expect_host_closed("wrong-auth", port_a, ALLOW, "Basic d3JvbmdjcmVkZW50aWFscw==")
+        c4 = expect_guest_closed("wrong-dest-guest", guest_a, WRONG_HOST, WRONG_PORT, "/x4")
+        c5 = expect_host_closed("wrong-dest-host", port_a, "192.0.2.1:19998", basic_a)
+        note("microvm-fail-closed", all([c1, c2, c3, c4, c5]), "B-creds/missing/wrong/dest all closed, zero growth")
+        if not all([c1, c2, c3, c4, c5]):
             print("STOP fail-closed breach", flush=True)
             return 1
 
-        # Direct (non-CONNECT) access with permission to reach the broker:
-        # the guest may TCP-connect to the broker port, but a plain GET must
-        # get 405 (broker only) and never reach the private Unix observer.
+        # Direct (non-CONNECT) from the host fails closed with 405 and never
+        # reaches the private Unix observer. A guest cannot send
+        # non-CONNECT through the proxy: the host runtime always sends
+        # CONNECT first, so this is the host-side proof the broker still
+        # refuses it.
         before_a = trace_bytes(trace_a)
-        # Build the one-liner without shell quoting hazards.
-        direct_code = (
-            f"import socket\ns=socket.create_connection(('{GUEST_HOST}',{port_a}),timeout=8)\n"
-            f"s.settimeout(8)\ns.sendall(b'GET /direct HTTP/1.0\\r\\n\\r\\n')\n"
-            f"d=b''\nwhile b'\\r\\n\\r\\n' not in d:\n ch=s.recv(4096)\n if not ch: break\n d+=ch\n"
-            f"print((d.split(b'\\r\\n')[0].decode() if d else 'none'))\n"
-        )
-        r = run_msb(["msb", "exec", guest_a, "--", "python3", "-c", direct_code], timeout=30)
-        out = (r.stdout or b"").decode("utf-8", "replace") + (r.stderr or b"").decode("utf-8", "replace")
-        msb_outputs.append(out)
-        print(f"RESP direct-no-connect: {out.strip().splitlines()[-1] if out.strip() else 'none'}", flush=True)
+        s = socket.create_connection(("127.0.0.1", port_a), timeout=TIMEOUT)
+        s.settimeout(TIMEOUT)
+        s.sendall(b"GET /direct HTTP/1.0\r\n\r\n")
+        tail = recv_until(s, b"\r\n\r\n")
+        s.close()
+        st = status_line(tail) if tail else "<closed>"
+        print(f"RESP direct-no-connect: {st}", flush=True)
         time.sleep(1)
-        direct_ok = ("405" in out and trace_bytes(trace_a) == before_a)
+        direct_ok = ("405" in st and trace_bytes(trace_a) == before_a)
         note("microvm-direct-closed", direct_ok, "plain GET 405, zero trace growth")
         if not direct_ok:
             print("STOP direct access reached observer or wrong status", flush=True)
             return 1
 
-        # Credential hygiene across guest config, args, env, output, files.
+        # Credential hygiene: guest config, args, env, output, files, and
+        # by-construction checks. The probe must contain no credential
+        # handling at all: no proxy-auth header construction, no Basic
+        # value, no standard-input reading.
+        probe_src = open(GUEST_PROBE).read()
+        by_design = ("Proxy-Authorization:" not in probe_src
+                     and "Basic " not in probe_src
+                     and "sys.stdin" not in probe_src
+                     and "base64" not in probe_src)
+        note("microvm-by-design", by_design, "guest probe has no credential handling")
+        if not by_design:
+            print("STOP guest probe carries credential handling", flush=True)
+            return 1
         insp_a = run_msb(["msb", "inspect", guest_a, "--format", "json"], timeout=30)
         insp_b = run_msb(["msb", "inspect", guest_b, "--format", "json"], timeout=30)
         insp_text = ((insp_a.stdout or b"") + (insp_a.stderr or b"") + (insp_b.stdout or b"")).decode("utf-8", "replace")
         msb_outputs.append(insp_text)
+        # The inspect must reference passwords by env name only.
+        env_ref_ok = ("KALARI_MICROVM_PW_A" in insp_text and "KALARI_MICROVM_PW_B" in insp_text)
         r = run_msb(["msb", "exec", guest_a, "--", "env"], timeout=30)
         env_a = (r.stdout or b"").decode("utf-8", "replace")
         msb_outputs.append(env_a)
         r = run_msb(["msb", "exec", guest_a, "--", "cat", "/tmp/guest_probe.py"], timeout=30)
         copied = (r.stdout or b"").decode("utf-8", "replace")
         msb_outputs.append(copied)
+        guest_env_clean = ("KALARI_MICROVM_PW_A" not in env_a and "KALARI_MICROVM_PW_B" not in env_a)
         hygiene_text = insp_text + env_a + copied + "".join(msb_outputs)
         leaked = any(s and s in hygiene_text for s in secrets_set)
         # Also scan host broker/observer logs for credential values.
@@ -387,8 +485,9 @@ def main():
                 logs += open(p).read()
         leaked = leaked or any(s and s in logs for s in secrets_set) or "Basic " in logs.replace("[REDACTED]", "XX")
         print(f"TRACE final-a: {trace_bytes(trace_a).count(bytes([10]))} final-b: {trace_bytes(trace_b).count(bytes([10]))}", flush=True)
-        note("microvm-hygiene", not leaked, "no credential value in config/args/env/output/files/logs")
-        if leaked:
+        note("microvm-hygiene", (not leaked) and env_ref_ok and guest_env_clean,
+             "no credential value in config/args/env/output/files/logs")
+        if leaked or not (env_ref_ok and guest_env_clean):
             print("STOP credential hygiene breach", flush=True)
             return 1
 
