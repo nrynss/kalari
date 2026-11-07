@@ -6,6 +6,8 @@ cd "$(dirname "$0")/.."
 
 echo "-- lake build"
 lake build
+echo "-- axioms (no sorryAx)"
+tools/axioms.sh
 echo "-- kalari --version"
 .lake/build/bin/kalari --version
 echo "-- kalari offline self-test"
