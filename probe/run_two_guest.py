@@ -22,12 +22,23 @@ Checks:
      invalid or over-cap lengths, malformed request/header lines, and
      other unsupported framing. Includes Repro A (chunked incomplete)
      and Repro B (conflicting lengths).
- 4d. Total deadline: a slow drip that stays under the per-read
-     timeout but exceeds the total cap fails with an explicit 408,
-     zero trace growth, and no inner 200.
+ 4d. Total deadline: a slow inner-header drip that stays under the
+     per-read timeout but exceeds the total cap fails with an explicit
+     408, zero trace growth, and no inner 200.
+ 4d2. Slow CONNECT drip before 200: the same shape on the CONNECT
+     block fails with an explicit 408, zero trace growth, and no 200.
+ 4d3. Slow POST body drip: headers arrive fast, the body drips past
+     the total cap, failing with an explicit 408, zero trace growth,
+     and no inner 200.
  4e. Upstream truncation: an oversize, hung, or truncated upstream
      response fails with an explicit 502; no silent partial is ever
      forwarded and no inner 200 is returned.
+ 4e2. Close-delimited upstream: a response without Content-Length
+     read until close forwards complete (200, exact bytes); an
+     oversize close-delimited response fails with an explicit 502 and
+     no partial leak. Total expiry after handoff maps to 502 by design
+     (pre-contact expiry is 408; the send/handoff micro-window is 502
+     with no observation and no partial).
  5. Both runs live at once; traces stay separate.
  5b. Bytes buffered after CONNECT are preserved (pipelined send).
  6. Broker-death: killing broker A (observer still running) fails closed;
@@ -500,6 +511,82 @@ def main():
         note("total-deadline", all([d_established, d_explicit, d_growth, d_no200, d_absent]),
              f"established={d_established} explicit-408={d_explicit} no-growth={d_growth} no-200={d_no200}")
 
+        # C4d2: slow CONNECT drip before any 200. Same total-cap shape
+        # as C4d but on the CONNECT block: gaps stay well under the 10s
+        # per-read timeout, total exceeds the 3s cap. Expects explicit
+        # 408 as the CONNECT reply, zero trace growth, no 200 anywhere.
+        snap_a = open(trace_a, "rb").read()
+        snap_b = open(trace_b, "rb").read()
+        auth_a = basic("run-a", pw_a)
+        s = socket.create_connection(("127.0.0.1", port_t), timeout=TIMEOUT)
+        s.settimeout(TIMEOUT)
+        try:
+            for chunk in (b"CONNECT ",
+                          ALLOW.encode() + b" ",
+                          b"HTTP/1.1\r\n",
+                          f"Host: {ALLOW}\r\n".encode(),
+                          f"Proxy-Authorization: {auth_a}\r\n".encode(),
+                          b"\r\n"):
+                try:
+                    s.sendall(chunk)
+                except OSError:
+                    break
+                time.sleep(0.8)
+        except OSError:
+            pass
+        tail = read_all(s)
+        try:
+            s.close()
+        except Exception:
+            pass
+        cd_status = status_line(tail) if tail else "<closed-no-bytes>"
+        print(f"RESP drip-connect-block: {cd_status} len={len(tail)}", flush=True)
+        time.sleep(1)
+        cd_growth = open(trace_a, "rb").read() == snap_a and open(trace_b, "rb").read() == snap_b
+        cd_txt = tail.decode("iso-8859-1", errors="replace") if tail else ""
+        cd_no200 = "200" not in cd_txt
+        cd_explicit = cd_status == "HTTP/1.1 408 Request Timeout"
+        note("connect-drip", all([cd_explicit, cd_growth, cd_no200]),
+             f"explicit-408={cd_explicit} no-growth={cd_growth} no-200={cd_no200}")
+
+        # C4d3: slow POST body drip. CONNECT and inner headers arrive
+        # fast, then the body drips past the total cap. Expects explicit
+        # 408 as the inner reply, zero trace growth, no inner 200, and
+        # no /slowbody line.
+        snap_a = open(trace_a, "rb").read()
+        snap_b = open(trace_b, "rb").read()
+        s, st = connect_tunnel(port_t, "run-a", pw_a, ALLOW)
+        b_established = st == "HTTP/1.1 200 Connection Established"
+        print(f"RESP body-drip-connect: {st}", flush=True)
+        try:
+            s.sendall(b"POST /slowbody HTTP/1.1\r\nHost: x\r\nContent-Length: 50\r\nConnection: close\r\n\r\n")
+        except OSError:
+            b_established = False
+        try:
+            for i in range(5):
+                try:
+                    s.sendall(b"0123456789")
+                except OSError:
+                    break
+                time.sleep(0.8)
+        except OSError:
+            pass
+        tail = read_all(s)
+        try:
+            s.close()
+        except Exception:
+            pass
+        b_status = status_line(tail) if tail else "<closed-no-bytes>"
+        print(f"RESP body-drip-inner: {b_status} len={len(tail)}", flush=True)
+        time.sleep(1)
+        b_growth = open(trace_a, "rb").read() == snap_a and open(trace_b, "rb").read() == snap_b
+        b_txt = tail.decode("iso-8859-1", errors="replace") if tail else ""
+        b_no200 = "200 OK" not in b_txt
+        b_absent = "/slowbody" not in open(trace_a).read() and "/slowbody" not in open(trace_b).read()
+        b_explicit = b_status == "HTTP/1.1 408 Request Timeout"
+        note("body-drip", all([b_established, b_explicit, b_growth, b_no200, b_absent]),
+             f"established={b_established} explicit-408={b_explicit} no-growth={b_growth} no-200={b_no200}")
+
         # C4e: upstream truncation — oversize, hung, and truncated
         # upstream responses yield explicit 502, never a silent partial.
         # A stub Unix-socket upstream varies behaviour by path; the main
@@ -548,6 +635,16 @@ def main():
                 elif path == "/trunc":
                     try:
                         conn.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\nConnection: close\r\n\r\n" + b"Y" * 10)
+                    except Exception:
+                        pass
+                elif path == "/closedelim":
+                    try:
+                        conn.sendall(b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n" + b"close-ok")
+                    except Exception:
+                        pass
+                elif path == "/closehuge":
+                    try:
+                        conn.sendall(b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n" + b"X" * 100000)
                     except Exception:
                         pass
                 else:
@@ -620,6 +717,49 @@ def main():
         u_results.append(upstream_case("upstream-truncated", "/trunc"))
         note("upstream-truncation", all(u_results),
              f"{sum(u_results)}/{len(u_results)} explicit 502, no partial, no inner 200")
+
+        # C4e2: close-delimited upstream (no Content-Length, read until
+        # close). Success forwards complete with exact bytes; oversize
+        # close-delimited fails explicit 502 with no partial leak. Main
+        # obs traces stay byte-identical in both (stub is separate).
+        # Attribution note: total expiry before upstream contact is 408
+        # (pre-contact check); any expiry after handoff, including during
+        # the close-delimited read, is 502 by design — never a partial.
+        # The leftover send/handoff micro-window is a known tiny window
+        # that also reports 502 with no observation and no partial.
+        def closedelim_case(label, path, expect_200):
+            snap_a = open(trace_a, "rb").read()
+            snap_b = open(trace_b, "rb").read()
+            s, st = connect_tunnel(port_u, "run-a", pw_a, ALLOW)
+            established = st == "HTTP/1.1 200 Connection Established"
+            try:
+                s.sendall(f"GET {path} HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n".encode())
+            except OSError:
+                pass
+            tail = read_all(s)
+            try:
+                s.close()
+            except Exception:
+                pass
+            inner_status = status_line(tail) if tail else "<closed-no-bytes>"
+            print(f"RESP {label}: {inner_status} len={len(tail)}", flush=True)
+            time.sleep(0.5)
+            no_growth = open(trace_a, "rb").read() == snap_a and open(trace_b, "rb").read() == snap_b
+            txt = tail.decode("iso-8859-1", errors="replace") if tail else ""
+            if expect_200:
+                ok_body = tail.endswith(b"close-ok") and b"X" * 100 not in tail
+                ok = established and inner_status == "HTTP/1.1 200 OK" and ok_body and no_growth
+                ok = ok and "502" not in txt and len(tail) <= 4096
+                return ok
+            leak = (b"X" * 100 in tail) or len(tail) > 4096
+            ok = established and inner_status == "HTTP/1.1 502 Bad Gateway" and no_growth and (not leak)
+            ok = ok and "200 OK" not in txt
+            return ok
+
+        cd_ok = closedelim_case("upstream-close-delimited", "/closedelim", True)
+        ch_ok = closedelim_case("upstream-close-oversize", "/closehuge", False)
+        note("upstream-close-delimited", cd_ok and ch_ok,
+             f"complete-forwarded={cd_ok} oversize-502-no-partial={ch_ok}")
 
         # C6: broker-death — kill broker A while observer A runs.
         # This is a broker-only kill. True owner SIGKILL ownership is

@@ -17,9 +17,15 @@ reply, after it as the inner reply), with no observation and no inner
 200. Upstream responses are validated as complete before forwarding:
 a response that exceeds RESP_CAP, times out, closes early, or is
 malformed is never forwarded partially; the client gets an explicit
-502 Bad Gateway instead. Error logs never carry request bytes or
-credentials. This is a probe transport, not a general proxy: only one
-framed request per tunnel is ever forwarded. Loopback only.
+502 Bad Gateway instead. Total expiry before upstream contact fails
+with 408; once the framed request is handed to upstream, any failure
+including total expiry during the upstream read fails with 502, never
+a partial. A client drip that races body-complete against the
+pre-contact deadline check reports 408 (no observation, no forward);
+the leftover send/handoff micro-window after that check still reports
+502 with no observation and no partial. Error logs never carry request
+bytes or credentials. This is a probe transport, not a general proxy:
+only one framed request per tunnel is ever forwarded. Loopback only.
 """
 
 import sys, socket, threading, base64, os, re, time
@@ -442,7 +448,11 @@ def handle(c):
         try:
             rem = _remaining(deadline)
             if rem <= 0:
-                upstream_failure(c)
+                # Total expired after a complete body but before any
+                # upstream contact: still the client's drip, so 408, not
+                # 502. Anything after handoff (send/recv, including total
+                # expiry there) is 502 with no partial by design.
+                timeout_reply(c)
                 return
             u.settimeout(min(READ_TIMEOUT, rem))
             try:
