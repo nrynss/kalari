@@ -119,6 +119,10 @@ def dispatcher (cfg : Kalari.Config.Config) (setup : Setup) (deps : Dependencies
   let evidence := deps.evidence
   let secrets := deps.secrets
   let writer := deps.writer
+  -- Observer/Python boundary: `item.server` is the observed API implementation
+  -- (bench payouts server, the API under test), not proxy wiring. The broker
+  -- mechanism (per-run identity, CONNECT auth, msb `--proxy` argv) is pure
+  -- Lean in `Kalari.Sandbox.Broker`; `payoutsObserver` only spawns the API.
   let observer := setup.observer.map fun item =>
     Kalari.Tools.Run.payoutsObserver item.server item.endpoint "127.0.0.1" "127.0.0.1"
   return fun name args => do

@@ -49,7 +49,13 @@ structure Observer where
 reaches it through the msb host gateway. `guestIp` is the address the observer
 sees: the gateway proxy uses loopback, so it is the loopback address, not a
 caller claim about the guest. An optional behaviour list lets the gate replay
-a B5-off trace. -/
+a B5-off trace.
+Observer/Python boundary: `serverPath` names the observed API implementation
+(the bench payouts `server.py`, i.e. the API under test), not proxy wiring.
+The broker mechanism — per-run identity, CONNECT auth, tunneling, and the msb
+`--proxy` argv — is pure Lean in `Kalari.Sandbox.Broker` (gate `#guard`s);
+`python3` here only runs the observed API, as `tests/live/broker-proof.lean`
+states. -/
 def payoutsObserver (serverPath : String) (endpoint : AllowHost) (bindHost guestIp : String)
     (behaviours : Option String := none) : Observer := {
   endpoint

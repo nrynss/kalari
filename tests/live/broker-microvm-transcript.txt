@@ -1,0 +1,6 @@
+microvm brokered run: sandboxes before=0 keys=none loopback-only
+microvm brokered run: passed=true verdict=exited exit=0 row-count-2431=pass differential-v1=pass
+microvm brokered run: run_id=tmp.XXRbFEJd (sandbox removed by the runtime)
+microvm brokered run: brokerless control refused with the isolation message
+microvm brokered run: msb list clean, no kalari- sandbox remains
+broker microvm: PASS one real microVM run through the Lean broker, 2431 rows, fail-closed without it
