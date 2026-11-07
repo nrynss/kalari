@@ -3,9 +3,11 @@ import Kalari.Tools.Run
 
 /-! Authenticated host broker for sandbox observation, wired for production.
 
-See the module doc in the full implementation for the trust story. This
-file starts with the per-run identity and proxy argv; the isolation
-proof follows. Production `serve` still refuses every observer. -/
+This module holds the per-run identity, the proxy argv (checked by the
+`#guard`s at build time) and the two live proofs, `brokerIsolation` and
+`brokerPayouts`. The proofs start Python brokers on loopback ports, so they
+are a live test, never part of `lake build`: run them with
+`tests/live/broker.sh`. Production `serve` still refuses every observer. -/
 
 namespace Kalari.Sandbox.Broker
 
@@ -272,7 +274,7 @@ private def directStatus (port : Nat) : IO String := do
 private def dir700 (p : System.FilePath) : IO Unit := do
   IO.setAccessRights p { user := { read := true, write := true, execution := true } }
 
-private def brokerIsolation : IO Unit := IO.FS.withTempDir fun base => do
+def brokerIsolation : IO Unit := IO.FS.withTempDir fun base => do
   let runDir := base / "run"
   IO.FS.createDirAll runDir
   dir700 base
@@ -546,7 +548,7 @@ private def traverseScript : String :=
     "print('pages=' + str(pages) + ' rows=' + str(rows) + ' retries=' + str(retries) + ' drained=' + str(drained))"
   ]
 
-private def brokerPayouts : IO Unit := IO.FS.withTempDir fun base => do
+def brokerPayouts : IO Unit := IO.FS.withTempDir fun base => do
   let runDir := base / "run"
   IO.FS.createDirAll runDir
   dir700 base
@@ -625,9 +627,5 @@ private def brokerPayouts : IO Unit := IO.FS.withTempDir fun base => do
     IO.println "broker payouts: host auth, loopback only, no keys in files, parser gate holds, no inference"
   finally
     cleanup
-
-#eval brokerIsolation
-
-#eval brokerPayouts
 
 end Kalari.Sandbox.Broker
