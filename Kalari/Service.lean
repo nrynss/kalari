@@ -89,12 +89,17 @@ private def validateHarness (cfg : Kalari.Config.Config) (s : Setup) : IO Unit :
       if root != other && Kalari.Gate.insideWorkspace root other then
         throw <| .userError "session workspaces must not overlap"
 
-/-- Production validation. The service accepts no observer. The msb gateway
-makes every sandbox request look like loopback, so the runtime cannot prove an
-exclusive guest source. `serve` calls only this function. -/
+/-- Production validation. The service accepts no observer except a
+broker-backed one: the harness rules (guest-alias endpoint, listed
+endpoint, present server) guarantee the run path forces a fresh per-run
+broker on loopback with the single allowed dest. Anything else refuses
+closed with the isolation message. `serve` calls only this function. -/
 private def validate (cfg : Kalari.Config.Config) (s : Setup) : IO Unit := do
-  if s.observer.isSome then throw <| .userError Kalari.Tools.Run.isolationMessage
-  validateHarness cfg s
+  match s.observer with
+  | none => validateHarness cfg s
+  | some _ =>
+    try validateHarness cfg s
+    catch _ => throw <| .userError Kalari.Tools.Run.isolationMessage
 
 structure Dependencies where
   vimanam : Kalari.Vimanam.Runner
@@ -410,13 +415,30 @@ def fixture : IO Unit := IO.FS.withTempDir fun dir => do
   unless ← rejects { validSetup with workspace := oldSpec.toString } do throw <| .userError "file accepted as workspace"
   unless ← rejects { validSetup with old_spec := (dir / "candidate").toString } do throw <| .userError "directory accepted as spec"
   unless ← rejects { validSetup with evidence_workspace := validSetup.workspace } do throw <| .userError "overlapping roots accepted"
-  -- Production validation refuses every observer, including a fully formed one.
-  -- The harness validation is the only path that accepts it, and it still
-  -- rejects a caller-supplied address, a missing server and an unlisted endpoint.
+  -- Production accepts a broker-backed observer and refuses every other
+  -- setup with the isolation message. Each refusal rule has its own test:
+  -- a caller-supplied address, a missing server, and an unlisted endpoint.
   let observerEndpoint : AllowHost := { host := Kalari.Tools.Run.guestAlias, port := 18080 }
   let observerCfg := { cfg with sandbox := { cfg.sandbox with allowlist := allow ++ [observerEndpoint] } }
   let observerSetup := { validSetup with observer := some { server := executable.toString, endpoint := observerEndpoint } }
-  unless ← rejects observerSetup do throw <| .userError "production validate accepted an observer"
+  validate observerCfg observerSetup
+  -- Each refusal rule fails closed with exactly the isolation message.
+  let refusal (candidate : Setup) (label : String) : IO Unit := do
+    match ← (try validate observerCfg candidate; pure (none : Option String) catch e => pure (some s!"{e}")) with
+    | none => throw <| .userError s!"production accepted {label}"
+    | some msg =>
+      unless msg == Kalari.Tools.Run.isolationMessage do
+        throw <| .userError s!"production refused {label} without the isolation message: {msg}"
+  refusal { observerSetup with observer := some {
+      server := executable.toString, endpoint := { observerEndpoint with host := "127.0.0.1" } } }
+    "a caller-supplied guest address"
+  refusal { observerSetup with observer := some {
+      server := (dir / "missing-server").toString, endpoint := observerEndpoint } }
+    "a missing observer server"
+  let unlisted : AllowHost := { host := Kalari.Tools.Run.guestAlias, port := 18081 }
+  refusal { observerSetup with observer := some {
+      server := executable.toString, endpoint := unlisted } }
+    "an observer endpoint outside the sandbox allowlist"
   validateHarness observerCfg observerSetup
   let rejectsHarness (candidate : Setup) : IO Bool := do
     try validateHarness observerCfg candidate; pure false catch _ => pure true
@@ -499,7 +521,10 @@ def fixture : IO Unit := IO.FS.withTempDir fun dir => do
       pure ({ exitCode := some 0, stdout := ByteArray.empty, stderr := ByteArray.empty, wallMs := 0, cap := .none } : Kalari.Proc.Result)
     resolve := fun _ => pure ["203.0.113.10"]
     wait := fun _ => pure ()
-    network := fun _ => pure (.error "unavailable") }
+    network := fun _ => pure (.error "unavailable")
+    startBroker := fun _ => do
+      let done ← IO.asTask (pure () : IO Unit) Task.Priority.dedicated
+      pure (.ok ({ port := 18081, stop := pure (), task := done } : Kalari.Sandbox.Broker.BrokerHandle)) }
   let redirHandler ← dispatcher redirCfg redirSetup { deps with runtime := redirRuntime }
   let redirChanged ← redirHandler "what_changed"
     (Json.mkObj [("old_spec", validSetup.old_spec), ("new_spec", validSetup.new_spec)])
@@ -596,7 +621,10 @@ private def dispatcherAllowlistTest : IO Unit := IO.FS.withTempDir fun dir => do
       pure ({ exitCode := some 0, stdout := ByteArray.empty, stderr := ByteArray.empty, wallMs := 0, cap := .none } : Kalari.Proc.Result)
     resolve := fun _ => pure ["203.0.113.10"]
     wait := fun _ => pure ()
-    network := fun _ => pure (.error "unavailable") }
+    network := fun _ => pure (.error "unavailable")
+    startBroker := fun _ => do
+      let done ← IO.asTask (pure () : IO Unit) Task.Priority.dedicated
+      pure (.ok ({ port := 18081, stop := pure (), task := done } : Kalari.Sandbox.Broker.BrokerHandle)) }
   let writer : Kalari.Tools.Lesson.Write := {
     perform := fun _ _ _ => pure (.ok "fixture-id"), lane := ← Std.Mutex.new () }
   let deps : Dependencies := {
@@ -609,8 +637,9 @@ private def dispatcherAllowlistTest : IO Unit := IO.FS.withTempDir fun dir => do
     classify := fun _ _ _ => pure (.ok (.label "api_change" [] 0.8))
     writer, evidence, secrets := [] }
   validateHarness cfg setup
-  unless (← (try validate cfg setup; pure false catch _ => pure true)) do
-    throw <| .userError "production validate accepted the observer setup"
+  -- Production accepts the broker-backed observer setup (the run path
+  -- forces a fresh per-run broker); other setups still refuse closed.
+  validate cfg setup
   let handler ← dispatcher cfg setup deps
   let changed ← handler "what_changed" (Json.mkObj [("old_spec", oldSpec.toString), ("new_spec", newSpec.toString)])
   unless changed.isOk do throw <| .userError "dispatcher redirect test what_changed failed"
@@ -625,7 +654,7 @@ private def dispatcherAllowlistTest : IO Unit := IO.FS.withTempDir fun dir => do
     throw <| .userError "dispatcher redirect test did not use the trusted endpoint"
   unless !create.any (fun arg => arg.contains "evil" || arg.contains "18082") do
     throw <| .userError "dispatcher redirect test passed the model allowlist"
-  IO.println "service dispatcher: production refuses the observer and a model allowlist cannot replace the trusted endpoint"
+  IO.println "service dispatcher: production accepts the broker-backed observer and a model allowlist cannot replace the trusted endpoint"
 
 #eval dispatcherAllowlistTest
 

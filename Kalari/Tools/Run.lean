@@ -1,6 +1,8 @@
 import Kalari.Evidence
 import Kalari.Gate
+import Kalari.Sandbox.Broker
 import Kalari.Sandbox.Microsandbox
+import Std.Async.System
 import Std.Net.Addr
 import Std.Data.HashMap
 
@@ -273,6 +275,10 @@ structure Runtime where
     pure (.error "runtime cannot report the guest network")
   inspect : String → IO (Except String String) := fun _ =>
     pure (.error "runtime cannot inspect the sandbox")
+  /-- Start one Lean broker for an observed run. The default fails closed
+  (no broker), so replay fixtures must opt in explicitly. -/
+  startBroker : Kalari.Sandbox.Broker.BrokerConfig → IO (Except String Kalari.Sandbox.Broker.BrokerHandle) :=
+    fun _ => pure (.error "runtime has no broker")
 
 /-- Run commands with the storage permissions msb expects and no inherited keys. -/
 def live (path : String) : Runtime :=
@@ -299,7 +305,11 @@ def live (path : String) : Runtime :=
       let result ← run ["msb", "inspect", name, "--format", "json"] 5000 65536
       if result.cap != .none || result.exitCode != some 0 then
         return .error "sandbox inspect unavailable"
-      pure (.ok ((String.fromUTF8? result.stdout).getD "")) }
+      pure (.ok ((String.fromUTF8? result.stdout).getD ""))
+    startBroker := fun cfg => do
+      try
+        pure (.ok (← Kalari.Sandbox.Broker.start cfg))
+      catch _ => pure (.error "broker start failed") }
 
 structure Difference where
   missing : Nat
@@ -544,10 +554,53 @@ private def duplicateCreate (r : Result) : Bool := Id.run do
 /-- An msb create timeout or transport failure may have created the sandbox.
 Remove that unique run name unless msb explicitly says it belongs to an existing
 sandbox; that name is not ours to delete. -/
+private def sanitizeTag (s : String) : String :=
+  let t := String.ofList (s.toList.filter (·.isAlphanum))
+  if t.isEmpty then "run" else t
+
+/-- Start one Lean broker for this exact run. Fresh per-run identity, a
+loopback bind, the run's single allowed dest as the CONNECT allow list,
+and a plain-TCP tunnel to the local observer. The password is placed in
+the parent env under its per-run name so the msb child inherits it via
+`--http-connect-password-env`; it lives only in memory, never in argv,
+files, logs or evidence. Fail closed when the runtime has no broker. -/
+private def startRunBroker (runtime : Runtime) (observer : Observer) (runId : String)
+    : IO (Except String (Kalari.Sandbox.Broker.RunIdentity × Kalari.Sandbox.Broker.BrokerHandle)) := do
+  try
+    let id ← Kalari.Sandbox.Broker.freshIdentity (sanitizeTag runId)
+    Std.Async.System.setEnvVar id.passwordEnv id.password
+    let endpoint := observer.endpoint
+    let cfg : Kalari.Sandbox.Broker.BrokerConfig := {
+      user := id.user, password := id.password, passwordEnv := id.passwordEnv,
+      allowedDest := s!"{endpoint.host}:{endpoint.port}",
+      upstreamHost := "127.0.0.1", upstreamPort := endpoint.port }
+    match ← runtime.startBroker cfg with
+    | .error _ =>
+      Std.Async.System.unsetEnvVar id.passwordEnv
+      pure (.error isolationMessage)
+    | .ok handle => pure (.ok (id, handle))
+  catch _ =>
+    pure (.error isolationMessage)
+
+/-- Stop the run broker and clear its password from the parent env. Runs
+on every path after `startRunBroker` succeeded, including failures:
+sockets close, the port frees, and nothing secret remains. -/
+private def stopRunBroker
+    : Option (Kalari.Sandbox.Broker.RunIdentity × Kalari.Sandbox.Broker.BrokerHandle) → IO Unit
+  | none => pure ()
+  | some (id, handle) => do
+    try handle.stop catch _ => pure ()
+    try handle.wait catch _ => pure ()
+    try Std.Async.System.unsetEnvVar id.passwordEnv catch _ => pure ()
+
 private def createSandbox (runtime : Runtime) (ctx : Context) (name : String)
-    (request : RunRequest) (allow : List AllowHost) : ExceptT String IO Unit := do
+    (request : RunRequest) (allow : List AllowHost)
+    (proxy : Option Microsandbox.ProxyAuth := none) : ExceptT String IO Unit := do
+  let argv := match proxy with
+    | none => createArgv ctx name request allow
+    | some auth => Microsandbox.createArgvWithProxy name request.caps.memory_mib allow auth ctx.image
   let attempted : Except String Result ← try
-    pure (.ok (← runtime.runner (createArgv ctx name request allow)
+    pure (.ok (← runtime.runner argv
       Microsandbox.controlTimeoutMs (4096 + 12 * request.caps.output_cap_bytes)))
   catch _ => pure (.error "create runner failed")
   let created := attempted.toOption
@@ -636,7 +689,23 @@ private def execute (runtime : Runtime) (ctx : Context) (name : String) (request
   let backend := Microsandbox.make runtime.runner (request.caps.timeout_ms + 5000)
     (4096 + 12 * request.caps.output_cap_bytes) ctx.image
   let artifactBackend := Microsandbox.make runtime.runner 5000 (artifactCap + 1) ctx.image
-  createSandbox runtime ctx name request allow
+  -- An observed run reaches the observer only through one fresh Lean
+  -- broker. The CONNECT allow list is the run's single allowed dest; the
+  -- sandbox is created with host proxy auth, keeping --no-net, explicit
+  -- rules and --pull never. The password travels only by env var name.
+  let broker : Option (Kalari.Sandbox.Broker.RunIdentity × Kalari.Sandbox.Broker.BrokerHandle) ←
+    match observation with
+    | none => pure none
+    | some obs => liftM (startRunBroker runtime obs.observer obs.runId) >>= fun
+      | .error e => throw e
+      | .ok pair => pure (some pair)
+  let proxy : Option Microsandbox.ProxyAuth := broker.map fun (id, handle) =>
+    { proxy := s!"http://127.0.0.1:{handle.port}", username := id.user, passwordEnv := id.passwordEnv }
+  try
+    createSandbox runtime ctx name request allow proxy
+  catch e =>
+    liftM (stopRunBroker broker)
+    throw e
   -- The observer starts only after the runtime reports a private /30 and the
   -- sandbox shows one egress rule. Any missing proof keeps it off.
   let started : Except String (Option (IO (Except String String))) ← liftM <| (try
@@ -668,6 +737,7 @@ private def execute (runtime : Runtime) (ctx : Context) (name : String) (request
   let finish ← match started with
     | .error e =>
       let removed ← runtime.runner ["msb", "remove", "-f", name] Microsandbox.controlTimeoutMs 4096
+      liftM (stopRunBroker broker)
       requireStep "cleanup" (.ok removed)
       throw e
     | .ok finish => pure finish
@@ -699,6 +769,10 @@ private def execute (runtime : Runtime) (ctx : Context) (name : String) (request
       let result ← liftM <| try stop catch _ => pure (.error "observer stop failed")
       pure (some result)
   -- A successful exec leaves the microVM running. Plain remove refuses it.
+  -- The broker stays up through the run, then always stops before the
+  -- sandbox is removed: sockets and dirs stay 0600/0700, and the per-run
+  -- password leaves the parent env even when cleanup below fails.
+  liftM (stopRunBroker broker)
   let removed ← runtime.runner ["msb", "remove", "-f", name] Microsandbox.controlTimeoutMs 4096
   requireStep "cleanup" (.ok removed)
   match outcome with
@@ -925,6 +999,10 @@ def fixtureRuntime (calls : IO.Ref (List String)) (variant : String)
   wait := fun _ => throw (.userError "unexpected image retry")
   network := fun _ => pure (.ok { guest := "172.16.0.6", gateway := "172.16.0.5" })
   inspect := fun name => pure (.ok (fixtureInspect name))
+  startBroker := fun _ => do
+    calls.modify (· ++ ["broker-start"])
+    let done ← IO.asTask (pure () : IO Unit) Task.Priority.dedicated
+    pure (.ok ({ port := 18081, stop := pure (), task := done } : Kalari.Sandbox.Broker.BrokerHandle))
   runner := fun argv timeout output => do
     let (stage, reply) ← match argv with
       | ["msb", "pull", image] =>
@@ -932,8 +1010,35 @@ def fixtureRuntime (calls : IO.Ref (List String)) (variant : String)
         pure ("pull", fixtureResult "")
       | "msb" :: "create" :: "--name" :: name :: _ => do
         verify (name.startsWith "kalari-") "sandbox name missing prefix"
-        verify (argv == Microsandbox.createArgv name caps.memory_mib
-          [{ host := "203.0.113.10", port := 18080 }]) "create lacks restricted network, image, or memory"
+        if argv.contains "--proxy" then do
+          -- Observed create: loopback proxy, per-run identity by env name,
+          -- --no-net, explicit rules, --pull never. The password lives in
+          -- the parent env under that name and never appears in argv.
+          verify (argv.contains "--no-net") "observed create omits --no-net"
+          verify (argv.contains "--pull" && argv.contains "never") "observed create omits --pull never"
+          verify (!(argv.any (·.contains "--net-default"))) "observed create has --net-default"
+          verify (argv.any (·.contains "allow@203.0.113.10/32:tcp:18080")) "observed create allow rule missing"
+          let proxy := match argv.dropWhile (· != "--proxy") with
+            | _ :: url :: _ => some url
+            | _ => none
+          let some proxy := proxy
+            | throw (.userError "observed create proxy missing")
+          verify (Microsandbox.isLoopbackProxy proxy) "observed proxy not loopback"
+          verify (argv.contains "--http-connect-username") "observed create proxy user missing"
+          let some pwenv := Microsandbox.passwordEnvOfArgv argv
+            | throw (.userError "observed create password-env missing")
+          verify (pwenv.startsWith "KALARI_BROKER_PW_") "observed password env name shape"
+          let pw ← IO.getEnv pwenv
+          match pw with
+          | none => throw (.userError "observed password not in parent env for msb child")
+          | some value =>
+            verify (!value.isEmpty) "observed password empty"
+            verify (!(argv.any (·.contains value))) "password value in msb argv"
+          verify (!(argv.any (·.contains "test-secret"))) "secret in msb argv"
+          verify (argv.getLast? == some Microsandbox.imageName) "observed create image"
+        else do
+          verify (argv == Microsandbox.createArgv name caps.memory_mib
+            [{ host := "203.0.113.10", port := 18080 }]) "create lacks restricted network, image, or memory"
         let stage := if name.contains "-check-" then "create-check"
           else if name.endsWith "-v1" then "create-v1" else "create-v2"
         if variant == "create-timeout" && stage == "create-v2" then do
@@ -1220,6 +1325,12 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
   let result ← expectOk (← run (fixtureRuntime obsCalls "correct" caps truth duplicateRows obsTamper obsExists) observed { req with command := ["python3", "/candidate/correct.py"] })
   let obsRecords := Kalari.Evidence.byRun (← Kalari.Evidence.load store) result.run_id
   verify (result.passed && (← stopped.get) && obsRecords.any (fun r => r.kind == "page-observation" && (r.payload.getObjValAs? (List String) "behaviors").toOption == some ["boundary_overlap_one", "final_page_token", "rate_limit_retry"])) "verified retry observation not linked to run"
+  -- The observed create went through the broker: proxy argv, per-run
+  -- identity by env name, password in the msb child env but never argv.
+  verify ((← obsCalls.get).contains "broker-start") "observed run did not start a broker"
+  let tag := String.ofList (result.run_id.toList.filter (·.isAlphanum))
+  let tag := if tag.isEmpty then "run" else tag
+  verify ((← IO.getEnv s!"KALARI_BROKER_PW_{tag}") == none) "broker password left in parent env"
   stopped.set false
   let failedRun ← expectOk (← run (fixtureRuntime obsCalls "no_dedupe" caps truth duplicateRows obsTamper obsExists) observed { req with command := ["python3", "/candidate/no_dedupe.py"] })
   let failedRecords := Kalari.Evidence.byRun (← Kalari.Evidence.load store) failedRun.run_id
@@ -1253,7 +1364,7 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
   let noNetworkRun ← run noNetwork observed { req with command := ["python3", "/candidate/correct.py"] }
   verify (match noNetworkRun with | .error e => e == isolationMessage | .ok _ => false)
     "runtime without a guest network did not fail closed"
-  verify ((← noNetworkCalls.get) == ["resolve", "resolve", "pull", "create-v2", "remove-v2"])
+  verify ((← noNetworkCalls.get) == ["resolve", "resolve", "pull", "broker-start", "create-v2", "remove-v2"])
     "unproven observer ran the guest or leaked its sandbox"
   let badNetworkCalls ← IO.mkRef []
   let badNetwork : Runtime := {
@@ -1278,7 +1389,7 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
     let craftedRun ← run craftedRuntime observed { req with command := ["python3", "/candidate/correct.py"] }
     verify (match craftedRun with | .error e => e == isolationMessage | .ok _ => false)
       s!"crafted inspect case {label} was accepted"
-    verify ((← craftedCalls.get) == ["resolve", "resolve", "pull", "create-v2", "remove-v2"])
+    verify ((← craftedCalls.get) == ["resolve", "resolve", "pull", "broker-start", "create-v2", "remove-v2"])
       s!"crafted inspect case {label} ran the guest or leaked its sandbox"
     verify (!(← stopped.get)) s!"crafted inspect case {label} started the observer"
   crafted "second egress rule" fun name => fixtureInspect name (rules := [fixtureRule, fixtureRule])

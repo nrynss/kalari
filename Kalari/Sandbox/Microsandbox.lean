@@ -46,8 +46,11 @@ def pullArgv (image : String) : List String :=
 def overcommitCommand : List String :=
   ["sh", "-c", "echo 1 > /proc/sys/vm/overcommit_memory"]
 
+/-- One net rule token. A guest CIDR is already a network, so it does not
+get the `/32` suffix a single address needs. Matches `Run.netRule`. -/
 def netRule (host : AllowHost) : String :=
-  s!"allow@{host.host}/32:tcp:{host.port}"
+  if host.host.contains "/" then s!"allow@{host.host}:tcp:{host.port}"
+  else s!"allow@{host.host}/32:tcp:{host.port}"
 
 def netRules (allow : List AllowHost) : List String :=
   allow.flatMap fun host => ["--net-rule", netRule host]
@@ -194,6 +197,9 @@ private def showsCreate (argv : List String) : Bool :=
   ["--proxy", "http://127.0.0.1:18081", "--http-connect-username", "run-a",
    "--http-connect-password-env", "KALARI_BROKER_PW_A"]
 
+#guard netRule { host := "203.0.113.10", port := 18080 } == "allow@203.0.113.10/32:tcp:18080"
+#guard netRule { host := "172.16.0.0/12", port := 18081 } == "allow@172.16.0.0/12:tcp:18081"
+
 #guard isLoopbackProxy "http://127.0.0.1:18081"
 #guard !isLoopbackProxy "http://0.0.0.0:18081"
 #guard !isLoopbackProxy "http://example.test:18081"
@@ -204,6 +210,14 @@ private def showsCreate (argv : List String) : Bool :=
     "--net-rule", "allow@203.0.113.10/32:tcp:18090",
     "--proxy", "http://127.0.0.1:18081", "--http-connect-username", "run-a",
     "--http-connect-password-env", "KALARI_BROKER_PW_A",
+    "--pull", "never", "python:3.13-slim"]
+
+#guard createArgvWithProxy "kalari-run-1" 256 [{ host := "172.16.0.0/12", port := 18081 }]
+    { proxy := "http://127.0.0.1:18082", username := "run-b", passwordEnv := "KALARI_BROKER_PW_B" } ==
+  ["msb", "create", "--name", "kalari-run-1", "--cpus", "1", "--memory", "256M", "--no-net",
+    "--net-rule", "allow@172.16.0.0/12:tcp:18081",
+    "--proxy", "http://127.0.0.1:18082", "--http-connect-username", "run-b",
+    "--http-connect-password-env", "KALARI_BROKER_PW_B",
     "--pull", "never", "python:3.13-slim"]
 
 #guard copyInArgv "kalari-run-1" "in.txt" "/tmp/in.txt" ==
