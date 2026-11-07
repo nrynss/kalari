@@ -15,6 +15,7 @@ import Kalari.Tools.Changes
 import Kalari.Tools.Recall
 import Kalari.Tools.Run
 import Kalari.Tools.Lesson
+import Kalari.Tools.PublishRecall
 import Kalari.Evidence
 import Kalari.Http
 import Kalari.Version
