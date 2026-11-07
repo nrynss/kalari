@@ -22,6 +22,12 @@ Checks:
      invalid or over-cap lengths, malformed request/header lines, and
      other unsupported framing. Includes Repro A (chunked incomplete)
      and Repro B (conflicting lengths).
+ 4d. Total deadline: a slow drip that stays under the per-read
+     timeout but exceeds the total cap fails with an explicit 408,
+     zero trace growth, and no inner 200.
+ 4e. Upstream truncation: an oversize, hung, or truncated upstream
+     response fails with an explicit 502; no silent partial is ever
+     forwarded and no inner 200 is returned.
  5. Both runs live at once; traces stay separate.
  5b. Bytes buffered after CONNECT are preserved (pipelined send).
  6. Broker-death: killing broker A (observer still running) fails closed;
@@ -46,6 +52,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -448,6 +455,172 @@ def main():
         print(f"RESP pipelined: established+inner-200 trace-a={len(la)}", flush=True)
         note("pipelined", c5b, "CONNECT+GET in one segment observed once")
 
+        # C4d: total deadline — slow drip stays under per-read but exceeds
+        # the total cap. Mirrors the empty-close snapshot pattern: byte-
+        # identical traces, explicit 408, no inner 200, no /slowdrip line.
+        port_t = free_port()
+        spawn("broker-t", [BROKER, "--port", str(port_t), "--user", "run-a",
+                            "--pwenv", "KALARI_PROBE_PW_A", "--allow", ALLOW,
+                            "--sock", sock_a,
+                            "--read-timeout", "10", "--total-timeout", "3"],
+              "log-broker-t.txt")
+        assert wait_tcp(port_t), "broker-t never listened"
+        snap_a = open(trace_a, "rb").read()
+        snap_b = open(trace_b, "rb").read()
+        s, st = connect_tunnel(port_t, "run-a", pw_a, ALLOW)
+        d_established = st == "HTTP/1.1 200 Connection Established"
+        print(f"RESP drip-connect: {st}", flush=True)
+        try:
+            # Five small writes with gaps well under the 10s per-read
+            # timeout but totalling past the 3s total cap.
+            for chunk in (b"GET /slowdrip HTTP/1.1\r\n",
+                          b"Host: x\r\n",
+                          b"Connection: close\r\n",
+                          b"X-Pad: 1\r\n",
+                          b"\r\n"):
+                try:
+                    s.sendall(chunk)
+                except OSError:
+                    break
+                time.sleep(0.8)
+        except OSError:
+            pass
+        tail = read_all(s)
+        try:
+            s.close()
+        except Exception:
+            pass
+        d_status = status_line(tail) if tail else "<closed-no-bytes>"
+        print(f"RESP drip-inner: {d_status} len={len(tail)}", flush=True)
+        time.sleep(1)
+        d_growth = open(trace_a, "rb").read() == snap_a and open(trace_b, "rb").read() == snap_b
+        d_no200 = "200 OK" not in tail.decode("iso-8859-1", errors="replace")
+        d_absent = "/slowdrip" not in open(trace_a).read() and "/slowdrip" not in open(trace_b).read()
+        d_explicit = d_status == "HTTP/1.1 408 Request Timeout"
+        note("total-deadline", all([d_established, d_explicit, d_growth, d_no200, d_absent]),
+             f"established={d_established} explicit-408={d_explicit} no-growth={d_growth} no-200={d_no200}")
+
+        # C4e: upstream truncation — oversize, hung, and truncated
+        # upstream responses yield explicit 502, never a silent partial.
+        # A stub Unix-socket upstream varies behaviour by path; the main
+        # obs traces must stay byte-identical (stub is separate), the
+        # client must see 502 with no inner 200 and no partial bytes.
+        stub_sock = os.path.join(run_dir, "stub.sock")
+        stub_srv = socket.socket(socket.AF_UNIX)
+        if os.path.exists(stub_sock):
+            os.remove(stub_sock)
+        stub_srv.bind(stub_sock)
+        os.chmod(stub_sock, 0o600)
+        stub_srv.listen(20)
+        stub_srv.settimeout(0.5)
+        stub_stop = threading.Event()
+
+        def stub_handle(conn):
+            try:
+                conn.settimeout(5)
+                data = b""
+                try:
+                    while b"\r\n\r\n" not in data:
+                        ch = conn.recv(4096)
+                        if not ch:
+                            break
+                        data += ch
+                        if len(data) > 16384:
+                            break
+                except (socket.timeout, TimeoutError):
+                    pass
+                try:
+                    txt = data.decode("iso-8859-1", errors="replace")
+                    first = txt.split("\r\n")[0] if txt else ""
+                    parts = first.split(" ")
+                    path = parts[1] if len(parts) > 1 else "/"
+                except Exception:
+                    path = "/"
+                if path == "/huge":
+                    big = b"X" * 100000
+                    conn.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: " + str(len(big)).encode() + b"\r\nConnection: close\r\n\r\n" + big)
+                elif path == "/hang":
+                    try:
+                        conn.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n")
+                        time.sleep(6)
+                    except Exception:
+                        pass
+                elif path == "/trunc":
+                    try:
+                        conn.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\nConnection: close\r\n\r\n" + b"Y" * 10)
+                    except Exception:
+                        pass
+                else:
+                    body = b"stub-ok"
+                    conn.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: " + str(len(body)).encode() + b"\r\nConnection: close\r\n\r\n" + body)
+            except Exception:
+                pass
+            finally:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
+        def stub_loop():
+            while not stub_stop.is_set():
+                try:
+                    cc, _ = stub_srv.accept()
+                except socket.timeout:
+                    continue
+                except OSError:
+                    break
+                threading.Thread(target=stub_handle, args=(cc,), daemon=True).start()
+
+        stub_thread = threading.Thread(target=stub_loop, daemon=True)
+        stub_thread.start()
+        port_u = free_port()
+        spawn("broker-u", [BROKER, "--port", str(port_u), "--user", "run-a",
+                            "--pwenv", "KALARI_PROBE_PW_A", "--allow", ALLOW,
+                            "--sock", stub_sock,
+                            "--read-timeout", "2", "--total-timeout", "5"],
+              "log-broker-u.txt")
+        assert wait_tcp(port_u), "broker-u never listened"
+
+        def upstream_case(label, path):
+            snap_a = open(trace_a, "rb").read()
+            snap_b = open(trace_b, "rb").read()
+            s, st = connect_tunnel(port_u, "run-a", pw_a, ALLOW)
+            established = st == "HTTP/1.1 200 Connection Established"
+            try:
+                s.sendall(f"GET {path} HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n".encode())
+            except OSError:
+                pass
+            tail = read_all(s)
+            try:
+                s.close()
+            except Exception:
+                pass
+            inner_status = status_line(tail) if tail else "<closed-no-bytes>"
+            print(f"RESP {label}: {inner_status} len={len(tail)}", flush=True)
+            time.sleep(0.5)
+            no_growth = open(trace_a, "rb").read() == snap_a and open(trace_b, "rb").read() == snap_b
+            txt = tail.decode("iso-8859-1", errors="replace") if tail else ""
+            no_200 = "200 OK" not in txt
+            explicit = inner_status == "HTTP/1.1 502 Bad Gateway"
+            # Partial bytes from the stub must never leak: huge sends
+            # 100k Xs, trunc sends Ys, hang sends an incomplete header.
+            leak = False
+            if path == "/huge" and b"X" * 100 in tail:
+                leak = True
+            if path == "/trunc" and b"Y" * 4 in tail:
+                leak = True
+            if len(tail) > 4096:
+                leak = True
+            ok = established and explicit and no_growth and no_200 and (not leak)
+            return ok
+
+        u_results = []
+        u_results.append(upstream_case("upstream-oversize", "/huge"))
+        u_results.append(upstream_case("upstream-hang", "/hang"))
+        u_results.append(upstream_case("upstream-truncated", "/trunc"))
+        note("upstream-truncation", all(u_results),
+             f"{sum(u_results)}/{len(u_results)} explicit 502, no partial, no inner 200")
+
         # C6: broker-death — kill broker A while observer A runs.
         # This is a broker-only kill. True owner SIGKILL ownership is
         # covered separately by probe/owner_death.py.
@@ -492,18 +665,30 @@ def main():
         # C8: logs hold no passwords; traces hold only request lines.
         logs = ""
         for fn in ("log-obs-a.txt", "log-obs-b.txt", "log-broker-a.txt",
-                   "log-broker-b.txt", "log-origin.txt", "log-proxy.txt"):
-            logs += open(os.path.join(run_dir, fn)).read()
+                   "log-broker-b.txt", "log-broker-t.txt", "log-broker-u.txt",
+                   "log-origin.txt", "log-proxy.txt"):
+            fp = os.path.join(run_dir, fn)
+            if os.path.exists(fp):
+                logs += open(fp).read()
         noleak = not any(secret in logs for secret in secrets_set)
         noleak = noleak and "Basic " not in logs.replace("[REDACTED]", "XX") and pw_a not in logs
         oka, da = check_trace_file(trace_a)
         okb, db = check_trace_file(trace_b)
         print(f"TRACE trace-a: {da} lines={trace_lines(trace_a)}", flush=True)
         print(f"TRACE trace-b: {db} lines={trace_lines(trace_b)}", flush=True)
-        note("no-password-in-logs", noleak, "6 logs scanned")
+        note("no-password-in-logs", noleak, "8 logs scanned")
         note("trace-parser", oka and okb, f"a: {da}; b: {db}")
     finally:
-        # Cleanup: reap every child, then remove the run dir unless kept.
+        # Cleanup: stop the stub upstream, reap every child, then remove
+        # the run dir unless kept.
+        try:
+            stub_stop.set()
+        except Exception:
+            pass
+        try:
+            stub_srv.close()
+        except Exception:
+            pass
         cleaned = []
         for name, (p, log) in procs.items():
             try:

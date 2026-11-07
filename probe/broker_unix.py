@@ -1,27 +1,55 @@
 """Broker: CONNECT auth, then forward inner HTTP to Unix socket obs.
 
-Transport bounds: every client read has a deadline and both the CONNECT
-block and the inner request block are capped at HEADER_CAP bytes. Bytes
-already buffered after the CONNECT delimiter are preserved as the start
-of the inner request. An empty or incomplete tunnel closes with no
-observation and no inner reply: nothing is forwarded, nothing is written,
-and no 200 is sent. Oversize blocks are refused with 400, also with no
+Transport bounds: every client read has a per-read deadline
+(READ_TIMEOUT) and the whole tunnel has a total cap (TOTAL_TIMEOUT)
+measured from CONNECT accept to inner complete. Bytes already buffered
+after the CONNECT delimiter are preserved as the start of the inner
+request. An empty or incomplete tunnel closes with no observation and
+no inner reply: nothing is forwarded, nothing is written, and no 200
+is sent. Oversize blocks are refused with 400, also with no
 observation. Framing refusals (Transfer-Encoding present, duplicate or
 invalid Content-Length, length above the body cap, malformed request or
 header lines, unsupported framing) are refused with 400 before any
-forward, also with no observation. Error logs never carry request bytes
-or credentials. This is a probe transport, not a general proxy: only one
-framed request per tunnel is ever forwarded.
+forward, also with no observation. A slow drip that stays under the
+per-read timeout but exceeds the total cap fails with an explicit
+408 Request Timeout (before CONNECT establishment as the CONNECT
+reply, after it as the inner reply), with no observation and no inner
+200. Upstream responses are validated as complete before forwarding:
+a response that exceeds RESP_CAP, times out, closes early, or is
+malformed is never forwarded partially; the client gets an explicit
+502 Bad Gateway instead. Error logs never carry request bytes or
+credentials. This is a probe transport, not a general proxy: only one
+framed request per tunnel is ever forwarded. Loopback only.
 """
-import sys, socket, threading, base64, os, re
+
+import sys, socket, threading, base64, os, re, time
 
 READ_TIMEOUT = 10.0
+TOTAL_TIMEOUT = 30.0
 HEADER_CAP = 16384
 BODY_CAP = 65536
+RESP_CAP = BODY_CAP + HEADER_CAP
+
+
+def _opt_float(name, default):
+    if name in sys.argv:
+        try:
+            return float(sys.argv[sys.argv.index(name) + 1])
+        except Exception:
+            return default
+    return default
+
+
+READ_TIMEOUT = _opt_float("--read-timeout", READ_TIMEOUT)
+TOTAL_TIMEOUT = _opt_float("--total-timeout", TOTAL_TIMEOUT)
 
 _METHOD_RE = re.compile(r"^[A-Z]+$")
 _VERSION_RE = re.compile(r"^HTTP/\d(\.\d)?$")
 _TOKEN_RE = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
+
+# Sentinel for total-deadline expiry. Distinct from None (empty/
+# incomplete/per-read silent close) and False (oversize 400).
+_TOTAL = object()
 
 port = int(sys.argv[sys.argv.index("--port") + 1])
 user = sys.argv[sys.argv.index("--user") + 1]
@@ -41,24 +69,84 @@ srv.listen(20)
 print(f"broker-unix listening on {port} -> {sock_path}", flush=True)
 
 
-def recv_headers(c, initial=b""):
-    """Read until end-of-headers. Returns (head, rest), None on
-    empty/incomplete/expired tunnel, False on oversize block."""
+def _remaining(deadline):
+    return deadline - time.monotonic()
+
+
+def recv_headers(c, initial=b"", deadline=None):
+    """Read until end-of-headers.
+
+    Returns (head, rest) on success, None on empty/incomplete/per-read
+    expiry (silent close), False on oversize block (400), _TOTAL on
+    total-deadline expiry (explicit 408).
+    """
     data = initial
     if len(data) > HEADER_CAP:
         return False
+    if b"\r\n\r\n" in data:
+        idx = data.find(b"\r\n\r\n") + 4
+        return (data[:idx], data[idx:])
+    if deadline is None:
+        deadline = time.monotonic() + TOTAL_TIMEOUT
     try:
         while b"\r\n\r\n" not in data:
-            ch = c.recv(4096)
+            rem = _remaining(deadline)
+            if rem <= 0:
+                return _TOTAL
+            try:
+                c.settimeout(min(READ_TIMEOUT, rem))
+                ch = c.recv(4096)
+            except (socket.timeout, TimeoutError):
+                if _remaining(deadline) <= 0:
+                    return _TOTAL
+                return None
             if not ch:
                 return None
             data += ch
             if len(data) > HEADER_CAP:
                 return False
     except (socket.timeout, TimeoutError):
+        if _remaining(deadline) <= 0:
+            return _TOTAL
         return None
     idx = data.find(b"\r\n\r\n") + 4
     return (data[:idx], data[idx:])
+
+
+def recv_body(c, initial, need, deadline):
+    """Read exactly need body bytes.
+
+    Returns bytes on success, None on truncated/per-read expiry
+    (silent close), False on oversize (silent close, legacy), _TOTAL
+    on total-deadline expiry (explicit 408).
+    """
+    body = initial
+    if len(body) >= need:
+        return body[:need]
+    if len(body) > BODY_CAP:
+        return False
+    try:
+        while len(body) < need:
+            rem = _remaining(deadline)
+            if rem <= 0:
+                return _TOTAL
+            try:
+                c.settimeout(min(READ_TIMEOUT, rem))
+                ch = c.recv(4096)
+            except (socket.timeout, TimeoutError):
+                if _remaining(deadline) <= 0:
+                    return _TOTAL
+                return None
+            if not ch:
+                return None
+            body += ch
+            if len(body) > BODY_CAP:
+                return False
+    except (socket.timeout, TimeoutError):
+        if _remaining(deadline) <= 0:
+            return _TOTAL
+        return None
+    return body[:need]
 
 
 def parse_headers(head):
@@ -109,6 +197,49 @@ def parse_headers(head):
     return req, hdrs, raw, malformed
 
 
+def parse_response(head):
+    """Strict parse of one upstream response header block.
+
+    Validates a status line of the form ``HTTP/x 200 Reason`` and the
+    same header field rules as client requests. Returns
+    (status_line, headers, raw_list, malformed).
+    """
+    try:
+        txt = head.decode("iso-8859-1")
+    except Exception:
+        return None, {}, [], True
+    lines = txt.split("\r\n")
+    status = lines[0] if lines else ""
+    parts = status.split(" ", 2)
+    malformed = False
+    if len(parts) != 3 or not _VERSION_RE.match(parts[0]) \
+            or len(parts[1]) != 3 or not parts[1].isdigit() or not parts[2]:
+        malformed = True
+    hdrs = {}
+    raw = []
+    for l in lines[1:]:
+        if l == "":
+            break
+        if ":" not in l:
+            malformed = True
+            continue
+        k, v = l.split(":", 1)
+        if not k or k != k.strip() or not _TOKEN_RE.match(k.strip()):
+            malformed = True
+            continue
+        name = k.strip().lower()
+        val = v.strip(" \t")
+        raw.append((name, val))
+        hdrs[name] = val
+    for l in lines[1:]:
+        if l == "":
+            break
+        if l[:1] in (" ", "\t"):
+            malformed = True
+            break
+    return status, hdrs, raw, malformed
+
+
 def framing_error(raw):
     """Return a reason string when framing is unsupported, else None.
 
@@ -157,10 +288,108 @@ def refuse(c):
         pass
 
 
-def handle(c):
+def timeout_reply(c):
+    """Explicit total-deadline failure: 408, no observation, no inner 200."""
     try:
-        c.settimeout(READ_TIMEOUT)
-        got = recv_headers(c)
+        c.sendall(b"HTTP/1.1 408 Request Timeout\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+    except Exception:
+        pass
+
+
+def upstream_failure(c):
+    """Explicit upstream failure: 502, never a silent partial."""
+    try:
+        c.sendall(b"HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+    except Exception:
+        pass
+
+
+def recv_upstream(u, deadline):
+    """Read one complete upstream response or return None.
+
+    Never returns a partial: oversize, timeout, early close, malformed
+    or bad framing all yield None so the caller sends 502 instead of
+    forwarding a silent truncation.
+    """
+    data = b""
+    try:
+        while b"\r\n\r\n" not in data:
+            rem = _remaining(deadline)
+            if rem <= 0:
+                return None
+            try:
+                u.settimeout(min(READ_TIMEOUT, rem))
+                ch = u.recv(4096)
+            except (socket.timeout, TimeoutError):
+                return None
+            if not ch:
+                return None
+            data += ch
+            if len(data) > HEADER_CAP:
+                return None
+        idx = data.find(b"\r\n\r\n") + 4
+        head, rest = data[:idx], data[idx:]
+        if len(head) > HEADER_CAP:
+            return None
+        _, hdrs, raw, malformed = parse_response(head)
+        if malformed or framing_error(raw) is not None:
+            return None
+        need = content_length(hdrs, raw)
+        if need < 0:
+            return None
+        if len(head) + need > RESP_CAP:
+            return None
+        has_cl = any(n == "content-length" for n, _ in raw)
+        if has_cl:
+            body = rest
+            while len(body) < need:
+                rem = _remaining(deadline)
+                if rem <= 0:
+                    return None
+                try:
+                    u.settimeout(min(READ_TIMEOUT, rem))
+                    ch = u.recv(4096)
+                except (socket.timeout, TimeoutError):
+                    return None
+                if not ch:
+                    return None
+                body += ch
+                if len(head) + len(body) > RESP_CAP:
+                    return None
+            if len(body) < need:
+                return None
+            return head + body[:need]
+        # No Content-Length: read until close within the total cap.
+        body = rest
+        while True:
+            rem = _remaining(deadline)
+            if rem <= 0:
+                return None
+            try:
+                u.settimeout(min(READ_TIMEOUT, rem))
+                ch = u.recv(4096)
+            except (socket.timeout, TimeoutError):
+                return None
+            if not ch:
+                break
+            body += ch
+            if len(head) + len(body) > RESP_CAP:
+                return None
+        return head + body
+    except (socket.timeout, TimeoutError):
+        return None
+    except Exception:
+        return None
+
+
+def handle(c):
+    start = time.monotonic()
+    deadline = start + TOTAL_TIMEOUT
+    try:
+        got = recv_headers(c, deadline=deadline)
+        if got is _TOTAL:
+            timeout_reply(c)
+            return  # total cap hit before CONNECT: explicit 408, no observation
         if got is None:
             return  # empty/incomplete CONNECT: close, no observation
         if got is False:
@@ -183,7 +412,10 @@ def handle(c):
             return
         c.sendall(b"HTTP/1.1 200 Connection Established\r\n\r\n")
         # Inner request starts with bytes already buffered after CONNECT.
-        got = recv_headers(c, initial=rest)
+        got = recv_headers(c, initial=rest, deadline=deadline)
+        if got is _TOTAL:
+            timeout_reply(c)
+            return  # slow drip: explicit 408, no observation, no inner 200
         if got is None:
             return  # empty/incomplete tunnel: close, no observation, no 200
         if got is False:
@@ -198,38 +430,45 @@ def handle(c):
         if need < 0:
             refuse(c)
             return  # bad framing: close, no observation, no 200
-        body = inner_rest
-        try:
-            while len(body) < need:
-                ch = c.recv(4096)
-                if not ch:
-                    return  # truncated body: close, no observation
-                body += ch
-                if len(body) > BODY_CAP:
-                    return
-        except (socket.timeout, TimeoutError):
-            return
-        framed = inner_head + body[:need]
+        body = recv_body(c, inner_rest, need, deadline)
+        if body is _TOTAL:
+            timeout_reply(c)
+            return  # slow body drip: explicit 408, no observation
+        if body is None or body is False:
+            return  # truncated body / per-read expiry / oversize: close, no observation
+        framed = inner_head + body
         # Forward exactly one framed request to the Unix socket observer.
         u = socket.socket(socket.AF_UNIX)
         try:
-            u.settimeout(READ_TIMEOUT)
-            u.connect(sock_path)
-            u.sendall(framed)
-            resp = b""
-            while True:
-                try:
-                    ch = u.recv(4096)
-                except (socket.timeout, TimeoutError):
-                    break
-                if not ch:
-                    break
-                resp += ch
-                if len(resp) > BODY_CAP + HEADER_CAP:
-                    break
+            rem = _remaining(deadline)
+            if rem <= 0:
+                upstream_failure(c)
+                return
+            u.settimeout(min(READ_TIMEOUT, rem))
+            try:
+                u.connect(sock_path)
+            except Exception:
+                upstream_failure(c)
+                return
+            try:
+                u.settimeout(min(READ_TIMEOUT, max(0.001, _remaining(deadline))))
+                u.sendall(framed)
+            except Exception:
+                upstream_failure(c)
+                return
+            resp = recv_upstream(u, deadline)
         finally:
-            u.close()
-        c.sendall(resp if resp else b"HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n")
+            try:
+                u.close()
+            except Exception:
+                pass
+        if resp is None:
+            upstream_failure(c)
+            return  # truncated/oversize/timed-out upstream: explicit 502, never partial
+        try:
+            c.sendall(resp)
+        except Exception:
+            pass
     except Exception:
         print("broker: transport error", flush=True)
     finally:
