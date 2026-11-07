@@ -25,13 +25,8 @@ structure RunIdentity where
   password : String
   deriving Repr, BEq
 
-/-- Broker argv. Carries the env *name* only, never the password value. -/
-def brokerArgs (script : String) (port : Nat) (id : RunIdentity)
-    (allowDest sock : String) : List String :=
-  ["-I", script, "--port", toString port, "--user", id.user,
-   "--pwenv", id.passwordEnv, "--allow", allowDest, "--sock", sock]
-
-/-- The `msb` proxy flags for one run. -/
+/-- The `msb` proxy flags for one run. Carries the env *name* only, never
+the password value. -/
 def msbProxyArgs (port : Nat) (id : RunIdentity) : List String :=
   ["--proxy", s!"http://127.0.0.1:{port}",
    "--http-connect-username", id.user,
@@ -43,13 +38,6 @@ def observedCreateArgv (name : String) (memoryMib : Nat) (allow : List AllowHost
   createArgvWithProxy name memoryMib allow
     { proxy := s!"http://127.0.0.1:{port}", username := id.user,
       passwordEnv := id.passwordEnv }
-
-#guard brokerArgs "probe/broker_unix.py" 18081
-    { user := "run-a", passwordEnv := "KALARI_BROKER_PW_A", password := "secret-value" }
-    "192.0.2.1:18080" "/tmp/run/obs.sock" ==
-  ["-I", "probe/broker_unix.py", "--port", "18081", "--user", "run-a",
-   "--pwenv", "KALARI_BROKER_PW_A", "--allow", "192.0.2.1:18080",
-   "--sock", "/tmp/run/obs.sock"]
 
 #guard msbProxyArgs 18081
     { user := "run-a", passwordEnv := "KALARI_BROKER_PW_A", password := "secret-value" } ==
