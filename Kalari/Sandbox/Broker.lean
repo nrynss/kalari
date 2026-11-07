@@ -1,17 +1,19 @@
 import Kalari.Sandbox.Microsandbox
 import Kalari.Tools.Run
+import Std.Async.TCP
+import Std.Net.Addr
 
 /-! Authenticated host broker for sandbox observation, wired for production.
 
 This module holds the per-run identity, the proxy argv (checked by the
-`#guard`s at build time) and the two live proofs, `brokerIsolation` and
-`brokerPayouts`. The proofs start Python brokers on loopback ports, so they
-are a live test, never part of `lake build`: run them with
-`tests/live/broker.sh`. Production `serve` still refuses every observer. -/
+`#guard`s at build time), the pure CONNECT framing and auth decisions
+(also `#guard`ed), and the Lean TCP broker server. The two live proofs,
+`brokerIsolation` and `brokerPayouts`, are a live test, never part of
+`lake build`: run them with `tests/live/broker.sh`. -/
 
 namespace Kalari.Sandbox.Broker
 
-open Lean Kalari.Model
+open Lean Kalari.Model Std Net
 open Kalari.Sandbox.Microsandbox
 
 /-- One per-run broker identity. `password` lives only in memory and in
@@ -65,29 +67,199 @@ def observedCreateArgv (name : String) (memoryMib : Nat) (allow : List AllowHost
     18081 { user := "run-a", passwordEnv := "KALARI_BROKER_PW_A", password := "secret-value" }).any
     (·.contains "secret-value")
 
+-- Transport bounds, mirroring the probe behavior reference. Every client
+-- read has a per-read deadline and the whole tunnel has a total cap.
+-- Header blocks are capped, bodies are capped, and only one framed
+-- request per tunnel is ever forwarded. Loopback only.
+def readTimeoutMs : Nat := 10000
+def totalTimeoutMs : Nat := 30000
+def headerCap : Nat := 16384
+def bodyCap : Nat := 65536
+
+/-- Base64 alphabet for `Proxy-Authorization` comparison. -/
+private def b64Table : String :=
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+
+private def b64Val? (c : Char) : Option Nat :=
+  match b64Table.toList.idxOf? c with
+  | some i => some i
+  | none => none
+
+/-- Standard base64 encode with `=` padding. Pure, so the gate checks it. -/
+def b64Encode (data : ByteArray) : String :=
+  let get (i : Nat) : Nat := match data[i]? with | some b => b.toNat | none => 0
+  let rec go (i : Nat) (acc : String) : String :=
+    if i < data.size then
+      let b0 := get i
+      let b1 := get (i + 1)
+      let b2 := get (i + 2)
+      let n := b0 * 65536 + b1 * 256 + b2
+      let chars := b64Table.toList
+      let c0 := chars[(n / 262144) % 64]!
+      let c1 := chars[(n / 4096) % 64]!
+      let c2 := if i + 1 < data.size then toString chars[(n / 64) % 64]! else "="
+      let c3 := if i + 2 < data.size then toString chars[n % 64]! else "="
+      go (i + 3) (acc ++ toString c0 ++ toString c1 ++ c2 ++ c3)
+    else acc
+  go 0 ""
+
+#guard b64Encode "run-a:secret".toUTF8 == "cnVuLWE6c2VjcmV0"
+#guard b64Encode "a".toUTF8 == "YQ=="
+#guard b64Encode "ab".toUTF8 == "YWI="
+#guard b64Encode "abc".toUTF8 == "YWJj"
+#guard b64Encode ByteArray.empty == ""
+
+private def hexChar (n : Nat) : Char :=
+  match n with
+  | 0 => '0' | 1 => '1' | 2 => '2' | 3 => '3' | 4 => '4'
+  | 5 => '5' | 6 => '6' | 7 => '7' | 8 => '8' | 9 => '9'
+  | 10 => 'a' | 11 => 'b' | 12 => 'c' | 13 => 'd' | 14 => 'e'
+  | _ => 'f'
+
+/-- Lowercase hex of raw random bytes. Pure, so the gate checks the shape. -/
+def hexEncode (data : ByteArray) : String :=
+  String.ofList (data.toList.flatMap fun b => [hexChar (b.toNat / 16), hexChar (b.toNat % 16)])
+
+#guard hexEncode (ByteArray.mk #[0, 255, 16]) == "00ff10"
+#guard hexEncode ByteArray.empty == ""
+
+/-- Fresh per-run identity. The password is 16 random bytes as hex;
+only the env *name* ever appears in argv. No Python, no subprocess. -/
 private def verify (cond : Bool) (msg : String) : IO Unit :=
   unless cond do throw (.userError msg)
-
-private def freshPassword : IO String := do
-  let out ← IO.Process.output {
-    cmd := "python3", args := #["-c", "import secrets; print(secrets.token_hex(16), end='')"]
-  }
-  verify (out.exitCode == 0) "password RNG failed"
-  verify (out.stdout.length == 32) "password shape"
-  return out.stdout.trimAscii.toString
 
 def freshIdentity (tag : String) : IO RunIdentity := do
   verify (!tag.isEmpty) "identity tag"
   verify (tag.toList.all (fun c => c.isAlphanum)) "identity tag chars"
-  let pw ← freshPassword
-  return { user := s!"run-{tag}", passwordEnv := s!"KALARI_BROKER_PW_{tag}", password := pw }
+  let bytes ← IO.getRandomBytes 16
+  return { user := s!"run-{tag}", passwordEnv := s!"KALARI_BROKER_PW_{tag}", password := hexEncode bytes }
 
+/-- Free loopback port via a bound-then-closed TCP socket. No Python. -/
 private def freePort : IO Nat := do
-  let out ← IO.Process.output {
-    cmd := "python3", args := #["-c", "import socket; s=socket.socket(); s.bind(('127.0.0.1',0)); print(s.getsockname()[1]); s.close()"]
-  }
-  let some port := out.stdout.trimAscii.toString.toNat? | throw (.userError "no test port")
-  return port
+  let addr ← Async.Async.block do
+    let srv ← Async.TCP.Socket.Server.mk
+    srv.bind (.v4 ⟨.ofParts 127 0 0 1, 0⟩)
+    srv.listen 5
+    srv.getSockName
+  match addr with
+  | .v4 a => pure a.port.toNat
+  | .v6 _ => throw (.userError "no test port")
+
+/-- CONNECT and inner-request decisions. Pure, so the gate checks every rule. -/
+inductive ConnectDecision where
+  | allow
+  | deny400
+  | deny405
+  | deny407
+  | deny403
+  deriving Repr, BEq, DecidableEq
+
+private def isTokenChar (c : Char) : Bool :=
+  c.isAlphanum || "!#$%&'*+-.^_`|~".toList.contains c
+
+private def isToken (s : String) : Bool :=
+  !s.isEmpty && s.toList.all isTokenChar
+
+private def isMethod (s : String) : Bool :=
+  !s.isEmpty && s.toList.all (fun c => 'A' ≤ c && c ≤ 'Z')
+
+private def isVersion (s : String) : Bool :=
+  s == "HTTP/1.0" || s == "HTTP/1.1"
+
+/-- Split a header block into request line and raw `(lower-name, value)` pairs.
+Fails closed on any malformed line, matching the probe transport. -/
+def parseHeaderBlock (block : String) : Except String (String × List (String × String)) := do
+  let lines := block.splitOn "\r\n"
+  let req ← match lines with | r :: _ => pure r | [] => throw "malformed request line"
+  let parts := req.splitOn " "
+  match parts with
+  | [m, t, v] =>
+    unless isMethod m && !t.isEmpty && !t.contains ' ' && isVersion v do
+      throw "malformed request line"
+  | _ => throw "malformed request line"
+  let mut raw : List (String × String) := []
+  for line in lines.drop 1 do
+    if line.isEmpty then break
+    if line.toList.head?.any (fun c => c == ' ' || c == '\t') then
+      throw "malformed header line"
+    match line.splitOn ":" with
+    | name :: rest =>
+      if rest.isEmpty then throw "malformed header line"
+      else do
+        if name.isEmpty || name != name.trimAscii.toString || !isToken name.trimAscii.toString then
+          throw "malformed header line"
+        -- `splitOn ":"` on `"a: b"` gives `["a", " b"]`; rejoin the tail.
+        let joined := String.intercalate ":" rest |>.trimAscii.toString
+        raw := raw ++ [(name.trimAscii.toString.toLower, joined)]
+    | [] => throw "malformed header line"
+  return (req, raw)
+
+/-- Framing refusal reason, or `none` when the header list may be forwarded.
+Rejects every Transfer-Encoding, duplicate Content-Length (even identical),
+empty, non-digit, comma-list and over-cap lengths. -/
+def framingError (raw : List (String × String)) : Option String :=
+  if raw.any (fun (n, _) => n == "transfer-encoding") then some "transfer-encoding"
+  else
+    let cls := raw.filterMap fun (n, v) => if n == "content-length" then some v else none
+    match cls with
+    | [] => none
+    | [v] =>
+      if v.isEmpty then some "empty content-length"
+      else if v.contains ',' then some "content-length list"
+      else match v.toNat? with
+        | none => some "invalid content-length"
+        | some n => if n > bodyCap then some "content-length range" else none
+    | _ => some "duplicate content-length"
+
+/-- Expected `Proxy-Authorization` value for one run identity. -/
+def expectedProxyAuth (id : RunIdentity) : String :=
+  "Basic " ++ b64Encode s!"{id.user}:{id.password}".toUTF8
+
+/-- Decide one CONNECT. `headers` are the raw pairs from `parseHeaderBlock`.
+`auth` is the exact `Proxy-Authorization` header value or `""` when absent. -/
+def decideConnect (id : RunIdentity) (allowedDest method dest auth : String)
+    (raw : List (String × String)) : ConnectDecision :=
+  if framingError raw |>.isSome then .deny400
+  else if method != "CONNECT" then .deny405
+  else if auth != expectedProxyAuth id then .deny407
+  else if dest != allowedDest then .deny403
+  else .allow
+
+private def isErr : Except String (String × List (String × String)) → Bool
+  | .error _ => true
+  | .ok _ => false
+
+#guard (parseHeaderBlock "CONNECT 192.0.2.1:18080 HTTP/1.1\r\nHost: 192.0.2.1:18080\r\nProxy-Authorization: Basic eA==\r\n\r\n").toOption ==
+  some ("CONNECT 192.0.2.1:18080 HTTP/1.1",
+    [("host", "192.0.2.1:18080"), ("proxy-authorization", "Basic eA==")])
+#guard isErr (parseHeaderBlock "BADLINE\r\n\r\n")
+#guard isErr (parseHeaderBlock "CONNECT x HTTP/1.1\r\n Bad: y\r\n\r\n")
+#guard isErr (parseHeaderBlock "CONNECT x HTTP/1.1\r\nNoColon\r\n\r\n")
+#guard framingError [] == none
+#guard framingError [("transfer-encoding", "chunked")] == some "transfer-encoding"
+#guard framingError [("content-length", "3"), ("content-length", "3")] == some "duplicate content-length"
+#guard framingError [("content-length", "")] == some "empty content-length"
+#guard framingError [("content-length", "a")] == some "invalid content-length"
+#guard framingError [("content-length", "1,2")] == some "content-length list"
+#guard framingError [("content-length", "999999")] == some "content-length range"
+#guard framingError [("content-length", "3")] == none
+#guard decideConnect { user := "run-a", passwordEnv := "E", password := "secret" }
+  "192.0.2.1:18080" "CONNECT" "192.0.2.1:18080"
+  ("Basic " ++ b64Encode "run-a:secret".toUTF8) [] == .allow
+#guard decideConnect { user := "run-a", passwordEnv := "E", password := "secret" }
+  "192.0.2.1:18080" "CONNECT" "192.0.2.1:18080" "" [] == .deny407
+#guard decideConnect { user := "run-a", passwordEnv := "E", password := "secret" }
+  "192.0.2.1:18080" "CONNECT" "192.0.2.1:18080" "Basic d3Jvbmc=" [] == .deny407
+#guard decideConnect { user := "run-a", passwordEnv := "E", password := "secret" }
+  "192.0.2.1:18080" "CONNECT" "192.0.2.1:19999"
+  ("Basic " ++ b64Encode "run-a:secret".toUTF8) [] == .deny403
+#guard decideConnect { user := "run-a", passwordEnv := "E", password := "secret" }
+  "192.0.2.1:18080" "GET" "192.0.2.1:18080"
+  ("Basic " ++ b64Encode "run-a:secret".toUTF8) [] == .deny405
+#guard decideConnect { user := "run-a", passwordEnv := "E", password := "secret" }
+  "192.0.2.1:18080" "CONNECT" "192.0.2.1:18080"
+  ("Basic " ++ b64Encode "run-a:secret".toUTF8)
+  [("transfer-encoding", "chunked")] == .deny400
 
 private def pathEnv (extra : List (String × Option String)) :
     Array (String × Option String) :=

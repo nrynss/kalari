@@ -107,6 +107,37 @@ The patterns in `Aashaan/Main.lean` and `Examples/Curl.lean`:
 
 No HTTP client, no TLS: call `curl`. **Never put a key in curl's arguments** (they show in `ps` and `/proc/<pid>/cmdline`). Send the header as config on stdin: `curl --config -` with `header = "Authorization: Bearer <key>"`, the key read from an environment variable named by the caller. Get the status code with `-w "\n%{http_code}"` and split the last line off. See `Examples/Curl.lean`.
 
+## Inbound CONNECT proxy (plain TCP)
+
+No HTTP client and no TLS in Lean still holds: outbound HTTPS goes through
+a `curl` subprocess and inbound TLS is Caddy's. Inbound CONNECT over plain
+TCP is allowed. The pattern in `Examples/TcpConnect.lean`:
+
+```lean
+let srv ← Server.mk
+srv.bind (.v4 ⟨.ofParts 127 0 0 1, 0⟩)
+srv.listen 5
+let bound ← srv.getSockName
+let client ← srv.accept
+match ← client.recv? 4096 with
+| some data => client.send data
+| none => pure ()
+```
+
+- **Bind 127.0.0.1, ephemeral port.** `getSockName` reports the port; the
+  proxy URL is always `http://127.0.0.1:<port>`.
+- **`recv?`/`send` are `Async`:** run them under `Async.block`. There is no
+  Unix-socket API in `Std` on v4.35.0: tunnel plain TCP to the allowed dest,
+  and let the observer on TCP write the page trace.
+- **Dropping the `Server` closes the listen socket** (a rebind succeeds), so
+  a stop flag plus a `tryAccept` poll loop shuts the broker down with no
+  extra close call.
+- **Auth is a string compare,** not a decode: `expected = "Basic " ++
+  b64Encode (user ++ ":" ++ password)`, checked against the exact
+  `Proxy-Authorization` value. 407 when wrong or missing, 403 on wrong dest,
+  405 on non-CONNECT, 400 on strict framing failures. See the `#guard`s in
+  `Kalari/Sandbox/Broker.lean`.
+
 ## Strings and other drift
 
 - `String.trim` is now `trimAscii`, and it returns a `String.Slice`: add `.toString` when you need a `String`.

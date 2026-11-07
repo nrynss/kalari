@@ -72,6 +72,21 @@ def proxyArgs (auth : ProxyAuth) : List String :=
 def isLoopbackProxy (proxy : String) : Bool :=
   proxy.startsWith "http://127.0.0.1:"
 
+/-- Env var name after `--http-connect-password-env`, if present. Pure, so
+the gate checks it. The value never appears in argv. -/
+def passwordEnvOfArgv : List String → Option String
+  | [] => none
+  | [_] => none
+  | flag :: name :: tail =>
+    if flag == "--http-connect-password-env" then some name
+    else passwordEnvOfArgv (name :: tail)
+
+#guard passwordEnvOfArgv ["msb", "create", "--http-connect-password-env", "KALARI_BROKER_PW_A"] ==
+  some "KALARI_BROKER_PW_A"
+#guard passwordEnvOfArgv ["msb", "create", "--name", "n"] == none
+#guard passwordEnvOfArgv [] == none
+#guard passwordEnvOfArgv ["--http-connect-password-env"] == none
+
 /-- `createArgv` plus one authenticated loopback proxy. Keeps `--no-net`,
 explicit allow rules and `--pull never`; adds no `--net-default`. -/
 def createArgvWithProxy (name : String) (memoryMib : Nat) (allow : List AllowHost)
@@ -276,9 +291,18 @@ def make (runner : Runner) (execTimeoutMs outputCap : Nat)
     invoke runner "remove" (removeArgv name) controlTimeoutMs outputCap
 
 /-- `path` is the child's whole `PATH`. The parent environment is not inherited,
-so without it the child cannot find `msb`. The checks do not call this. -/
-def live (path : String) : Runner := fun argv timeoutMs outputCap =>
-  Proc.run argv (env := #[("PATH", some path)]) (inheritEnv := false) (stdin := none)
+so without it the child cannot find `msb`. When argv carries
+`--http-connect-password-env <VAR>`, that one var is forwarded from the
+parent (per-run, in memory) so the msb child can build host CONNECT auth;
+the value never appears in argv. The checks do not call this. -/
+def live (path : String) : Runner := fun argv timeoutMs outputCap => do
+  let extra : Array (String × Option String) ← match passwordEnvOfArgv argv with
+    | none => pure #[]
+    | some name => do
+      match ← IO.getEnv name with
+      | some value => pure #[(name, some value)]
+      | none => pure #[]
+  Proc.run argv (env := #[("PATH", some path)] ++ extra) (inheritEnv := false) (stdin := none)
     (timeoutMs := timeoutMs) (outputCap := outputCap)
 
 /-- Paths are the caller's. `command` is the job argv, not wrapped again. -/
