@@ -6,6 +6,7 @@ import Kalari.Fake
 import Kalari.Gate
 import Kalari.Sandbox.Microsandbox
 import Kalari.Sandbox.Docker
+import Kalari.Sandbox.Broker
 import Kalari.Vimanam
 import Kalari.Lambo
 import Kalari.Clef

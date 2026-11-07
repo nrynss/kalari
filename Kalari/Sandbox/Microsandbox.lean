@@ -52,6 +52,35 @@ def netRule (host : AllowHost) : String :=
 def netRules (allow : List AllowHost) : List String :=
   allow.flatMap fun host => ["--net-rule", netRule host]
 
+/-- Host-side authenticated proxy for one sandbox run. `proxy` is a loopback
+URL such as `http://127.0.0.1:<port>`. `passwordEnv` names the host
+environment variable holding the per-run password; the value never appears
+in argv, files or logs. -/
+structure ProxyAuth where
+  proxy : String
+  username : String
+  passwordEnv : String
+  deriving Repr, BEq
+
+/-- `--proxy` plus host CONNECT auth. The password travels only via
+`--http-connect-password-env`; the value is never an argv entry. -/
+def proxyArgs (auth : ProxyAuth) : List String :=
+  ["--proxy", auth.proxy, "--http-connect-username", auth.username,
+   "--http-connect-password-env", auth.passwordEnv]
+
+/-- True when the proxy URL is a loopback `http://127.0.0.1:<port>` URL. -/
+def isLoopbackProxy (proxy : String) : Bool :=
+  proxy.startsWith "http://127.0.0.1:"
+
+/-- `createArgv` plus one authenticated loopback proxy. Keeps `--no-net`,
+explicit allow rules and `--pull never`; adds no `--net-default`. -/
+def createArgvWithProxy (name : String) (memoryMib : Nat) (allow : List AllowHost)
+    (auth : ProxyAuth) (image : String := imageName) : List String :=
+  ["msb", "create", "--name", name, "--cpus", "1", "--memory", s!"{memoryMib}M", "--no-net"]
+    ++ netRules allow
+    ++ proxyArgs auth
+    ++ ["--pull", "never", image]
+
 def createArgv (name : String) (memoryMib : Nat) (allow : List AllowHost)
     (image : String := imageName) : List String :=
   ["msb", "create", "--name", name, "--cpus", "1", "--memory", s!"{memoryMib}M", "--no-net"]
@@ -146,6 +175,22 @@ private def showsCreate (argv : List String) : Bool :=
     "--net-rule", "allow@203.0.113.10/32:tcp:80",
     "--net-rule", "allow@203.0.113.10/32:tcp:443", "--pull", "never", "python:3.13-slim"]
 
+#guard proxyArgs { proxy := "http://127.0.0.1:18081", username := "run-a", passwordEnv := "KALARI_BROKER_PW_A" } ==
+  ["--proxy", "http://127.0.0.1:18081", "--http-connect-username", "run-a",
+   "--http-connect-password-env", "KALARI_BROKER_PW_A"]
+
+#guard isLoopbackProxy "http://127.0.0.1:18081"
+#guard !isLoopbackProxy "http://0.0.0.0:18081"
+#guard !isLoopbackProxy "http://example.test:18081"
+
+#guard createArgvWithProxy "kalari-run-1" 256 [{ host := "203.0.113.10", port := 18090 }]
+    { proxy := "http://127.0.0.1:18081", username := "run-a", passwordEnv := "KALARI_BROKER_PW_A" } ==
+  ["msb", "create", "--name", "kalari-run-1", "--cpus", "1", "--memory", "256M", "--no-net",
+    "--net-rule", "allow@203.0.113.10/32:tcp:18090",
+    "--proxy", "http://127.0.0.1:18081", "--http-connect-username", "run-a",
+    "--http-connect-password-env", "KALARI_BROKER_PW_A",
+    "--pull", "never", "python:3.13-slim"]
+
 #guard copyInArgv "kalari-run-1" "in.txt" "/tmp/in.txt" ==
   ["msb", "copy", "-q", "in.txt", "kalari-run-1:/tmp/in.txt"]
 
@@ -161,11 +206,20 @@ private def showsCreate (argv : List String) : Bool :=
 
 #guard noNetDefault (createArgv "kalari-run-1" 256 [])
   && noNetDefault (createArgv "kalari-run-1" 256 [{ host := "203.0.113.10", port := 18090 }])
+  && noNetDefault (createArgvWithProxy "kalari-run-1" 256 [{ host := "203.0.113.10", port := 18090 }]
+    { proxy := "http://127.0.0.1:18081", username := "run-a", passwordEnv := "KALARI_BROKER_PW_A" })
   && noNetDefault (copyInArgv "kalari-run-1" "in.txt" "/tmp/in.txt")
   && noNetDefault (copyOutArgv "kalari-run-1" "/tmp/in.txt" "./out.txt")
   && noNetDefault (execArgv "kalari-run-1" overcommitCommand)
   && noNetDefault (removeArgv "kalari-run-1")
   && noNetDefault listArgv
+
+#guard pullNever (createArgvWithProxy "kalari-run-1" 256 []
+    { proxy := "http://127.0.0.1:18081", username := "run-a", passwordEnv := "KALARI_BROKER_PW_A" })
+#guard (proxyArgs { proxy := "http://127.0.0.1:18081", username := "run-a", passwordEnv := "KALARI_BROKER_PW_A" }).contains "http://127.0.0.1:18081"
+#guard !(createArgvWithProxy "kalari-run-1" 256 [{ host := "203.0.113.10", port := 18090 }]
+    { proxy := "http://127.0.0.1:18081", username := "run-a", passwordEnv := "KALARI_BROKER_PW_A" }).any
+    (·.contains "secret-value")
 
 #guard kalariNames [
     { name := "api-payouts-live", image := "python", status := "Running", created_at := "a" },
