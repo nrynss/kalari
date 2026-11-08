@@ -55,13 +55,30 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install pinned Lean toolchain
+        shell: bash
         run: |
-          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          set -euo pipefail
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 --connect-timeout 15 \
+            -o /tmp/elan-init.sh https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh
+          sh /tmp/elan-init.sh -y --default-toolchain none
+          rm -f /tmp/elan-init.sh
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
       - name: Install build dependency
         run: sudo apt-get update && sudo apt-get install -y ripgrep
       - name: Build release executables
-        run: lake build kalari kalari-aashaan
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in 1 2 3 4 5; do
+            if lake build kalari kalari-aashaan; then
+              break
+            elif [ "$i" -eq 5 ]; then
+              echo "lake build failed after 5 attempts" >&2
+              exit 1
+            else
+              sleep $((i * 5))
+            fi
+          done
       - name: Package Linux x86-64 archive
         env:
           VERSION: ${{ needs.green.outputs.version }}
