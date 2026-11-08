@@ -5,7 +5,7 @@
   "pages": {
     "judges": {
       "path": "web/fixture/rendered/judges.html",
-      "sha256": "6c6d3abff12b018c4726f7cda765d09d3bad3013c86f0da4b94e5bfe881b4dab"
+      "sha256": "814dd2eb08f81b2ecfe0e27a7ba3ffe9e9d2285bfd537ab44ea08c4d61879420"
     },
     "judges-empty": {
       "path": "web/fixture/rendered/judges-empty.html",
@@ -34,7 +34,7 @@
     "app/boot.mjs": "52ed3a653d7826d3d9080c9d50aedee1570a3bce7fba91bd69bb627d9253ce81",
     "app/format.mjs": "d6b60b8861907518dd39cae928b9e13250f61d311f111845d8524b6ca8710975",
     "app/judges.mjs": "97af312f292df18e2675408a64dde658df8639f371cc14ead5b42060a59e3c1f",
-    "app/judges023.mjs": "c4d29c7f2a19628071c73743c4e6c36402d18b8e8e30b0214d629376624a6f18",
+    "app/judges023.mjs": "f60ec8f5b318d7396e12fbf68660a2142bd1fdfd07c407a230c38c46598cd245",
     "app/labels.mjs": "eff0bf7ebc595fd8dd7b0d39eb2a6c6c72af9294a73f36a1224dc4e3f9337e24",
     "app/run.mjs": "714aa943c55dc4244ef1fc1fe8730256cf84e220d3ef3a23226e4a040688c4b1",
     "app/session.mjs": "1ed6aec3c10f3b7fb641c8de9efb3a35b1639d477d09e99e0bb612402dcecc4f",

@@ -706,7 +706,7 @@ export function judges023View({
       <p class="hero-kicker">For judges · ${modelTag("Kalari 0.2.3")}</p>
       <h2 id="hero-title">Three models, three upgrades, five repeats.</h2>
       <p>Forty-five sessions with Kalari, forty-five without. Every figure links to the run or the row behind it.</p>
-      <nav aria-label="The seven parts"><ul>
+      <nav aria-label="Page sections"><ul>
         ${sections.map(([id, label]) => `<li><a href="#${attr(id)}">${h(label)}</a></li>`).join("")}
       </ul></nav>
     </section>
