@@ -109,21 +109,39 @@ def provisionCandidateTruthCheck (checkWorkspace artifactName : String) : IO Che
     command := ["python3", candidateTruthCheckProgram, artifactName, trustedTruthArtifactName]
   }
 
-/-- Attach the fixture policy check to a trusted Run Context. Call once while
-assembling the service context, before candidate runs begin. -/
-def attachLessonBootstrapChecks (ctx : Kalari.Tools.Run.Context) : IO Kalari.Tools.Run.Context := do
-  if ctx.artifact == trustedTruthArtifactName then
-    throw <| .userError "candidate artifact name collides with the reserved v1 truth artifact"
-  let truth ← provisionCandidateTruthCheck ctx.checkWorkspace ctx.artifact
-  let checks := ctx.checks.filter (·.id != candidateTruthCheckId)
-  return { ctx with checks := checks ++ [truth] }
-
 private def isCandidateTruthCheck (artifact : String) (check : Check) : Bool :=
   check.id == candidateTruthCheckId && check.assertion == candidateTruthCheckAssertion &&
   check.command.length == 4 && check.command[0]? == some "python3" &&
   check.command[1]? == some candidateTruthCheckProgram &&
   check.command[2]? == some artifact &&
   check.command[3]? == some trustedTruthArtifactName
+
+/-- Rebind a recalled candidate-truth check to this session's artifact. The
+check program is generic: it compares the named candidate artifact against
+the same run's trusted v1 truth. A recalled lesson names the artifact of the
+session that taught it, so running it under another artifact must replace
+that argument. Anything that is not the candidate-truth program shape is left
+alone for `attachLessonBootstrapChecks` to replace. -/
+def rebindCandidateTruthCheck (artifact : String) (check : Check) : Check :=
+  if check.id == candidateTruthCheckId && check.command.length == 4 &&
+      check.command[0]? == some "python3" &&
+      check.command[1]? == some candidateTruthCheckProgram &&
+      check.command[3]? == some trustedTruthArtifactName then
+    { check with command := ["python3", candidateTruthCheckProgram, artifact, trustedTruthArtifactName] }
+  else check
+
+/-- Attach the fixture policy check to a trusted Run Context. Call once while
+assembling the service context, before candidate runs begin. A recalled
+candidate-truth check already bound to this session's artifact is kept, so
+the run shows the recalled check instead of an identical bootstrap copy;
+anything else with that ID is replaced by this session's binding. -/
+def attachLessonBootstrapChecks (ctx : Kalari.Tools.Run.Context) : IO Kalari.Tools.Run.Context := do
+  if ctx.artifact == trustedTruthArtifactName then
+    throw <| .userError "candidate artifact name collides with the reserved v1 truth artifact"
+  let truth ← provisionCandidateTruthCheck ctx.checkWorkspace ctx.artifact
+  if ctx.checks.any (isCandidateTruthCheck ctx.artifact) then return ctx
+  let checks := ctx.checks.filter (·.id != candidateTruthCheckId)
+  return { ctx with checks := checks ++ [truth] }
 
 /-- Run the independent policy fixture once per session and record its result.
 This is provenance for the last-wins rule, not a candidate-output check. -/
@@ -364,6 +382,30 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
   let checkedContext ← attachLessonBootstrapChecks runContext
   let some truthCheck := checkedContext.checks.find? (·.id == candidateTruthCheckId) | throw <| .userError "candidate truth check missing from Run Context"
   unless isCandidateTruthCheck checkedContext.artifact truthCheck do throw <| .userError "wrong candidate truth check"
+  -- A recalled candidate-truth check names the teaching session's artifact.
+  -- Rebinding moves it to this session; the bootstrap then keeps it instead
+  -- of dropping it for an identical copy, so the run shows the recalled check.
+  let taughtElsewhere : Check := { truthCheck with command :=
+    ["python3", candidateTruthCheckProgram, "payouts.jsonl", trustedTruthArtifactName] }
+  unless !isCandidateTruthCheck checkedContext.artifact taughtElsewhere do
+    throw <| .userError "rebind precondition: foreign artifact passed the local binding"
+  let rebound := rebindCandidateTruthCheck checkedContext.artifact taughtElsewhere
+  unless isCandidateTruthCheck checkedContext.artifact rebound do
+    throw <| .userError "recalled candidate-truth check did not rebind to this session"
+  unless rebindCandidateTruthCheck checkedContext.artifact check == check do
+    throw <| .userError "rebind touched a non-truth check"
+  let recallCtx := { runContext with checks := [rebound, check] }
+  let kept ← attachLessonBootstrapChecks recallCtx
+  unless kept.checks.length == 2 &&
+      (kept.checks.filter (isCandidateTruthCheck checkedContext.artifact)).length == 1 &&
+      kept.checks.contains check do
+    throw <| .userError "bootstrap dropped the rebound recalled check or a distinct recalled check"
+  let missingCtx := { runContext with checks := [check] }
+  let added ← attachLessonBootstrapChecks missingCtx
+  unless added.checks.length == 2 &&
+      (added.checks.filter (isCandidateTruthCheck checkedContext.artifact)).length == 1 do
+    throw <| .userError "bootstrap did not add its truth check when recall brought none"
+  IO.println "lesson: rebound recalled truth kept, distinct recalled check kept, missing truth added"
   let checkWorkspace : System.FilePath := checkedContext.checkWorkspace
   let policyResult ← verifyAmendedPolicyProvenance store "s" checkedContext.checkWorkspace
   unless (match policyResult with | .ok () => true | .error _ => false) do

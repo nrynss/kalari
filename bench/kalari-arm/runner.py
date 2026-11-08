@@ -154,10 +154,8 @@ with tempfile.TemporaryDirectory(prefix='kalari-arm-') as td:
         env['PATH'] = str(tools) + ':/usr/local/bin:/usr/bin:/bin'
     execute([sys.executable, HERE/'session.py', '--directory', session, '--workspace-source', a.workspace_source, '--tools', tools, '--api-host', a.api_host, '--api-port', str(a.api_port)], stdout=subprocess.DEVNULL)
     execute([tools/'lambo', 'provision', '--config', session/'lambo.toml'], stdout=subprocess.DEVNULL)
+    # Fresh store: no change-kind seeding. The first recall finds no concept.
     setup = json.loads((session/'session.json').read_text())
-    diff = execute([tools/'vimanam', 'diff', '--format', 'json', setup['old_spec'], setup['new_spec']], capture_output=True, text=True)
-    for kind in sorted({item['kind'] for item in json.loads(diff.stdout)['changes']}):
-        execute([tools/'lambo', 'derive', '--config', session/'lambo.toml', '--session', 'kalari-live', '--agent', 'kalari-live', '--content', kind, '--kind', 'resource'], stdout=subprocess.DEVNULL)
     xdg = temp/'xdg'
     execute([sys.executable, HERE/'prepare.py', '--directory', xdg, '--kalari', tools/'kalari', '--config', session/'config.json', '--session', session/'session.json'], stdout=subprocess.DEVNULL)
     env.update({'OPENCODE_CONFIG': str(xdg/'opencode.json'), 'XDG_DATA_HOME': str(xdg/'data'), 'XDG_STATE_HOME': str(xdg/'state'), 'XDG_CACHE_HOME': str(xdg/'cache'), 'XDG_CONFIG_HOME': str(xdg/'config')})

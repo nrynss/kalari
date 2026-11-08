@@ -257,6 +257,12 @@ private def test : IO Unit := IO.FS.withTempDir fun dir => do
   let stale ← call staleSrc ["pagination_changed"]
   unless stale.any (fun x => x.status == "stale" && x.stale) do
     throw <| .userError "stale lesson promoted"
+  -- A fresh store links nothing: recall is empty, not an error, so the first
+  -- run still proceeds. (The Lambo side maps the exact not-found reply to []
+  -- in `Kalari.Lambo.noConceptChecks`.)
+  let freshSrc := { src with linked := fun _ => pure [], semantic := fun _ => pure [] }
+  let fresh ← call freshSrc ["pagination_changed", "other_kind"]
+  unless fresh.isEmpty do throw <| .userError "fresh store recall was not empty"
   let ambiguousStore ← Kalari.Evidence.openStore (dir / "ambiguous")
   for _ in [0:2] do
     Kalari.Evidence.append ambiguousStore {

@@ -147,7 +147,10 @@ def dispatcher (cfg : Kalari.Config.Config) (setup : Setup) (deps : Dependencies
       let some session ← changes.get | return .error "call what_changed first"
       let kinds := (session.changes.map (·.fact.kind)).eraseDups
       let entries ← Kalari.Tools.Recall.call source kinds
-      let checks := entries.filterMap fun e => if e.status == "required" then some e.lesson.check else none
+      let recalled := entries.filterMap fun e => if e.status == "required" then some e.lesson.check else none
+      -- A recalled candidate-truth check names the teaching session's
+      -- artifact; rebind it to this session before the bootstrap dedupes.
+      let checks := recalled.map (Kalari.Tools.Lesson.rebindCandidateTruthCheck setup.artifact)
       let ctx : Kalari.Tools.Run.Context := {
         workspace := setup.workspace
         baseline := setup.baseline
@@ -659,6 +662,83 @@ private def dispatcherAllowlistTest : IO Unit := IO.FS.withTempDir fun dir => do
   unless !create.any (fun arg => arg.contains "evil" || arg.contains "18082") do
     throw <| .userError "dispatcher redirect test passed the model allowlist"
   IO.println "service dispatcher: production accepts the broker-backed observer and a model allowlist cannot replace the trusted endpoint"
+
+/-- Gate test: a fresh Lambo store answers `lambo_inspect` with the recorded
+no-concept reply; `recall_lessons` returns [] and `run_in_sandbox` proceeds
+with the bootstrap truth check and passes. -/
+private def freshStoreServer : String := String.intercalate "\n" [
+  "import json, sys",
+  "for line in sys.stdin:",
+  "    req = json.loads(line)",
+  "    m = req.get('method')",
+  "    if m == 'notifications/initialized': continue",
+  "    if m == 'initialize':",
+  "        print(json.dumps({'jsonrpc': '2.0', 'id': req.get('id'), 'result': {'protocolVersion': '2025-06-18', 'capabilities': {}}}), flush=True)",
+  "        continue",
+  "    args = req.get('params', {}).get('arguments', {})",
+  "    focus = args.get('focus', '')",
+  "    text = \"lambo_inspect: no concept matching '\" + focus + \"' in session 'kalari-live'\"",
+  "    print(json.dumps({'jsonrpc': '2.0', 'id': req.get('id'), 'result': {'content': [{'type': 'text', 'text': text}], 'isError': True}}), flush=True)" ]
+
+private def freshStoreRecallRun : IO Unit := IO.FS.withTempDir fun dir => do
+  let recorded ← IO.FS.readFile "testdata/lambo/no-concept.jsonl"
+  unless recorded.contains "lambo_inspect: no concept matching 'pagination_changed' in session 'kalari-live'" do
+    throw <| .userError "recorded Lambo no-concept reply missing"
+  let lamboConfig : Kalari.Config.Lambo := { command := ["python3", "-c", freshStoreServer], config_path := "testdata/lambo/lambo.toml" }
+  let lamboChild ← Kalari.Lambo.create lamboConfig
+  let caps : Caps := { timeout_ms := 1000, output_cap_bytes := 4096, memory_mib := 128 }
+  let allow := [{ host := "api.example.test", port := 18080 }]
+  let request : RunRequest := { workspace := "/candidate", command := ["python3", "/candidate/correct.py"], caps, allowlist := allow }
+  let endpoint : Kalari.Config.Endpoint := { endpoint := "fixture", model := "fixture", api_key_env := "FIXTURE" }
+  let decisionEndpoint : Kalari.Config.Endpoint := { endpoint := Kalari.Clef.endpoint, model := Kalari.Clef.modelName, api_key_env := "FIXTURE" }
+  let cfg : Kalari.Config.Config := { models := endpoint, decisions := decisionEndpoint, sandbox := { backend := "microsandbox", image := Kalari.Sandbox.Microsandbox.imageName, caps, allowlist := allow }, lambo := { command := ["fixture"], config_path := "fixture" } }
+  let setup : Setup := { session_id := "fresh", repo_scope := "fixture", workspace := "/candidate", old_spec := "old", new_spec := "new", baseline := { request with workspace := "/baseline", command := ["python3", "/baseline/v1_unchanged.py"] }, check_workspace := (dir / "checks").toString, evidence_workspace := dir.toString, artifact := "payouts.jsonl", aashaan := "/trusted/aashaan" }
+  let evidence ← Kalari.Evidence.openStore dir
+  let source : Kalari.Tools.Recall.Sources := { linked := Kalari.Lambo.lessons lamboChild, semantic := fun _ => pure [], resolve := fun _ => pure (.error "missing"), applies := fun _ _ => pure (.error "missing") }
+  let recalled ← Kalari.Tools.Recall.call source ["pagination_changed"]
+  unless recalled.isEmpty do throw <| .userError "fresh store recall was not empty"
+  Kalari.Lambo.shutdown lamboChild
+  let truth := String.join ((List.range 2431).map fun i => (Json.mkObj [("id", toJson s!"P{i}"), ("amount", toJson (100 + i))]).compress ++ "\n")
+  let calls ← IO.mkRef ([] : List String)
+  let tampered ← IO.mkRef false
+  let existsRef ← IO.mkRef false
+  let base := Kalari.Tools.Run.fixtureRuntime calls "correct" caps truth "" tampered existsRef
+  let lamboChild2 ← Kalari.Lambo.create lamboConfig
+  let source2 : Kalari.Tools.Recall.Sources := { linked := Kalari.Lambo.lessons lamboChild2, semantic := fun _ => pure [], resolve := fun _ => pure (.error "missing"), applies := fun _ _ => pure (.error "missing") }
+  let fixtureRunRuntime : Kalari.Tools.Run.Runtime := { base with runner := fun argv timeout output => do
+    let argv := match argv with
+      | ["msb", "copy", "-q", host, guest] =>
+        if host == setup.check_workspace then ["msb", "copy", "-q", "/checks", guest] else argv
+      | "msb" :: "exec" :: name :: "--" :: cmd =>
+        if name.contains "-check-" && cmd.head? == some "/usr/local/bin/kalari-aashaan" then
+          ["msb", "exec", name, "--"] ++ (cmd.take 8 ++ ["lesson.py"])
+        else argv
+      | _ => argv
+    base.runner argv timeout output }
+  let writer ← Kalari.Tools.Lesson.writer lamboChild2
+  let deps : Dependencies := {
+    vimanam := fun _ _ _ => pure { exitCode := some 0, stdout := (include_str "../testdata/vimanam/2.1.0/payouts.json").toUTF8, stderr := .empty, wallMs := 0, cap := .none }
+    search := fun _ _ _ => pure { exitCode := some 1, stdout := .empty, stderr := .empty, wallMs := 0, cap := .none }
+    confirm := fun _ _ => pure (.ok [])
+    writeChange := fun _ _ _ => pure (.ok "fixture")
+    source := source2
+    runtime := fixtureRunRuntime,
+    classify := fun _ _ _ => pure (.ok (.label "api_change" [] 0.8))
+    writer, evidence, secrets := [] }
+  let handler ← dispatcher cfg setup deps
+  let changed ← handler "what_changed" (Json.mkObj [("old_spec", "old"), ("new_spec", "new")])
+  unless changed.isOk do throw <| .userError "fresh store what_changed failed"
+  let runResponse ← handler "run_in_sandbox" (toJson request)
+  let runText ← match runResponse with
+    | .ok text => pure text
+    | .error e => throw <| .userError s!"fresh store run_in_sandbox failed: {e}"
+  let runJson ← IO.ofExcept (Json.parse runText)
+  unless (runJson.getObjValAs? Bool "passed").toOption == some true do
+    throw <| .userError s!"fresh store run did not pass: {runJson.compress}"
+  Kalari.Lambo.shutdown lamboChild2
+  IO.println "service fresh store: recorded no-concept reply, recall [], run proceeds and passes"
+
+#eval freshStoreRecallRun
 
 #eval dispatcherAllowlistTest
 

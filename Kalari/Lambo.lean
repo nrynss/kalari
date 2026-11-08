@@ -24,8 +24,40 @@ private def decode (msg : Json) (id : Nat) : Except String Reply := do
   if (field msg "error").isOk then throw s!"JSON-RPC error: {(← field msg "error").compress}"
   let result ← field msg "result"
   if (field result "isError").toOption == some (Json.bool true) then
-    throw s!"Lambo error: {result.compress}"
+    throw s!"Lambo tool error: {result.compress}"
   return { result, structured := (field result "structuredContent").toOption.getD Json.null }
+
+/-- Tool failures arrive as a result with `isError: true`. They answered with
+the matching id, so the child stays alive. Transport and protocol failures
+kill it. -/
+private def isToolError (e : IO.Error) : Bool :=
+  (e.toString.toSlice.dropPrefix? "Lambo tool error: ".toSlice).isSome
+
+/-- The text of a tool failure's single content item, when it has exactly one. -/
+private def toolText (e : IO.Error) : Option String := do
+  let rest ← (e.toString.toSlice.dropPrefix? "Lambo tool error: ".toSlice).map (·.toString)
+  let j ← (Json.parse rest).toOption
+  let content ← (field j "content").toOption
+  let items ← (Json.getArr? content).toOption
+  let first ← items[0]?
+  let text ← (field first "text").toOption
+  (Json.getStr? text).toOption
+
+/-- Exact Lambo reply when a focus has no concept (measured on 0.8.0 and
+0.9.0: `lambo_inspect: no concept matching '<focus>' in session '<name>'`).
+Once similar concepts exist Lambo appends a `suggestions` block naming them;
+that is still the not-found reply, not another error. The session name varies
+by deployment, so it is matched structurally; the focus must equal the
+requested change kind. Anything else rethrows. -/
+def isNoConcept (focus text : String) : Bool :=
+  match text.toSlice.dropPrefix? s!"lambo_inspect: no concept matching '{focus}' in session '".toSlice with
+  | none => false
+  | some rest =>
+    match rest.toString.splitOn "'" with
+    | [holder, tail] =>
+      if holder.isEmpty || holder.contains '\'' then false
+      else tail == "" || (tail.toSlice.dropPrefix? "\nsuggestions".toSlice).isSome
+    | _ => false
 
 private abbrev Child := IO.Process.Child { stdin := .piped, stdout := .piped, stderr := .inherit }
 structure Session where
@@ -93,11 +125,33 @@ private def session (c : Client) : IO Session := do
   if let some s ← c.state.get then
     if (← s.child.tryWait).isNone then return s
     c.state.set none
-  let s ← start c.config
-  c.state.set (some s)
-  return s
+  -- A killed child orphans Lambo's single-writer lease for about 45 s: the
+  -- next serve exits at once with no reply. Wait it out instead of failing.
+  -- Only start failures that look like a dead child retry; anything else
+  -- (bad command, bad config) fails at once.
+  let startMs ← IO.monoMsNow
+  let mut last : IO.Error := .userError "Lambo did not start"
+  while (← IO.monoMsNow) - startMs < 60000 do
+    let attempt : Except IO.Error Session ← try pure (.ok (← start c.config)) catch e => pure (.error e)
+    match attempt with
+    | .ok s =>
+      c.state.set (some s)
+      return s
+    | .error e =>
+      last := e
+      let msg := e.toString
+      if msg.contains "Lambo exited while awaiting a response" ||
+          msg.contains "held by another writer" || msg.contains "single-writer lease" then
+        IO.sleep 1000
+      else throw e
+  throw last
 
-/-- No automatic replay after an ambiguous failure: a write might already be accepted. -/
+/-- A tool failure keeps the child: it answered with the matching id, so the
+next id is consumed but the session survives. Anything else (the child is
+gone, the reply is unparseable, the id mismatches, a JSON-RPC error) kills
+the child; the next `session` waits out Lambo's orphaned single-writer lease
+(~45 s) instead of failing. No automatic replay after an ambiguous failure:
+a write might already be accepted. -/
 private def call (c : Client) (name : String) (args : List (String × Json)) : IO Reply := do
   let s ← session c
   try
@@ -106,6 +160,9 @@ private def call (c : Client) (name : String) (args : List (String × Json)) : I
     c.state.set (some s)
     return r
   catch e =>
+    if isToolError e then
+      c.state.set (some { s with nextId := s.nextId + 1 })
+      throw e
     c.state.set none
     try s.child.kill catch _ => pure ()
     try discard s.child.wait catch _ => pure ()
@@ -174,9 +231,15 @@ private def hasContradiction (j : Json) : Except String Bool := do
         return true
   return false
 
-/-- Traverse change-kind dependencies and inspect each constraint for incoming contradictions. -/
+/-- Traverse change-kind dependencies and inspect each constraint for incoming contradictions.
+An unknown change kind is zero lessons, not an error: a fresh store has no
+concept for any kind yet, so the first session must still run. Only the exact
+Lambo not-found reply is mapped; every other failure rethrows. -/
 def lessons (c : Client) (changeKind : String) : IO (List Lesson) := do
-  let graph ← inspect c changeKind
+  let graph ← try inspect c changeKind catch e =>
+    match toolText e with
+    | some text => if isNoConcept changeKind text then return [] else throw e
+    | none => throw e
   let focus ← IO.ofExcept (field graph "focus")
   if (field focus "dependents_truncated").toOption == some (Json.bool true) then
     throw <| .userError "Lambo truncated change-kind dependents"
@@ -424,6 +487,78 @@ private def childReplayChecks : IO Unit := do
   let truncatedRejected ← try let _ ← dependentIds truncated; pure false catch _ => pure true
   unless mismatchRejected && malformedHitRejected && missingHitRejected && malformedRejected && truncatedRejected do
     throw <| .userError "Lambo accepted a mismatched receipt or malformed/missing/truncated ID"
+
+private def noConceptServer : String := String.intercalate "\n" [
+  "import json, sys",
+  "n = 0",
+  "for line in sys.stdin:",
+  "    req = json.loads(line)",
+  "    m = req.get('method')",
+  "    if m == 'notifications/initialized': continue",
+  "    if m == 'initialize':",
+  "        print(json.dumps({'jsonrpc': '2.0', 'id': req.get('id'), 'result': {'protocolVersion': '2025-06-18', 'capabilities': {}}}), flush=True)",
+  "        continue",
+  "    assert m == 'tools/call'",
+  "    name = req.get('params', {}).get('name')",
+  "    args = req.get('params', {}).get('arguments', {})",
+  "    assert args.get('agent_id') == 'kalari'",
+  "    n += 1",
+  "    if n == 1:",
+  "        assert name == 'lambo_inspect' and req.get('id') == 2",
+  "        assert args.get('focus') == 'pagination_changed' and args.get('depth') == 1",
+  "        print(json.dumps({'jsonrpc': '2.0', 'id': req.get('id'), 'result': {'content': [{'type': 'text', 'text': \"lambo_inspect: no concept matching 'pagination_changed' in session 'kalari-test'\"}], 'isError': True}}), flush=True)",
+  "    elif n == 2:",
+  "        assert name == 'lambo_derive' and req.get('id') == 3",
+  "        print(json.dumps({'jsonrpc': '2.0', 'id': req.get('id'), 'result': {'content': [{'type': 'text', 'text': 'accepted'}], 'structuredContent': {'receipt': 'r1'}}}), flush=True)",
+  "    else:",
+  "        print(json.dumps({'jsonrpc': '2.0', 'id': req.get('id'), 'result': {'content': [{'type': 'text', 'text': 'unexpected call'}], 'isError': True}}), flush=True)" ]
+
+/-- Fresh store: the exact Lambo not-found reply means zero lessons, not an
+error, and a tool failure must not kill the child. -/
+private def noConceptChecks : IO Unit := do
+  let recorded := "lambo_inspect: no concept matching 'pagination_changed' in session 'kalari-live'"
+  unless isNoConcept "pagination_changed" recorded do
+    throw <| .userError "Lambo not-found matcher missed the recorded reply"
+  unless !isNoConcept "pagination_changed"
+      "lambo_inspect: no concept matching 'other_kind' in session 'kalari-live'" do
+    throw <| .userError "Lambo not-found matcher accepted another focus"
+  unless !isNoConcept "pagination_changed"
+      "lambo_recall: no concept matching 'pagination_changed' in session 'kalari-live'" do
+    throw <| .userError "Lambo not-found matcher accepted another tool"
+  unless !isNoConcept "pagination_changed" "lambo_inspect: unexpected" do
+    throw <| .userError "Lambo not-found matcher accepted another error"
+  unless isNoConcept "field_required_changed"
+      "lambo_inspect: no concept matching 'field_required_changed' in session 'kalari-live'\nsuggestions (not matches; pass a node_id or name one exactly):\n  pagination_changed [df9e6629-2476-4965-b6ad-f29c43b34c8a]" do
+    throw <| .userError "Lambo not-found matcher missed the suggestions reply"
+  unless isToolError (.userError "Lambo tool error: {\"content\":[]}") &&
+      !isToolError (.userError "Lambo exited while awaiting a response") &&
+      !isToolError (.userError "JSON-RPC error: {}") do
+    throw <| .userError "Lambo tool/transport classifier wrong"
+  let c ← create (replayConfig "testdata/lambo/no-concept.jsonl")
+  let found ← lessons c "pagination_changed"
+  unless found.isEmpty do throw <| .userError "Lambo fresh store did not return zero lessons"
+  shutdown c
+  -- A different focus against the same recorded text must rethrow, not map to [].
+  let cNeg ← create (replayConfig "testdata/lambo/no-concept.jsonl")
+  let rejectedRef ← IO.mkRef false
+  try
+    let _ ← lessons cNeg "12345678-1234-1234-1234-123456789abc"
+    pure ()
+  catch _ =>
+    rejectedRef.set true
+  shutdown cNeg
+  unless ← rejectedRef.get do throw <| .userError "Lambo swallowed a non-matching tool error"
+  -- The child survives the tool failure: the next derive answers on the same
+  -- child with the next id. A kill would restart the fake and break its order.
+  let fakeConfig : Kalari.Config.Lambo := { command := ["python3", "-c", noConceptServer], config_path := "testdata/lambo/lambo.toml" }
+  let c2 ← create fakeConfig
+  let kept ← lessons c2 "pagination_changed"
+  unless kept.isEmpty do throw <| .userError "Lambo inline fresh store did not return zero lessons"
+  let receipt ← derive c2 "resource" "pagination_changed"
+  unless receipt == "r1" do throw <| .userError "Lambo child did not survive the tool failure"
+  shutdown c2
+
+#eval noConceptChecks
 
 #eval childReplayChecks
 

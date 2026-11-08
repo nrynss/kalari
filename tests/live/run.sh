@@ -37,13 +37,7 @@ kind = "fixture"
 default_session = "kalari-live"
 TOML
 "$TOOL_BIN/lambo" provision --config "$work/lambo.toml" >/dev/null
-# Seed the isolated graph with change-kind resources; no semantic lessons and
-# no external embedding or decision service are involved.
-"$TOOL_BIN/vimanam" diff --format json "$work/old.${old##*.}" "$work/new.${new##*.}" >"$work/diff.json"
-while IFS= read -r kind; do
-  "$TOOL_BIN/lambo" derive --config "$work/lambo.toml" --session kalari-live \
-    --agent kalari-live --content "$kind" --kind resource >/dev/null
-done < <(python3 -c 'import json,sys; print("\n".join(sorted({x["kind"] for x in json.load(open(sys.argv[1]))["changes"]})))' "$work/diff.json")
+# Fresh store: no change-kind seeding. The first recall finds no concept.
 export KALARI_LIVE_DUMMY=live-test-placeholder
 python3 - "$work" "$TOOL_BIN" "$API_HOST" "$port" "$v2port" "$artifact" "$suite" "$variant" <<'PY'
 import json, os, subprocess, sys

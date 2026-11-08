@@ -307,8 +307,8 @@ start_api settlements-live settlements "$settlements_live" on
 start_api settlements-grading settlements "$settlements_grading" off
 say "apis: payouts live=loopback:${payouts_live}, payouts observer=loopback:${observer_port}, settlements live=loopback:${settlements_live}, settlements grading=loopback:${settlements_grading}"
 
-# One private Lambo store with the fixture embedder. Seed every change kind
-# from both real Vimanam diffs. No semantic lesson exists before the run.
+# One private Lambo store with the fixture embedder. Fresh: no change kind is
+# seeded, so the first recall finds no concept and returns no lessons.
 cat >"$work/lambo.toml" <<TOML
 promotion_policy = "Solo"
 [store]
@@ -320,25 +320,7 @@ kind = "fixture"
 default_session = "kalari-live"
 TOML
 "$TOOL_BIN/lambo" provision --config "$work/lambo.toml" >/dev/null
-"$TOOL_BIN/vimanam" diff --format json \
-  bench/workspaces/payout-sync/specs/openapi-v1.yaml \
-  bench/workspaces/payout-sync/specs/openapi-v2.yaml >"$work/payouts-diff.json"
-"$TOOL_BIN/vimanam" diff --format json \
-  bench/workspaces/settlement-reconcile/specs/schema-v1.graphql \
-  bench/workspaces/settlement-reconcile/specs/schema-v2.graphql >"$work/settlements-diff.json"
-python3 -I - "$work/payouts-diff.json" "$work/settlements-diff.json" >"$work/kinds.txt" <<'PY'
-import json, sys
-kinds = set()
-for path in sys.argv[1:]:
-    kinds.update(change["kind"] for change in json.load(open(path))["changes"])
-for kind in sorted(kinds):
-    print(kind)
-PY
-while IFS= read -r kind; do
-  "$TOOL_BIN/lambo" derive --config "$work/lambo.toml" --session kalari-live \
-    --agent kalari-live --content "$kind" --kind resource >/dev/null
-done <"$work/kinds.txt"
-say "lambo: private fixture store provisioned, change kinds seeded: $(tr '\n' ',' <"$work/kinds.txt" | sed 's/,$//')"
+say "lambo: private fixture store provisioned fresh, no change kinds seeded"
 
 for suite in payouts settlements; do
   mkdir -p "$work/$suite/candidate" "$work/$suite/baseline"

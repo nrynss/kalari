@@ -503,10 +503,7 @@ try:
     with open(work + "/lambo.toml", "w") as f:
         f.write(f'[store]\nkind = "sqlite"\npath = "{work}/lambo.db"\n[embedder]\nkind = "fixture"\n[serve]\ndefault_session = "containment-runs"\n')
     subprocess.run([tools + "/lambo", "provision", "--config", work + "/lambo.toml"], check=True, capture_output=True)
-    diff = subprocess.run([tools + "/vimanam", "diff", "--format", "json", old, new], check=True, capture_output=True, text=True).stdout
-    for kind in sorted({c["kind"] for c in json.loads(diff)["changes"]}):
-        subprocess.run([tools + "/lambo", "derive", "--config", work + "/lambo.toml", "--session", "containment-runs",
-                        "--agent", "containment-runs", "--content", kind, "--kind", "resource"], check=True, capture_output=True)
+    # Fresh store: no change-kind seeding. The first recall finds no concept.
     for name, value in (("config", config), ("session", setup)):
         with open(f"{work}/{name}.json", "w") as f:
             json.dump(value, f)
