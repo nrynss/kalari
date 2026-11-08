@@ -214,13 +214,9 @@ private def runPosition (records : List Kalari.Evidence.Record) (session id : St
   return none
 
 private def descriptions (values : List String) : Except String (List String) :=
-  values.mapM fun v => match v with
-    | "boundary_overlap_one" => .ok "Adjacent pages repeated one payout at their boundary."
-    | "final_page_token" => .ok "The final page carried a continuation token."
-    | "short_page_midstream" => .ok "A short page occurred before the end of the stream."
-    | "rate_limit_retry" => .ok "The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded."
-    | "amended_policy_fixture" => .ok "A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it."
-    | _ => .error s!"unknown verified behavior: {v}"
+  values.mapM fun v => match Kalari.Tools.Recall.behaviorSentences.find? (·.1 == v) with
+    | some (_, sentence) => .ok sentence
+    | none => .error s!"unknown verified behavior: {v}"
 
 private def reference (lesson : Lesson) : String :=
   s!"{lesson.observation} | kalari-lesson/v1 run_id={lesson.run_id} check_id={lesson.check.id}"
@@ -332,19 +328,48 @@ private def recordUnlocked (store : Kalari.Evidence.Store) (session runId artifa
       if old != lesson then return .error "existing lesson evidence conflicts with verified behavior"
     if lessons.any (fun old => old.check.id == signalCheck.id) then
       return .error "duplicate verified behavior check in evidence"
+    -- Lesson identity is what the lesson teaches, not the run that showed it:
+    -- change kind, check id/assertion/command before session rebinding, and
+    -- the sorted set of observed behaviours. A second passing run with the
+    -- same identity confirms the existing lesson instead of writing a new
+    -- constraint concept. The per-run duplicate cause was the constraint
+    -- content itself: `reference` embeds `run_id`, so the second run's
+    -- constraint text differed by run ID and Lambo derived a new concept
+    -- rather than matching; the prior-evidence lookup was also keyed by
+    -- run ID and missed the cross-run duplicate.
+    let currentKey := Kalari.Tools.Recall.lessonIdentityKey signalChange signalCheck
+      (Kalari.Tools.Recall.sortedBehaviors signalBehaviors)
+    let mut canonical : Option Lesson := none
+    for record in loaded.records do
+      if record.kind == "lesson" then
+        match fromJson? (α := Lesson) record.payload with
+        | .error _ => return .error "corrupt existing lesson evidence"
+        | .ok old =>
+          let oldKey := Kalari.Tools.Recall.lessonIdentityKey old.change_kind old.check
+            (Kalari.Tools.Recall.behaviorsOfObservation old.observation)
+          if oldKey == currentKey then
+            if canonical.isNone then canonical := some old
+    -- A same-run retry that already stored its lesson reuses it below too:
+    -- the canonical reference equals this run's reference, so the derive
+    -- matches (or creates on first success) exactly as before.
+    let constraintContent := match canonical with
+      | some taught => reference taught
+      | none => reference lesson
     let anchor ← match ← write.perform "resource" signalChange [] with
       | .error e => return .error e
       | .ok id => pure id
     -- Persist before publishing the reference, so a visible constraint resolves.
-    if existing.isNone then
+    -- A confirming run writes no new lesson evidence record.
+    if canonical.isNone && existing.isNone then
       Kalari.Evidence.append store { kind := "lesson", session_id := session, run_id := runId, change_kinds := [signalChange], payload := toJson lesson }
-    let concept ← match ← write.perform "constraint" (reference lesson) [anchor] with
+    let concept ← match ← write.perform "constraint" constraintContent [anchor] with
       | .error e => return .error e
       | .ok id => pure id
     match ← write.perform "observation" s!"run {runId}: {text}" [concept] with
     | .error e => return .error e
     | .ok _ => pure ()
-    lessons := lessons ++ [{ lesson with memory_concept_id := some concept }]
+    let taught := canonical.getD lesson
+    lessons := lessons ++ [{ taught with memory_concept_id := some concept }]
   return .ok lessons
 
 /-- Serialize lesson recording across all handlers owned by this Kalari service.
@@ -633,6 +658,66 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
   let concurrentEvidence ← Kalari.Evidence.load concurrentStore
   unless (concurrentEvidence.records.filter (·.kind == "lesson")).length == 1 do
     throw <| .userError "concurrent calls duplicated lesson evidence"
+
+  -- Lesson identity is shared with Recall: the candidate-truth constants here
+  -- must match the run's. A single identity function lives in Recall.
+  unless Kalari.Tools.Recall.candidateTruthCheckId == candidateTruthCheckId &&
+      Kalari.Tools.Recall.candidateTruthCheckProgram == candidateTruthCheckProgram &&
+      Kalari.Tools.Recall.candidateTruthArtifact == trustedTruthArtifactName do
+    throw <| .userError "lesson identity constants diverged from the run"
+
+  -- Two passing runs with the same lesson identity: one lesson record, one
+  -- constraint concept (the second derive reuses the canonical reference, so
+  -- Lambo matches instead of writing a new concept), two confirming
+  -- observations. The second call returns the existing lesson with its
+  -- concept id; its run ID differs, so the caller reports 0 written.
+  let idemStore ← Kalari.Evidence.openStore (dir / "idem")
+  let idemPolicy ← verifyAmendedPolicyProvenance idemStore "s" checkedContext.checkWorkspace
+  unless (match idemPolicy with | .ok () => true | .error _ => false) do
+    throw <| .userError "idem store policy provenance missing"
+  let idemRunBody : RunRecord := { run with checks := [truthCheck], check_results := [{ check_id := truthCheck.id, passed := true }, { check_id := "differential-v1", passed := true }] }
+  for id in ["idem-pass-one", "idem-pass-two"] do
+    Kalari.Evidence.append idemStore { kind := "run", session_id := "s", run_id := id, change_kinds := ["pagination_changed"], payload := toJson idemRunBody }
+    Kalari.Evidence.append idemStore { kind := "page-observation", session_id := "s", run_id := id, change_kinds := ["pagination_changed"], payload := toJson ({ source := "payouts-api", behaviors := ["boundary_overlap_one", "final_page_token"] } : PageObservation) }
+  let idemContents ← IO.mkRef ([] : List (String × String))
+  let idemWriter ← makeWriter fun kind content _ => do
+    if kind == "constraint" then idemContents.modify (· ++ [(kind, content)])
+    else if kind == "observation" then idemContents.modify (· ++ [(kind, content)])
+    else pure ()
+    return .ok (if kind == "resource" then "idem-anchor" else if kind == "constraint" then "idem-concept" else "idem-observation")
+  let idemFirst ← IO.ofExcept (← record idemStore "s" "idem-pass-one" checkedContext.artifact classify idemWriter)
+  let idemSecond ← IO.ofExcept (← record idemStore "s" "idem-pass-two" checkedContext.artifact classify idemWriter)
+  let [taught] := idemFirst | throw <| .userError "idem first run published no lesson"
+  let [confirmed] := idemSecond | throw <| .userError "idem second run published no lesson"
+  unless taught.run_id == "idem-pass-one" && confirmed.run_id == "idem-pass-one" &&
+      taught.memory_concept_id == some "idem-concept" &&
+      confirmed.memory_concept_id == some "idem-concept" do
+    throw <| .userError "idem second run did not return the existing lesson with its concept"
+  let idemEvidence ← Kalari.Evidence.load idemStore
+  unless (idemEvidence.records.filter (·.kind == "lesson")).length == 1 do
+    throw <| .userError "idem second run wrote a duplicate lesson record"
+  let wrote ← idemContents.get
+  let constraints := wrote.filter (·.1 == "constraint")
+  let observations := wrote.filter (·.1 == "observation")
+  unless constraints.length == 2 && observations.length == 2 do
+    throw <| .userError "idem runs did not derive two constraints and two observations"
+  unless (constraints.map (·.2)).eraseDups.length == 1 do
+    throw <| .userError "idem second constraint content differed by run"
+  unless (observations.map (·.2)).eraseDups.length == 2 &&
+      (observations.all fun (_, c) => c.contains "run idem-pass-") do
+    throw <| .userError "idem observations did not keep one provenance run each"
+  IO.println "lesson: same identity confirms; one lesson record, one constraint, two observations"
+
+  -- A different behaviour set is a different lesson and is written as now.
+  Kalari.Evidence.append idemStore { kind := "run", session_id := "s", run_id := "idem-pass-three", change_kinds := ["pagination_changed"], payload := toJson idemRunBody }
+  Kalari.Evidence.append idemStore { kind := "page-observation", session_id := "s", run_id := "idem-pass-three", change_kinds := ["pagination_changed"], payload := toJson ({ source := "payouts-api", behaviors := ["boundary_overlap_one", "rate_limit_retry"] } : PageObservation) }
+  let idemThird ← IO.ofExcept (← record idemStore "s" "idem-pass-three" checkedContext.artifact classify idemWriter)
+  let [third] := idemThird | throw <| .userError "different behaviours published no lesson"
+  unless third.run_id == "idem-pass-three" do
+    throw <| .userError "different behaviours did not write a new lesson"
+  let idemEvidence3 ← Kalari.Evidence.load idemStore
+  unless (idemEvidence3.records.filter (·.kind == "lesson")).length == 2 do
+    throw <| .userError "different behaviours did not write a second lesson record"
 
   -- A failure link must point backward and share the fix's indexed change kind.
   let orderStore ← Kalari.Evidence.openStore (dir / "bad-order")

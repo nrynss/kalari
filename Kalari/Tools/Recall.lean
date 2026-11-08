@@ -18,7 +18,75 @@ structure Entry where
   lesson : Kalari.Model.Lesson
   status : String
   stale : Bool
-  deriving Repr, BEq, ToJson
+  concepts : List String := []
+  confirming_runs : List String := []
+  deriving Repr, BEq, ToJson, FromJson
+
+/-- Lesson identity: what the lesson teaches, not the run that showed it.
+Change kind, the check's id, assertion and command before session rebinding
+(the candidate-truth artifact argument varies per session), and the sorted
+set of observed behaviours. The hardcoded candidate-truth constants must
+match `Kalari.Tools.Run` (`Lesson.lean` guards this); the single identity
+function lives here so both `Lesson` (deduplicating writes) and `Recall`
+(collapsing old duplicates) share it. -/
+def candidateTruthCheckId : String := "candidate-v1-truth-v1"
+def candidateTruthCheckProgram : String := "kalari_candidate_truth_check.py"
+def candidateTruthArtifact : String := "kalari-v1-truth.jsonl"
+
+def behaviorSentences : List (String × String) :=
+  [("boundary_overlap_one", "Adjacent pages repeated one payout at their boundary."),
+   ("final_page_token", "The final page carried a continuation token."),
+   ("short_page_midstream", "A short page occurred before the end of the stream."),
+   ("rate_limit_retry", "The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded."),
+   ("amended_policy_fixture", "A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.")]
+
+def sortedBehaviors (behaviors : List String) : List String :=
+  (behaviors.eraseDups.toArray.qsort (· < ·)).toList
+
+def behaviorsOfObservation (observation : String) : List String :=
+  sortedBehaviors (behaviorSentences.filterMap fun (id, sentence) =>
+    if observation.contains sentence then some id else none)
+
+def normalizeCommand (checkId : String) (command : List String) : List String :=
+  if checkId == candidateTruthCheckId && command.length == 4 &&
+      command[0]? == some "python3" &&
+      command[1]? == some candidateTruthCheckProgram &&
+      command[3]? == some candidateTruthArtifact then
+    ["python3", candidateTruthCheckProgram, "<artifact>", candidateTruthArtifact]
+  else command
+
+def lessonIdentityKey (changeKind : String) (check : Kalari.Model.Check)
+    (behaviors : List String) : String :=
+  changeKind ++ "|" ++ check.id ++ "|" ++ check.assertion ++ "|" ++
+    String.intercalate "\u0001" (normalizeCommand check.id check.command) ++ "|" ++
+    String.intercalate "," (sortedBehaviors behaviors)
+
+#guard lessonIdentityKey "pagination_changed"
+  { id := candidateTruthCheckId, assertion := "A",
+    command := ["python3", candidateTruthCheckProgram, "payouts.jsonl", candidateTruthArtifact] }
+  ["final_page_token", "boundary_overlap_one"] ==
+  lessonIdentityKey "pagination_changed"
+  { id := candidateTruthCheckId, assertion := "A",
+    command := ["python3", candidateTruthCheckProgram, "other-session.jsonl", candidateTruthArtifact] }
+  ["boundary_overlap_one", "final_page_token"]
+#guard lessonIdentityKey "pagination_changed"
+  { id := candidateTruthCheckId, assertion := "A",
+    command := ["python3", candidateTruthCheckProgram, "payouts.jsonl", candidateTruthArtifact] }
+  ["boundary_overlap_one"] !=
+  lessonIdentityKey "pagination_changed"
+  { id := candidateTruthCheckId, assertion := "A",
+    command := ["python3", candidateTruthCheckProgram, "payouts.jsonl", candidateTruthArtifact] }
+  ["boundary_overlap_one", "final_page_token"]
+#guard lessonIdentityKey "pagination_changed"
+  { id := "other-check", assertion := "A", command := ["check-once"] } ["boundary_overlap_one"] !=
+  lessonIdentityKey "pagination_changed"
+  { id := candidateTruthCheckId, assertion := "A",
+    command := ["python3", candidateTruthCheckProgram, "payouts.jsonl", candidateTruthArtifact] }
+  ["boundary_overlap_one"]
+#guard behaviorsOfObservation "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token." ==
+  ["boundary_overlap_one", "final_page_token"]
+#guard behaviorsOfObservation "nothing observed" == []
+#guard sortedBehaviors ["c", "a", "b", "a"] == ["a", "b", "c"]
 
 structure CheckReference where
   observation : String
@@ -125,7 +193,10 @@ private def resolveCandidate (source : Sources) (kind : String) (requireKind : B
   return .ok <| some { lesson with memory_concept_id := some item.id }
 
 /-- Stale lessons remain visible, explicitly labelled, and never become checks.
-Unrecognized constraints and ambiguous/missing evidence references are skipped. -/
+Unrecognized constraints and ambiguous/missing evidence references are skipped.
+Old stores may hold one constraint concept per verifying run for the same
+identity (the per-run reference used to differ by run ID); those collapse
+into one entry listing every concept ID and every confirming run. -/
 def call (source : Sources) (kinds : List String) : IO (List Entry) := do
   let mut out : List Entry := []
   let mut seen : List String := []
@@ -141,6 +212,8 @@ def call (source : Sources) (kinds : List String) : IO (List Entry) := do
             lesson := lesson
             stale := item.stale
             status := if item.stale then "stale" else "required"
+            concepts := [item.id]
+            confirming_runs := [lesson.run_id]
           }
           out := out ++ [entry]
           seen := item.id :: seen
@@ -157,9 +230,35 @@ def call (source : Sources) (kinds : List String) : IO (List Entry) := do
             pure <| match answer with
               | .ok answer => if isConfident answer kinds then "required" else "advice"
               | .error _ => "advice"
-          out := out ++ [{ lesson := lesson, stale := item.stale, status }]
+          let lesson := { lesson with memory_concept_id := some item.id }
+          out := out ++ [{ lesson := lesson, stale := item.stale, status := status, concepts := [item.id], confirming_runs := [lesson.run_id] }]
           seen := item.id :: seen
-  return out
+  -- Collapse same-identity entries: one entry per lesson identity.
+  let mut collapsed : List Entry := []
+  let mut keys : List String := []
+  for entry in out do
+    let key := lessonIdentityKey entry.lesson.change_kind entry.lesson.check
+      (behaviorsOfObservation entry.lesson.observation)
+    match keys.findIdx? (· == key) with
+    | none =>
+      keys := keys ++ [key]
+      collapsed := collapsed ++ [entry]
+    | some idx =>
+      match collapsed[idx]? with
+      | none =>
+        keys := keys ++ [key]
+        collapsed := collapsed ++ [entry]
+      | some prior =>
+        let concepts := (prior.concepts ++ entry.concepts).eraseDups
+        let runs := (prior.confirming_runs ++ entry.confirming_runs).eraseDups
+        let stale := prior.stale && entry.stale
+        let status :=
+          if stale then "stale"
+          else if prior.status == "required" || entry.status == "required" then "required"
+          else prior.status
+        collapsed := collapsed.set idx
+          { prior with concepts := concepts, confirming_runs := runs, stale := stale, status := status }
+  return collapsed
 
 private def contradiction (j : Json) : Except String Bool := do
   let focus ← j.getObjVal? "focus"
@@ -296,6 +395,34 @@ private def test : IO Unit := IO.FS.withTempDir fun dir => do
   catch error => duplicateError := error.toString
   unless duplicateError.contains "ambiguous lesson evidence" do
     throw <| .userError "recognized linked lesson did not report ambiguous evidence"
+  -- An old store holding one constraint concept per verifying run for the
+  -- same identity collapses into one entry listing every concept and run.
+  let dupStore ← Kalari.Evidence.openStore (dir / "dup-collapse")
+  let dupCheck : Kalari.Model.Check := {
+    id := "chk-paging-001", assertion := "follow the cursor to completion; records appear exactly once",
+    command := ["python3", "checks/payouts.py"] }
+  for dupRun in ["r-dup-one", "r-dup-two"] do
+    let dupLesson : Kalari.Model.Lesson := { change_kind := "pagination_changed", observation := "boundary repeats and the final cursor must be followed", run_id := dupRun, check := dupCheck }
+    Kalari.Evidence.append dupStore { kind := "lesson", session_id := "s1", run_id := dupRun, change_kinds := ["pagination_changed"], payload := toJson dupLesson }
+  let dupLinked : List Kalari.Lambo.Lesson := [
+    { id := "concept-one", label := "boundary repeats and the final cursor must be followed | kalari-lesson/v1 run_id=r-dup-one check_id=chk-paging-001", stale := false },
+    { id := "concept-two", label := "boundary repeats and the final cursor must be followed | kalari-lesson/v1 run_id=r-dup-two check_id=chk-paging-001", stale := false }]
+  let dupSrc : Sources := {
+    linked := fun _ => pure dupLinked
+    semantic := fun _ => pure []
+    resolve := evidenceResolver dupStore
+    applies := src.applies
+  }
+  let dupResult ← call dupSrc ["pagination_changed"]
+  let [collapsed] := dupResult | throw <| .userError "duplicate concepts did not collapse to one entry"
+  unless collapsed.concepts.eraseDups.length == 2 &&
+      collapsed.concepts.contains "concept-one" &&
+      collapsed.concepts.contains "concept-two" &&
+      collapsed.confirming_runs.contains "r-dup-one" &&
+      collapsed.confirming_runs.contains "r-dup-two" &&
+      collapsed.status == "required" do
+    throw <| .userError "collapsed entry did not list every concept and confirming run"
+  IO.println "recall: duplicate concepts collapse to one entry"
   unless parseReference "ordinary prose [Constraint]" == none do
     throw <| .userError "ordinary Constraint text misidentified as a lesson"
   unless (parseReference "rule text | kalari-lesson/v1 run_id=r-001 check_id=chk-paging-001").isSome do
