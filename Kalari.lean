@@ -18,6 +18,7 @@ import Kalari.Tools.Run
 import Kalari.Tools.Lesson
 import Kalari.Tools.PublishRecall
 import Kalari.Evidence
+import Kalari.RunId
 import Kalari.Http
 import Kalari.Version
 /-! Library root. Imports every library module. Does not import Kalari.Main. -/

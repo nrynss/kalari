@@ -1,4 +1,5 @@
 import Kalari.Evidence
+import Kalari.RunId
 import Kalari.Gate
 import Kalari.Sandbox.Broker
 import Kalari.Sandbox.Microsandbox
@@ -564,6 +565,52 @@ private def sanitizeTag (s : String) : String :=
   let t := String.ofList (s.toList.filter (·.isAlphanum))
   if t.isEmpty then "run" else t
 
+/-- True when a live sandbox already uses this name. Best-effort: a runner
+that cannot list (fixtures, offline paths) reports no collision, and the
+evidence-store check plus the create-time duplicate guard still hold. -/
+private def sandboxTaken (runtime : Runtime) (sandboxName : String) : IO Bool := do
+  try
+    let result ← runtime.runner ["msb", "list", "--format", "json"]
+      Microsandbox.controlTimeoutMs 65536
+    match result.exitCode with
+    | some 0 =>
+      match String.fromUTF8? result.stdout with
+      | some text =>
+        match Microsandbox.parseListed text with
+        | .ok entries => pure (entries.any (·.name == sandboxName))
+        | .error _ => pure false
+      | none => pure false
+    | _ => pure false
+  catch _ => pure false
+
+/-- Draw a purposeful run ID, skipping any ID already in the evidence store
+or live as a `kalari-run-…` sandbox. The temp directory stays a temp
+directory: nothing reads its name. Fails closed after a few collisions. -/
+private def freshRunIdWith (store : Kalari.Evidence.Store) (runtime : Runtime)
+    (draw : IO String) : ExceptT String IO String := do
+  let loaded ← liftM (Kalari.Evidence.load store)
+  let taken := fun (candidate : String) =>
+    loaded.records.any (·.run_id == candidate)
+  let mut attempt := 0
+  while attempt < Kalari.RunId.maxAttempts do
+    let candidate ← liftM <| try pure (← draw)
+      catch _ => pure ""
+    if candidate.isEmpty || !Kalari.RunId.isRunId candidate then
+      attempt := attempt + 1
+      continue
+    if taken candidate then
+      attempt := attempt + 1
+      continue
+    if ← liftM (sandboxTaken runtime (Kalari.RunId.sandboxName candidate)) then
+      attempt := attempt + 1
+      continue
+    return candidate
+  throw s!"run ID collision: no fresh run ID after {Kalari.RunId.maxAttempts} attempts"
+
+private def freshRunId (store : Kalari.Evidence.Store) (runtime : Runtime) :
+    ExceptT String IO String :=
+  freshRunIdWith store runtime Kalari.RunId.generate
+
 /-- Start one Lean broker for this exact run. Fresh per-run identity, a
 loopback bind, the run's single allowed dest as the CONNECT allow list,
 and a plain-TCP tunnel to the local observer. The password is placed in
@@ -869,8 +916,8 @@ def run (runtime : Runtime) (ctx : Context) (request : RunRequest) : IO (Except 
   | .ok () => IO.FS.withTempDir fun dir => (do
     let allow ← resolveAllowlist runtime request.allowlist
     let baselineAllow ← resolveAllowlist runtime ctx.baseline.allowlist
-    let runId := dir.fileName.getD "run"
-    let name := "kalari-" ++ runId
+    let runId ← freshRunId ctx.evidence runtime
+    let name := Kalari.RunId.sandboxName runId
     requireStep "image pull" (← liftM (Microsandbox.ensureImage runtime.runner ctx.image 4096 runtime.wait))
     let observation : Option Observation := ctx.observer.map fun item =>
       { observer := item, runId := runId, dir := dir }
@@ -1155,6 +1202,9 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
     verify (!text.contains "test-secret") "secret in report"
     let payload ← expectOk (Json.parse text)
     let id ← expectOk (payload.getObjValAs? String "run_id")
+    verify (Kalari.RunId.isRunId id) "run ID is not a purposeful run- ID"
+    verify ((Kalari.RunId.sandboxName id).startsWith "kalari-run-" &&
+      (Kalari.RunId.sandboxName id).length <= 64) "sandbox name out of msb shape"
     let verdict ← expectOk (payload.getObjValAs? Verdict "verdict")
     let checks ← expectOk (payload.getObjValAs? (List CheckResult) "checks")
     let passed ← expectOk (payload.getObjValAs? Bool "passed")
@@ -1424,6 +1474,35 @@ private def exercise : IO Unit := IO.FS.withTempDir fun dir => do
   verify (!((verifyCandidateTruthArtifact { baseRecord with checks := [] } "payouts.jsonl").isOk))
     "a run without a candidate truth check was accepted"
   IO.println "run artifact: the candidate truth check must have its ID, program and trusted artifact"
+  -- Purposeful IDs: format, evidence collision retry, sandbox-name collision
+  -- retry, and exhaustion failing closed. Old temp-dir IDs still resolve.
+  let idStore ← Kalari.Evidence.openStore (dir / "runid")
+  Kalari.Evidence.append idStore ({ kind := "run", session_id := "s", run_id := "run-0000000000", change_kinds := ["pagination_changed"], payload := toJson baseRecord } : Kalari.Evidence.Record)
+  Kalari.Evidence.append idStore ({ kind := "run", session_id := "s", run_id := "tmp.XXh51tnj", change_kinds := ["pagination_changed"], payload := toJson baseRecord } : Kalari.Evidence.Record)
+  let idCalls ← IO.mkRef []
+  let idTamper ← IO.mkRef false
+  let idExists ← IO.mkRef false
+  let idBase := fixtureRuntime idCalls "correct" caps truth truth idTamper idExists
+  -- Evidence hit, then a live sandbox name hit, then a free ID.
+  let clashRuntime : Runtime := { idBase with
+    runner := fun argv timeout output =>
+      match argv with
+      | ["msb", "list", "--format", "json"] => pure (({ cap := .none, exitCode := some 0, stdout := ("[{\"name\":\"kalari-run-1111111111\",\"image\":\"i\",\"status\":\"Running\",\"created_at\":\"t\"}]").toUTF8, stderr := ByteArray.empty, wallMs := 0 } : Kalari.Proc.Result))
+      | _ => idBase.runner argv timeout output }
+  let draws ← IO.mkRef (["run-0000000000", "run-1111111111", "run-2222222222"] : List String)
+  let draw : IO String := do
+    match ← draws.get with
+    | [] => return "run-3333333333"
+    | head :: tail => draws.set tail; return head
+  let retried ← expectOk (← (freshRunIdWith idStore clashRuntime draw).run)
+  verify (retried == "run-2222222222") "fresh ID did not skip evidence and sandbox collisions"
+  -- Exhaustion fails closed with a clear error.
+  match ← (freshRunIdWith idStore clashRuntime (pure "run-0000000000")).run with
+  | .error e => verify (e.contains "run ID collision") "exhaustion did not fail closed"
+  | .ok _ => throw (.userError "exhaustion produced an ID")
+  let oldFound := Kalari.Evidence.byRun (← Kalari.Evidence.load idStore) "tmp.XXh51tnj"
+  verify (oldFound.length == 1) "old tmp. run ID no longer resolves"
+  IO.println "run runid: format, evidence retry, sandbox-name check, old tmp. resolves"
 
 #guard (compareRecords
   "{\"id\":\"A\",\"amount\":2}\n{\"id\":\"B\",\"amount\":4}\n"

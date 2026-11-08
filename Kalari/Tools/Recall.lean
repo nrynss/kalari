@@ -141,6 +141,9 @@ def parseReference (label : String) : Option CheckReference := Id.run do
     return some { observation := legacy[0]!, runId := none, checkId }
   return none
 
+#guard (parseReference "rule text | kalari-lesson/v1 run_id=run-7f3a2c91be check_id=chk-paging-001").isSome
+#guard (parseReference "rule text | kalari-lesson/v1 run_id=tmp.XXh51tnj check_id=chk-paging-001").isSome
+
 private def validLesson (lesson : Kalari.Model.Lesson) : Bool :=
   !lesson.change_kind.isEmpty && !lesson.observation.isEmpty && !lesson.run_id.isEmpty &&
   !lesson.check.id.isEmpty && !lesson.check.assertion.isEmpty &&

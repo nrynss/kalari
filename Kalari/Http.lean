@@ -96,6 +96,15 @@ private def checks : IO Unit := IO.FS.withTempDir fun dir => do
   verify ((route loaded "POST" "/api/runs" "").1 == 404) "write route"
   verify ((route loaded "GET" "/api/runs/" "").1 == 400) "malformed id"
   verify ((route loaded "GET" "/api/runs" "body").1 == 400) "unexpected body"
+  -- New purposeful IDs and old temp-dir IDs both resolve; nothing was rewritten.
+  let newRun := sample "run" "s3" "run-7f3a2c91be" (Json.str "new")
+  let oldRun := sample "run" "s3" "tmp.XXh51tnj" (Json.str "old")
+  for r in [newRun, oldRun] do Evidence.append store r
+  let loadedBoth ← Evidence.load store
+  for (path, expected) in [("/api/runs/run-7f3a2c91be", recordsJson [newRun]),
+      ("/api/runs/tmp.XXh51tnj", recordsJson [oldRun])] do
+    let (status, result) := route loadedBoth "GET" path ""
+    verify (status == 200 && result == expected) s!"run-id compat route {path}"
   let handler : Std.Http.Internal.Test.TestHandler := fun req => do
     (@Handler.onRequest App (inferInstance) { store } req)
   let exactLimitBody := String.ofList (List.replicate 4096 'x')

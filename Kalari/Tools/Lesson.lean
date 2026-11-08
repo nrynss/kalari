@@ -1,6 +1,7 @@
 import Kalari.Evidence
 import Kalari.Lambo
 import Kalari.Clef
+import Kalari.RunId
 import Kalari.Tools.Recall
 import Kalari.Tools.Run
 import Std.Sync.Mutex
@@ -744,6 +745,39 @@ private def tests : IO Unit := IO.FS.withTempDir fun dir => do
   let kindResult ← record kindStore "s" "same-kind-fix" checkedContext.artifact api orderWriter
   unless (match kindResult with | .error e => e.contains "share a change kind" | .ok _ => false) do
     throw <| .userError "failure-to-fix link accepted different change kinds"
+
+  -- New purposeful IDs record and recall; old temp-dir IDs still resolve.
+  -- Neither shape is rewritten; the envelope accepts both.
+  unless Kalari.RunId.isRunId "run-7f3a2c91be" && !Kalari.RunId.isRunId "tmp.XXh51tnj" do
+    throw <| .userError "run-ID shape misclassified"
+  let compatStore ← Kalari.Evidence.openStore (dir / "runid-compat")
+  let compatPolicy ← verifyAmendedPolicyProvenance compatStore "s" checkedContext.checkWorkspace
+  unless (match compatPolicy with | .ok () => true | .error _ => false) do
+    throw <| .userError "compat store policy provenance missing"
+  let compatRunBody : RunRecord := { run with checks := [truthCheck], check_results := [
+    { check_id := truthCheck.id, passed := true }, { check_id := "differential-v1", passed := true }] }
+  for id in ["run-7f3a2c91be", "tmp.XXh51tnj"] do
+    Kalari.Evidence.append compatStore ({ kind := "run", session_id := "s", run_id := id, change_kinds := ["pagination_changed"], payload := toJson compatRunBody } : Kalari.Evidence.Record)
+    Kalari.Evidence.append compatStore ({ kind := "page-observation", session_id := "s", run_id := id, change_kinds := ["pagination_changed"], payload := toJson pageSignal } : Kalari.Evidence.Record)
+  let firstLessons ← IO.ofExcept (← record compatStore "s" "run-7f3a2c91be" checkedContext.artifact classify write)
+  let [first] := firstLessons | throw <| .userError "new run- ID published no lesson"
+  unless first.run_id == "run-7f3a2c91be" && first.check == truthCheck do
+    throw <| .userError "new run- ID lesson mismatch"
+  -- The old temp-dir ID teaches the same identity, so it confirms the
+  -- existing lesson instead of writing a second record.
+  let secondLessons ← IO.ofExcept (← record compatStore "s" "tmp.XXh51tnj" checkedContext.artifact classify write)
+  let [second] := secondLessons | throw <| .userError "old tmp. ID published no lesson"
+  unless second.run_id == "run-7f3a2c91be" && second.memory_concept_id == first.memory_concept_id do
+    throw <| .userError "old tmp. ID did not confirm the existing lesson"
+  for taught in [first, second] do
+    let some ref := Kalari.Tools.Recall.parseReference (reference taught) |
+      throw <| .userError "run-ID compat reference malformed"
+    let resolved ← IO.ofExcept (← Kalari.Tools.Recall.resolveEvidence compatStore ref)
+    unless resolved.run_id == "run-7f3a2c91be" && resolved.check == truthCheck do
+      throw <| .userError "run-ID compat recall mismatch"
+  unless ((← Kalari.Evidence.load compatStore).records.filter (·.kind == "lesson")).length == 1 do
+    throw <| .userError "run-ID compat wrote a duplicate lesson record"
+  IO.println "lesson: new run- IDs record and recall; old tmp. IDs still resolve"
 
 #eval tests
 end Kalari.Tools.Lesson
