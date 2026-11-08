@@ -5984,7 +5984,24 @@
         "reference-payouts-0528c14d",
         "reference-settlements-714a79df",
         "run-d963816f7f",
-        "baseline-frozen"
+        "baseline-frozen",
+        "run-856dde8551",
+        "run-de01d26e67",
+        "run-32c5d9e50c",
+        "run-793ad50991",
+        "run-80476ccd21",
+        "run-adf267fd4d",
+        "run-4390d8607b",
+        "run-4ddf6fe351",
+        "run-1ae9537652",
+        "run-2d07ba2cc4",
+        "run-c5e14ef9cc",
+        "run-9a1049a3fd",
+        "run-327f693aed",
+        "run-9792963f8a",
+        "run-a3ea4b40b2",
+        "run-aa03eea835",
+        "run-6f2e6f969a"
       ],
       "sessions": [
         "kalari-disbursements-ca4ffaaa",
@@ -6093,9 +6110,435 @@
         "reference-payouts-0528c14d",
         "reference-settlements-714a79df",
         "containment-023",
-        "baseline-frozen"
+        "baseline-frozen",
+        "glm3-learn-payouts",
+        "r1-ds-learn-payouts",
+        "r1-glm-learn-payouts",
+        "r1-mimo-learn-payouts",
+        "r1-muse-learn-payouts",
+        "r2-ds-learn-payouts",
+        "r2-glm-learn-payouts",
+        "r2-mimo-learn-payouts",
+        "r3-ds-learn-payouts",
+        "r3-glm-learn-payouts",
+        "r3-mimo-learn-payouts",
+        "r4-ds-learn-payouts",
+        "r4-glm-learn-payouts",
+        "r4-mimo-learn-payouts",
+        "r5-ds-learn-payouts",
+        "r5-glm-learn-payouts",
+        "r5-mimo-learn-payouts"
       ],
-      "lessons": [],
+      "lessons": [
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-856dde8551"
+          },
+          "run_id": "run-856dde8551",
+          "session_id": "glm3-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-de01d26e67"
+          },
+          "run_id": "run-de01d26e67",
+          "session_id": "r1-ds-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-32c5d9e50c"
+          },
+          "run_id": "run-32c5d9e50c",
+          "session_id": "r1-glm-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-793ad50991"
+          },
+          "run_id": "run-793ad50991",
+          "session_id": "r1-mimo-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-80476ccd21"
+          },
+          "run_id": "run-80476ccd21",
+          "session_id": "r1-muse-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-adf267fd4d"
+          },
+          "run_id": "run-adf267fd4d",
+          "session_id": "r2-ds-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-4390d8607b"
+          },
+          "run_id": "run-4390d8607b",
+          "session_id": "r2-glm-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-4ddf6fe351"
+          },
+          "run_id": "run-4ddf6fe351",
+          "session_id": "r2-mimo-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-1ae9537652"
+          },
+          "run_id": "run-1ae9537652",
+          "session_id": "r3-ds-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-2d07ba2cc4"
+          },
+          "run_id": "run-2d07ba2cc4",
+          "session_id": "r3-glm-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-c5e14ef9cc"
+          },
+          "run_id": "run-c5e14ef9cc",
+          "session_id": "r3-mimo-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-9a1049a3fd"
+          },
+          "run_id": "run-9a1049a3fd",
+          "session_id": "r4-ds-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-327f693aed"
+          },
+          "run_id": "run-327f693aed",
+          "session_id": "r4-glm-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-9792963f8a"
+          },
+          "run_id": "run-9792963f8a",
+          "session_id": "r4-mimo-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-a3ea4b40b2"
+          },
+          "run_id": "run-a3ea4b40b2",
+          "session_id": "r5-ds-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-aa03eea835"
+          },
+          "run_id": "run-aa03eea835",
+          "session_id": "r5-glm-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-6f2e6f969a"
+          },
+          "run_id": "run-6f2e6f969a",
+          "session_id": "r5-mimo-learn-payouts"
+        }
+      ],
       "containment": [
         {
           "change_kinds": [
@@ -6528,7 +6971,24 @@
         "reference-payouts-0528c14d",
         "reference-settlements-714a79df",
         "run-d963816f7f",
-        "baseline-frozen"
+        "baseline-frozen",
+        "run-856dde8551",
+        "run-de01d26e67",
+        "run-32c5d9e50c",
+        "run-793ad50991",
+        "run-80476ccd21",
+        "run-adf267fd4d",
+        "run-4390d8607b",
+        "run-4ddf6fe351",
+        "run-1ae9537652",
+        "run-2d07ba2cc4",
+        "run-c5e14ef9cc",
+        "run-9a1049a3fd",
+        "run-327f693aed",
+        "run-9792963f8a",
+        "run-a3ea4b40b2",
+        "run-aa03eea835",
+        "run-6f2e6f969a"
       ],
       "sessions": [
         "kalari-disbursements-ca4ffaaa",
@@ -6637,9 +7097,435 @@
         "reference-payouts-0528c14d",
         "reference-settlements-714a79df",
         "containment-023",
-        "baseline-frozen"
+        "baseline-frozen",
+        "glm3-learn-payouts",
+        "r1-ds-learn-payouts",
+        "r1-glm-learn-payouts",
+        "r1-mimo-learn-payouts",
+        "r1-muse-learn-payouts",
+        "r2-ds-learn-payouts",
+        "r2-glm-learn-payouts",
+        "r2-mimo-learn-payouts",
+        "r3-ds-learn-payouts",
+        "r3-glm-learn-payouts",
+        "r3-mimo-learn-payouts",
+        "r4-ds-learn-payouts",
+        "r4-glm-learn-payouts",
+        "r4-mimo-learn-payouts",
+        "r5-ds-learn-payouts",
+        "r5-glm-learn-payouts",
+        "r5-mimo-learn-payouts"
       ],
-      "lessons": [],
+      "lessons": [
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-856dde8551"
+          },
+          "run_id": "run-856dde8551",
+          "session_id": "glm3-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-de01d26e67"
+          },
+          "run_id": "run-de01d26e67",
+          "session_id": "r1-ds-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-32c5d9e50c"
+          },
+          "run_id": "run-32c5d9e50c",
+          "session_id": "r1-glm-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-793ad50991"
+          },
+          "run_id": "run-793ad50991",
+          "session_id": "r1-mimo-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-80476ccd21"
+          },
+          "run_id": "run-80476ccd21",
+          "session_id": "r1-muse-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-adf267fd4d"
+          },
+          "run_id": "run-adf267fd4d",
+          "session_id": "r2-ds-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-4390d8607b"
+          },
+          "run_id": "run-4390d8607b",
+          "session_id": "r2-glm-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-4ddf6fe351"
+          },
+          "run_id": "run-4ddf6fe351",
+          "session_id": "r2-mimo-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-1ae9537652"
+          },
+          "run_id": "run-1ae9537652",
+          "session_id": "r3-ds-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-2d07ba2cc4"
+          },
+          "run_id": "run-2d07ba2cc4",
+          "session_id": "r3-glm-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-c5e14ef9cc"
+          },
+          "run_id": "run-c5e14ef9cc",
+          "session_id": "r3-mimo-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-9a1049a3fd"
+          },
+          "run_id": "run-9a1049a3fd",
+          "session_id": "r4-ds-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-327f693aed"
+          },
+          "run_id": "run-327f693aed",
+          "session_id": "r4-glm-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-9792963f8a"
+          },
+          "run_id": "run-9792963f8a",
+          "session_id": "r4-mimo-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-a3ea4b40b2"
+          },
+          "run_id": "run-a3ea4b40b2",
+          "session_id": "r5-ds-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-aa03eea835"
+          },
+          "run_id": "run-aa03eea835",
+          "session_id": "r5-glm-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-6f2e6f969a"
+          },
+          "run_id": "run-6f2e6f969a",
+          "session_id": "r5-mimo-learn-payouts"
+        }
+      ],
       "containment": [
         {
           "change_kinds": [
@@ -7140,7 +8026,24 @@
         "reference-payouts-0528c14d",
         "reference-settlements-714a79df",
         "run-d963816f7f",
-        "baseline-frozen"
+        "baseline-frozen",
+        "run-856dde8551",
+        "run-de01d26e67",
+        "run-32c5d9e50c",
+        "run-793ad50991",
+        "run-80476ccd21",
+        "run-adf267fd4d",
+        "run-4390d8607b",
+        "run-4ddf6fe351",
+        "run-1ae9537652",
+        "run-2d07ba2cc4",
+        "run-c5e14ef9cc",
+        "run-9a1049a3fd",
+        "run-327f693aed",
+        "run-9792963f8a",
+        "run-a3ea4b40b2",
+        "run-aa03eea835",
+        "run-6f2e6f969a"
       ]
     },
     "session": {
@@ -7206,7 +8109,416 @@
           }
         }
       ],
-      "lessons": [],
+      "lessons": [
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-856dde8551"
+          },
+          "run_id": "run-856dde8551",
+          "session_id": "glm3-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-de01d26e67"
+          },
+          "run_id": "run-de01d26e67",
+          "session_id": "r1-ds-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-32c5d9e50c"
+          },
+          "run_id": "run-32c5d9e50c",
+          "session_id": "r1-glm-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-793ad50991"
+          },
+          "run_id": "run-793ad50991",
+          "session_id": "r1-mimo-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-80476ccd21"
+          },
+          "run_id": "run-80476ccd21",
+          "session_id": "r1-muse-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-adf267fd4d"
+          },
+          "run_id": "run-adf267fd4d",
+          "session_id": "r2-ds-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-4390d8607b"
+          },
+          "run_id": "run-4390d8607b",
+          "session_id": "r2-glm-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-4ddf6fe351"
+          },
+          "run_id": "run-4ddf6fe351",
+          "session_id": "r2-mimo-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-1ae9537652"
+          },
+          "run_id": "run-1ae9537652",
+          "session_id": "r3-ds-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-2d07ba2cc4"
+          },
+          "run_id": "run-2d07ba2cc4",
+          "session_id": "r3-glm-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-c5e14ef9cc"
+          },
+          "run_id": "run-c5e14ef9cc",
+          "session_id": "r3-mimo-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-9a1049a3fd"
+          },
+          "run_id": "run-9a1049a3fd",
+          "session_id": "r4-ds-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-327f693aed"
+          },
+          "run_id": "run-327f693aed",
+          "session_id": "r4-glm-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-9792963f8a"
+          },
+          "run_id": "run-9792963f8a",
+          "session_id": "r4-mimo-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-a3ea4b40b2"
+          },
+          "run_id": "run-a3ea4b40b2",
+          "session_id": "r5-ds-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-aa03eea835"
+          },
+          "run_id": "run-aa03eea835",
+          "session_id": "r5-glm-learn-payouts"
+        },
+        {
+          "change_kinds": [
+            "pagination_changed"
+          ],
+          "kind": "lesson",
+          "payload": {
+            "change_kind": "pagination_changed",
+            "check": {
+              "assertion": "Rule: last delivery wins by ID; candidate output must match trusted v1 final truth by exact JSONL comparison.",
+              "command": [
+                "python3",
+                "kalari_candidate_truth_check.py",
+                "payouts.jsonl",
+                "kalari-v1-truth.jsonl"
+              ],
+              "id": "candidate-v1-truth-v1"
+            },
+            "memory_concept_id": null,
+            "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+            "run_id": "run-6f2e6f969a"
+          },
+          "run_id": "run-6f2e6f969a",
+          "session_id": "r5-mimo-learn-payouts"
+        }
+      ],
       "runs": [
         "kalari-disbursements-ca4ffaaa",
         "kalari-payouts-99a2837d",
@@ -7314,7 +8626,24 @@
         "reference-payouts-0528c14d",
         "reference-settlements-714a79df",
         "run-d963816f7f",
-        "baseline-frozen"
+        "baseline-frozen",
+        "run-856dde8551",
+        "run-de01d26e67",
+        "run-32c5d9e50c",
+        "run-793ad50991",
+        "run-80476ccd21",
+        "run-adf267fd4d",
+        "run-4390d8607b",
+        "run-4ddf6fe351",
+        "run-1ae9537652",
+        "run-2d07ba2cc4",
+        "run-c5e14ef9cc",
+        "run-9a1049a3fd",
+        "run-327f693aed",
+        "run-9792963f8a",
+        "run-a3ea4b40b2",
+        "run-aa03eea835",
+        "run-6f2e6f969a"
       ]
     },
     "run-containment": {
@@ -7748,7 +9077,24 @@
         "reference-payouts-0528c14d",
         "reference-settlements-714a79df",
         "run-d963816f7f",
-        "baseline-frozen"
+        "baseline-frozen",
+        "run-856dde8551",
+        "run-de01d26e67",
+        "run-32c5d9e50c",
+        "run-793ad50991",
+        "run-80476ccd21",
+        "run-adf267fd4d",
+        "run-4390d8607b",
+        "run-4ddf6fe351",
+        "run-1ae9537652",
+        "run-2d07ba2cc4",
+        "run-c5e14ef9cc",
+        "run-9a1049a3fd",
+        "run-327f693aed",
+        "run-9792963f8a",
+        "run-a3ea4b40b2",
+        "run-aa03eea835",
+        "run-6f2e6f969a"
       ]
     }
   }

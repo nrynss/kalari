@@ -17,7 +17,7 @@ import {
   verdictWord,
 } from "./format.mjs";
 import { githubUrl, evidenceLink, modelTag } from "./views.mjs";
-import { upgradeLabel } from "./labels.mjs";
+import { changeKindLabel, upgradeLabel } from "./labels.mjs";
 
 const REPEAT_SCHEMA = "kalari.repeat.v1";
 const BASELINE_SCHEMA = "kalari.baseline.v1";
@@ -312,7 +312,22 @@ function easierSection(repeats, runIds) {
 /* 4. Learning                                                          */
 /* ------------------------------------------------------------------ */
 
-function chainSection(repeats, runIds) {
+function teachingRunFor(lessons, project, scenario) {
+  const want = `${project}-${scenario}`;
+  const found = (lessons || []).find(
+    (record) => record && record.kind === "lesson" && record.session_id === want,
+  );
+  return found && isId(found.run_id) ? found.run_id : null;
+}
+
+function sessionLink(sessionId, inner, sessions, label) {
+  if (!Array.isArray(sessions) || !sessions.includes(sessionId) || !isId(sessionId)) {
+    return `<span class="measure-missing" title="This session is not in the evidence store.">evidence missing</span>`;
+  }
+  return `<a href="${attr(sessionHref(sessionId))}" title="${attr(label)}">${inner}</a>`;
+}
+
+function chainSection(repeats, runIds, lessons, sessions) {
   const chain = repeats
     .filter((r) => payloadOf(r).chain === "glm3")
     .sort((a, b) => SCENARIOS.indexOf(payloadOf(a).scenario) - SCENARIOS.indexOf(payloadOf(b).scenario));
@@ -320,10 +335,16 @@ function chainSection(repeats, runIds) {
     .map((record) => {
       const p = payloadOf(record);
       const grade = object(p.grade) || {};
-      const lessons =
+      const lessonCell =
         p.scenario === "payouts"
-          ? `${count(p.lessons_written)} written`
-          : `${count(p.lessons_recalled)} recalled`;
+          ? (() => {
+              const teaching = teachingRunFor(lessons, p.project, p.scenario);
+              const text = `${count(p.lessons_written)} written`;
+              return teaching
+                ? runLink(teaching, h(text), runIds, "Chain lessons")
+                : runLink(record.run_id, h(text), runIds, "Chain lessons");
+            })()
+          : sessionLink(record.run_id, h(`${count(p.lessons_recalled)} recalled`), sessions, "Chain lessons");
       return `<tr>
         <td data-label="Step">${h(upgradeLabel(p.scenario))}</td>
         <td data-label="Verdict"><span class="verdict ${p.verdict === "PASS" ? "is-pass" : "is-fail"}">${h(
@@ -342,7 +363,7 @@ function chainSection(repeats, runIds) {
         "Chain wall time",
       )}</td>
         <td class="num" data-label="Cost">${runLink(record.run_id, dollars3(p.cost_usd), runIds, "Chain cost")}</td>
-        <td data-label="Lesson">${runLink(record.run_id, h(lessons), runIds, "Chain lessons")}</td>
+        <td data-label="Lesson">${lessonCell}</td>
         <td data-label="First sandbox run passed">${h(boolWord(p.right_first_time))}</td>
       </tr>`;
     })
@@ -358,7 +379,46 @@ function chainSection(repeats, runIds) {
     </table></div>`;
 }
 
-function learningSection(repeats, runIds) {
+function filmedLessonBlock(lessons, runIds) {
+  const list = lessons || [];
+  const lesson =
+    list.find((record) => record && record.kind === "lesson" && record.run_id === "run-856dde8551") ||
+    list.find((record) => record && record.kind === "lesson" && record.session_id === "glm3-learn-payouts");
+  if (!lesson) return "";
+  const taught = payloadOf(lesson);
+  const check = object(taught.check) || {};
+  const runId = lesson.run_id;
+  const observation = String(taught.observation || "No observation was recorded.");
+  const retryAt = observation.indexOf("HTTP 429");
+  const observationHtml =
+    retryAt === -1
+      ? h(observation)
+      : `${h(observation.slice(0, retryAt + 5))}${runLink(runId, "429", runIds, "Lesson observation retry")}${h(
+          observation.slice(retryAt + 8),
+        )}`;
+  const rule = String(check.assertion || "No rule was recorded.").replace(/^Rule:\s*/, "");
+  return `<h3>The filmed lesson, in full</h3>
+    <p>${modelTag(
+      "GLM 5.3 Flash",
+    )} wrote this lesson on the filmed payouts take. The observation, the rule and the check behind it are in the store with the teaching run.</p>
+    <ul class="lesson-list"><li class="lesson">
+      <h4>${h(changeKindLabel(taught.change_kind))}</h4>
+      <p>${observationHtml}</p>
+      <div class="lesson-check">
+        <p><strong>Rule:</strong> ${h(rule)}</p>
+        <p><strong>Check:</strong> ${h(check.id || "No check was recorded.")}</p>
+        ${check.command ? `<pre>${h(check.command.join(" "))}</pre>` : ""}
+      </div>
+      <p class="lesson-run">Teaching run: ${runLink(
+        runId,
+        `<code>${h(runId)}</code>`,
+        runIds,
+        `Open run ${runId}`,
+      )}</p>
+    </li></ul>`;
+}
+
+function learningSection(repeats, runIds, lessons, sessions) {
   const kalari = repeats.filter((r) => payloadOf(r).headline === true && payloadOf(r).arm === "kalari");
   const payouts = kalari.filter((r) => payloadOf(r).scenario === "payouts");
   const settlements = kalari.filter((r) => payloadOf(r).scenario === "settlements");
@@ -371,18 +431,22 @@ function learningSection(repeats, runIds) {
   const missedLinks = missed
     .map((r) => runLink(r.run_id, `<code>${h(r.run_id)}</code>`, runIds, `Open run ${r.run_id}`))
     .join(", ");
+  const exemplar = teachingRunFor(lessons, "glm3-learn", "payouts");
+  const writtenPhrase = exemplar
+    ? runLink(exemplar, "one lesson", runIds, `Open run ${exemplar}`)
+    : "one lesson";
   return `<section id="learning" class="section" aria-labelledby="learning-title">
     <p class="hero-kicker">Learning, measured</p>
     <h2 id="learning-title">Every payouts repeat wrote the lesson. The later upgrades recalled it.</h2>
-    <p>Every repeat payouts session wrote one lesson. Settlements recalled it ${runLink(
+    <p>Every repeat payouts session wrote ${writtenPhrase}. Settlements recalled it ${sessionLink(
     settMedian.run_id,
     `${count(settlements.length)}/${count(settlements.length)}`,
-    runIds,
+    sessions,
     "Settlements recalled",
-  )}. Disbursements recalled it ${runLink(
+  )}. Disbursements recalled it ${sessionLink(
     disMedian.run_id,
     `${count(recalledDis.length)}/${count(disbursements.length)}`,
-    runIds,
+    sessions,
     "Disbursements recalled",
   )}: all but ${missedLinks}.</p>
     <p>Payouts lessons written overall: ${runLink(
@@ -391,7 +455,8 @@ function learningSection(repeats, runIds) {
     runIds,
     "Lessons written",
   )}.</p>
-    ${chainSection(repeats, runIds)}
+    ${filmedLessonBlock(lessons, runIds)}
+    ${chainSection(repeats, runIds, lessons, sessions)}
     <p class="fine-print">Kalari never ran without the lesson, so the lesson alone is not shown to cause the result. The chain shows recall working across upgrades, not a controlled comparison.</p>
   </section>`;
 }
@@ -629,7 +694,7 @@ function everyRunSection(repeats, runIds) {
   </section>`;
 }
 
-function sessionsSection(repeats, sessions) {
+function sessionsSection(repeats, sessions, lessons) {
   const ids = new Set((sessions || []).filter((id) => typeof id === "string" && isId(id)));
   const byGroup = new Map();
   for (const record of repeats) {
@@ -663,9 +728,17 @@ function sessionsSection(repeats, sessions) {
       )}"><code>${h(id)}</code></a></li></ul></div>`,
     )
     .join("");
+  const lessonSessions = [...new Set((lessons || []).map((record) => record && record.session_id).filter((id) => typeof id === "string" && isId(id) && ids.has(id)))].sort();
+  const lessonGroup = lessonSessions.length
+    ? `<div class="session-group"><h3>Lesson sessions</h3><p>Each payouts session below wrote the lesson its teaching run proved. Open one to read the lesson, the run and its checks.</p><ul>${lessonSessions
+        .map(
+          (id) => `<li><a href="${attr(sessionHref(id))}"><code>${h(id)}</code></a></li>`,
+        )
+        .join("")}</ul></div>`
+    : "";
   return `<section id="sessions" class="section section--sessions" aria-labelledby="sessions-title">
     <h2 id="sessions-title">Read a session</h2>
-    ${groups}${extra}
+    ${groups}${lessonGroup}${extra}
   </section>`;
 }
 
@@ -716,11 +789,11 @@ export function judges023View({
     ${problemSection(repeats, runIds)}
     ${headlineSection(repeats, runIds)}
     ${easierSection(repeats, runIds)}
-    ${learningSection(repeats, runIds)}
+    ${learningSection(repeats, runIds, lessons, sessions)}
     ${containmentSection(containment || [], runIds)}
     ${excludedSection(repeats, runIds)}
     ${baselineSection(benchmark, runIds)}
     ${everyRunSection(repeats, runIds)}
-    ${sessionsSection(repeats, sessions)}
+    ${sessionsSection(repeats, sessions, lessons)}
   </article>`;
 }

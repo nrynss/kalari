@@ -1113,8 +1113,27 @@ MODEL_IDS = ("glm-5.3-flash", "deepseek-v4.1-flash-1017", "mimo-v2.6-flash")
 UPGRADES = ("payouts", "settlements", "disbursements")
 
 
-def expected_figures(benchmark: list, containment: list) -> list:
-    """Every 0.2.3 figure as (title, run id, text). Mirrors judges023.mjs."""
+def teaching_run_for(lessons: list, project: str, scenario: str):
+    """The run_id of the lesson a project wrote for a scenario, if published."""
+    want = f"{project}-{scenario}"
+    for record in lessons or []:
+        if (
+            isinstance(record, dict)
+            and record.get("kind") == "lesson"
+            and record.get("session_id") == want
+            and isinstance(record.get("run_id"), str)
+            and record.get("run_id")
+        ):
+            return record["run_id"]
+    return None
+
+
+def expected_figures(benchmark: list, containment: list, lessons: list | None = None) -> list:
+    """Every 0.2.3 figure as (title, run id, text). Mirrors judges023.mjs.
+
+    Recalled counts link the session row that shows them, so they carry a
+    session target. The filmed chain payouts lesson links its teaching run.
+    """
     repeats = repeats_of(benchmark)
     kalari, alone = arm_sets(repeats)
     figures: list = []
@@ -1196,14 +1215,15 @@ def expected_figures(benchmark: list, containment: list) -> list:
     # The easier upgrades.
     easy = [r for r in alone if payload_of(r).get("scenario") != "disbursements"]
     figures.append(("Easier pass tally", median_run(easy, "wall_time_s")["run_id"], f"{format_count(passed(easy))}/{format_count(len(easy))}"))
-    # Learning.
+    # Learning. Recalled counts link the session row showing them; the
+    # filmed chain payouts lesson links its teaching run.
     sett = [r for r in kalari if payload_of(r).get("scenario") == "settlements"]
     dis = [r for r in kalari if payload_of(r).get("scenario") == "disbursements"]
     payouts_learn = [r for r in kalari if payload_of(r).get("scenario") == "payouts"]
     recalled = [r for r in dis if payload_of(r).get("lessons_recalled", 0) > 0]
     figures += [
-        ("Settlements recalled", median_run(sett, "wall_time_s")["run_id"], f"{format_count(len(sett))}/{format_count(len(sett))}"),
-        ("Disbursements recalled", median_run(recalled, "wall_time_s")["run_id"], f"{format_count(len(recalled))}/{format_count(len(dis))}"),
+        ("Settlements recalled", "session:" + median_run(sett, "wall_time_s")["run_id"], f"{format_count(len(sett))}/{format_count(len(sett))}"),
+        ("Disbursements recalled", "session:" + median_run(recalled, "wall_time_s")["run_id"], f"{format_count(len(recalled))}/{format_count(len(dis))}"),
         ("Lessons written", median_run(payouts_learn, "wall_time_s")["run_id"], format_count(sum(payload_of(r).get("lessons_written", 0) for r in payouts_learn))),
     ]
     chain = sorted(
@@ -1213,13 +1233,26 @@ def expected_figures(benchmark: list, containment: list) -> list:
     for record in chain:
         payload = payload_of(record)
         grade = payload.get("grade") or {}
-        lessons = "1 written" if payload.get("scenario") == "payouts" else "1 recalled"
-        figures += [
-            ("Chain records", record["run_id"], f"{format_count(grade.get('records'))} of {format_count(grade.get('expected'))}"),
-            ("Chain wall time", record["run_id"], format_seconds1(payload.get("wall_time_s"))),
-            ("Chain cost", record["run_id"], format_money3(payload.get("cost_usd"))),
-            ("Chain lessons", record["run_id"], lessons),
-        ]
+        if payload.get("scenario") == "payouts":
+            teaching = teaching_run_for(lessons, payload.get("project"), "payouts") or record["run_id"]
+            figures += [
+                ("Chain records", record["run_id"], f"{format_count(grade.get('records'))} of {format_count(grade.get('expected'))}"),
+                ("Chain wall time", record["run_id"], format_seconds1(payload.get("wall_time_s"))),
+                ("Chain cost", record["run_id"], format_money3(payload.get("cost_usd"))),
+                ("Chain lessons", teaching, f"{format_count(payload.get('lessons_written'))} written"),
+            ]
+        else:
+            figures += [
+                ("Chain records", record["run_id"], f"{format_count(grade.get('records'))} of {format_count(grade.get('expected'))}"),
+                ("Chain wall time", record["run_id"], format_seconds1(payload.get("wall_time_s"))),
+                ("Chain cost", record["run_id"], format_money3(payload.get("cost_usd"))),
+                ("Chain lessons", "session:" + record["run_id"], f"{format_count(payload.get('lessons_recalled'))} recalled"),
+            ]
+    # The filmed lesson, in full: the retry count inside the observation
+    # links the teaching run that observed it.
+    filmed = teaching_run_for(lessons, "glm3-learn", "payouts")
+    if filmed is not None:
+        figures.append(("Lesson observation retry", filmed, format_count(429)))
     # Qwen and Muse.
     def group(model_id: str, arm: str) -> list:
         return sorted(
@@ -1350,11 +1383,21 @@ class TableParser(HTMLParser):
             self.anchor["text"].append(data)
 
 
-def assert_figures(name: str, html: str, benchmark: list, run_ids: set, containment: list) -> None:
-    """Every 0.2.3 figure matches the records, and every figure links its run."""
-    expected = expected_figures(benchmark, containment)
+def assert_figures(
+    name: str,
+    html: str,
+    benchmark: list,
+    run_ids: set,
+    containment: list,
+    lessons: list | None = None,
+    sessions: list | None = None,
+) -> None:
+    """Every 0.2.3 figure matches the records, and every figure links its run
+    or, for recalled counts, the session row showing it."""
+    expected = expected_figures(benchmark, containment, lessons)
     parser = JudgesParser()
     parser.feed(html)
+    session_ids = set(sessions or [])
     actual = []
     for anchor in parser.anchors:
         title = anchor["attrs"].get("title", "")
@@ -1367,12 +1410,17 @@ def assert_figures(name: str, html: str, benchmark: list, run_ids: set, containm
             check(kind == "github", f"on {name}, the baseline figure {title!r} does not link its source")
             actual.append((title, "github:bench/RESULTS.md", anchor["text"]))
         elif title and (title in REPEAT_TITLES or title.startswith("Open run ") or title == "Open containment run"):
-            run_id = anchor["attrs"].get("data-run-link")
             if title.startswith("Open run ") or title == "Open containment run":
                 continue
-            check(run_id, f"on {name}, the figure {title!r} has no data-run-link")
-            check(run_id in run_ids, f"on {name}, the figure {title!r} links {run_id!r}, which is not in /api/runs")
-            actual.append((title, run_id, anchor["text"]))
+            run_id = anchor["attrs"].get("data-run-link")
+            if run_id:
+                check(run_id in run_ids, f"on {name}, the figure {title!r} links {run_id!r}, which is not in /api/runs")
+                actual.append((title, run_id, anchor["text"]))
+                continue
+            session_id = session_id_from_href(anchor.get("href", ""))
+            check(session_id, f"on {name}, the figure {title!r} links neither a run nor a session")
+            check(session_id in session_ids, f"on {name}, the figure {title!r} links {session_id!r}, which is not in /api/sessions")
+            actual.append((title, f"session:{session_id}", anchor["text"]))
     check(
         Counter(actual) == Counter(expected),
         f"on {name}, {len(actual)} figures do not match the {len(expected)} expected from the records",
@@ -1404,6 +1452,7 @@ REPEAT_TITLES = {
     "Chain wall time",
     "Chain cost",
     "Chain lessons",
+    "Lesson observation retry",
     "Excluded Qwen Kalari tally",
     "Excluded Muse Kalari tally",
     "Excluded Qwen alone tally",
@@ -1426,9 +1475,17 @@ REPEAT_TITLES = {
 }
 
 
-def assert_number_discipline(name: str, html: str, run_ids: set) -> None:
+SESSION_FIGURE_TITLES = {
+    "Settlements recalled",
+    "Disbursements recalled",
+    "Chain lessons",
+}
+
+
+def assert_number_discipline(name: str, html: str, run_ids: set, sessions: list | set | None = None) -> None:
     """Every number on the judges page is either a model name or sits inside a
-    working run, GitHub, section or session link."""
+    working run, GitHub, section or session link. Recalled counts link the
+    session row showing them instead of a run."""
     parser = JudgesParser()
     parser.feed(html)
     figures = [item for item in parser.numbers if len(item) < 4 or not item[3]]
@@ -1455,7 +1512,10 @@ def assert_number_discipline(name: str, html: str, run_ids: set) -> None:
         elif kind == "section":
             check(title in ("Cost ratio", "Wall time ratio"), f"on {name}, the section link {text!r} is not a ratio")
         elif kind == "session":
-            check(text == target, f"on {name}, the session link shows {text!r} instead of {target!r}")
+            if title in SESSION_FIGURE_TITLES:
+                check(target in set(sessions or []), f"on {name}, the figure {text!r} links {target!r}, which is not in /api/sessions")
+            else:
+                check(text == target, f"on {name}, the session link shows {text!r} instead of {target!r}")
         else:
             raise Failure(f"on {name}, the anchor {text!r} shows a number outside a run, source or section link")
     # Every bare number was collected with its anchor above: only numbers
@@ -2000,8 +2060,8 @@ def assert_page_shapes(inputs: dict) -> None:
     benchmark = data["benchmark"]
     run_ids = set(data["runs"])
     html = read_page("judges")
-    assert_figures("judges", html, benchmark, run_ids, data.get("containment") or [])
-    assert_number_discipline("judges", html, run_ids)
+    assert_figures("judges", html, benchmark, run_ids, data.get("containment") or [], data.get("lessons"), data.get("sessions"))
+    assert_number_discipline("judges", html, run_ids, data.get("sessions"))
     assert_reachability("judges", html, benchmark, run_ids, data.get("sessions"))
     assert_copy("judges", html, benchmark)
     assert_every_run_table("judges", html, benchmark, run_ids)
@@ -2032,6 +2092,78 @@ def assert_served_023(base: str) -> None:
     containment = get_json(base, f"/api/sessions/{CONTAINMENT_SESSION}")
     check(containment_record_of(containment) is not None, "the containment session has no killed run")
     say(f"{len(repeats)} repeats, the baseline and the containment run are served")
+
+
+FILMED_TEACHING_RUN = "run-856dde8551"
+
+
+def assert_lesson_store(base: str, html: str) -> None:
+    """The published lessons match the rows, resolve to runs, and open."""
+    lessons = get_json(base, "/api/lessons")
+    benchmark = get_json(base, "/api/benchmark")
+    runs = set(get_json(base, "/api/runs"))
+    sessions = set(get_json(base, "/api/sessions"))
+    repeats = repeats_of(benchmark)
+    expected = sum(payload_of(record).get("lessons_written", 0) for record in repeats)
+    check(lessons, "/api/lessons returned no records")
+    check(
+        len(lessons) == expected,
+        f"/api/lessons holds {len(lessons)} lesson records, expected {expected} from lessons_written",
+    )
+    for record in lessons:
+        run_id = record.get("run_id")
+        session_id = record.get("session_id")
+        check(run_id in runs, f"the lesson run {run_id!r} has no run record")
+        check(session_id in sessions, f"the lesson session {session_id!r} has no session record")
+    for record in lessons:
+        detail = get_json(base, id_path(base, "runs", record["run_id"]))
+        kinds = {item.get("kind") for item in detail}
+        check(
+            {"run", "check", "lesson", "page-observation"} <= kinds,
+            f"the teaching run {record['run_id']!r} is missing its run, check, lesson or page-observation record",
+        )
+    check(FILMED_TEACHING_RUN in runs, f"the filmed teaching run {FILMED_TEACHING_RUN} is not in /api/runs")
+    filmed = get_json(base, id_path(base, "runs", FILMED_TEACHING_RUN))
+    check(
+        any(item.get("kind") == "lesson" for item in filmed),
+        f"the filmed teaching run {FILMED_TEACHING_RUN} shows no lesson it wrote",
+    )
+    check(
+        f"run.html?id={FILMED_TEACHING_RUN}" in html,
+        "the Learning section does not open the filmed teaching run",
+    )
+    say(
+        f"{len(lessons)} published lessons match lessons_written, every lesson run resolves, "
+        f"and the filmed run {FILMED_TEACHING_RUN} opens from the Learning section"
+    )
+
+
+def assert_lesson_records_private() -> None:
+    """The lesson-store kinds carry no path, IP, host, URL, user name or key.
+
+    The whole-store scans cover the fixture and published files; this pins the
+    new kinds explicitly, including the home-path and host-name rules that only
+    the published-data scan states.
+    """
+    text = EVIDENCE.read_text(encoding="utf-8")
+    kept: list[str] = []
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        record = json.loads(line)
+        if isinstance(record, dict) and record.get("kind") in ("lesson", "run", "check", "page-observation"):
+            kept.append(line)
+    blob = "\n".join(kept)
+    check(kept, "the fixture evidence store holds no lesson-store record")
+    check("/home/" not in blob, "a lesson-store record contains a home path")
+    check(not IPV4_RE.findall(blob), "a lesson-store record contains an IP address")
+    check(not EMAIL_RE.findall(blob), "a lesson-store record contains an email address")
+    for pattern in SECRET_RES:
+        check(not pattern.search(blob), f"a lesson-store record matches a secret pattern: {pattern.pattern}")
+    check("http://" not in blob and "https://" not in blob, "a lesson-store record contains a URL")
+    check("microsandbox.internal" not in blob, "a lesson-store record contains a host name")
+    check("kfilm" not in blob, "a lesson-store record contains a user name")
+    say(f"{len(kept)} lesson-store records hold no path, IP, host, URL or key")
 
 
 def assert_published_rows_match() -> None:
@@ -2216,6 +2348,7 @@ def main() -> int:
     assert_no_external_urls()
     assert_github_pins()
     assert_private_data_is_absent()
+    assert_lesson_records_private()
     assert_rendered_pages_private()
     assert_published_has_no_banner()
     assert_csp_shells()
@@ -2239,6 +2372,7 @@ def main() -> int:
         runs = set(get_json(server.base, "/api/runs"))
         benchmark = get_json(server.base, "/api/benchmark")
         assert_served_023(server.base)
+        assert_lesson_store(server.base, read_page("judges"))
         assert_page_shapes(inputs)
         assert_tables_labelled()
         assert_served_pages_local(server.base)

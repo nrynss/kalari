@@ -18,7 +18,7 @@ These public endpoints return JSON. They support GET and HEAD. Reads do not star
 - [Run IDs](/api/runs): Fetch each returned ID at /api/runs/ID.
 - [Session IDs](/api/sessions): Fetch each returned ID at /api/sessions/ID.
 - [Benchmark records](/api/benchmark): Each record carries its measurement payload.
-- [Published lessons](/api/lessons): An empty list means no lesson records were returned.
+- [Published lessons](/api/lessons): The published lessons of the 0.2.3 repeats and the filmed chain: one lesson per payouts session, each with its change kind, check and teaching run.
 
 Run details include evidence records with kind, session_id, run_id, and payload.
 The interactive run viewer uses run.html?id=ID. The session viewer uses session.html?id=ID.
@@ -29,5 +29,5 @@ The frozen comparison and manufactured showcase are separate datasets.
 The containment demonstration deliberately triggers a runaway cursor loop. It stays separate from benchmark totals.
 A process can exit zero while verification fails. Read the checks and passed value alongside the process verdict.
 Clef probabilities express a model's opinion. They are separate from measured outcomes.
-The frozen comparison rows ran on an earlier build whose production validation refused the observer, so those rows carry no lessons and show no learned-memory benefit. Results from current version are being added.
+The frozen comparison rows ran on an earlier build whose production validation refused the observer, so those rows carry no lessons and show no learned-memory benefit. The 0.2.3 repeats published their lessons: /api/lessons holds the lessons the payouts repeats and the filmed chain wrote, each with the check that must pass and the teaching run behind it.
 The original benchmark and filming runs used earlier builds. New release fixes do not rewrite those rows.

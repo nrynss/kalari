@@ -5,7 +5,7 @@
   "pages": {
     "judges": {
       "path": "web/fixture/rendered/judges.html",
-      "sha256": "aaffc32e986c60e86439ad108b75f09893a529cccf9484f58aff8a0c3579b5ad"
+      "sha256": "7becc514a08398871f6c66ede5b19c573fecb15a09a116ecd9282bde4a7ee9c9"
     },
     "judges-empty": {
       "path": "web/fixture/rendered/judges-empty.html",
@@ -34,24 +34,24 @@
     "app/boot.mjs": "52ed3a653d7826d3d9080c9d50aedee1570a3bce7fba91bd69bb627d9253ce81",
     "app/format.mjs": "d6b60b8861907518dd39cae928b9e13250f61d311f111845d8524b6ca8710975",
     "app/judges.mjs": "97af312f292df18e2675408a64dde658df8639f371cc14ead5b42060a59e3c1f",
-    "app/judges023.mjs": "9edf21e94f82df6d7a56d98911fcf2cd08c7139bcabb53d50dc89a43bee250f1",
+    "app/judges023.mjs": "ad0d71ae05c84f6abf770eabc4af2f1db6a1bf42eb4072b76b7df98349c9fba5",
     "app/labels.mjs": "eff0bf7ebc595fd8dd7b0d39eb2a6c6c72af9294a73f36a1224dc4e3f9337e24",
     "app/run.mjs": "714aa943c55dc4244ef1fc1fe8730256cf84e220d3ef3a23226e4a040688c4b1",
     "app/session.mjs": "1ed6aec3c10f3b7fb641c8de9efb3a35b1639d477d09e99e0bb612402dcecc4f",
     "app/views.mjs": "c4ec92b28e6ff78badc0563d5ee64000d8856ac3a0c509063d71ed05ec18d6c8",
     "favicon.svg": "39bc2680150226e985565c8138030fe3dc788427d3b3a04c0ae934c8e6e9f0d2",
     "index.html": "7aa80a0ef2375ba3cc3042130304ae60828e521725ef36ca7e9b9f71832c9b27",
-    "llms.txt": "d71949bee5ac85290545a5301c55adcc264a900406250798a22e28c2914fc08a",
+    "llms.txt": "ab10ce8c09c9bfab5f23015d153a3c43ce288145c45466244eda48abff7bed37",
     "run.html": "34f103395aaa3d7966d2b5ae752bfb9d51a9ef1994e8663e6404ab507225dbe1",
     "session.html": "9f44cc96a656df28902a0c9f1e647be4b8e21ace2ac6da26dc451ba282843134",
     "share.png": "1bdfd10ad9ed1b4a0e1a305c68ead67ac7bf842a6f187ac3b56d2935ff47c46b"
   },
   "inputs": {
     "path": "web/fixture/rendered/inputs.json",
-    "sha256": "86090d9beb2e66190f529b4e57329b4513bc1e4fb525dd4c4ead39f7126d24a1"
+    "sha256": "9e90c69061d68383cbfa10ceb2c9d11d2fc89d7292f1e838441bc3ac406dbb8d"
   },
   "evidence": {
     "path": "web/fixture/evidence.jsonl",
-    "sha256": "9acad437550f5df275e1133986cf198cc8b218e2488d0119c0fa07ce892b9069"
+    "sha256": "a9bf26805d4446f658a4650da38a2c51e65c4e58a71101b48ed19e94a5c32810"
   }
 }
