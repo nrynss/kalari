@@ -83,6 +83,12 @@ Keep one project and one store across upgrades so each session recalls what earl
   alt="The first upgrade session writes a lesson to the shared store. The second upgrade session recalls it as required, runs the rebound check, and confirms the same lesson with no duplicate."
 />
 
+## Enforced across upgrades, measured
+
+The 0.2.3 repeats ran one project and one store per repeat across three upgrades in order — payouts, settlements, disbursements — and the lesson carried every time. Payouts wrote one lesson in every repeat (15/15 across DeepSeek V4.1 Flash, GLM 5.3 Flash, and MiMo V2.6 Flash): the page boundary repeats a record, a token sits on the final page, 429 means retry the identical request, and the last value by ID preserves truth. Settlements recalled it in 15/15 sessions; disbursements in 14/15. Recall is not advice: the service attaches every required recalled check before the run, so the new output must satisfy the old lesson. The one MiMo disbursements session that recalled nothing still passed. No Kalari session ran in a project whose store lacked the payouts lesson. Sources: the repeat rows behind `slides/data/results.json` (payouts `lessons_published`, settlements and disbursements `recall_required_checks`, all 45 evidence checks passing).
+
+The filmed GLM chain shows what that enforcement buys in one shared project: payouts wrote the lesson ($0.026, 57.4 s), settlements recalled it and passed first time — 1,873 of 1,873 in 27.7 s at $0.012, quoting the lesson back — and disbursements recalled it and passed first time too, 2,341 of 2,341 in 21.5 s at $0.009. That per-step drop is one filmed chain, not a repeat statistic. DeepSeek and MiMo learned the same way: settlements recalled 5 of 5 for both. Nothing here says DeepSeek verifies on its own: alone it failed disbursements 4 of 5.
+
 ## Configuring the observer
 
 Add the observer block to `session.json`. `server` names the observed API implementation file. `endpoint` names the guest-visible destination: the host must be the sandbox gateway alias, and that endpoint must also appear in the `sandbox.allowlist` of `kalari.json`.

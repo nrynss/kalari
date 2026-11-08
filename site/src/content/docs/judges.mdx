@@ -1,41 +1,50 @@
 ---
 title: Judges walkthrough
-description: Every result in demo order, each figure linked to a live run and a repo file.
+description: Every result in demo order, each figure linked to its source rows.
 ---
 
-import figures from '../../data/figures.json';
-import HeadlineStats from '../../components/HeadlineStats.astro';
-import FrozenTable from '../../components/FrozenTable.astro';
-import ShowcaseTable from '../../components/ShowcaseTable.astro';
-import Diagram from '../../components/Diagram.astro';
 import DocLink from '../../components/DocLink.astro';
 import RepoLink from '../../components/RepoLink.astro';
 
-This page walks every result in the order of the [demo video on the submission page](https://lablab.build/ai-hackathons/vultr-hackathon/kalari/kalari-contained-rehearsals-for-api-upgrades). Each figure links to its run on the [live console](https://kalari.nryn.dev/) and to its file on GitHub, pinned to commit {figures.commit.slice(0, 12)}. A build-time step recomputes every number from the committed evidence. The build fails when a figure disagrees with `bench/RESULTS.md`.
+This page walks every result in the order of the [demo video on the submission page](https://lablab.build/ai-hackathons/vultr-hackathon/kalari/kalari-contained-rehearsals-for-api-upgrades). Every number below comes from `slides/data/results.json`: three models, three upgrades, five repeats each way, plus the filmed takes it names. The method, the cost rule, and the limits sit on the <DocLink to="evidence/">Evidence and limits</DocLink> page.
 
-Both arms run the same OpenCode 2 with the same model, DeepSeek V4.1 Flash on Vultr Serverless Inference. The only difference is whether Kalari is plugged in.
+Both arms run the same OpenCode 2.2.5 with the same model on Vultr Serverless Inference. Alone means microsandbox-mcp with no Kalari tools. With Kalari means the `kalari serve` MCP entry. The only difference is whether Kalari is plugged in.
 
 ## The problem
 
-The reference run motivates the whole project. A v1 consumer exits 0 with `imported 100 items`. The hidden grader counts 2,431 records and finds 2,331 missing. The process said success and lost the data. The setup is documented in <RepoLink path="bench/reference-paging/README.md">bench/reference-paging/README.md</RepoLink>. It is a stack check, not a comparison.
+The reference run motivates the whole project. GLM 5.3 Flash migrates a payments importer, calls the API own `/v2/verify`, and reports the upgrade verified. The hidden grader counts 23 records with wrong amounts: FAIL, 23 mismatched. The process said success and lost the data. The same failure shipped alone on DeepSeek V4.1 Flash and MiMo V2.6 Flash. Source: `takes/2026-11-08-user-glm-disbursements-reference.mkv`, results.json `facts.problem`.
 
-## The frozen comparison
+## The fix
 
-Sixty sessions ran the frozen pair. Kalari ran 20. The reference ran 40. The hidden grader passed every session in both arms.
+Same model, with Kalari. Every record is checked against the old API. PASS, all 2,341 of 2,341. Source: `takes/2026-11-08-user-glm3-disbursements-kalari.mkv` (Kalari 0.2.3), results.json `facts.fixed`.
 
-<HeadlineStats />
+## Learning across upgrades
 
-Cost per session reads about 0.019 USD against 0.082 USD. That is 4.2 times cheaper. Wall time reads about 26 seconds against 84 seconds. That is 3.3 times faster. Time stuck reads 0 seconds against 799 seconds. Sandbox runs read 58 against 85.
+One project and one store stay shared across three upgrades in order: payouts, settlements, disbursements. On payouts the observer saw records repeat at page boundaries, a token on the last page, and a 429 answered by retrying the identical request. That became one lesson. Read how the lesson is written and enforced on the <DocLink to="learn/">How Kalari learns</DocLink> page.
 
-Kalari runs more sandbox executions per session because it also runs v1 for the differential. Token columns are not compared across arms. Kalari tokens count step totals without cache reads. Reference tokens count the account usage delta. Cost is the fair column. Both arms use the same price rule.
+Next session, settlements recalled the lesson, the agent quoted it back, and passed first time: 1,873 of 1,873 in 27.7 s at $0.012. Disbursements recalled it too and passed first time: 2,341 of 2,341 in 21.5 s at $0.009. Payouts wrote at $0.026 and 57.4 s. That per-step drop is one filmed chain, not a repeat statistic. DeepSeek and MiMo learned the same way: settlements recalled 5 of 5 for both. Sources: `takes/2026-11-08-user-glm3-{payouts,settlements,disbursements}-kalari.mkv`, the settlement agent quote in its events file, results.json `facts.learning` and `chain`.
 
-<FrozenTable />
+## Across three models
 
-PASS means the hidden grader passed the final file. RFT means the first consumer run against v2 already passed. RFT is about the session path, not the final file. Two condition 5 payouts sessions stopped early on repeated tool failure, yet their final files still graded PASS. The table states counts, never shares.
+Three models, three upgrades, five times each. With Kalari, all 45 passed. Alone, 34: disbursements failed 11 times in 15. Payouts and settlements passed alone for every model, 15 of 15 each, so the pass-rate edge sits in disbursements. Nothing here says DeepSeek verifies on its own: alone it failed disbursements 4 of 5.
 
-## Learned memory
+| Model | Payouts alone / Kalari | Settlements alone / Kalari | Disbursements alone / Kalari |
+|---|---|---|---|
+| DeepSeek V4.1 Flash | 5/5, 5/5 | 5/5, 5/5 | 1/5, 5/5 |
+| GLM 5.3 Flash | 5/5, 5/5 | 5/5, 5/5 | 0/5, 5/5 |
+| MiMo V2.6 Flash | 5/5, 5/5 | 5/5, 5/5 | 3/5, 5/5 |
 
-Results from current version are being added.
+Passed means the hidden grader passed the final file, of 5 sessions per cell. One repeat each way for Qwen3.8 27B and Muse Glimmer 30B sits outside this grid by user decision. Source: `repeats-table.txt` (aggregate over the repeat rows, groups arm-scenario-model), Kalari 0.2.3, results.json `grid`.
+
+## The numbers
+
+Across all 45 sessions each way, Kalari cost 2.8 times less and finished 2.8 times faster, and passed every session:
+
+- Cost per session: $0.024 with Kalari against $0.067 alone.
+- Wall time per session: 58 s with Kalari against 166 s alone.
+- Passed the hidden grader: 45 of 45 with Kalari against 34 of 45 alone.
+
+Earlier baseline, the frozen 60-session DeepSeek benchmark: $0.019 vs $0.082 per session (<RepoLink path="bench/RESULTS.md">bench/RESULTS.md</RepoLink> section 2). Alone includes 2 sessions stopped at the 900 s cap. Source: results.json `numbers`.
 
 ## Containment
 
@@ -45,17 +54,9 @@ Two runs stand outside the comparison. They are ordinary published runs with the
 - Run 2: the paced retry loop fetched 68 pages, then the aashaan killed it at 5,009 ms against the 5,000 ms cap. Verdict `killed_timeout`.
 - The boundary: one allowed port answered, four unnamed targets refused. Cleanup removed every sandbox and left no child process.
 
-## Across models
-
-The showcase is a manufactured scenario, not a frozen pair. It demos the differential check on models that can also run self-hosted. The agent docs are true sentence by sentence. The trap is a gap: they never say which delivery of a repeated record is current.
-
-<ShowcaseTable />
-
-Without Kalari, four sessions ship silent corruption. The agent deduplicates keeping the first delivery, the API self-check passes on ids only, and the session ends in success with 23 wrong amounts. With Kalari, the enforced differential reports 23 changed in every affected session. One of four then fixes the consumer and reaches 0 changed before the session ends. The other three ship the broken file anyway, but the failure is surfaced and recorded. On DeepSeek the arms do not diverge: the strong model compares against v1 unasked. MiMo could not drive the harness at all, a loud failure, not a silent one. Costs and walls come from the committed files. <RepoLink path="bench/showcase/disbursements/QUIRKS.md">QUIRKS.md</RepoLink> maps each behaviour to server code.
-
 ## What this does not show
 
-The table shows cost, attempts, containment, and correctness for the frozen rows. Results from current version are being added. Five repeats per condition is a small sample. Treat every count as raw. Do not generalize beyond this pair. Condition 1 and condition 6 match condition 5 on verdicts and beat it on right-first-time. The limits use the same tone as the results.
+The table shows cost, wall time, and correctness for the repeat rows. Five repeats per cell is a small sample. Treat every count as raw. Do not generalize beyond these APIs and models. No Kalari session ran in a project whose store lacked the payouts lesson, so there is no Kalari-without-lesson arm to compare against. The limits use the same tone as the results.
 
 ## Where to look next
 
@@ -65,9 +66,3 @@ The table shows cost, attempts, containment, and correctness for the frozen rows
 - The live judges page and the run pages on the [demo host](https://kalari.nryn.dev/).
 - The <DocLink to="architecture/">Architecture</DocLink> page for the gate, the tools, and the run pipeline.
 - The <DocLink to="containment/">Containment</DocLink> page for the timeout scene, the boundary, and the cleanup.
-
-<Diagram
-  name="benchmark-design"
-  caption="The benchmark design: six conditions, one frozen pair, one hidden grader."
-  alt="Six condition boxes feed one frozen pair box, which feeds one hidden grader box. Conditions 4 and 5 use Kalari. Conditions 1, 2, 3, and 6 use the reference setup."
-/>

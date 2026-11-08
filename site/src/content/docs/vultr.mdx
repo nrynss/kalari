@@ -7,7 +7,11 @@ import Diagram from '../../components/Diagram.astro';
 import RepoLink from '../../components/RepoLink.astro';
 import DocLink from '../../components/DocLink.astro';
 
-The demo runs on one Vultr Cloud Compute VM. Serverless Inference supplies model access. Microsandbox creates the execution guests on that VM.
+Everything Kalari needs runs on Vultr, under one account. Cloud Compute provides one VM with KVM exposed, and that VM hosts `kalari serve`, Lambo, the read-only evidence API, the observer and its per-run broker, and every Microsandbox microVM — nested virtualisation, guests inside the rented guest. Serverless Inference provides one OpenAI-compatible endpoint that serves the coding models, the judgement calls, and the embeddings behind recall. Untrusted code runs in real microVMs next to the models that wrote it, with no second provider in the loop.
+
+The demonstrated host shape is measured in <RepoLink path="dev-diary/research/vultr-vm.md">research/vultr-vm.md</RepoLink>: the VX1 plan with 2 vCPU (AMD, `svm`), 8 GB RAM, and 120 GB disk at $0.076 an hour, Ubuntu 24.04, IPv4 only. KVM is proven on the host, not assumed: `/dev/kvm` present, the `svm` CPU flag, and `msb doctor` passing, per <RepoLink path="dev-diary/research/sandbox.md">research/sandbox.md</RepoLink>.
+
+What ran at once: 102 user-path sessions on the one VM, back to back, each against API microVMs with per-run sandboxes alongside. Each API service runs in its own microVM with egress denied and its port published on the VM public address, per the proved route in <RepoLink path="bench/README.md">bench/README.md</RepoLink>. Each session runs its candidate, baseline, and checks in fresh per-run microVMs through Kalari per-run broker, with its own network policy from the gate. The 102 repeat rows record the VM public address as their API base with live and grading ports, and per-run containment policies, in `slides/data/results.json` with its `repeats-table.txt` aggregate.
 
 The public interface lives at [kalari.nryn.dev](https://kalari.nryn.dev/). These docs live under its `/docs/` path.
 
@@ -15,12 +19,12 @@ The public interface lives at [kalari.nryn.dev](https://kalari.nryn.dev/). These
 
 | Service | Responsibility |
 |---|---|
-| Cloud Compute | Hosts Kalari, Lambo, the evidence API, and microVMs |
-| Serverless Inference | Serves the coding model, Clef, and embedding requests |
+| Cloud Compute | Hosts Kalari, Lambo, the evidence API, the observer and broker, and the microVMs |
+| Serverless Inference | Serves the coding models, Clef, and embedding requests |
 | Firewall | Allows public HTTP and HTTPS while SSH stays on Tailscale |
 | Caddy on the VM | Obtains certificates and serves the interface and docs |
 
-Microsandbox is a tool installed on the VM. It is not a separate Vultr sandbox service.
+Microsandbox is a tool installed on the VM. It is not a separate Vultr sandbox service: Vultr has no sandbox product of its own, and its agent sandboxing guide uses Microsandbox, per <RepoLink path="dev-diary/research/sandbox.md">research/sandbox.md</RepoLink>.
 
 The demonstrated host uses Ubuntu 24.04 with 2 vCPU and 8 GB RAM. Check KVM availability before deploying.
 
@@ -59,13 +63,17 @@ Create your own Serverless Inference access and retrieve its inference key. The 
 
 Kalari uses these endpoint shapes.
 
-| Work | Endpoint | Demonstrated model |
+| Work | Endpoint | Demonstrated models |
 |---|---|---|
-| Coding agent | `https://api.vultrinference.com/v1` | DeepSeek V4.1 Flash |
+| Coding agent | `https://api.vultrinference.com/v1` | DeepSeek V4.1 Flash, GLM 5.3 Flash, Qwen3.8 27B, MiMo V2.6 Flash, Muse Glimmer 30B |
 | Decision calls | `https://api.vultrinference.com/v1/systemone` | `clef` |
 | Lambo embeddings | Configured from `https://api.vultrinference.com` | `qwen3-embedding-4b`, 2560 dimensions |
 
-The agent model belongs to the agent's configuration. The service configuration carries the Clef settings and the Lambo child configuration.
+Switching model is one config string: the repeats ran the same harness and arms with only the model id changed between projects, across all five ids above. The agent model belongs to the agent's configuration. The service configuration carries the Clef settings and the Lambo child configuration.
+
+List prices per 1M tokens, input / output: DeepSeek V4.1 Flash $0.15 / $0.60, GLM 5.3 Flash $0.10 / $0.35, Qwen3.8 27B $0.15 / $1.00, Clef $0.10 in with no output tokens, Qwen3 Embedding 4B $0.05 — all per <RepoLink path="dev-diary/research/vultr-inference.md">research/vultr-inference.md</RepoLink>. MiMo V2.6 Flash $0.10 / $0.25 and Muse Glimmer 30B $0.25 / $1.00 are from the [Vultr models and pricing page](https://api.vultrinference.com/docs/models), not the research file.
+
+Cost accounting follows the same rule in both arms: the `/v1/usage` delta per session times list price, with cached input at full price. The usage deltas matched OpenCode's own step tokens on the measured probe in <RepoLink path="dev-diary/research/coding-agent.md">research/coding-agent.md</RepoLink>. Totals from the 0.2.3 repeat rows: 102 sessions cost about $5.62 at list price (Kalari arm $1.53 over 51 sessions, alone $4.09 over 51).
 
 Production validation requires the shown Clef endpoint and model. Check model access on your own inference account.
 
