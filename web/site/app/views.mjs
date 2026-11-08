@@ -43,7 +43,7 @@ const CLEF_OPINION_LABEL = "A model's opinion, not a measurement";
    commit, never at main, so a judge opens the exact files the page cites.
    Set to the evidence commit before publishing. The check verifies the hash
    exists and every linked path exists at it. */
-export const EVIDENCE_REF = "788ecda667628352cbf2ae07366981fd0c994a46";
+export const EVIDENCE_REF = "59e3447334c4ff087f66273101fc13f9f1f570f0";
 
 const GITHUB_REPO = "https://github.com/nrynss/kalari";
 
@@ -2668,14 +2668,11 @@ function containmentRunDetail(record) {
         : ""
     }
     <p class="evidence-row">Evidence on GitHub: ${evidenceLink(
-      githubUrl("tests/live/containment-transcript.txt"),
+      githubUrl("tests/live/containment-0.2.3/transcript.txt"),
       "The containment log",
     )} · ${evidenceLink(
-      githubUrl("tests/live/containment-evidence/run-1.jsonl"),
-      "The first run record",
-    )} · ${evidenceLink(
-      githubUrl("tests/live/containment-evidence/run-2.jsonl"),
-      "The second run record",
+      githubUrl("tests/live/containment-0.2.3/evidence.jsonl"),
+      "The containment records",
     )} · ${evidenceLink(
       githubUrl("bench/RESULTS.md", "6a-two-sandbox-runs-outside-the-comparison"),
       "The comparison notes",

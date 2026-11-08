@@ -17,7 +17,7 @@ same-origin top-level navigation.
 
 | File | Address | What it shows |
 |---|---|---|
-| `web/site/index.html` | `/` | For judges: start here. The hero comparison, the problem the reference run shows, the containment runs, each condition in the fixture, and every run. |
+| `web/site/index.html` | `/` | For judges: start here. The seven 0.2.3 parts: the problem, the headline with the grid, the easier upgrades, learning, containment, Qwen and Muse, and the demoted baseline. Then every run and every session. |
 | `web/site/session.html` | `/session.html?id=<id>` | One session: the change list, the blast radius, the recalled checks, each run with logs, the retry loop and the lesson written. |
 | `web/site/run.html` | `/run.html?id=<id>` | One run: its verdict, checks, logs, Clef answer and evidence record. |
 
@@ -91,48 +91,38 @@ loopback and stops it on exit. It reads the rendered snapshots from
 8. The API returns 400, 404 and 413 as expected. Every record on every route
    passes the envelope contract. The benchmark records pass the contract
    validator.
-9. Every number on the judges page is inside a working run link. Model and
+9. Every number on the judges page sits inside a working run link, a pinned
+   GitHub source link, or a section link for the two derived ratios. Model and
    version names are the exception: they sit inside a `model-tag` marker and
    only name a known model (`OpenCode 2.2.5`, `DeepSeek V4.1 Flash`,
-   `GLM 5.3 Flash`, `Qwen3.8 27B`, `Muse Glimmer 30B`, `MiMo V2.6 Flash`).
-   Every anchor whose text contains a digit carries a `data-run-link` that
-   equals its href id and a known title. Showcase anchors use the title
-   `Showcase run` and are checked against the showcase records. Every distinct
-   run link answers 200 at `/api/runs/<id>`.
-10. Every run id in `/api/runs` appears in a link on the judges page.
-11. Every table value matches the record named by its run link. Every table
-    cell with a number is a known measure. A measure cell links its run exactly
-    when the record holds a value.
-12. The check derives the table cells, the measure-link count, the not-run rows
-    and the repeat counts from the records the snapshot was rendered from. The
-    measure-link count covers table cells, median lines and the frozen worst-run
-    lines. The containment panel has its own links, checked against its own
-    record (item 21). The hero figures are recomputed from the frozen benchmark
-    records and must match what the page shows. The problem panel figures must
-    match the reference record. The models grid is recomputed from the showcase
-    records and must match what the page shows: one anchor per run plus a lead
-    card anchor for the showcase session. Showcase records never enter a
-    benchmark tally or a hero sum. A new record changes the page and the
-    expectation together. The snapshots cover a second pilot row for one
-    condition, a single frozen condition-five record, a complete frozen pair and
-    a split frozen store. The reference record is excluded from every benchmark
-    tally and hero sum. Model names on the hero, the comparison, the panels
-    and the run and session pages are checked against the known list.
-13. Every median is computed from the benchmark records and compared with the
-    displayed text and its run link. Each median line holds exactly one link,
-    and that link sits inside the value span.
+   `GLM 5.3 Flash`, `Qwen3.8 27B`, `Muse Glimmer 30B`, `MiMo V2.6 Flash`,
+   `Kalari 0.2.3`). Every anchor whose text contains a digit carries a
+   `data-run-link` that equals its href id and a known figure title, or it is
+   a pinned GitHub blob link, a ratio section link, or a session link that
+   shows its own id. Every distinct run link answers 200 at
+   `/api/runs/<id>`.
+10. Every run id and every session id in the store appears in a link on the
+    judges page. Every repeat row is reachable from the grid cell it counts
+    toward.
+11. Every every-run table value matches the record named by its run link, and
+    every row carries a link to its published row file on GitHub.
+12. The check recomputes every figure on the page from the repeat, baseline
+    and containment records the snapshot was rendered from: the problem
+    counts, the headline means and ratios, the grid cells, the easier-upgrade
+    tally, the learning counts, the filmed chain, the excluded tallies, the
+    demoted baseline and the containment panel. `bench/check-023.py`
+    independently recomputes every video number from the published rows and
+    compares them with `bench/rows-0.2.3/results.json`. Model names on every
+    page are checked against the known list.
+13. Aggregates link the median session of the set they summarise. Per-session
+    figures link their own session. The two cost and wall ratios link the
+    grid section that breaks them down.
 14. Every table has a caption or `aria-labelledby`.
-15. A percentage in a table cell, a verdict or a heading fails. A percentage in
-    an opinion block must sit inside an element with `data-probability`, and the
-    block must be labelled a model's opinion. A percentage in prose outside the
-    opinion block is data, so a note, a summary or a check detail may show one.
-    Every number inside an opinion block needs the marker. A probability-shaped
-    decimal follows the same scope, so it fails in a table, a verdict, a heading
-    or the opinion block.
-16. One frozen row in each upgrade does not say the comparison is published. A
-    complete pair does. Frozen run and session pages carry frozen labels.
-17. A condition with no record shows an explicit `not run` row. The not-run
-    rows come from the conditions missing from the store. The comparison
+15. A percentage anywhere on the page fails. The 0.2.3 page carries no
+    opinion block and no probability. A probability-shaped decimal fails in a
+    table, a verdict or a heading.
+16. Removed with the retired views.
+17. An empty `/api/benchmark` renders the not-yet-published state. The comparison
     heading is `The pilot baseline` with no frozen pair and `The measured before
     and after` with one. The repeat copy comes from both contrast columns.
 18. A URL in a store string is redacted before display. The check proves this
@@ -144,16 +134,19 @@ loopback and stops it on exit. It reads the rendered snapshots from
 19. An empty `/api/benchmark` renders the not-yet-published state.
 20. An absent store returns empty arrays and shows a clear state. No session
     card is drawn, and no line claims a session the store does not have.
-21. The containment panel matches its record: the four figures link the run, every
-    number sits inside a run link, the failure, the polling note, the
+18. The containment panel matches its record: the cap, the measured wall
+    time, the pages, the retry wait, the allowed and refused probes and the
+    zero leftovers link the killed run; the failure, the polling note, the
     configuration-only caps, the separate requested, effective and observed
-    policy, the second-guest probe and the verified cleanup are all stated, and
-    a zero-blast-radius claim appears only as a denial. The record passes its
-    contract: `killed_timeout`, `passed=false`, no output-cap claim, no breach,
-    verified cleanup, and a run and check record with the same wall time and
-    cap. The run page shows the creation arguments and the three policy views.
-    The committed evidence under `tests/live/containment-evidence/` and the
-    transcript are scanned for an IP address, an email, a URL and a key pattern.
+    policy, the second-guest probe and the verified cleanup are all stated,
+    and a zero-blast-radius claim appears only as a denial. The record passes
+    its contract: `killed_timeout`, `passed=false`, no output-cap claim, no
+    breach, verified cleanup, and run and check records with the same wall
+    time and cap. The run page shows the creation arguments and the three
+    policy views. The committed evidence under
+    `tests/live/containment-0.2.3/` is scanned for a path, an IP address, a
+    host name and a key pattern, as is every published 0.2.3 row and the
+    evidence store.
 
 ## Browser check
 
@@ -161,8 +154,8 @@ loopback and stops it on exit. It reads the rendered snapshots from
 drives headless Chrome over the DevTools pipe when one is installed. It reads
 the network events of the page itself, so the browser's own background traffic
 never enters the result. It loads five addresses through the three shells:
-`/`, `/session.html?id=payouts-upgrade`, `/run.html?id=pilot-c3-payouts-r5`,
-`/run.html?id=payouts-attempt-1` and `/session.html?id=pilot-c3-payouts`.
+`/`, `/session.html?id=kalari-payouts-918666ca`,
+`/run.html?id=kalari-payouts-918666ca` and `/run.html?id=run-d963816f7f`.
 It fails on any request outside the page origin. It fails on a second page
 target outside that origin. It fails on a page that did not render its heading.
 It does not load a shell without an id. It cannot load the rendered snapshots,
@@ -172,28 +165,20 @@ part of the gate.
 
 ## How the pages render from the fixture
 
-`web/fixture/evidence.jsonl` is the append-only store the fixture server reads.
-`web/fixture/build.py` writes it from the committed pilot results, the
-walkthrough records, and the showcase records built by
-`bench/showcase/disbursements/produce-showcase.py`. It also appends the containment runs: the
-sanitised evidence of the two runs in
-`tests/live/containment-evidence/run-*.jsonl`. Run the
-build only when the fixture sources change.
+`web/fixture/evidence.jsonl` is the store the fixture server reads. It is a
+copy of `bench/evidence-023.jsonl`, written by `web/fixture/build.py`, which
+validates every record first. The canonical evidence is built by
+`bench/produce-evidence-023.py` from the sanitised rows in
+`bench/rows-0.2.3/`. Run the build only when the fixture sources change.
 
 `web/fixture/rendered/` holds snapshots of the view output. The check parses
-these snapshots from disk. They are made by the same `web/site/app/views.mjs`
-the browser runs. The snapshots exercise states the committed pilot store cannot
-show. They add a second pilot row for one condition. They add a single frozen
-condition-five record, a partial frozen pair and a complete frozen pair with
-measures. They add a frozen run and a frozen session. They add a page with a URL
-in each display path. `web/fixture/rendered/inputs.json` records the exact
-records each snapshot was rendered from, and the check derives its expectations
-from that file. The records marked `synthetic` are view fixtures, not
-measurements. They are test fixtures, not served pages.
-
-The `judges-extra-run` snapshot adds a second pilot row for one condition. It
-shares a repeat number with an existing row. The repeat copy still names five
-distinct repeats, because the copy counts repeat numbers and not rows.
+these snapshots from disk. They are made by the same view code the browser
+runs: `judges023View` for the judges pages, `sessionView` and `runView` from
+`web/site/app/views.mjs` for the session and run pages. The snapshots cover
+the full store, the empty store, one repeat session page and one repeat run
+page. `web/fixture/rendered/inputs.json` records the exact records each
+snapshot was rendered from, and the check derives its expectations from that
+file.
 
 `web/fixture/render.mjs` regenerates the snapshots. It is a development tool.
 It uses Node, but the app and the check do not need Node.
@@ -208,45 +193,55 @@ node web/fixture/render.mjs
 
 ## What is measured
 
-The judges page starts with `The pilot baseline`. That heading becomes `The
-measured before and after` when one upgrade has a complete frozen pair:
-condition five and condition three in the same upgrade. The pilot files are in
-`bench/pilot/results/`. Each benchmark record carries its source path.
+The judges page shows the 0.2.3 repeats in seven parts: the problem, the
+headline with the grid, the easier upgrades, learning, containment, Qwen and
+Muse, and the demoted baseline. Then every run and every session. Each number
+links to the run or row behind it. Each benchmark record carries its source
+path in `bench/rows-0.2.3/`.
 
-- Conditions 2, 3 and 6 are `valid` pilot rows.
-- Condition 1 rows are `invalid`. The session resumed but graded an untouched
-  workspace. The repair is T5.1a, so these rows cannot count.
-- Conditions 4 and 5 have no record in this fixture. The page lists them under
-  `Conditions not run in this fixture` with an explicit not-run row. The heading
-  says `Every condition in this fixture`, and the baseline is labelled a pilot
-  baseline until the frozen pair exists.
-- The single-behaviour rows are `diagnostic`. They used a narrower isolated
-  adapter, so the page does not compare them with the condition rows.
-- The containment panel covers two ordinary runs, not benchmark rows. No frozen
-  row was capped (`bench/RESULTS.md` section 6), so the panel never shows a
-  session cap. It reads the `containment` records of its own session,
-  `containment-runs`. The main moment is the run the aashaan's per-run time cap
-  killed: the cap, the measured wall time, `killed_timeout`, `passed=false` and
-  the pages fetched; then the boundary (requested, effective and observed network
-  policy, kept apart) and the cleanup proof. The run before it, which crashed on
-  the API's rate limit and exited, is shown after them. Each links its run page.
-  The panel is absent when the store has no such session.
-- The walkthrough session is illustrative. The change facts and IDs come from
-  `testdata/vimanam/2.1.0/payouts.json`. The call site comes from
-  `bench/workspaces/payout-sync/payout_sync.py`. The Clef answer comes from
-  `testdata/clef/failure-api-change-truncated.response.json`. The run timings and
-  log lines are illustrative.
-- The repeat counts come from the records. The page does not hardcode five.
-- The UI marks every illustrative session and run. The pilot rows say
-  `Pilot, reference arm`, `Pilot, Kalari arm`, `Invalid pilot row` or
-  `Diagnostic session`. A frozen row says `Frozen, reference arm` or
-  `Frozen, Kalari arm`, and a frozen run or session says `Frozen comparison
-  run` or `Frozen benchmark session`.
+- The headline covers the 90 headline repeats: three models by three upgrades
+  by two arms, five sessions per cell. Every repeat row is reachable from the
+  grid cell it counts toward.
+- The problem is the filmed GLM disbursements session alone, backed by the
+  five GLM disbursements sessions alone, each graded 23 mismatched.
+- Learning compares the payouts lessons written with the settlements and
+  disbursements lessons recalled, plus the filmed three-step chain, which kept
+  one project and one store.
+- The containment panel covers the 0.2.3 killed run, not a benchmark row. It
+  reads the `containment` records of its own session, `containment-023`: the
+  cap, the measured wall time, `killed_timeout`, `passed=false`, the pages
+  fetched and the one Retry-After wait; then the boundary (requested, effective
+  and observed network policy, kept apart) and the cleanup proof. It links its
+  run page, its session page, and the bundle on GitHub. The panel is absent
+  when the store has no such session.
+- Qwen and Muse ran once per upgrade outside the headline. Their sessions sit
+  apart with the reasons.
+- The frozen 60-session DeepSeek benchmark stays as an earlier baseline, with
+  per-session costs only. The old zero-lesson reading is corrected: the
+  repeats wrote and recalled lessons.
+- The repeat and baseline counts come from the records. The page hardcodes no
+  tally.
+- A repeat session page says `Repeat session`. The baseline session page says
+  `Earlier baseline`.
 
 ## The benchmark record shape
 
-No runtime producer writes benchmark records yet. T5.6 must honour this shape.
-Write one record per run. The envelope is the normal evidence record:
+No runtime producer writes frozen benchmark records any more. T5.6 honoured
+that shape; the 0.2.3 repeats use two newer schemas on the same envelope and
+the same `/api/benchmark` route. Write one record per session. The envelope
+is the normal evidence record.
+
+A repeat record (`kalari.repeat.v1`, `provenance: "repeat023"`) carries the
+arm, model, scenario, project, repeat index, headline flag and chain name, the
+verdict, right-first-time, sandbox runs, wall time, tokens, loss and
+duplication counts, cost, grade, lesson counts, tool calls, and the published
+row as `source`. A baseline record (`kalari.baseline.v1`,
+`provenance: "baseline"`) carries the frozen session count and per-session
+costs with `bench/RESULTS.md` as its source. `bench/produce-evidence-023.py`
+builds both from `bench/rows-0.2.3/`. The validator compares every repeat
+payload field with its published row.
+
+The frozen shape below stays documented for the committed frozen evidence:
 
 ```json
 {

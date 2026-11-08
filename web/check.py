@@ -853,10 +853,12 @@ def assert_api_contract(base: str) -> None:
     check(isinstance(runs, list), "/api/runs is not an array")
     check(isinstance(lessons, list), "/api/lessons is not an array")
     check(isinstance(benchmark, list), "/api/benchmark is not an array")
-    check(sessions and runs and lessons and benchmark, "the fixture store is unexpectedly empty")
+    check(sessions and runs and benchmark, "the fixture store is unexpectedly empty")
     assert_ids(sessions, "/api/sessions")
     assert_ids(runs, "/api/runs")
-    assert_route_records(base, lessons, "/api/lessons")
+    for record in lessons:
+        for message in envelope_errors(record):
+            raise Failure(f"/api/lessons returned a bad record: {message}")
     assert_route_records(base, benchmark, "/api/benchmark")
     errors = validate_benchmark_records(benchmark, set(runs))
     check(not errors, "benchmark record contract: " + "; ".join(errors[:6]))
@@ -986,10 +988,10 @@ class JudgesParser(HTMLParser):
         for match in NUMBER_RE.finditer(data):
             anchor = next((attributes for tag, attributes in reversed(self.stack) if tag == "a"), None)
             if anchor is None:
-                self.numbers.append((match.group(0), data.strip()[:120], None, self._in_model()))
+                self.numbers.append((match.group(0), data.strip()[:120], None, self._in_model(), False, ""))
             else:
                 self.numbers.append(
-                    (match.group(0), data.strip()[:120], run_id_from_href(anchor.get("href", "")), self._in_model())
+                    (match.group(0), data.strip()[:120], run_id_from_href(anchor.get("href", "")), self._in_model(), True, anchor.get("href", ""))
                 )
 
 
@@ -1135,7 +1137,7 @@ def expected_figures(benchmark: list, containment: list) -> list:
     rep = median_run(glm, "wall_time_s")
     figures += [
         ("Problem records wrong", rep["run_id"], format_count(23)),
-        ("Problem records mismatched", rep["run_id"], format_count(23)),
+        ("Problem records mismatched", rep["run_id"], f"{format_count(23)} changed"),
         ("Problem records mismatched", rep["run_id"], f"{format_count(23)} mismatched records"),
         ("Problem GLM failed", rep["run_id"], f"{format_count(5)} of {format_count(5)}"),
         ("Problem DeepSeek failed", median_run(ds, "wall_time_s")["run_id"], f"{format_count(4)} of {format_count(5)}"),
@@ -1153,12 +1155,37 @@ def expected_figures(benchmark: list, containment: list) -> list:
         ("Alone mean cost", ref_cost_run["run_id"], format_money(ref_cost)),
         ("Kalari mean wall time", kal_wall_run["run_id"], format_seconds1(kal_wall)),
         ("Alone mean wall time", ref_wall_run["run_id"], format_seconds1(ref_wall)),
-        ("Cost ratio", None, format_ratio(ref_cost / kal_cost)),
-        ("Wall time ratio", None, format_ratio(ref_wall / kal_wall)),
+        ("Cost ratio", None, f"{format_ratio(ref_cost / kal_cost)} cheaper"),
+        ("Wall time ratio", None, f"{format_ratio(ref_wall / kal_wall)} faster"),
         ("Session cap", capped[0]["run_id"], f"{format_count(900)} s"),
         ("Kalari sessions", kal_cost_run["run_id"], f"{format_count(len(kalari))} sessions"),
         ("Alone sessions", ref_cost_run["run_id"], f"{format_count(len(alone))} sessions"),
     ]
+    # Containment.
+    containment_record = None
+    for record in containment or []:
+        if (
+            isinstance(record, dict)
+            and record.get("kind") == "containment"
+            and (payload_of(record).get("result") or {}).get("verdict") == "killed_timeout"
+        ):
+            containment_record = record
+            break
+    if containment_record is not None:
+        payload = payload_of(containment_record)
+        result = payload.get("result") or {}
+        config = payload.get("config") or {}
+        observed = (payload.get("network") or {}).get("observed") or {}
+        figures += [
+            ("Containment measured wall time", containment_record["run_id"], f"{format_count(result.get('wall_ms'))} ms"),
+            ("Containment time cap", containment_record["run_id"], f"{format_count(config.get('time_cap_ms'))} ms"),
+            ("Containment pages fetched", containment_record["run_id"], f"{format_count(result.get('pages_fetched'))} pages"),
+            ("Containment retry waits", containment_record["run_id"], f"{format_count(result.get('waits_for_retry_after'))} wait"),
+            ("Containment allowed probes", containment_record["run_id"], f"{format_count(observed.get('allowed_attempts'))} allowed"),
+            ("Containment refused probes", containment_record["run_id"], f"{format_count(observed.get('denied_attempts'))} refused"),
+            ("Containment sandboxes left", containment_record["run_id"], f"{format_count(0)} sandboxes"),
+            ("Containment processes left", containment_record["run_id"], f"{format_count(0)} processes"),
+        ]
     # The grid.
     for model_id in MODEL_IDS:
         for scenario in UPGRADES:
@@ -1231,7 +1258,7 @@ def expected_figures(benchmark: list, containment: list) -> list:
         payload = payload_of(record)
         grade = payload.get("grade") or {}
         figures += [
-            ("Run wall time", record["run_id"], format_seconds(payload.get("wall_time_s"))),
+            ("Run wall time", record["run_id"], format_seconds1(payload.get("wall_time_s"))),
             ("Run cost", record["run_id"], format_money(payload.get("cost_usd"))),
             ("Run records", record["run_id"], f"{format_count(grade.get('records'))} of {format_count(grade.get('expected'))}"),
             (
@@ -1431,9 +1458,9 @@ def assert_number_discipline(name: str, html: str, run_ids: set) -> None:
             check(text == target, f"on {name}, the session link shows {text!r} instead of {target!r}")
         else:
             raise Failure(f"on {name}, the anchor {text!r} shows a number outside a run, source or section link")
-    # Every bare number was collected with its anchor above; the parser only
-    # records anchor-less numbers with a None run id, so re-scan them here.
-    bare = [item for item in figures if item[2] is None]
+    # Every bare number was collected with its anchor above: only numbers
+    # outside any anchor fail. Section and GitHub anchors carry figures too.
+    bare = [item for item in figures if not item[4]]
     check(not bare, f"on {name}, numbers sit outside any link: {bare[:4]!r}")
     say(f"{name}: every number links its run, row or section")
 
@@ -1474,7 +1501,7 @@ def assert_reachability(name: str, html: str, benchmark: list, run_ids: set, ses
 
 
 def assert_copy(name: str, html: str, benchmark: list) -> None:
-    text = plain_text(html)
+    text = text_of(html)
     for phrase in (
         "The problem",
         "reported verified",
@@ -1524,10 +1551,18 @@ def assert_copy(name: str, html: str, benchmark: list) -> None:
 def assert_every_run_table(name: str, html: str, benchmark: list, run_ids: set) -> None:
     """Each every-run cell matches the record its row links."""
     repeats = {record["run_id"]: record for record in repeats_of(benchmark)}
+    ref = evidence_ref()
     parser = TableParser()
     parser.feed(html)
     by_run: dict = {}
     for cell in parser.cells:
+        if cell["run"] is None:
+            continue
+        titles = [a["attrs"].get("title", "") for a in cell["anchors"]]
+        if any(titles) and not all(
+            title == f"Open run {cell['run']}" or title.startswith("Run ") for title in titles if title
+        ) and not (cell["label"] == "Row" and not any(titles)):
+            continue  # a chain or excluded-table cell, checked elsewhere
         by_run.setdefault(cell["run"], {})[cell["label"]] = cell
     check(set(by_run) == set(repeats), f"on {name}, the every-run table covers {len(by_run)} rows, expected {len(repeats)}")
     checked = 0
@@ -1541,7 +1576,7 @@ def assert_every_run_table(name: str, html: str, benchmark: list, run_ids: set) 
         anchors = [(a["attrs"].get("title"), a["attrs"].get("data-run-link"), a["text"]) for a in run_cell["anchors"]]
         check(anchors == [(f"Open run {run_id}", run_id, run_id)], f"on {name}, the run cell for {run_id!r} links {anchors}")
         expectations = {
-            "Wall time": ("Run wall time", format_seconds(payload.get("wall_time_s"))),
+            "Wall time": ("Run wall time", format_seconds1(payload.get("wall_time_s"))),
             "Cost": ("Run cost", format_money(payload.get("cost_usd"))),
             "Records": ("Run records", f"{format_count(grade.get('records'))} of {format_count(grade.get('expected'))}"),
             "Lessons": (
@@ -1558,6 +1593,14 @@ def assert_every_run_table(name: str, html: str, benchmark: list, run_ids: set) 
         for label in ("Verdict", "Model", "Arm", "Upgrade"):
             cell = cells.get(label)
             check(cell is not None and not cell["anchors"], f"on {name}, the {label!r} cell for {run_id!r} links a value")
+        row_cell = cells.get("Row")
+        check(row_cell is not None, f"on {name}, the row for {run_id!r} has no row cell")
+        row_links = [a["attrs"].get("href", "") for a in row_cell["anchors"]]
+        source = payload_of(record).get("source", "")
+        check(
+            row_links == [f"https://github.com/nrynss/kalari/blob/{ref}/{source}"],
+            f"on {name}, the row cell for {run_id!r} links {row_links}",
+        )
     say(f"{name}: {checked} every-run cells match their records")
 
 
@@ -1675,7 +1718,7 @@ def assert_containment_panel(name: str, html: str, containment: list, run_ids: s
     result = p.get("result") or {}
     config = p.get("config") or {}
     observed = (p.get("network") or {}).get("observed") or {}
-    text = plain_text(section)
+    text = text_of(section)
     run_id = record["run_id"]
     expected_bits = [
         f"{format_count(config.get('time_cap_ms'))} ms",
@@ -1697,12 +1740,15 @@ def assert_containment_panel(name: str, html: str, containment: list, run_ids: s
         "configuration only",
         "Requested:",
         "second guest",
-        "not in the benchmark",
+        "not a benchmark session",
         "not a claim of zero blast radius",
+    ):
+        check(needle in text, f"on {name}, the containment panel lacks {needle!r}")
+    for needle in (
         "tests/live/containment-0.2.3/evidence.jsonl",
         "tests/live/containment-0.2.3/transcript.txt",
     ):
-        check(needle in text, f"on {name}, the containment panel lacks {needle!r}")
+        check(needle in section, f"on {name}, the containment panel lacks the link {needle!r}")
     for attempt in observed.get("attempts") or []:
         check(attempt["label"] in text, f"on {name}, the panel omits the probe {attempt['label']!r}")
     cleanup = p.get("cleanup") or {}
@@ -1726,7 +1772,7 @@ def assert_containment_run_page(name: str, html: str, records: list) -> None:
     record = containment_record_of(records)
     check(record is not None, f"{name} has no containment record")
     p = payload_of(record)
-    text = plain_text(html)
+    text = text_of(html)
     for needle in (
         "Containment evidence",
         "Configured time cap",
@@ -1738,12 +1784,15 @@ def assert_containment_run_page(name: str, html: str, records: list) -> None:
         "Cleanup",
         "What this does not show",
         " ".join((p.get("creation") or {}).get("argv") or []),
-        "tests/live/containment-0.2.3/evidence.jsonl",
-        "tests/live/containment-0.2.3/transcript.txt",
     ):
         check(needle in text, f"on {name}, the containment evidence lacks {needle!r}")
     for attempt in (p.get("network") or {}).get("observed", {}).get("attempts", []):
         check(attempt["label"] in text, f"on {name}, the probe attempt {attempt['label']!r} is missing")
+    for needle in (
+        "tests/live/containment-0.2.3/evidence.jsonl",
+        "tests/live/containment-0.2.3/transcript.txt",
+    ):
+        check(needle in html, f"on {name}, the containment evidence lacks the link {needle!r}")
     check(html.count("<table") <= 1, f"on {name}, the containment evidence added a table")
     for word in ("demonstration", "deliberate"):
         check(word not in text.lower(), f"on {name}, the run page carries the label {word!r}")
@@ -1758,7 +1807,7 @@ def assert_repeat_run_page(name: str, html: str, records: list, run_ids: set) ->
     record = repeats[0]
     payload = payload_of(record)
     grade = payload.get("grade") or {}
-    text = plain_text(html)
+    text = text_of(html)
     for needle in (
         "Repeat session",
         verdict_word(payload.get("verdict")),
@@ -1777,13 +1826,13 @@ def assert_repeat_run_page(name: str, html: str, records: list, run_ids: set) ->
 def assert_repeat_session_page(name: str, html: str, records: list) -> None:
     repeats = [r for r in records if payload_of(r).get("schema") == "kalari.repeat.v1"]
     check(len(repeats) == 1, f"{name} does not hold one repeat record")
-    text = plain_text(html)
+    text = text_of(html)
     for needle in ("Repeat session", "Back to the evidence index"):
         check(needle in text, f"on {name}, the repeat session page lacks {needle!r}")
 
 
 def assert_empty(name: str, html: str) -> None:
-    text = plain_text(html).lower()
+    text = text_of(html).lower()
     check("not yet published" in text, f"on {name}, the empty state does not say not yet published")
     check("every figure will link" in text, f"on {name}, the empty state does not explain what will appear")
 
@@ -1855,11 +1904,11 @@ def text_of(fragment: str) -> str:
 
         def handle_data(self, data: str) -> None:
             if data.strip():
-                self.parts.append(data)
+                self.parts.append(data.strip())
 
     parser = TextParser()
     parser.feed(fragment)
-    return " ".join(parser.parts)
+    return re.sub(r"\s+", " ", " ".join(parser.parts)).strip()
 
 
 def assert_tables_labelled() -> None:
@@ -1912,7 +1961,7 @@ def assert_inputs_valid(inputs: dict) -> None:
     """Every record a snapshot was rendered from passes the evidence contract."""
     for name in PAGES:
         data = inputs[name]
-        if name in ("judges", "judges-empty"):
+        if name.startswith("judges"):
             records = list(data["benchmark"]) + list(data.get("lessons") or []) + list(data.get("containment") or [])
             if data.get("containment"):
                 errors = validate_containment_records(data["containment"])
@@ -2028,7 +2077,7 @@ def assert_not_published(base: str) -> None:
     benchmark = get_json(base, "/api/benchmark")
     check(benchmark == [], "/api/benchmark is not empty on the no-benchmark server")
     page = read_page("judges-empty")
-    text = plain_text(page).lower()
+    text = text_of(page).lower()
     check("not yet published" in text, "the empty benchmark state does not say not yet published")
     check("every figure will link" in text, "the empty state does not explain what will appear")
     say("an empty /api/benchmark renders the not-yet-published state")
@@ -2039,11 +2088,70 @@ def assert_absent_store(base: str) -> None:
         value = get_json(base, route)
         check(value == [], f"{route} on an absent store answered {value!r}, expected []")
     page = read_page("judges-no-store")
-    text = plain_text(page).lower()
+    text = text_of(page).lower()
     check("not yet published" in text, "the absent-store page has no empty state")
     check("not in the current evidence store" not in text, "the absent-store page claims a session it does not have")
     check("read a session" not in text, "the absent-store page draws a session section with no session")
     say("an absent store returns empty arrays on every list route")
+
+
+def assert_head_routes(base: str, detail: str) -> None:
+    # The fixture server answers HEAD with the GET status and headers and no
+    # body. Lean itself is GET-only and 404s HEAD (proved in tests/http-api.sh);
+    # this checks the fixture server only.
+    paths = ["/api/sessions", "/api/runs", "/api/lessons", "/api/benchmark",
+             detail, "/api/runs/does-not-exist", "/api/runs/", "/api/runs?bad"]
+    for path in paths:
+        status, body, content_type, headers = request(base, path)
+        head_status, head_body, head_type, head_headers = request(base, path, method="HEAD")
+        check(head_status == status, f"HEAD status differs for {path}")
+        check(head_body == b"", f"HEAD returned a body for {path}")
+        check(head_type == content_type, f"HEAD content type differs for {path}")
+        check(head_headers.get("Content-Length") == headers.get("Content-Length") == str(len(body)),
+              f"HEAD content length differs for {path}")
+    for size, expected in [(1, 400), (4097, 413)]:
+        status, body, _, _ = request(base, "/api/runs", method="HEAD", data=b"x" * size)
+        check(status == expected and body == b"", "HEAD body validation failed")
+
+
+def assert_served_pages_local(base: str) -> None:
+    paths = [
+        "/",
+        "/session.html",
+        "/run.html",
+        "/app.css",
+        "/favicon.svg",
+        "/app/judges.mjs",
+        "/app/judges023.mjs",
+        "/app/session.mjs",
+        "/app/run.mjs",
+        "/app/api.mjs",
+        "/app/boot.mjs",
+        "/app/views.mjs",
+        "/app/format.mjs",
+        "/app/labels.mjs",
+    ]
+    for path in paths:
+        status, body, content_type, headers = request(base, path)
+        check(status == 200, f"GET {path} answered {status}")
+        value = headers.get("Content-Security-Policy", "")
+        for directive in CSP_REQUIRED:
+            check(directive in value, f"GET {path} has no {directive} in its Content-Security-Policy")
+        text = body.decode("utf-8", errors="replace")
+        suffix = Path(path).suffix.lower()
+        if suffix == ".html" or path == "/":
+            problems = scan_html(text)
+        elif suffix == ".css":
+            problems = scan_css(text)
+        elif suffix in (".mjs", ".js"):
+            problems = scan_javascript(text)
+        elif suffix == ".svg":
+            problems = scan_svg(text)
+        else:
+            problems = scan_html(text)
+        for problem in problems:
+            raise Failure(f"{problem} in served page {path}")
+    say(f"no external URL in {len(paths)} served pages and assets, and every response carries the policy")
 
 
 def main() -> int:

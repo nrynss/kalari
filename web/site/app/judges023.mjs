@@ -64,10 +64,7 @@ function ratioText(value) {
 function seconds1(value) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "";
   if (value === 0) return "0.0 s";
-  return `${Number(value).toLocaleString("en-US", {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  })} s`;
+  return `${Number(value).toFixed(1)} s`;
 }
 
 function isFiniteNumber(value) {
@@ -419,7 +416,7 @@ function containmentSection(records, runIds) {
   return `<section id="containment" class="section" aria-labelledby="containment-title">
     <p class="hero-kicker">Containment on ${modelTag("Kalari 0.2.3")}</p>
     <h2 id="containment-title">The consumer that never stops is still stopped.</h2>
-    <p>One consumer never stops. The aashaan stopped it at ${runLink(
+    <p>One consumer never stops. The aashaan stopped it with <code>killed_timeout</code>, passed is false, at ${runLink(
     runId,
     `${count(result.wall_ms)} ms`,
     runIds,
@@ -454,7 +451,9 @@ function containmentSection(records, runIds) {
     )
     .join("")}
     </ul>
-    <p class="fine-print">The supervisor polls, so the measured time can pass the cap. No fixed overshoot is promised. The output and memory caps are configuration only. The probe ran in a second guest with the same arguments, not inside the consumer guest. Verified cleanup: the run removed both sandboxes it created and left the pre-existing API sandboxes unchanged. This is an observed restriction, not a claim of zero blast radius.</p>
+    <p class="fine-print">The supervisor watches by polling, so the measured time can pass the cap. No fixed overshoot is promised. The output and memory caps are configuration only.</p>
+    <p>Requested: no network plus one allow rule for the grading API port. Effective, read back from msb inspect: default egress deny and default ingress deny, with that one rule. Observed: the probe answered the allowed port and refused the other four targets. The probe ran in a second guest with the same arguments, not inside the consumer guest.</p>
+    <p class="fine-print">This is not a benchmark session. Verified cleanup: the run removed both sandboxes it created and left the pre-existing API sandboxes unchanged. This is an observed restriction, not a claim of zero blast radius.</p>
     <p>Read the run and its evidence: ${runLink(
     runId,
     "Containment run",
@@ -559,8 +558,8 @@ function baselineSection(records, runIds) {
     "DeepSeek V4.1 Flash",
   )}: <a href="${attr(link)}" title="Baseline Kalari cost">${h(dollars3(p.kalari_cost_usd))}</a> against <a href="${attr(
     link,
-  )}" title="Baseline reference cost">${h(dollars3(p.reference_cost_usd))}</a> per session. It measured cost, attempts, containment and correctness with no lesson in the store.</p>
-    <p>Two old readings are corrected. The frozen runs showed no benefit from memory because no lesson was ever published there. The repeats contradict that: every payouts repeat wrote a lesson and the later upgrades recalled it. And DeepSeek does not verify on its own: alone it passed the easier upgrades and failed disbursements in four of five sessions.</p>
+  )}" title="Baseline reference cost">${h(dollars3(p.reference_cost_usd))}</a> per session. The frozen runs published no lesson, so they could not show what memory adds.</p>
+    <p>The repeats contradict the idea that memory adds nothing: every payouts repeat wrote a lesson and the later upgrades recalled it. And DeepSeek does not verify on its own: alone it passed the easier upgrades and failed disbursements in four of five sessions.</p>
     <p class="fine-print">Evidence on GitHub: ${evidenceLink(link, "bench/RESULTS.md")} · ${evidenceLink(
     githubUrl("bench/FROZEN.md"),
     "the frozen pair",
@@ -594,6 +593,7 @@ function everyRunSection(repeats, runIds) {
         runIds,
         `Open run ${record.run_id}`,
       )}</td>
+        <td data-label="Row">${evidenceLink(githubUrl(p.source), "Published row")}</td>
         <td data-label="Model">${modelTag(p.model)}</td>
         <td data-label="Arm">${h(p.arm)}</td>
         <td data-label="Upgrade">${h(upgradeLabel(p.scenario))}</td>
@@ -622,7 +622,7 @@ function everyRunSection(repeats, runIds) {
     <p>Each row is one session in the store. The numbers are the committed measures. Every repeat row is reachable from the grid cell it counts toward, and from here.</p>
     <div class="table-wrap"><table class="measures-table">
       <caption class="visually-hidden">Every repeat session</caption>
-      <thead><tr><th scope="col">Run</th><th scope="col">Model</th><th scope="col">Arm</th><th scope="col">Upgrade</th><th scope="col">Verdict</th><th scope="col" class="num">Wall time</th><th scope="col" class="num">Cost</th><th scope="col" class="num">Records</th><th scope="col" class="num">Lessons</th></tr></thead>
+      <thead><tr><th scope="col">Run</th><th scope="col">Row</th><th scope="col">Model</th><th scope="col">Arm</th><th scope="col">Upgrade</th><th scope="col">Verdict</th><th scope="col" class="num">Wall time</th><th scope="col" class="num">Cost</th><th scope="col" class="num">Records</th><th scope="col" class="num">Lessons</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
   </section>`;
@@ -651,10 +651,13 @@ function sessionsSection(repeats, sessions) {
         .join("")}</ul></div>`;
     })
     .join("");
-  const extra = ["containment-023", "baseline-frozen"]
-    .filter((id) => ids.has(id))
+  const extra = [
+    ["containment-023", "The containment session"],
+    ["baseline-frozen", "The earlier baseline"],
+  ]
+    .filter(([id]) => ids.has(id))
     .map(
-      (id) => `<div class="session-group"><h3>${h(id)}</h3><ul><li><a href="${attr(
+      ([id, label]) => `<div class="session-group"><h3>${h(label)}</h3><ul><li><a href="${attr(
         sessionHref(id),
       )}"><code>${h(id)}</code></a></li></ul></div>`,
     )

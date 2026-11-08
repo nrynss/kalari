@@ -178,13 +178,15 @@
     <section id="containment" class="section" aria-labelledby="containment-title">
     <p class="hero-kicker">Containment on <span class="model-tag">Kalari 0.2.3</span></p>
     <h2 id="containment-title">The consumer that never stops is still stopped.</h2>
-    <p>One consumer never stops. The aashaan stopped it at <a class="run-link" href="run.html?id=run-d963816f7f" data-run-link="run-d963816f7f" title="Containment measured wall time">5,007 ms</a> against a <a class="run-link" href="run.html?id=run-d963816f7f" data-run-link="run-d963816f7f" title="Containment time cap">5,000 ms</a> cap, after <a class="run-link" href="run.html?id=run-d963816f7f" data-run-link="run-d963816f7f" title="Containment pages fetched">68 pages</a> with <a class="run-link" href="run.html?id=run-d963816f7f" data-run-link="run-d963816f7f" title="Containment retry waits">1 wait</a> for one Retry-After.</p>
+    <p>One consumer never stops. The aashaan stopped it with <code>killed_timeout</code>, passed is false, at <a class="run-link" href="run.html?id=run-d963816f7f" data-run-link="run-d963816f7f" title="Containment measured wall time">5,007 ms</a> against a <a class="run-link" href="run.html?id=run-d963816f7f" data-run-link="run-d963816f7f" title="Containment time cap">5,000 ms</a> cap, after <a class="run-link" href="run.html?id=run-d963816f7f" data-run-link="run-d963816f7f" title="Containment pages fetched">68 pages</a> with <a class="run-link" href="run.html?id=run-d963816f7f" data-run-link="run-d963816f7f" title="Containment retry waits">1 wait</a> for one Retry-After.</p>
     <p>The boundary probe answered <a class="run-link" href="run.html?id=run-d963816f7f" data-run-link="run-d963816f7f" title="Containment allowed probes">1 allowed</a> and refused <a class="run-link" href="run.html?id=run-d963816f7f" data-run-link="run-d963816f7f" title="Containment refused probes">4 refused</a>: the other port on the same host, the host SSH port, the metadata address and the internet. <a class="run-link" href="run.html?id=run-d963816f7f" data-run-link="run-d963816f7f" title="Containment sandboxes left">0 sandboxes</a> and <a class="run-link" href="run.html?id=run-d963816f7f" data-run-link="run-d963816f7f" title="Containment processes left">0 processes</a> were left behind.</p>
     <ul>
       <li>allowed: answered</li><li>other-port-same-host: refused</li><li>host-ssh: refused</li><li>metadata-link-local: refused</li><li>internet: refused</li>
     </ul>
-    <p class="fine-print">The supervisor polls, so the measured time can pass the cap. No fixed overshoot is promised. The output and memory caps are configuration only. The probe ran in a second guest with the same arguments, not inside the consumer guest. Verified cleanup: the run removed both sandboxes it created and left the pre-existing API sandboxes unchanged. This is an observed restriction, not a claim of zero blast radius.</p>
-    <p>Read the run and its evidence: <a class="run-link" href="run.html?id=run-d963816f7f" data-run-link="run-d963816f7f" title="Open containment run">Containment run</a> · <a href="session.html?id=containment-023">the containment session</a> · <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/788ecda667628352cbf2ae07366981fd0c994a46/tests/live/containment-0.2.3/evidence.jsonl">containment evidence.jsonl on GitHub</a> · <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/788ecda667628352cbf2ae07366981fd0c994a46/tests/live/containment-0.2.3/transcript.txt">containment transcript on GitHub</a></p>
+    <p class="fine-print">The supervisor watches by polling, so the measured time can pass the cap. No fixed overshoot is promised. The output and memory caps are configuration only.</p>
+    <p>Requested: no network plus one allow rule for the grading API port. Effective, read back from msb inspect: default egress deny and default ingress deny, with that one rule. Observed: the probe answered the allowed port and refused the other four targets. The probe ran in a second guest with the same arguments, not inside the consumer guest.</p>
+    <p class="fine-print">This is not a benchmark session. Verified cleanup: the run removed both sandboxes it created and left the pre-existing API sandboxes unchanged. This is an observed restriction, not a claim of zero blast radius.</p>
+    <p>Read the run and its evidence: <a class="run-link" href="run.html?id=run-d963816f7f" data-run-link="run-d963816f7f" title="Open containment run">Containment run</a> · <a href="session.html?id=containment-023">the containment session</a> · <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/tests/live/containment-0.2.3/evidence.jsonl">containment evidence.jsonl on GitHub</a> · <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/tests/live/containment-0.2.3/transcript.txt">containment transcript on GitHub</a></p>
   </section>
     <section id="excluded" class="section" aria-labelledby="excluded-title">
     <p class="hero-kicker">Outside the headline</p>
@@ -204,18 +206,19 @@
     <section id="baseline" class="section" aria-labelledby="baseline-title">
     <p class="hero-kicker">The earlier baseline</p>
     <h2 id="baseline-title">The frozen benchmark stays, demoted.</h2>
-    <p>Sixty sessions with <span class="model-tag">DeepSeek V4.1 Flash</span>: <a href="https://github.com/nrynss/kalari/blob/788ecda667628352cbf2ae07366981fd0c994a46/bench/RESULTS.md" title="Baseline Kalari cost">$0.019</a> against <a href="https://github.com/nrynss/kalari/blob/788ecda667628352cbf2ae07366981fd0c994a46/bench/RESULTS.md" title="Baseline reference cost">$0.082</a> per session. It measured cost, attempts, containment and correctness with no lesson in the store.</p>
-    <p>Two old readings are corrected. The frozen runs showed no benefit from memory because no lesson was ever published there. The repeats contradict that: every payouts repeat wrote a lesson and the later upgrades recalled it. And DeepSeek does not verify on its own: alone it passed the easier upgrades and failed disbursements in four of five sessions.</p>
-    <p class="fine-print">Evidence on GitHub: <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/788ecda667628352cbf2ae07366981fd0c994a46/bench/RESULTS.md">bench/RESULTS.md</a> · <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/788ecda667628352cbf2ae07366981fd0c994a46/bench/FROZEN.md">the frozen pair</a></p>
+    <p>Sixty sessions with <span class="model-tag">DeepSeek V4.1 Flash</span>: <a href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/RESULTS.md" title="Baseline Kalari cost">$0.019</a> against <a href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/RESULTS.md" title="Baseline reference cost">$0.082</a> per session. The frozen runs published no lesson, so they could not show what memory adds.</p>
+    <p>The repeats contradict the idea that memory adds nothing: every payouts repeat wrote a lesson and the later upgrades recalled it. And DeepSeek does not verify on its own: alone it passed the easier upgrades and failed disbursements in four of five sessions.</p>
+    <p class="fine-print">Evidence on GitHub: <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/RESULTS.md">bench/RESULTS.md</a> · <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/FROZEN.md">the frozen pair</a></p>
   </section>
     <section id="runs" class="section" aria-labelledby="runs-title">
     <h2 id="runs-title">Every run</h2>
     <p>Each row is one session in the store. The numbers are the committed measures. Every repeat row is reachable from the grid cell it counts toward, and from here.</p>
     <div class="table-wrap"><table class="measures-table">
       <caption class="visually-hidden">Every repeat session</caption>
-      <thead><tr><th scope="col">Run</th><th scope="col">Model</th><th scope="col">Arm</th><th scope="col">Upgrade</th><th scope="col">Verdict</th><th scope="col" class="num">Wall time</th><th scope="col" class="num">Cost</th><th scope="col" class="num">Records</th><th scope="col" class="num">Lessons</th></tr></thead>
+      <thead><tr><th scope="col">Run</th><th scope="col">Row</th><th scope="col">Model</th><th scope="col">Arm</th><th scope="col">Upgrade</th><th scope="col">Verdict</th><th scope="col" class="num">Wall time</th><th scope="col" class="num">Cost</th><th scope="col" class="num">Records</th><th scope="col" class="num">Lessons</th></tr></thead>
       <tbody><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-disbursements-1cd5a37a" data-run-link="kalari-disbursements-1cd5a37a" title="Open run kalari-disbursements-1cd5a37a"><code>kalari-disbursements-1cd5a37a</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r4-ds-learn--kalari-disbursements-1cd5a37a.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -226,6 +229,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-disbursements-1cd5a37a" data-run-link="kalari-disbursements-1cd5a37a" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-disbursements-227b38ae" data-run-link="kalari-disbursements-227b38ae" title="Open run kalari-disbursements-227b38ae"><code>kalari-disbursements-227b38ae</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r5-ds-learn--kalari-disbursements-227b38ae.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -236,6 +240,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-disbursements-227b38ae" data-run-link="kalari-disbursements-227b38ae" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-disbursements-a284128c" data-run-link="kalari-disbursements-a284128c" title="Open run kalari-disbursements-a284128c"><code>kalari-disbursements-a284128c</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r3-ds-learn--kalari-disbursements-a284128c.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -246,6 +251,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-disbursements-a284128c" data-run-link="kalari-disbursements-a284128c" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-disbursements-bac0d296" data-run-link="kalari-disbursements-bac0d296" title="Open run kalari-disbursements-bac0d296"><code>kalari-disbursements-bac0d296</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r2-ds-learn--kalari-disbursements-bac0d296.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -256,6 +262,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-disbursements-bac0d296" data-run-link="kalari-disbursements-bac0d296" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-disbursements-df38d800" data-run-link="kalari-disbursements-df38d800" title="Open run kalari-disbursements-df38d800"><code>kalari-disbursements-df38d800</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-ds-learn--kalari-disbursements-df38d800.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -266,6 +273,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-disbursements-df38d800" data-run-link="kalari-disbursements-df38d800" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-disbursements-4ddfd233" data-run-link="reference-disbursements-4ddfd233" title="Open run reference-disbursements-4ddfd233"><code>reference-disbursements-4ddfd233</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r4-ds-ref--reference-disbursements-4ddfd233.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -276,6 +284,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-disbursements-4ddfd233" data-run-link="reference-disbursements-4ddfd233" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-disbursements-5b3c4c52" data-run-link="reference-disbursements-5b3c4c52" title="Open run reference-disbursements-5b3c4c52"><code>reference-disbursements-5b3c4c52</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r5-ds-ref--reference-disbursements-5b3c4c52.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -286,16 +295,18 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-disbursements-5b3c4c52" data-run-link="reference-disbursements-5b3c4c52" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-disbursements-9b3bacfb" data-run-link="reference-disbursements-9b3bacfb" title="Open run reference-disbursements-9b3bacfb"><code>reference-disbursements-9b3bacfb</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r2-ds-ref--reference-disbursements-9b3bacfb.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Disbursement payouts</td>
         <td data-label="Verdict"><span class="verdict is-fail">Failed</span></td>
-        <td class="num" data-label="Wall time"><a class="run-link" href="run.html?id=reference-disbursements-9b3bacfb" data-run-link="reference-disbursements-9b3bacfb" title="Run wall time">374.2 s</a></td>
+        <td class="num" data-label="Wall time"><a class="run-link" href="run.html?id=reference-disbursements-9b3bacfb" data-run-link="reference-disbursements-9b3bacfb" title="Run wall time">374.1 s</a></td>
         <td class="num" data-label="Cost"><a class="run-link" href="run.html?id=reference-disbursements-9b3bacfb" data-run-link="reference-disbursements-9b3bacfb" title="Run cost">$0.1598</a></td>
         <td class="num" data-label="Records"><a class="run-link" href="run.html?id=reference-disbursements-9b3bacfb" data-run-link="reference-disbursements-9b3bacfb" title="Run records">2,341 of 2,341</a></td>
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-disbursements-9b3bacfb" data-run-link="reference-disbursements-9b3bacfb" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-disbursements-a01c7833" data-run-link="reference-disbursements-a01c7833" title="Open run reference-disbursements-a01c7833"><code>reference-disbursements-a01c7833</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-ds-ref--reference-disbursements-a01c7833.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -306,6 +317,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-disbursements-a01c7833" data-run-link="reference-disbursements-a01c7833" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-disbursements-c4d8ba75" data-run-link="reference-disbursements-c4d8ba75" title="Open run reference-disbursements-c4d8ba75"><code>reference-disbursements-c4d8ba75</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r3-ds-ref--reference-disbursements-c4d8ba75.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -316,6 +328,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-disbursements-c4d8ba75" data-run-link="reference-disbursements-c4d8ba75" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-payouts-17a7b3b6" data-run-link="kalari-payouts-17a7b3b6" title="Open run kalari-payouts-17a7b3b6"><code>kalari-payouts-17a7b3b6</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-ds-learn--kalari-payouts-17a7b3b6.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -326,6 +339,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-payouts-17a7b3b6" data-run-link="kalari-payouts-17a7b3b6" title="Run lessons">1 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-payouts-22dee619" data-run-link="kalari-payouts-22dee619" title="Open run kalari-payouts-22dee619"><code>kalari-payouts-22dee619</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r3-ds-learn--kalari-payouts-22dee619.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -336,6 +350,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-payouts-22dee619" data-run-link="kalari-payouts-22dee619" title="Run lessons">1 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-payouts-92d9fa48" data-run-link="kalari-payouts-92d9fa48" title="Open run kalari-payouts-92d9fa48"><code>kalari-payouts-92d9fa48</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r4-ds-learn--kalari-payouts-92d9fa48.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -346,6 +361,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-payouts-92d9fa48" data-run-link="kalari-payouts-92d9fa48" title="Run lessons">1 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-payouts-d1651b4e" data-run-link="kalari-payouts-d1651b4e" title="Open run kalari-payouts-d1651b4e"><code>kalari-payouts-d1651b4e</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r2-ds-learn--kalari-payouts-d1651b4e.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -356,6 +372,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-payouts-d1651b4e" data-run-link="kalari-payouts-d1651b4e" title="Run lessons">1 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-payouts-e4a52beb" data-run-link="kalari-payouts-e4a52beb" title="Open run kalari-payouts-e4a52beb"><code>kalari-payouts-e4a52beb</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r5-ds-learn--kalari-payouts-e4a52beb.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -366,6 +383,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-payouts-e4a52beb" data-run-link="kalari-payouts-e4a52beb" title="Run lessons">1 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-payouts-34ca5d0e" data-run-link="reference-payouts-34ca5d0e" title="Open run reference-payouts-34ca5d0e"><code>reference-payouts-34ca5d0e</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r3-ds-ref--reference-payouts-34ca5d0e.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -376,6 +394,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-payouts-34ca5d0e" data-run-link="reference-payouts-34ca5d0e" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-payouts-39a239b3" data-run-link="reference-payouts-39a239b3" title="Open run reference-payouts-39a239b3"><code>reference-payouts-39a239b3</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r2-ds-ref--reference-payouts-39a239b3.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -386,6 +405,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-payouts-39a239b3" data-run-link="reference-payouts-39a239b3" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-payouts-681c080a" data-run-link="reference-payouts-681c080a" title="Open run reference-payouts-681c080a"><code>reference-payouts-681c080a</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r4-ds-ref--reference-payouts-681c080a.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -396,6 +416,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-payouts-681c080a" data-run-link="reference-payouts-681c080a" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-payouts-6ce2c0df" data-run-link="reference-payouts-6ce2c0df" title="Open run reference-payouts-6ce2c0df"><code>reference-payouts-6ce2c0df</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-ds-ref--reference-payouts-6ce2c0df.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -406,6 +427,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-payouts-6ce2c0df" data-run-link="reference-payouts-6ce2c0df" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-payouts-fd511c02" data-run-link="reference-payouts-fd511c02" title="Open run reference-payouts-fd511c02"><code>reference-payouts-fd511c02</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r5-ds-ref--reference-payouts-fd511c02.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -416,6 +438,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-payouts-fd511c02" data-run-link="reference-payouts-fd511c02" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-settlements-1aa9e78d" data-run-link="kalari-settlements-1aa9e78d" title="Open run kalari-settlements-1aa9e78d"><code>kalari-settlements-1aa9e78d</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r2-ds-learn--kalari-settlements-1aa9e78d.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -426,6 +449,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-settlements-1aa9e78d" data-run-link="kalari-settlements-1aa9e78d" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-settlements-3e11dfeb" data-run-link="kalari-settlements-3e11dfeb" title="Open run kalari-settlements-3e11dfeb"><code>kalari-settlements-3e11dfeb</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r5-ds-learn--kalari-settlements-3e11dfeb.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -436,6 +460,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-settlements-3e11dfeb" data-run-link="kalari-settlements-3e11dfeb" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-settlements-3eddc691" data-run-link="kalari-settlements-3eddc691" title="Open run kalari-settlements-3eddc691"><code>kalari-settlements-3eddc691</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-ds-learn--kalari-settlements-3eddc691.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -446,6 +471,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-settlements-3eddc691" data-run-link="kalari-settlements-3eddc691" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-settlements-69e6bd0f" data-run-link="kalari-settlements-69e6bd0f" title="Open run kalari-settlements-69e6bd0f"><code>kalari-settlements-69e6bd0f</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r3-ds-learn--kalari-settlements-69e6bd0f.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -456,6 +482,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-settlements-69e6bd0f" data-run-link="kalari-settlements-69e6bd0f" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-settlements-fa8b5732" data-run-link="kalari-settlements-fa8b5732" title="Open run kalari-settlements-fa8b5732"><code>kalari-settlements-fa8b5732</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r4-ds-learn--kalari-settlements-fa8b5732.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -466,6 +493,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-settlements-fa8b5732" data-run-link="kalari-settlements-fa8b5732" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-settlements-3ba172ab" data-run-link="reference-settlements-3ba172ab" title="Open run reference-settlements-3ba172ab"><code>reference-settlements-3ba172ab</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r5-ds-ref--reference-settlements-3ba172ab.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -476,6 +504,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-settlements-3ba172ab" data-run-link="reference-settlements-3ba172ab" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-settlements-5e3f1c1b" data-run-link="reference-settlements-5e3f1c1b" title="Open run reference-settlements-5e3f1c1b"><code>reference-settlements-5e3f1c1b</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-ds-ref--reference-settlements-5e3f1c1b.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -486,6 +515,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-settlements-5e3f1c1b" data-run-link="reference-settlements-5e3f1c1b" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-settlements-64bcb681" data-run-link="reference-settlements-64bcb681" title="Open run reference-settlements-64bcb681"><code>reference-settlements-64bcb681</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r2-ds-ref--reference-settlements-64bcb681.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -496,6 +526,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-settlements-64bcb681" data-run-link="reference-settlements-64bcb681" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-settlements-6c904d3e" data-run-link="reference-settlements-6c904d3e" title="Open run reference-settlements-6c904d3e"><code>reference-settlements-6c904d3e</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r3-ds-ref--reference-settlements-6c904d3e.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -506,6 +537,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-settlements-6c904d3e" data-run-link="reference-settlements-6c904d3e" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-settlements-b81baed7" data-run-link="reference-settlements-b81baed7" title="Open run reference-settlements-b81baed7"><code>reference-settlements-b81baed7</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r4-ds-ref--reference-settlements-b81baed7.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">DeepSeek V4.1 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -516,6 +548,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-settlements-b81baed7" data-run-link="reference-settlements-b81baed7" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-disbursements-08ecedbc" data-run-link="kalari-disbursements-08ecedbc" title="Open run kalari-disbursements-08ecedbc"><code>kalari-disbursements-08ecedbc</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r2-glm-learn--kalari-disbursements-08ecedbc.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -526,6 +559,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-disbursements-08ecedbc" data-run-link="kalari-disbursements-08ecedbc" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-disbursements-3565adc2" data-run-link="kalari-disbursements-3565adc2" title="Open run kalari-disbursements-3565adc2"><code>kalari-disbursements-3565adc2</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r3-glm-learn--kalari-disbursements-3565adc2.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -536,6 +570,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-disbursements-3565adc2" data-run-link="kalari-disbursements-3565adc2" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-disbursements-4b63a0e3" data-run-link="kalari-disbursements-4b63a0e3" title="Open run kalari-disbursements-4b63a0e3"><code>kalari-disbursements-4b63a0e3</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r5-glm-learn--kalari-disbursements-4b63a0e3.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -546,6 +581,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-disbursements-4b63a0e3" data-run-link="kalari-disbursements-4b63a0e3" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-disbursements-a1dcf3e0" data-run-link="kalari-disbursements-a1dcf3e0" title="Open run kalari-disbursements-a1dcf3e0"><code>kalari-disbursements-a1dcf3e0</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-glm-learn--kalari-disbursements-a1dcf3e0.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -556,6 +592,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-disbursements-a1dcf3e0" data-run-link="kalari-disbursements-a1dcf3e0" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-disbursements-a6e7904e" data-run-link="kalari-disbursements-a6e7904e" title="Open run kalari-disbursements-a6e7904e"><code>kalari-disbursements-a6e7904e</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r4-glm-learn--kalari-disbursements-a6e7904e.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -566,6 +603,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-disbursements-a6e7904e" data-run-link="kalari-disbursements-a6e7904e" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-disbursements-ca4ffaaa" data-run-link="kalari-disbursements-ca4ffaaa" title="Open run kalari-disbursements-ca4ffaaa"><code>kalari-disbursements-ca4ffaaa</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/glm3-learn--kalari-disbursements-ca4ffaaa.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -576,6 +614,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-disbursements-ca4ffaaa" data-run-link="kalari-disbursements-ca4ffaaa" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-disbursements-0b428614" data-run-link="reference-disbursements-0b428614" title="Open run reference-disbursements-0b428614"><code>reference-disbursements-0b428614</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r2-glm-ref--reference-disbursements-0b428614.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -586,6 +625,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-disbursements-0b428614" data-run-link="reference-disbursements-0b428614" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-disbursements-be0c0bfd" data-run-link="reference-disbursements-be0c0bfd" title="Open run reference-disbursements-be0c0bfd"><code>reference-disbursements-be0c0bfd</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-glm-ref--reference-disbursements-be0c0bfd.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -596,6 +636,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-disbursements-be0c0bfd" data-run-link="reference-disbursements-be0c0bfd" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-disbursements-c88ba58c" data-run-link="reference-disbursements-c88ba58c" title="Open run reference-disbursements-c88ba58c"><code>reference-disbursements-c88ba58c</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r4-glm-ref--reference-disbursements-c88ba58c.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -606,6 +647,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-disbursements-c88ba58c" data-run-link="reference-disbursements-c88ba58c" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-disbursements-dbd842c6" data-run-link="reference-disbursements-dbd842c6" title="Open run reference-disbursements-dbd842c6"><code>reference-disbursements-dbd842c6</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r5-glm-ref--reference-disbursements-dbd842c6.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -616,6 +658,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-disbursements-dbd842c6" data-run-link="reference-disbursements-dbd842c6" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-disbursements-ed5d0908" data-run-link="reference-disbursements-ed5d0908" title="Open run reference-disbursements-ed5d0908"><code>reference-disbursements-ed5d0908</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r3-glm-ref--reference-disbursements-ed5d0908.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -626,6 +669,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-disbursements-ed5d0908" data-run-link="reference-disbursements-ed5d0908" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-payouts-05ece9fd" data-run-link="kalari-payouts-05ece9fd" title="Open run kalari-payouts-05ece9fd"><code>kalari-payouts-05ece9fd</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r5-glm-learn--kalari-payouts-05ece9fd.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -636,6 +680,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-payouts-05ece9fd" data-run-link="kalari-payouts-05ece9fd" title="Run lessons">1 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-payouts-4991247f" data-run-link="kalari-payouts-4991247f" title="Open run kalari-payouts-4991247f"><code>kalari-payouts-4991247f</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r3-glm-learn--kalari-payouts-4991247f.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -646,6 +691,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-payouts-4991247f" data-run-link="kalari-payouts-4991247f" title="Run lessons">1 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-payouts-5911c98a" data-run-link="kalari-payouts-5911c98a" title="Open run kalari-payouts-5911c98a"><code>kalari-payouts-5911c98a</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r2-glm-learn--kalari-payouts-5911c98a.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -656,6 +702,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-payouts-5911c98a" data-run-link="kalari-payouts-5911c98a" title="Run lessons">1 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-payouts-6c9620c6" data-run-link="kalari-payouts-6c9620c6" title="Open run kalari-payouts-6c9620c6"><code>kalari-payouts-6c9620c6</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r4-glm-learn--kalari-payouts-6c9620c6.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -666,6 +713,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-payouts-6c9620c6" data-run-link="kalari-payouts-6c9620c6" title="Run lessons">1 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-payouts-918666ca" data-run-link="kalari-payouts-918666ca" title="Open run kalari-payouts-918666ca"><code>kalari-payouts-918666ca</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-glm-learn--kalari-payouts-918666ca.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -676,6 +724,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-payouts-918666ca" data-run-link="kalari-payouts-918666ca" title="Run lessons">1 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-payouts-99a2837d" data-run-link="kalari-payouts-99a2837d" title="Open run kalari-payouts-99a2837d"><code>kalari-payouts-99a2837d</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/glm3-learn--kalari-payouts-99a2837d.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -686,6 +735,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-payouts-99a2837d" data-run-link="kalari-payouts-99a2837d" title="Run lessons">1 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-payouts-15a6091e" data-run-link="reference-payouts-15a6091e" title="Open run reference-payouts-15a6091e"><code>reference-payouts-15a6091e</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-glm-ref--reference-payouts-15a6091e.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -696,6 +746,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-payouts-15a6091e" data-run-link="reference-payouts-15a6091e" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-payouts-2184f2fa" data-run-link="reference-payouts-2184f2fa" title="Open run reference-payouts-2184f2fa"><code>reference-payouts-2184f2fa</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r4-glm-ref--reference-payouts-2184f2fa.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -706,6 +757,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-payouts-2184f2fa" data-run-link="reference-payouts-2184f2fa" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-payouts-5967dca8" data-run-link="reference-payouts-5967dca8" title="Open run reference-payouts-5967dca8"><code>reference-payouts-5967dca8</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r5-glm-ref--reference-payouts-5967dca8.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -716,6 +768,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-payouts-5967dca8" data-run-link="reference-payouts-5967dca8" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-payouts-b0f91166" data-run-link="reference-payouts-b0f91166" title="Open run reference-payouts-b0f91166"><code>reference-payouts-b0f91166</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r3-glm-ref--reference-payouts-b0f91166.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -726,6 +779,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-payouts-b0f91166" data-run-link="reference-payouts-b0f91166" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-payouts-d9149206" data-run-link="reference-payouts-d9149206" title="Open run reference-payouts-d9149206"><code>reference-payouts-d9149206</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r2-glm-ref--reference-payouts-d9149206.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -736,6 +790,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-payouts-d9149206" data-run-link="reference-payouts-d9149206" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-settlements-1377ddc3" data-run-link="kalari-settlements-1377ddc3" title="Open run kalari-settlements-1377ddc3"><code>kalari-settlements-1377ddc3</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r2-glm-learn--kalari-settlements-1377ddc3.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -746,6 +801,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-settlements-1377ddc3" data-run-link="kalari-settlements-1377ddc3" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-settlements-26a658fb" data-run-link="kalari-settlements-26a658fb" title="Open run kalari-settlements-26a658fb"><code>kalari-settlements-26a658fb</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-glm-learn--kalari-settlements-26a658fb.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -756,6 +812,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-settlements-26a658fb" data-run-link="kalari-settlements-26a658fb" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-settlements-42c374b9" data-run-link="kalari-settlements-42c374b9" title="Open run kalari-settlements-42c374b9"><code>kalari-settlements-42c374b9</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/glm3-learn--kalari-settlements-42c374b9.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -766,6 +823,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-settlements-42c374b9" data-run-link="kalari-settlements-42c374b9" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-settlements-4c38d25b" data-run-link="kalari-settlements-4c38d25b" title="Open run kalari-settlements-4c38d25b"><code>kalari-settlements-4c38d25b</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r3-glm-learn--kalari-settlements-4c38d25b.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -776,6 +834,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-settlements-4c38d25b" data-run-link="kalari-settlements-4c38d25b" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-settlements-6c1326a5" data-run-link="kalari-settlements-6c1326a5" title="Open run kalari-settlements-6c1326a5"><code>kalari-settlements-6c1326a5</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r4-glm-learn--kalari-settlements-6c1326a5.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -786,6 +845,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-settlements-6c1326a5" data-run-link="kalari-settlements-6c1326a5" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-settlements-f2ea4365" data-run-link="kalari-settlements-f2ea4365" title="Open run kalari-settlements-f2ea4365"><code>kalari-settlements-f2ea4365</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r5-glm-learn--kalari-settlements-f2ea4365.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -796,6 +856,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-settlements-f2ea4365" data-run-link="kalari-settlements-f2ea4365" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-settlements-53c64b82" data-run-link="reference-settlements-53c64b82" title="Open run reference-settlements-53c64b82"><code>reference-settlements-53c64b82</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r2-glm-ref--reference-settlements-53c64b82.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -806,6 +867,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-settlements-53c64b82" data-run-link="reference-settlements-53c64b82" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-settlements-73c37bf8" data-run-link="reference-settlements-73c37bf8" title="Open run reference-settlements-73c37bf8"><code>reference-settlements-73c37bf8</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r5-glm-ref--reference-settlements-73c37bf8.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -816,6 +878,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-settlements-73c37bf8" data-run-link="reference-settlements-73c37bf8" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-settlements-85aeb79e" data-run-link="reference-settlements-85aeb79e" title="Open run reference-settlements-85aeb79e"><code>reference-settlements-85aeb79e</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r3-glm-ref--reference-settlements-85aeb79e.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -826,6 +889,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-settlements-85aeb79e" data-run-link="reference-settlements-85aeb79e" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-settlements-e781bee8" data-run-link="reference-settlements-e781bee8" title="Open run reference-settlements-e781bee8"><code>reference-settlements-e781bee8</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-glm-ref--reference-settlements-e781bee8.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -836,6 +900,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-settlements-e781bee8" data-run-link="reference-settlements-e781bee8" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-settlements-f2db6e0e" data-run-link="reference-settlements-f2db6e0e" title="Open run reference-settlements-f2db6e0e"><code>reference-settlements-f2db6e0e</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r4-glm-ref--reference-settlements-f2db6e0e.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">GLM 5.3 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -846,6 +911,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-settlements-f2db6e0e" data-run-link="reference-settlements-f2db6e0e" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-disbursements-2cc134fa" data-run-link="kalari-disbursements-2cc134fa" title="Open run kalari-disbursements-2cc134fa"><code>kalari-disbursements-2cc134fa</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r5-mimo-learn--kalari-disbursements-2cc134fa.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -856,6 +922,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-disbursements-2cc134fa" data-run-link="kalari-disbursements-2cc134fa" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-disbursements-3d6a3d0f" data-run-link="kalari-disbursements-3d6a3d0f" title="Open run kalari-disbursements-3d6a3d0f"><code>kalari-disbursements-3d6a3d0f</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r3-mimo-learn--kalari-disbursements-3d6a3d0f.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -866,6 +933,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-disbursements-3d6a3d0f" data-run-link="kalari-disbursements-3d6a3d0f" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-disbursements-5d70f504" data-run-link="kalari-disbursements-5d70f504" title="Open run kalari-disbursements-5d70f504"><code>kalari-disbursements-5d70f504</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-mimo-learn--kalari-disbursements-5d70f504.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -876,6 +944,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-disbursements-5d70f504" data-run-link="kalari-disbursements-5d70f504" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-disbursements-e9535a0c" data-run-link="kalari-disbursements-e9535a0c" title="Open run kalari-disbursements-e9535a0c"><code>kalari-disbursements-e9535a0c</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r4-mimo-learn--kalari-disbursements-e9535a0c.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -886,6 +955,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-disbursements-e9535a0c" data-run-link="kalari-disbursements-e9535a0c" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-disbursements-f6c708cd" data-run-link="kalari-disbursements-f6c708cd" title="Open run kalari-disbursements-f6c708cd"><code>kalari-disbursements-f6c708cd</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r2-mimo-learn--kalari-disbursements-f6c708cd.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -896,6 +966,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-disbursements-f6c708cd" data-run-link="kalari-disbursements-f6c708cd" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-disbursements-8186ea03" data-run-link="reference-disbursements-8186ea03" title="Open run reference-disbursements-8186ea03"><code>reference-disbursements-8186ea03</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r5-mimo-ref--reference-disbursements-8186ea03.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -906,6 +977,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-disbursements-8186ea03" data-run-link="reference-disbursements-8186ea03" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-disbursements-991655e9" data-run-link="reference-disbursements-991655e9" title="Open run reference-disbursements-991655e9"><code>reference-disbursements-991655e9</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r2-mimo-ref--reference-disbursements-991655e9.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -916,6 +988,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-disbursements-991655e9" data-run-link="reference-disbursements-991655e9" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-disbursements-a1c01193" data-run-link="reference-disbursements-a1c01193" title="Open run reference-disbursements-a1c01193"><code>reference-disbursements-a1c01193</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r3-mimo-ref--reference-disbursements-a1c01193.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -926,6 +999,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-disbursements-a1c01193" data-run-link="reference-disbursements-a1c01193" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-disbursements-bb4b9a3c" data-run-link="reference-disbursements-bb4b9a3c" title="Open run reference-disbursements-bb4b9a3c"><code>reference-disbursements-bb4b9a3c</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r4-mimo-ref--reference-disbursements-bb4b9a3c.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -936,6 +1010,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-disbursements-bb4b9a3c" data-run-link="reference-disbursements-bb4b9a3c" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-disbursements-dabeb6b9" data-run-link="reference-disbursements-dabeb6b9" title="Open run reference-disbursements-dabeb6b9"><code>reference-disbursements-dabeb6b9</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-mimo-ref--reference-disbursements-dabeb6b9.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -946,6 +1021,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-disbursements-dabeb6b9" data-run-link="reference-disbursements-dabeb6b9" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-payouts-2f82122b" data-run-link="kalari-payouts-2f82122b" title="Open run kalari-payouts-2f82122b"><code>kalari-payouts-2f82122b</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r3-mimo-learn--kalari-payouts-2f82122b.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -956,6 +1032,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-payouts-2f82122b" data-run-link="kalari-payouts-2f82122b" title="Run lessons">1 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-payouts-957056ac" data-run-link="kalari-payouts-957056ac" title="Open run kalari-payouts-957056ac"><code>kalari-payouts-957056ac</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r4-mimo-learn--kalari-payouts-957056ac.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -966,6 +1043,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-payouts-957056ac" data-run-link="kalari-payouts-957056ac" title="Run lessons">1 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-payouts-9a7ed4f9" data-run-link="kalari-payouts-9a7ed4f9" title="Open run kalari-payouts-9a7ed4f9"><code>kalari-payouts-9a7ed4f9</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r2-mimo-learn--kalari-payouts-9a7ed4f9.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -976,6 +1054,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-payouts-9a7ed4f9" data-run-link="kalari-payouts-9a7ed4f9" title="Run lessons">1 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-payouts-b3134750" data-run-link="kalari-payouts-b3134750" title="Open run kalari-payouts-b3134750"><code>kalari-payouts-b3134750</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-mimo-learn--kalari-payouts-b3134750.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -986,6 +1065,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-payouts-b3134750" data-run-link="kalari-payouts-b3134750" title="Run lessons">1 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-payouts-d55715dd" data-run-link="kalari-payouts-d55715dd" title="Open run kalari-payouts-d55715dd"><code>kalari-payouts-d55715dd</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r5-mimo-learn--kalari-payouts-d55715dd.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -996,6 +1076,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-payouts-d55715dd" data-run-link="kalari-payouts-d55715dd" title="Run lessons">1 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-payouts-0528c14d" data-run-link="reference-payouts-0528c14d" title="Open run reference-payouts-0528c14d"><code>reference-payouts-0528c14d</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r5-mimo-ref--reference-payouts-0528c14d.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -1006,6 +1087,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-payouts-0528c14d" data-run-link="reference-payouts-0528c14d" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-payouts-7c76d374" data-run-link="reference-payouts-7c76d374" title="Open run reference-payouts-7c76d374"><code>reference-payouts-7c76d374</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r2-mimo-ref--reference-payouts-7c76d374.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -1016,6 +1098,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-payouts-7c76d374" data-run-link="reference-payouts-7c76d374" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-payouts-8a134824" data-run-link="reference-payouts-8a134824" title="Open run reference-payouts-8a134824"><code>reference-payouts-8a134824</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-mimo-ref--reference-payouts-8a134824.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -1026,6 +1109,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-payouts-8a134824" data-run-link="reference-payouts-8a134824" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-payouts-8c3ba99e" data-run-link="reference-payouts-8c3ba99e" title="Open run reference-payouts-8c3ba99e"><code>reference-payouts-8c3ba99e</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r3-mimo-ref--reference-payouts-8c3ba99e.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -1036,6 +1120,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-payouts-8c3ba99e" data-run-link="reference-payouts-8c3ba99e" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-payouts-ea578bcd" data-run-link="reference-payouts-ea578bcd" title="Open run reference-payouts-ea578bcd"><code>reference-payouts-ea578bcd</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r4-mimo-ref--reference-payouts-ea578bcd.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -1046,6 +1131,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-payouts-ea578bcd" data-run-link="reference-payouts-ea578bcd" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-settlements-3f0527c5" data-run-link="kalari-settlements-3f0527c5" title="Open run kalari-settlements-3f0527c5"><code>kalari-settlements-3f0527c5</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r4-mimo-learn--kalari-settlements-3f0527c5.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -1056,6 +1142,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-settlements-3f0527c5" data-run-link="kalari-settlements-3f0527c5" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-settlements-4a1f0fe5" data-run-link="kalari-settlements-4a1f0fe5" title="Open run kalari-settlements-4a1f0fe5"><code>kalari-settlements-4a1f0fe5</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r5-mimo-learn--kalari-settlements-4a1f0fe5.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -1066,6 +1153,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-settlements-4a1f0fe5" data-run-link="kalari-settlements-4a1f0fe5" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-settlements-52458dc6" data-run-link="kalari-settlements-52458dc6" title="Open run kalari-settlements-52458dc6"><code>kalari-settlements-52458dc6</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-mimo-learn--kalari-settlements-52458dc6.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -1076,6 +1164,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-settlements-52458dc6" data-run-link="kalari-settlements-52458dc6" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-settlements-ae538dbc" data-run-link="kalari-settlements-ae538dbc" title="Open run kalari-settlements-ae538dbc"><code>kalari-settlements-ae538dbc</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r2-mimo-learn--kalari-settlements-ae538dbc.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -1086,6 +1175,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-settlements-ae538dbc" data-run-link="kalari-settlements-ae538dbc" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-settlements-b10a5545" data-run-link="kalari-settlements-b10a5545" title="Open run kalari-settlements-b10a5545"><code>kalari-settlements-b10a5545</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r3-mimo-learn--kalari-settlements-b10a5545.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -1096,6 +1186,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-settlements-b10a5545" data-run-link="kalari-settlements-b10a5545" title="Run lessons">0 written, 1 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-settlements-4855327b" data-run-link="reference-settlements-4855327b" title="Open run reference-settlements-4855327b"><code>reference-settlements-4855327b</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r2-mimo-ref--reference-settlements-4855327b.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -1106,6 +1197,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-settlements-4855327b" data-run-link="reference-settlements-4855327b" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-settlements-64f9150e" data-run-link="reference-settlements-64f9150e" title="Open run reference-settlements-64f9150e"><code>reference-settlements-64f9150e</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r4-mimo-ref--reference-settlements-64f9150e.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -1116,6 +1208,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-settlements-64f9150e" data-run-link="reference-settlements-64f9150e" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-settlements-714a79df" data-run-link="reference-settlements-714a79df" title="Open run reference-settlements-714a79df"><code>reference-settlements-714a79df</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r5-mimo-ref--reference-settlements-714a79df.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -1126,6 +1219,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-settlements-714a79df" data-run-link="reference-settlements-714a79df" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-settlements-7bbe7064" data-run-link="reference-settlements-7bbe7064" title="Open run reference-settlements-7bbe7064"><code>reference-settlements-7bbe7064</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r3-mimo-ref--reference-settlements-7bbe7064.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -1136,6 +1230,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-settlements-7bbe7064" data-run-link="reference-settlements-7bbe7064" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-settlements-ec8c90d7" data-run-link="reference-settlements-ec8c90d7" title="Open run reference-settlements-ec8c90d7"><code>reference-settlements-ec8c90d7</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-mimo-ref--reference-settlements-ec8c90d7.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">MiMo V2.6 Flash</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -1146,6 +1241,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-settlements-ec8c90d7" data-run-link="reference-settlements-ec8c90d7" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-disbursements-651a49b8" data-run-link="kalari-disbursements-651a49b8" title="Open run kalari-disbursements-651a49b8"><code>kalari-disbursements-651a49b8</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-muse-learn--kalari-disbursements-651a49b8.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">Muse Glimmer 30B</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -1156,6 +1252,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-disbursements-651a49b8" data-run-link="kalari-disbursements-651a49b8" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-disbursements-d4e8d155" data-run-link="reference-disbursements-d4e8d155" title="Open run reference-disbursements-d4e8d155"><code>reference-disbursements-d4e8d155</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-muse-ref--reference-disbursements-d4e8d155.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">Muse Glimmer 30B</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -1166,6 +1263,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-disbursements-d4e8d155" data-run-link="reference-disbursements-d4e8d155" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-payouts-5a70ed9d" data-run-link="kalari-payouts-5a70ed9d" title="Open run kalari-payouts-5a70ed9d"><code>kalari-payouts-5a70ed9d</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-muse-learn--kalari-payouts-5a70ed9d.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">Muse Glimmer 30B</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -1176,6 +1274,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-payouts-5a70ed9d" data-run-link="kalari-payouts-5a70ed9d" title="Run lessons">1 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-payouts-0c89d311" data-run-link="reference-payouts-0c89d311" title="Open run reference-payouts-0c89d311"><code>reference-payouts-0c89d311</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-muse-ref--reference-payouts-0c89d311.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">Muse Glimmer 30B</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -1186,6 +1285,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-payouts-0c89d311" data-run-link="reference-payouts-0c89d311" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-settlements-eb96c733" data-run-link="kalari-settlements-eb96c733" title="Open run kalari-settlements-eb96c733"><code>kalari-settlements-eb96c733</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-muse-learn--kalari-settlements-eb96c733.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">Muse Glimmer 30B</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -1196,6 +1296,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-settlements-eb96c733" data-run-link="kalari-settlements-eb96c733" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-settlements-6cbe4c49" data-run-link="reference-settlements-6cbe4c49" title="Open run reference-settlements-6cbe4c49"><code>reference-settlements-6cbe4c49</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-muse-ref--reference-settlements-6cbe4c49.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">Muse Glimmer 30B</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -1206,6 +1307,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-settlements-6cbe4c49" data-run-link="reference-settlements-6cbe4c49" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-disbursements-cf8d3e42" data-run-link="kalari-disbursements-cf8d3e42" title="Open run kalari-disbursements-cf8d3e42"><code>kalari-disbursements-cf8d3e42</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-qwen-learn--kalari-disbursements-cf8d3e42.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">Qwen3.8 27B</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -1216,6 +1318,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-disbursements-cf8d3e42" data-run-link="kalari-disbursements-cf8d3e42" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-disbursements-37cce882" data-run-link="reference-disbursements-37cce882" title="Open run reference-disbursements-37cce882"><code>reference-disbursements-37cce882</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-qwen-ref--reference-disbursements-37cce882.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">Qwen3.8 27B</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Disbursement payouts</td>
@@ -1226,6 +1329,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-disbursements-37cce882" data-run-link="reference-disbursements-37cce882" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-payouts-b6215945" data-run-link="kalari-payouts-b6215945" title="Open run kalari-payouts-b6215945"><code>kalari-payouts-b6215945</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-qwen-learn--kalari-payouts-b6215945.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">Qwen3.8 27B</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -1236,6 +1340,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-payouts-b6215945" data-run-link="kalari-payouts-b6215945" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-payouts-5f67c289" data-run-link="reference-payouts-5f67c289" title="Open run reference-payouts-5f67c289"><code>reference-payouts-5f67c289</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-qwen-ref--reference-payouts-5f67c289.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">Qwen3.8 27B</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Merchant payout ledger</td>
@@ -1246,6 +1351,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=reference-payouts-5f67c289" data-run-link="reference-payouts-5f67c289" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=kalari-settlements-e82391a1" data-run-link="kalari-settlements-e82391a1" title="Open run kalari-settlements-e82391a1"><code>kalari-settlements-e82391a1</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-qwen-learn--kalari-settlements-e82391a1.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">Qwen3.8 27B</span></td>
         <td data-label="Arm">kalari</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -1256,6 +1362,7 @@
         <td class="num" data-label="Lessons"><a class="run-link" href="run.html?id=kalari-settlements-e82391a1" data-run-link="kalari-settlements-e82391a1" title="Run lessons">0 written, 0 recalled</a></td>
       </tr><tr>
         <td class="run-cell" data-label="Run"><a class="run-link" href="run.html?id=reference-settlements-cee57a99" data-run-link="reference-settlements-cee57a99" title="Open run reference-settlements-cee57a99"><code>reference-settlements-cee57a99</code></a></td>
+        <td data-label="Row"><a class="evidence-link" href="https://github.com/nrynss/kalari/blob/59e3447334c4ff087f66273101fc13f9f1f570f0/bench/rows-0.2.3/r1-qwen-ref--reference-settlements-cee57a99.json">Published row</a></td>
         <td data-label="Model"><span class="model-tag">Qwen3.8 27B</span></td>
         <td data-label="Arm">reference</td>
         <td data-label="Upgrade">Settlement batches</td>
@@ -1269,6 +1376,6 @@
   </section>
     <section id="sessions" class="section section--sessions" aria-labelledby="sessions-title">
     <h2 id="sessions-title">Read a session</h2>
-    <div class="session-group"><h3><span class="model-tag">DeepSeek V4.1 Flash</span> · Disbursement payouts · Kalari arm</h3><ul><li><a href="session.html?id=kalari-disbursements-df38d800"><code>kalari-disbursements-df38d800</code></a></li><li><a href="session.html?id=kalari-disbursements-bac0d296"><code>kalari-disbursements-bac0d296</code></a></li><li><a href="session.html?id=kalari-disbursements-a284128c"><code>kalari-disbursements-a284128c</code></a></li><li><a href="session.html?id=kalari-disbursements-1cd5a37a"><code>kalari-disbursements-1cd5a37a</code></a></li><li><a href="session.html?id=kalari-disbursements-227b38ae"><code>kalari-disbursements-227b38ae</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">DeepSeek V4.1 Flash</span> · Disbursement payouts · Alone arm</h3><ul><li><a href="session.html?id=reference-disbursements-a01c7833"><code>reference-disbursements-a01c7833</code></a></li><li><a href="session.html?id=reference-disbursements-9b3bacfb"><code>reference-disbursements-9b3bacfb</code></a></li><li><a href="session.html?id=reference-disbursements-c4d8ba75"><code>reference-disbursements-c4d8ba75</code></a></li><li><a href="session.html?id=reference-disbursements-4ddfd233"><code>reference-disbursements-4ddfd233</code></a></li><li><a href="session.html?id=reference-disbursements-5b3c4c52"><code>reference-disbursements-5b3c4c52</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">DeepSeek V4.1 Flash</span> · Merchant payout ledger · Kalari arm</h3><ul><li><a href="session.html?id=kalari-payouts-17a7b3b6"><code>kalari-payouts-17a7b3b6</code></a></li><li><a href="session.html?id=kalari-payouts-d1651b4e"><code>kalari-payouts-d1651b4e</code></a></li><li><a href="session.html?id=kalari-payouts-22dee619"><code>kalari-payouts-22dee619</code></a></li><li><a href="session.html?id=kalari-payouts-92d9fa48"><code>kalari-payouts-92d9fa48</code></a></li><li><a href="session.html?id=kalari-payouts-e4a52beb"><code>kalari-payouts-e4a52beb</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">DeepSeek V4.1 Flash</span> · Merchant payout ledger · Alone arm</h3><ul><li><a href="session.html?id=reference-payouts-6ce2c0df"><code>reference-payouts-6ce2c0df</code></a></li><li><a href="session.html?id=reference-payouts-39a239b3"><code>reference-payouts-39a239b3</code></a></li><li><a href="session.html?id=reference-payouts-34ca5d0e"><code>reference-payouts-34ca5d0e</code></a></li><li><a href="session.html?id=reference-payouts-681c080a"><code>reference-payouts-681c080a</code></a></li><li><a href="session.html?id=reference-payouts-fd511c02"><code>reference-payouts-fd511c02</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">DeepSeek V4.1 Flash</span> · Settlement batches · Kalari arm</h3><ul><li><a href="session.html?id=kalari-settlements-3eddc691"><code>kalari-settlements-3eddc691</code></a></li><li><a href="session.html?id=kalari-settlements-1aa9e78d"><code>kalari-settlements-1aa9e78d</code></a></li><li><a href="session.html?id=kalari-settlements-69e6bd0f"><code>kalari-settlements-69e6bd0f</code></a></li><li><a href="session.html?id=kalari-settlements-fa8b5732"><code>kalari-settlements-fa8b5732</code></a></li><li><a href="session.html?id=kalari-settlements-3e11dfeb"><code>kalari-settlements-3e11dfeb</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">DeepSeek V4.1 Flash</span> · Settlement batches · Alone arm</h3><ul><li><a href="session.html?id=reference-settlements-5e3f1c1b"><code>reference-settlements-5e3f1c1b</code></a></li><li><a href="session.html?id=reference-settlements-64bcb681"><code>reference-settlements-64bcb681</code></a></li><li><a href="session.html?id=reference-settlements-6c904d3e"><code>reference-settlements-6c904d3e</code></a></li><li><a href="session.html?id=reference-settlements-b81baed7"><code>reference-settlements-b81baed7</code></a></li><li><a href="session.html?id=reference-settlements-3ba172ab"><code>reference-settlements-3ba172ab</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">GLM 5.3 Flash</span> · Disbursement payouts · Kalari arm</h3><ul><li><a href="session.html?id=kalari-disbursements-ca4ffaaa"><code>kalari-disbursements-ca4ffaaa</code></a></li><li><a href="session.html?id=kalari-disbursements-a1dcf3e0"><code>kalari-disbursements-a1dcf3e0</code></a></li><li><a href="session.html?id=kalari-disbursements-08ecedbc"><code>kalari-disbursements-08ecedbc</code></a></li><li><a href="session.html?id=kalari-disbursements-3565adc2"><code>kalari-disbursements-3565adc2</code></a></li><li><a href="session.html?id=kalari-disbursements-a6e7904e"><code>kalari-disbursements-a6e7904e</code></a></li><li><a href="session.html?id=kalari-disbursements-4b63a0e3"><code>kalari-disbursements-4b63a0e3</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">GLM 5.3 Flash</span> · Disbursement payouts · Alone arm</h3><ul><li><a href="session.html?id=reference-disbursements-be0c0bfd"><code>reference-disbursements-be0c0bfd</code></a></li><li><a href="session.html?id=reference-disbursements-0b428614"><code>reference-disbursements-0b428614</code></a></li><li><a href="session.html?id=reference-disbursements-ed5d0908"><code>reference-disbursements-ed5d0908</code></a></li><li><a href="session.html?id=reference-disbursements-c88ba58c"><code>reference-disbursements-c88ba58c</code></a></li><li><a href="session.html?id=reference-disbursements-dbd842c6"><code>reference-disbursements-dbd842c6</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">GLM 5.3 Flash</span> · Merchant payout ledger · Kalari arm</h3><ul><li><a href="session.html?id=kalari-payouts-99a2837d"><code>kalari-payouts-99a2837d</code></a></li><li><a href="session.html?id=kalari-payouts-918666ca"><code>kalari-payouts-918666ca</code></a></li><li><a href="session.html?id=kalari-payouts-5911c98a"><code>kalari-payouts-5911c98a</code></a></li><li><a href="session.html?id=kalari-payouts-4991247f"><code>kalari-payouts-4991247f</code></a></li><li><a href="session.html?id=kalari-payouts-6c9620c6"><code>kalari-payouts-6c9620c6</code></a></li><li><a href="session.html?id=kalari-payouts-05ece9fd"><code>kalari-payouts-05ece9fd</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">GLM 5.3 Flash</span> · Merchant payout ledger · Alone arm</h3><ul><li><a href="session.html?id=reference-payouts-15a6091e"><code>reference-payouts-15a6091e</code></a></li><li><a href="session.html?id=reference-payouts-d9149206"><code>reference-payouts-d9149206</code></a></li><li><a href="session.html?id=reference-payouts-b0f91166"><code>reference-payouts-b0f91166</code></a></li><li><a href="session.html?id=reference-payouts-2184f2fa"><code>reference-payouts-2184f2fa</code></a></li><li><a href="session.html?id=reference-payouts-5967dca8"><code>reference-payouts-5967dca8</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">GLM 5.3 Flash</span> · Settlement batches · Kalari arm</h3><ul><li><a href="session.html?id=kalari-settlements-42c374b9"><code>kalari-settlements-42c374b9</code></a></li><li><a href="session.html?id=kalari-settlements-26a658fb"><code>kalari-settlements-26a658fb</code></a></li><li><a href="session.html?id=kalari-settlements-1377ddc3"><code>kalari-settlements-1377ddc3</code></a></li><li><a href="session.html?id=kalari-settlements-4c38d25b"><code>kalari-settlements-4c38d25b</code></a></li><li><a href="session.html?id=kalari-settlements-6c1326a5"><code>kalari-settlements-6c1326a5</code></a></li><li><a href="session.html?id=kalari-settlements-f2ea4365"><code>kalari-settlements-f2ea4365</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">GLM 5.3 Flash</span> · Settlement batches · Alone arm</h3><ul><li><a href="session.html?id=reference-settlements-e781bee8"><code>reference-settlements-e781bee8</code></a></li><li><a href="session.html?id=reference-settlements-53c64b82"><code>reference-settlements-53c64b82</code></a></li><li><a href="session.html?id=reference-settlements-85aeb79e"><code>reference-settlements-85aeb79e</code></a></li><li><a href="session.html?id=reference-settlements-f2db6e0e"><code>reference-settlements-f2db6e0e</code></a></li><li><a href="session.html?id=reference-settlements-73c37bf8"><code>reference-settlements-73c37bf8</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">MiMo V2.6 Flash</span> · Disbursement payouts · Kalari arm</h3><ul><li><a href="session.html?id=kalari-disbursements-5d70f504"><code>kalari-disbursements-5d70f504</code></a></li><li><a href="session.html?id=kalari-disbursements-f6c708cd"><code>kalari-disbursements-f6c708cd</code></a></li><li><a href="session.html?id=kalari-disbursements-3d6a3d0f"><code>kalari-disbursements-3d6a3d0f</code></a></li><li><a href="session.html?id=kalari-disbursements-e9535a0c"><code>kalari-disbursements-e9535a0c</code></a></li><li><a href="session.html?id=kalari-disbursements-2cc134fa"><code>kalari-disbursements-2cc134fa</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">MiMo V2.6 Flash</span> · Disbursement payouts · Alone arm</h3><ul><li><a href="session.html?id=reference-disbursements-dabeb6b9"><code>reference-disbursements-dabeb6b9</code></a></li><li><a href="session.html?id=reference-disbursements-991655e9"><code>reference-disbursements-991655e9</code></a></li><li><a href="session.html?id=reference-disbursements-a1c01193"><code>reference-disbursements-a1c01193</code></a></li><li><a href="session.html?id=reference-disbursements-bb4b9a3c"><code>reference-disbursements-bb4b9a3c</code></a></li><li><a href="session.html?id=reference-disbursements-8186ea03"><code>reference-disbursements-8186ea03</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">MiMo V2.6 Flash</span> · Merchant payout ledger · Kalari arm</h3><ul><li><a href="session.html?id=kalari-payouts-b3134750"><code>kalari-payouts-b3134750</code></a></li><li><a href="session.html?id=kalari-payouts-9a7ed4f9"><code>kalari-payouts-9a7ed4f9</code></a></li><li><a href="session.html?id=kalari-payouts-2f82122b"><code>kalari-payouts-2f82122b</code></a></li><li><a href="session.html?id=kalari-payouts-957056ac"><code>kalari-payouts-957056ac</code></a></li><li><a href="session.html?id=kalari-payouts-d55715dd"><code>kalari-payouts-d55715dd</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">MiMo V2.6 Flash</span> · Merchant payout ledger · Alone arm</h3><ul><li><a href="session.html?id=reference-payouts-8a134824"><code>reference-payouts-8a134824</code></a></li><li><a href="session.html?id=reference-payouts-7c76d374"><code>reference-payouts-7c76d374</code></a></li><li><a href="session.html?id=reference-payouts-8c3ba99e"><code>reference-payouts-8c3ba99e</code></a></li><li><a href="session.html?id=reference-payouts-ea578bcd"><code>reference-payouts-ea578bcd</code></a></li><li><a href="session.html?id=reference-payouts-0528c14d"><code>reference-payouts-0528c14d</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">MiMo V2.6 Flash</span> · Settlement batches · Kalari arm</h3><ul><li><a href="session.html?id=kalari-settlements-52458dc6"><code>kalari-settlements-52458dc6</code></a></li><li><a href="session.html?id=kalari-settlements-ae538dbc"><code>kalari-settlements-ae538dbc</code></a></li><li><a href="session.html?id=kalari-settlements-b10a5545"><code>kalari-settlements-b10a5545</code></a></li><li><a href="session.html?id=kalari-settlements-3f0527c5"><code>kalari-settlements-3f0527c5</code></a></li><li><a href="session.html?id=kalari-settlements-4a1f0fe5"><code>kalari-settlements-4a1f0fe5</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">MiMo V2.6 Flash</span> · Settlement batches · Alone arm</h3><ul><li><a href="session.html?id=reference-settlements-ec8c90d7"><code>reference-settlements-ec8c90d7</code></a></li><li><a href="session.html?id=reference-settlements-4855327b"><code>reference-settlements-4855327b</code></a></li><li><a href="session.html?id=reference-settlements-7bbe7064"><code>reference-settlements-7bbe7064</code></a></li><li><a href="session.html?id=reference-settlements-64f9150e"><code>reference-settlements-64f9150e</code></a></li><li><a href="session.html?id=reference-settlements-714a79df"><code>reference-settlements-714a79df</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Muse Glimmer 30B</span> · Disbursement payouts · Kalari arm</h3><ul><li><a href="session.html?id=kalari-disbursements-651a49b8"><code>kalari-disbursements-651a49b8</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Muse Glimmer 30B</span> · Disbursement payouts · Alone arm</h3><ul><li><a href="session.html?id=reference-disbursements-d4e8d155"><code>reference-disbursements-d4e8d155</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Muse Glimmer 30B</span> · Merchant payout ledger · Kalari arm</h3><ul><li><a href="session.html?id=kalari-payouts-5a70ed9d"><code>kalari-payouts-5a70ed9d</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Muse Glimmer 30B</span> · Merchant payout ledger · Alone arm</h3><ul><li><a href="session.html?id=reference-payouts-0c89d311"><code>reference-payouts-0c89d311</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Muse Glimmer 30B</span> · Settlement batches · Kalari arm</h3><ul><li><a href="session.html?id=kalari-settlements-eb96c733"><code>kalari-settlements-eb96c733</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Muse Glimmer 30B</span> · Settlement batches · Alone arm</h3><ul><li><a href="session.html?id=reference-settlements-6cbe4c49"><code>reference-settlements-6cbe4c49</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Qwen3.8 27B</span> · Disbursement payouts · Kalari arm</h3><ul><li><a href="session.html?id=kalari-disbursements-cf8d3e42"><code>kalari-disbursements-cf8d3e42</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Qwen3.8 27B</span> · Disbursement payouts · Alone arm</h3><ul><li><a href="session.html?id=reference-disbursements-37cce882"><code>reference-disbursements-37cce882</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Qwen3.8 27B</span> · Merchant payout ledger · Kalari arm</h3><ul><li><a href="session.html?id=kalari-payouts-b6215945"><code>kalari-payouts-b6215945</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Qwen3.8 27B</span> · Merchant payout ledger · Alone arm</h3><ul><li><a href="session.html?id=reference-payouts-5f67c289"><code>reference-payouts-5f67c289</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Qwen3.8 27B</span> · Settlement batches · Kalari arm</h3><ul><li><a href="session.html?id=kalari-settlements-e82391a1"><code>kalari-settlements-e82391a1</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Qwen3.8 27B</span> · Settlement batches · Alone arm</h3><ul><li><a href="session.html?id=reference-settlements-cee57a99"><code>reference-settlements-cee57a99</code></a></li></ul></div><div class="session-group"><h3>containment-023</h3><ul><li><a href="session.html?id=containment-023"><code>containment-023</code></a></li></ul></div><div class="session-group"><h3>baseline-frozen</h3><ul><li><a href="session.html?id=baseline-frozen"><code>baseline-frozen</code></a></li></ul></div>
+    <div class="session-group"><h3><span class="model-tag">DeepSeek V4.1 Flash</span> · Disbursement payouts · Kalari arm</h3><ul><li><a href="session.html?id=kalari-disbursements-df38d800"><code>kalari-disbursements-df38d800</code></a></li><li><a href="session.html?id=kalari-disbursements-bac0d296"><code>kalari-disbursements-bac0d296</code></a></li><li><a href="session.html?id=kalari-disbursements-a284128c"><code>kalari-disbursements-a284128c</code></a></li><li><a href="session.html?id=kalari-disbursements-1cd5a37a"><code>kalari-disbursements-1cd5a37a</code></a></li><li><a href="session.html?id=kalari-disbursements-227b38ae"><code>kalari-disbursements-227b38ae</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">DeepSeek V4.1 Flash</span> · Disbursement payouts · Alone arm</h3><ul><li><a href="session.html?id=reference-disbursements-a01c7833"><code>reference-disbursements-a01c7833</code></a></li><li><a href="session.html?id=reference-disbursements-9b3bacfb"><code>reference-disbursements-9b3bacfb</code></a></li><li><a href="session.html?id=reference-disbursements-c4d8ba75"><code>reference-disbursements-c4d8ba75</code></a></li><li><a href="session.html?id=reference-disbursements-4ddfd233"><code>reference-disbursements-4ddfd233</code></a></li><li><a href="session.html?id=reference-disbursements-5b3c4c52"><code>reference-disbursements-5b3c4c52</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">DeepSeek V4.1 Flash</span> · Merchant payout ledger · Kalari arm</h3><ul><li><a href="session.html?id=kalari-payouts-17a7b3b6"><code>kalari-payouts-17a7b3b6</code></a></li><li><a href="session.html?id=kalari-payouts-d1651b4e"><code>kalari-payouts-d1651b4e</code></a></li><li><a href="session.html?id=kalari-payouts-22dee619"><code>kalari-payouts-22dee619</code></a></li><li><a href="session.html?id=kalari-payouts-92d9fa48"><code>kalari-payouts-92d9fa48</code></a></li><li><a href="session.html?id=kalari-payouts-e4a52beb"><code>kalari-payouts-e4a52beb</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">DeepSeek V4.1 Flash</span> · Merchant payout ledger · Alone arm</h3><ul><li><a href="session.html?id=reference-payouts-6ce2c0df"><code>reference-payouts-6ce2c0df</code></a></li><li><a href="session.html?id=reference-payouts-39a239b3"><code>reference-payouts-39a239b3</code></a></li><li><a href="session.html?id=reference-payouts-34ca5d0e"><code>reference-payouts-34ca5d0e</code></a></li><li><a href="session.html?id=reference-payouts-681c080a"><code>reference-payouts-681c080a</code></a></li><li><a href="session.html?id=reference-payouts-fd511c02"><code>reference-payouts-fd511c02</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">DeepSeek V4.1 Flash</span> · Settlement batches · Kalari arm</h3><ul><li><a href="session.html?id=kalari-settlements-3eddc691"><code>kalari-settlements-3eddc691</code></a></li><li><a href="session.html?id=kalari-settlements-1aa9e78d"><code>kalari-settlements-1aa9e78d</code></a></li><li><a href="session.html?id=kalari-settlements-69e6bd0f"><code>kalari-settlements-69e6bd0f</code></a></li><li><a href="session.html?id=kalari-settlements-fa8b5732"><code>kalari-settlements-fa8b5732</code></a></li><li><a href="session.html?id=kalari-settlements-3e11dfeb"><code>kalari-settlements-3e11dfeb</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">DeepSeek V4.1 Flash</span> · Settlement batches · Alone arm</h3><ul><li><a href="session.html?id=reference-settlements-5e3f1c1b"><code>reference-settlements-5e3f1c1b</code></a></li><li><a href="session.html?id=reference-settlements-64bcb681"><code>reference-settlements-64bcb681</code></a></li><li><a href="session.html?id=reference-settlements-6c904d3e"><code>reference-settlements-6c904d3e</code></a></li><li><a href="session.html?id=reference-settlements-b81baed7"><code>reference-settlements-b81baed7</code></a></li><li><a href="session.html?id=reference-settlements-3ba172ab"><code>reference-settlements-3ba172ab</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">GLM 5.3 Flash</span> · Disbursement payouts · Kalari arm</h3><ul><li><a href="session.html?id=kalari-disbursements-ca4ffaaa"><code>kalari-disbursements-ca4ffaaa</code></a></li><li><a href="session.html?id=kalari-disbursements-a1dcf3e0"><code>kalari-disbursements-a1dcf3e0</code></a></li><li><a href="session.html?id=kalari-disbursements-08ecedbc"><code>kalari-disbursements-08ecedbc</code></a></li><li><a href="session.html?id=kalari-disbursements-3565adc2"><code>kalari-disbursements-3565adc2</code></a></li><li><a href="session.html?id=kalari-disbursements-a6e7904e"><code>kalari-disbursements-a6e7904e</code></a></li><li><a href="session.html?id=kalari-disbursements-4b63a0e3"><code>kalari-disbursements-4b63a0e3</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">GLM 5.3 Flash</span> · Disbursement payouts · Alone arm</h3><ul><li><a href="session.html?id=reference-disbursements-be0c0bfd"><code>reference-disbursements-be0c0bfd</code></a></li><li><a href="session.html?id=reference-disbursements-0b428614"><code>reference-disbursements-0b428614</code></a></li><li><a href="session.html?id=reference-disbursements-ed5d0908"><code>reference-disbursements-ed5d0908</code></a></li><li><a href="session.html?id=reference-disbursements-c88ba58c"><code>reference-disbursements-c88ba58c</code></a></li><li><a href="session.html?id=reference-disbursements-dbd842c6"><code>reference-disbursements-dbd842c6</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">GLM 5.3 Flash</span> · Merchant payout ledger · Kalari arm</h3><ul><li><a href="session.html?id=kalari-payouts-99a2837d"><code>kalari-payouts-99a2837d</code></a></li><li><a href="session.html?id=kalari-payouts-918666ca"><code>kalari-payouts-918666ca</code></a></li><li><a href="session.html?id=kalari-payouts-5911c98a"><code>kalari-payouts-5911c98a</code></a></li><li><a href="session.html?id=kalari-payouts-4991247f"><code>kalari-payouts-4991247f</code></a></li><li><a href="session.html?id=kalari-payouts-6c9620c6"><code>kalari-payouts-6c9620c6</code></a></li><li><a href="session.html?id=kalari-payouts-05ece9fd"><code>kalari-payouts-05ece9fd</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">GLM 5.3 Flash</span> · Merchant payout ledger · Alone arm</h3><ul><li><a href="session.html?id=reference-payouts-15a6091e"><code>reference-payouts-15a6091e</code></a></li><li><a href="session.html?id=reference-payouts-d9149206"><code>reference-payouts-d9149206</code></a></li><li><a href="session.html?id=reference-payouts-b0f91166"><code>reference-payouts-b0f91166</code></a></li><li><a href="session.html?id=reference-payouts-2184f2fa"><code>reference-payouts-2184f2fa</code></a></li><li><a href="session.html?id=reference-payouts-5967dca8"><code>reference-payouts-5967dca8</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">GLM 5.3 Flash</span> · Settlement batches · Kalari arm</h3><ul><li><a href="session.html?id=kalari-settlements-42c374b9"><code>kalari-settlements-42c374b9</code></a></li><li><a href="session.html?id=kalari-settlements-26a658fb"><code>kalari-settlements-26a658fb</code></a></li><li><a href="session.html?id=kalari-settlements-1377ddc3"><code>kalari-settlements-1377ddc3</code></a></li><li><a href="session.html?id=kalari-settlements-4c38d25b"><code>kalari-settlements-4c38d25b</code></a></li><li><a href="session.html?id=kalari-settlements-6c1326a5"><code>kalari-settlements-6c1326a5</code></a></li><li><a href="session.html?id=kalari-settlements-f2ea4365"><code>kalari-settlements-f2ea4365</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">GLM 5.3 Flash</span> · Settlement batches · Alone arm</h3><ul><li><a href="session.html?id=reference-settlements-e781bee8"><code>reference-settlements-e781bee8</code></a></li><li><a href="session.html?id=reference-settlements-53c64b82"><code>reference-settlements-53c64b82</code></a></li><li><a href="session.html?id=reference-settlements-85aeb79e"><code>reference-settlements-85aeb79e</code></a></li><li><a href="session.html?id=reference-settlements-f2db6e0e"><code>reference-settlements-f2db6e0e</code></a></li><li><a href="session.html?id=reference-settlements-73c37bf8"><code>reference-settlements-73c37bf8</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">MiMo V2.6 Flash</span> · Disbursement payouts · Kalari arm</h3><ul><li><a href="session.html?id=kalari-disbursements-5d70f504"><code>kalari-disbursements-5d70f504</code></a></li><li><a href="session.html?id=kalari-disbursements-f6c708cd"><code>kalari-disbursements-f6c708cd</code></a></li><li><a href="session.html?id=kalari-disbursements-3d6a3d0f"><code>kalari-disbursements-3d6a3d0f</code></a></li><li><a href="session.html?id=kalari-disbursements-e9535a0c"><code>kalari-disbursements-e9535a0c</code></a></li><li><a href="session.html?id=kalari-disbursements-2cc134fa"><code>kalari-disbursements-2cc134fa</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">MiMo V2.6 Flash</span> · Disbursement payouts · Alone arm</h3><ul><li><a href="session.html?id=reference-disbursements-dabeb6b9"><code>reference-disbursements-dabeb6b9</code></a></li><li><a href="session.html?id=reference-disbursements-991655e9"><code>reference-disbursements-991655e9</code></a></li><li><a href="session.html?id=reference-disbursements-a1c01193"><code>reference-disbursements-a1c01193</code></a></li><li><a href="session.html?id=reference-disbursements-bb4b9a3c"><code>reference-disbursements-bb4b9a3c</code></a></li><li><a href="session.html?id=reference-disbursements-8186ea03"><code>reference-disbursements-8186ea03</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">MiMo V2.6 Flash</span> · Merchant payout ledger · Kalari arm</h3><ul><li><a href="session.html?id=kalari-payouts-b3134750"><code>kalari-payouts-b3134750</code></a></li><li><a href="session.html?id=kalari-payouts-9a7ed4f9"><code>kalari-payouts-9a7ed4f9</code></a></li><li><a href="session.html?id=kalari-payouts-2f82122b"><code>kalari-payouts-2f82122b</code></a></li><li><a href="session.html?id=kalari-payouts-957056ac"><code>kalari-payouts-957056ac</code></a></li><li><a href="session.html?id=kalari-payouts-d55715dd"><code>kalari-payouts-d55715dd</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">MiMo V2.6 Flash</span> · Merchant payout ledger · Alone arm</h3><ul><li><a href="session.html?id=reference-payouts-8a134824"><code>reference-payouts-8a134824</code></a></li><li><a href="session.html?id=reference-payouts-7c76d374"><code>reference-payouts-7c76d374</code></a></li><li><a href="session.html?id=reference-payouts-8c3ba99e"><code>reference-payouts-8c3ba99e</code></a></li><li><a href="session.html?id=reference-payouts-ea578bcd"><code>reference-payouts-ea578bcd</code></a></li><li><a href="session.html?id=reference-payouts-0528c14d"><code>reference-payouts-0528c14d</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">MiMo V2.6 Flash</span> · Settlement batches · Kalari arm</h3><ul><li><a href="session.html?id=kalari-settlements-52458dc6"><code>kalari-settlements-52458dc6</code></a></li><li><a href="session.html?id=kalari-settlements-ae538dbc"><code>kalari-settlements-ae538dbc</code></a></li><li><a href="session.html?id=kalari-settlements-b10a5545"><code>kalari-settlements-b10a5545</code></a></li><li><a href="session.html?id=kalari-settlements-3f0527c5"><code>kalari-settlements-3f0527c5</code></a></li><li><a href="session.html?id=kalari-settlements-4a1f0fe5"><code>kalari-settlements-4a1f0fe5</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">MiMo V2.6 Flash</span> · Settlement batches · Alone arm</h3><ul><li><a href="session.html?id=reference-settlements-ec8c90d7"><code>reference-settlements-ec8c90d7</code></a></li><li><a href="session.html?id=reference-settlements-4855327b"><code>reference-settlements-4855327b</code></a></li><li><a href="session.html?id=reference-settlements-7bbe7064"><code>reference-settlements-7bbe7064</code></a></li><li><a href="session.html?id=reference-settlements-64f9150e"><code>reference-settlements-64f9150e</code></a></li><li><a href="session.html?id=reference-settlements-714a79df"><code>reference-settlements-714a79df</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Muse Glimmer 30B</span> · Disbursement payouts · Kalari arm</h3><ul><li><a href="session.html?id=kalari-disbursements-651a49b8"><code>kalari-disbursements-651a49b8</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Muse Glimmer 30B</span> · Disbursement payouts · Alone arm</h3><ul><li><a href="session.html?id=reference-disbursements-d4e8d155"><code>reference-disbursements-d4e8d155</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Muse Glimmer 30B</span> · Merchant payout ledger · Kalari arm</h3><ul><li><a href="session.html?id=kalari-payouts-5a70ed9d"><code>kalari-payouts-5a70ed9d</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Muse Glimmer 30B</span> · Merchant payout ledger · Alone arm</h3><ul><li><a href="session.html?id=reference-payouts-0c89d311"><code>reference-payouts-0c89d311</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Muse Glimmer 30B</span> · Settlement batches · Kalari arm</h3><ul><li><a href="session.html?id=kalari-settlements-eb96c733"><code>kalari-settlements-eb96c733</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Muse Glimmer 30B</span> · Settlement batches · Alone arm</h3><ul><li><a href="session.html?id=reference-settlements-6cbe4c49"><code>reference-settlements-6cbe4c49</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Qwen3.8 27B</span> · Disbursement payouts · Kalari arm</h3><ul><li><a href="session.html?id=kalari-disbursements-cf8d3e42"><code>kalari-disbursements-cf8d3e42</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Qwen3.8 27B</span> · Disbursement payouts · Alone arm</h3><ul><li><a href="session.html?id=reference-disbursements-37cce882"><code>reference-disbursements-37cce882</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Qwen3.8 27B</span> · Merchant payout ledger · Kalari arm</h3><ul><li><a href="session.html?id=kalari-payouts-b6215945"><code>kalari-payouts-b6215945</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Qwen3.8 27B</span> · Merchant payout ledger · Alone arm</h3><ul><li><a href="session.html?id=reference-payouts-5f67c289"><code>reference-payouts-5f67c289</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Qwen3.8 27B</span> · Settlement batches · Kalari arm</h3><ul><li><a href="session.html?id=kalari-settlements-e82391a1"><code>kalari-settlements-e82391a1</code></a></li></ul></div><div class="session-group"><h3><span class="model-tag">Qwen3.8 27B</span> · Settlement batches · Alone arm</h3><ul><li><a href="session.html?id=reference-settlements-cee57a99"><code>reference-settlements-cee57a99</code></a></li></ul></div><div class="session-group"><h3>The containment session</h3><ul><li><a href="session.html?id=containment-023"><code>containment-023</code></a></li></ul></div><div class="session-group"><h3>The earlier baseline</h3><ul><li><a href="session.html?id=baseline-frozen"><code>baseline-frozen</code></a></li></ul></div>
   </section>
   </article>

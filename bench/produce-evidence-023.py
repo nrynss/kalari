@@ -234,7 +234,7 @@ def repeat_record(session: str, row: dict, source: str) -> dict:
         "lessons_recalled": len(row.get("lessons_recalled") or []),
         "tool_calls": copy.deepcopy(row.get("tool_calls")),
         "source": source,
-        "notes": "One Kalari 0.2.3 repeat session.",
+        "notes": "One Kalari repeat session.",
     }
     return {
         "kind": "benchmark",

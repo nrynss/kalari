@@ -59,7 +59,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/glm3-learn--kalari-disbursements-ca4ffaaa.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -118,7 +118,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/glm3-learn--kalari-payouts-99a2837d.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -177,7 +177,7 @@
               "kalari_what_changed": 2
             },
             "source": "bench/rows-0.2.3/glm3-learn--kalari-settlements-42c374b9.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -236,7 +236,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r1-ds-learn--kalari-disbursements-df38d800.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -295,7 +295,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r1-ds-learn--kalari-payouts-17a7b3b6.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -354,7 +354,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r1-ds-learn--kalari-settlements-3eddc691.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -407,7 +407,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r1-ds-ref--reference-disbursements-a01c7833.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -460,7 +460,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r1-ds-ref--reference-payouts-6ce2c0df.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -513,7 +513,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r1-ds-ref--reference-settlements-5e3f1c1b.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -572,7 +572,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r1-glm-learn--kalari-disbursements-a1dcf3e0.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -631,7 +631,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r1-glm-learn--kalari-payouts-918666ca.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -690,7 +690,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r1-glm-learn--kalari-settlements-26a658fb.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -743,7 +743,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r1-glm-ref--reference-disbursements-be0c0bfd.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -796,7 +796,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r1-glm-ref--reference-payouts-15a6091e.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -849,7 +849,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r1-glm-ref--reference-settlements-e781bee8.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -908,7 +908,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r1-mimo-learn--kalari-disbursements-5d70f504.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -967,7 +967,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r1-mimo-learn--kalari-payouts-b3134750.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -1026,7 +1026,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r1-mimo-learn--kalari-settlements-52458dc6.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -1079,7 +1079,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r1-mimo-ref--reference-disbursements-dabeb6b9.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -1132,7 +1132,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r1-mimo-ref--reference-payouts-8a134824.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -1185,7 +1185,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r1-mimo-ref--reference-settlements-ec8c90d7.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -1238,7 +1238,7 @@
             "lessons_recalled": 0,
             "tool_calls": {},
             "source": "bench/rows-0.2.3/r1-muse-learn--kalari-disbursements-651a49b8.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -1297,7 +1297,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r1-muse-learn--kalari-payouts-5a70ed9d.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -1350,7 +1350,7 @@
             "lessons_recalled": 0,
             "tool_calls": {},
             "source": "bench/rows-0.2.3/r1-muse-learn--kalari-settlements-eb96c733.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -1403,7 +1403,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r1-muse-ref--reference-disbursements-d4e8d155.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -1456,7 +1456,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r1-muse-ref--reference-payouts-0c89d311.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -1509,7 +1509,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r1-muse-ref--reference-settlements-6cbe4c49.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -1562,7 +1562,7 @@
             "lessons_recalled": 0,
             "tool_calls": {},
             "source": "bench/rows-0.2.3/r1-qwen-learn--kalari-disbursements-cf8d3e42.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -1615,7 +1615,7 @@
             "lessons_recalled": 0,
             "tool_calls": {},
             "source": "bench/rows-0.2.3/r1-qwen-learn--kalari-payouts-b6215945.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -1668,7 +1668,7 @@
             "lessons_recalled": 0,
             "tool_calls": {},
             "source": "bench/rows-0.2.3/r1-qwen-learn--kalari-settlements-e82391a1.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -1721,7 +1721,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r1-qwen-ref--reference-disbursements-37cce882.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -1774,7 +1774,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r1-qwen-ref--reference-payouts-5f67c289.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -1827,7 +1827,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r1-qwen-ref--reference-settlements-cee57a99.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -1886,7 +1886,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r2-ds-learn--kalari-disbursements-bac0d296.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -1945,7 +1945,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r2-ds-learn--kalari-payouts-d1651b4e.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -2004,7 +2004,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r2-ds-learn--kalari-settlements-1aa9e78d.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -2057,7 +2057,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r2-ds-ref--reference-disbursements-9b3bacfb.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -2110,7 +2110,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r2-ds-ref--reference-payouts-39a239b3.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -2163,7 +2163,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r2-ds-ref--reference-settlements-64bcb681.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -2222,7 +2222,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r2-glm-learn--kalari-disbursements-08ecedbc.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -2281,7 +2281,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r2-glm-learn--kalari-payouts-5911c98a.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -2340,7 +2340,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r2-glm-learn--kalari-settlements-1377ddc3.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -2393,7 +2393,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r2-glm-ref--reference-disbursements-0b428614.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -2446,7 +2446,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r2-glm-ref--reference-payouts-d9149206.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -2499,7 +2499,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r2-glm-ref--reference-settlements-53c64b82.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -2552,7 +2552,7 @@
             "lessons_recalled": 0,
             "tool_calls": {},
             "source": "bench/rows-0.2.3/r2-mimo-learn--kalari-disbursements-f6c708cd.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -2611,7 +2611,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r2-mimo-learn--kalari-payouts-9a7ed4f9.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -2670,7 +2670,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r2-mimo-learn--kalari-settlements-ae538dbc.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -2723,7 +2723,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r2-mimo-ref--reference-disbursements-991655e9.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -2776,7 +2776,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r2-mimo-ref--reference-payouts-7c76d374.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -2829,7 +2829,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r2-mimo-ref--reference-settlements-4855327b.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -2888,7 +2888,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r3-ds-learn--kalari-disbursements-a284128c.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -2947,7 +2947,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r3-ds-learn--kalari-payouts-22dee619.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -3006,7 +3006,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r3-ds-learn--kalari-settlements-69e6bd0f.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -3059,7 +3059,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r3-ds-ref--reference-disbursements-c4d8ba75.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -3112,7 +3112,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r3-ds-ref--reference-payouts-34ca5d0e.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -3165,7 +3165,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r3-ds-ref--reference-settlements-6c904d3e.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -3224,7 +3224,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r3-glm-learn--kalari-disbursements-3565adc2.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -3283,7 +3283,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r3-glm-learn--kalari-payouts-4991247f.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -3342,7 +3342,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r3-glm-learn--kalari-settlements-4c38d25b.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -3395,7 +3395,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r3-glm-ref--reference-disbursements-ed5d0908.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -3448,7 +3448,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r3-glm-ref--reference-payouts-b0f91166.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -3501,7 +3501,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r3-glm-ref--reference-settlements-85aeb79e.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -3560,7 +3560,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r3-mimo-learn--kalari-disbursements-3d6a3d0f.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -3619,7 +3619,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r3-mimo-learn--kalari-payouts-2f82122b.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -3678,7 +3678,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r3-mimo-learn--kalari-settlements-b10a5545.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -3731,7 +3731,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r3-mimo-ref--reference-disbursements-a1c01193.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -3784,7 +3784,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r3-mimo-ref--reference-payouts-8c3ba99e.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -3837,7 +3837,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r3-mimo-ref--reference-settlements-7bbe7064.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -3896,7 +3896,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r4-ds-learn--kalari-disbursements-1cd5a37a.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -3955,7 +3955,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r4-ds-learn--kalari-payouts-92d9fa48.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -4014,7 +4014,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r4-ds-learn--kalari-settlements-fa8b5732.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -4067,7 +4067,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r4-ds-ref--reference-disbursements-4ddfd233.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -4120,7 +4120,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r4-ds-ref--reference-payouts-681c080a.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -4173,7 +4173,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r4-ds-ref--reference-settlements-b81baed7.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -4232,7 +4232,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r4-glm-learn--kalari-disbursements-a6e7904e.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -4291,7 +4291,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r4-glm-learn--kalari-payouts-6c9620c6.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -4350,7 +4350,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r4-glm-learn--kalari-settlements-6c1326a5.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -4403,7 +4403,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r4-glm-ref--reference-disbursements-c88ba58c.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -4456,7 +4456,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r4-glm-ref--reference-payouts-2184f2fa.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -4509,7 +4509,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r4-glm-ref--reference-settlements-f2db6e0e.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -4568,7 +4568,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r4-mimo-learn--kalari-disbursements-e9535a0c.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -4627,7 +4627,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r4-mimo-learn--kalari-payouts-957056ac.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -4686,7 +4686,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r4-mimo-learn--kalari-settlements-3f0527c5.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -4739,7 +4739,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r4-mimo-ref--reference-disbursements-bb4b9a3c.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -4792,7 +4792,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r4-mimo-ref--reference-payouts-ea578bcd.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -4845,7 +4845,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r4-mimo-ref--reference-settlements-64f9150e.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -4904,7 +4904,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r5-ds-learn--kalari-disbursements-227b38ae.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -4963,7 +4963,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r5-ds-learn--kalari-payouts-e4a52beb.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -5022,7 +5022,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r5-ds-learn--kalari-settlements-3e11dfeb.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -5075,7 +5075,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r5-ds-ref--reference-disbursements-5b3c4c52.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -5128,7 +5128,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r5-ds-ref--reference-payouts-fd511c02.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -5181,7 +5181,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r5-ds-ref--reference-settlements-3ba172ab.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -5240,7 +5240,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r5-glm-learn--kalari-disbursements-4b63a0e3.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -5299,7 +5299,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r5-glm-learn--kalari-payouts-05ece9fd.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -5358,7 +5358,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r5-glm-learn--kalari-settlements-f2ea4365.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -5411,7 +5411,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r5-glm-ref--reference-disbursements-dbd842c6.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -5464,7 +5464,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r5-glm-ref--reference-payouts-5967dca8.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -5517,7 +5517,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r5-glm-ref--reference-settlements-73c37bf8.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -5576,7 +5576,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r5-mimo-learn--kalari-disbursements-2cc134fa.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -5635,7 +5635,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r5-mimo-learn--kalari-payouts-d55715dd.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -5694,7 +5694,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r5-mimo-learn--kalari-settlements-4a1f0fe5.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -5747,7 +5747,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r5-mimo-ref--reference-disbursements-8186ea03.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -5800,7 +5800,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r5-mimo-ref--reference-payouts-0528c14d.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -5853,7 +5853,7 @@
             "lessons_recalled": 0,
             "tool_calls": null,
             "source": "bench/rows-0.2.3/r5-mimo-ref--reference-settlements-714a79df.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         },
         {
@@ -7029,7 +7029,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r1-glm-learn--kalari-payouts-918666ca.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         }
       ],
@@ -7202,7 +7202,7 @@
               "kalari_what_changed": 1
             },
             "source": "bench/rows-0.2.3/r1-glm-learn--kalari-payouts-918666ca.json",
-            "notes": "One Kalari 0.2.3 repeat session."
+            "notes": "One Kalari repeat session."
           }
         }
       ],
