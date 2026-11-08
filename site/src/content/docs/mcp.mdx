@@ -173,7 +173,9 @@ Search confirmation can call Clef. Graph writes can use Lambo embeddings. Those 
 }
 ```
 
-Use kinds from the change list. Empty recall means no applicable lesson was returned.
+Use kinds from the change list. Empty recall means no applicable lesson was returned: a fresh store links nothing, and the first run still proceeds.
+
+Each entry carries the lesson (change kind, observation, source run, guarding check), a status, and whether it is stale. A linked lesson the change kind anchors returns `required`. A semantic candidate returns `required` or advisory after a confidence check. A contradicted lesson returns `stale` and never becomes a check. Recalled `required` checks rebind to the new session's artifact and run on sandbox runs. See <DocLink to="learn/">how Kalari learns</DocLink> for the full lifecycle with live output.
 
 ### run_in_sandbox
 
@@ -214,7 +216,7 @@ The response contains `run_id`, `verdict`, `checks`, `passed`, and `summary`. A 
 
 Use an actual verified run ID. Publication depends on supported observations and checks. Calling the tool does not guarantee a new lesson.
 
-Production refuses observer configuration. The frozen runs produced no published lessons. See <DocLink to="evidence/">evidence and limits</DocLink>.
+The response is the lesson list: each lesson carries its change kind, observation, source run, guarding check, and memory concept ID. A first passing run writes the lesson. A later passing run with the same lesson identity confirms it instead: the response returns the existing lesson, naming the original teaching run with the same concept ID. No duplicate lesson record is written. See <DocLink to="learn/">how Kalari learns</DocLink> for what makes two lessons the same, with live output.
 
 ## Remote Linux host
 

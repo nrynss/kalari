@@ -1,0 +1,103 @@
+---
+title: How Kalari learns
+description: Observed sandbox runs teach lessons; later sessions recall them as checks.
+---
+
+import Diagram from '../../components/Diagram.astro';
+import DocLink from '../../components/DocLink.astro';
+import RepoLink from '../../components/RepoLink.astro';
+
+A lesson is verified behaviour observed during a passing sandbox run, tied to a change kind and a guarding check. It never comes from agent words: `record_lesson` takes only a run ID, and the observation comes from the run's own evidence. Every statement below names its source.
+
+## What a lesson is
+
+The MCP schema accepts one argument and nothing else. See <RepoLink path="Kalari/Mcp.lean">Kalari/Mcp.lean</RepoLink>.
+
+```json
+{
+  "run_id": "COPY_THE_RETURNED_RUN_ID"
+}
+```
+
+The service looks up that run's records in the evidence store: the run itself, plus a `verified-behavior` or `page-observation` record from a trusted producer. A passing run with no observation publishes nothing. A lesson carries the change kind, the observed behaviours, the run that proved it, and the check that guarded it. See <RepoLink path="Kalari/Tools/Lesson.lean">Kalari/Tools/Lesson.lean</RepoLink>.
+
+## Where observations come from
+
+The observer is a host-owned API implementation that serves the API under test and records a page trace: digests and page-level facts, never raw cursors or request content. The sandbox reaches it through one fresh broker per run, with its own identity and password on loopback. The broker's CONNECT allow list names exactly the run's single allowed destination. Production accepts the observer only through this broker path and refuses anything else with an isolation error. See <RepoLink path="Kalari/Tools/Run.lean">run path in Kalari/Tools/Run.lean</RepoLink>, <RepoLink path="Kalari/Sandbox/Broker.lean">Kalari/Sandbox/Broker.lean</RepoLink>, and <RepoLink path="Kalari/Service.lean">Setup ObserverSetup validate in Kalari/Service.lean</RepoLink>.
+
+<Diagram
+  name="learn-flow"
+  caption="One observed run: sandbox to broker to observer to page trace to lesson."
+  alt="The sandboxed run reaches the host observer only through a per-run broker. The observer records a page trace, and the passing run plus trace publish one lesson."
+/>
+
+The observer starts only after the runtime proves exclusive guest source isolation: a private guest network and a sandbox policy with one egress rule for the observer's port. Anything unproven fails closed and the run reports the isolation message.
+
+## Lifecycle: write once, confirm after
+
+A fresh store holds no lessons. Recall returns empty, and the first run still proceeds. A passing observed run then writes one lesson. A later passing run with the same lesson teaches nothing new: it confirms the existing lesson instead of duplicating it. What makes two lessons the same is the lesson identity: the change kind, the check id plus assertion plus command, and the sorted set of observed behaviours. Old stores that hold one constraint concept per verifying run collapse to one entry. See <RepoLink path="Kalari/Tools/Recall.lean">Kalari/Tools/Recall.lean</RepoLink>.
+
+The live first run rehearses this path end to end. See <RepoLink path="tests/live/first-run.sh">tests/live/first-run.sh</RepoLink> and its transcript.
+
+```
+first-a recall_lessons: [] (fresh store, no concept yet)
+first-a run_in_sandbox: passed=true verdict=exited exit=0 checks=[candidate-v1-truth-v1=pass, differential-v1=pass]
+first-a record_lesson: observation='Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.'
+first-a record_lesson: check=candidate-v1-truth-v1 command=['python3', 'kalari_candidate_truth_check.py', 'payouts.jsonl', 'kalari-v1-truth.jsonl']
+first-a record_lesson: memory_concept_id=29cfd3ad-1c87-4da4-bc8e-1b97b76f5372
+first-a record_lesson: run tmp.XX2uilpR 1 written 0 confirmed 29cfd3ad-1c87-4da4-bc8e-1b97b76f5372
+first-a run_in_sandbox: passed=true verdict=exited exit=0 checks=[candidate-v1-truth-v1=pass, differential-v1=pass]
+first-a record_lesson: run tmp.XXe0WAQt 0 written 1 confirmed 29cfd3ad-1c87-4da4-bc8e-1b97b76f5372
+```
+
+The first passing run writes the lesson: 1 written, 0 confirmed. The second passing run returns the existing lesson: 0 written, 1 confirmed, same memory concept. The evidence store holds exactly one lesson record, and the confirming run writes no duplicate.
+
+Run IDs are the runs' temporary directory names, such as `tmp.XX2uilpR`. The versioned lesson reference embeds the run ID and the check ID, and recall resolves it through typed lesson evidence, so older temporary IDs still resolve.
+
+## Recall: required, advisory, or stale
+
+`recall_lessons` takes change kinds and returns one entry per lesson, each with the lesson, its status, and its source run. A linked lesson the change kind anchors is `required`. A semantic candidate passes through a confidence check and returns `required` or advisory. A contradicted lesson stays visible, labelled `stale`, and never becomes a check. Recalled checks rebind to the new session's artifact and run on sandbox runs: the service attaches every required recalled check before the run, so the new output must satisfy the old lesson.
+
+The same rehearsal shows the recall side:
+
+```
+first-b recall_lessons: status=required check=candidate-v1-truth-v1 command=['python3', 'kalari_candidate_truth_check.py', 'payouts.jsonl', 'kalari-v1-truth.jsonl']
+first-b recall_lessons: observation='Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.'
+first-b run_in_sandbox: passed=true verdict=exited exit=0 checks=[candidate-v1-truth-v1=pass, differential-v1=pass]
+```
+
+The second session recalls the lesson as required, with its observation and its source run, and the rebound check passes on the new run. The evidence confirms the rebinding:
+
+```
+evidence: lesson records=1 confirming run=tmp.XXe0WAQt no duplicate lesson
+evidence: second run check rebound command=['python3', 'kalari_candidate_truth_check.py', 'payouts.jsonl', 'kalari-v1-truth.jsonl']
+```
+
+## Learning across upgrades
+
+Keep one project and one store across upgrades so each session recalls what earlier change kinds taught. The evidence store lives under the `evidence_workspace` named in `session.json`, and the Lambo concept store lives at the path named in the Lambo configuration that `kalari.json` points to. Write one `session.json` per upgrade and share the store paths between them.
+
+<Diagram
+  name="learn-chain"
+  caption="One shared store across upgrades: each session teaches and confirms the same lessons."
+  alt="The first upgrade session writes a lesson to the shared store. The second upgrade session recalls it as required, runs the rebound check, and confirms the same lesson with no duplicate."
+/>
+
+## Configuring the observer
+
+Add the observer block to `session.json`. `server` names the observed API implementation file. `endpoint` names the guest-visible destination: the host must be the sandbox gateway alias, and that endpoint must also appear in the `sandbox.allowlist` of `kalari.json`.
+
+```json
+{
+  "observer": {
+    "server": "/absolute/path/to/bench/apis/payouts/server.py",
+    "endpoint": {"host": "host.microsandbox.internal", "port": 18080}
+  }
+}
+```
+
+The observer serves the new API with the old API switched off, while the baseline runs the unchanged consumer against the live old API for the differential. A page trace that carries an old-API reply is rejected, so an observation can only describe the new behaviour. See <RepoLink path="bench/apis/payouts/server.py">bench/apis/payouts/server.py</RepoLink>.
+
+Complete <DocLink to="run-it-yourself/">installation and configuration</DocLink> first. The <DocLink to="mcp/">MCP guide</DocLink> documents the tool arguments this page builds on.
+
+<RepoLink path="Kalari/Tools/PublishRecall.lean">Production publish, recall, and enforcement from one loopback broker trace</RepoLink>

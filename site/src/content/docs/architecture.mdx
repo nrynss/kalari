@@ -18,7 +18,7 @@ Every statement below names its source. Links point at the pinned commit. Proofs
   alt="The agent uses MCP over stdio. Kalari checks policy and controls microVM execution. Caddy serves the interface while a separate API reads evidence."
 />
 
-The coding agent connects over MCP. `kalari serve` runs on the VM. Candidate, baseline, and checks use separate Microsandbox guests under `kalari-aashaan`. Vultr Serverless Inference answers every model call. Lambo runs as a child process. Vimanam and `msb` run as subprocesses. Caddy terminates TLS in front of the read-only web app. The layout above is drawn from <RepoLink path="docs/architecture.md">docs/architecture.md</RepoLink>.
+The coding agent connects over MCP. `kalari serve` runs on the VM. Candidate, baseline, and checks use separate Microsandbox guests under `kalari-aashaan`. Observed runs add a per-run broker and a host observer between the sandbox and the API under test; see <DocLink to="learn/">how Kalari learns</DocLink>. Vultr Serverless Inference answers every model call. Lambo runs as a child process. Vimanam and `msb` run as subprocesses. Caddy terminates TLS in front of the read-only web app. The layout above is drawn from <RepoLink path="docs/architecture.md">docs/architecture.md</RepoLink>.
 
 <figure class="kalari-diagram">
 <ContainmentLoopSvg />
@@ -88,7 +88,7 @@ The tool schemas and the request handler live in one file, so schema and routing
 
 ## Memory
 
-Kalari is Lambo single writer. OpenCode never talks to Lambo directly. Lessons key by change kind, such as `pagination_changed`. Recall walks from the change kind to the lesson, not through recall ranking. The measured limit is honest: the frozen runs published zero lessons, so memory showed no benefit there. Read <DocLink to="evidence/">Evidence and limits</DocLink> for what that means.
+Kalari is Lambo single writer. OpenCode never talks to Lambo directly. Lessons key by change kind, such as `pagination_changed`. Recall walks from the change kind to the lesson, not through recall ranking. A passing observed run writes a lesson; a later passing run with the same lesson identity confirms it instead of duplicating it. Read <DocLink to="learn/">how Kalari learns</DocLink> for the lifecycle, the broker path, and live output.
 
 ## Judgement calls
 

@@ -27,6 +27,7 @@ export default defineConfig({
         { label: 'Start here', slug: 'start' },
         { label: 'Judges walkthrough', slug: 'judges' },
         { label: 'Architecture', slug: 'architecture' },
+        { label: 'How Kalari learns', slug: 'learn' },
         { label: 'Vultr', slug: 'vultr' },
         { label: 'Containment', slug: 'containment' },
         { label: 'Install and configure', slug: 'run-it-yourself' },

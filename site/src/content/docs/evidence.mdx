@@ -21,9 +21,9 @@ Five repeats run per condition. Each session caps at 20 minutes. An HTTP retry i
 
 ## What is measured
 
-The table on the <DocLink to="judges/">Judges walkthrough</DocLink> reports cost, sandbox runs, wall time, stuck time, containment, verdicts, and right-first-time counts. Every figure traces to one of 60 row files under `bench/runs/kalari/` and `bench/runs/reference/`. The <RepoLink path="bench/RESULTS.md">traceability script in bench/RESULTS.md</RepoLink> recomputes every aggregate from those files and proves the zero-lesson claim, the token basis, byte-identical provenance, and clean cleanup.
+The table on the <DocLink to="judges/">Judges walkthrough</DocLink> reports cost, sandbox runs, wall time, stuck time, containment, verdicts, and right-first-time counts. Every figure traces to one of 60 row files under `bench/runs/kalari/` and `bench/runs/reference/`. The <RepoLink path="bench/RESULTS.md">traceability script in bench/RESULTS.md</RepoLink> recomputes every aggregate from those files, including the zero-lesson count for those frozen rows, plus the token basis, byte-identical provenance, and clean cleanup.
 
-The observer rehearsal differs from current production behavior. Rehearsal notes describe an older observation path. Production refused that configuration, so the frozen runs carry zero published lessons. Read rehearsal documents as history, not as current behavior.
+Those frozen rows ran on an earlier build whose production validation refused the observer configuration, so they carry zero published lessons. Read that count as history about those rows, never as a limit now.
 
 ## What is not claimed
 

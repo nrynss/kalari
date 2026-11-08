@@ -17,20 +17,20 @@ uname -m
 getconf GNU_LIBC_VERSION
 mkdir -p "$HOME/kalari-download"
 cd "$HOME/kalari-download"
-curl -fLO https://github.com/nrynss/kalari/releases/download/v0.1.3/kalari-0.1.3-linux-x86_64.tar.gz
-curl -fLO https://github.com/nrynss/kalari/releases/download/v0.1.3/SHA256SUMS
+curl -fLO https://github.com/nrynss/kalari/releases/download/v0.2.2/kalari-0.2.2-linux-x86_64.tar.gz
+curl -fLO https://github.com/nrynss/kalari/releases/download/v0.2.2/SHA256SUMS
 sha256sum -c SHA256SUMS
-tar -xzf kalari-0.1.3-linux-x86_64.tar.gz
+tar -xzf kalari-0.2.2-linux-x86_64.tar.gz
 mkdir -p "$HOME/.local/bin"
-install -m755 kalari-0.1.3-linux-x86_64/bin/kalari "$HOME/.local/bin/kalari"
-install -m755 kalari-0.1.3-linux-x86_64/bin/kalari-aashaan "$HOME/.local/bin/kalari-aashaan"
+install -m755 kalari-0.2.2-linux-x86_64/bin/kalari "$HOME/.local/bin/kalari"
+install -m755 kalari-0.2.2-linux-x86_64/bin/kalari-aashaan "$HOME/.local/bin/kalari-aashaan"
 export PATH="$HOME/.local/bin:$PATH"
 kalari --version
 ```
 
-Expect `kalari 0.1.3`. Add the PATH setting to your shell configuration. Upgrade by replacing both binaries.
+Expect `kalari 0.2.2`. Add the PATH setting to your shell configuration. Upgrade by replacing both binaries.
 
-[Release assets and runtime-library report](https://github.com/nrynss/kalari/releases/tag/v0.1.3).
+[Release assets and runtime-library report](https://github.com/nrynss/kalari/releases/tag/v0.2.2).
 
 ## Install host dependencies
 
@@ -270,7 +270,7 @@ Path("records.jsonl").write_text("".join(json.dumps(row) + "\n" for row in rows)
 """
 for name in ("candidate", "baseline"):
     (root / name / "consumer.py").write_text(program)
-repo = "https://raw.githubusercontent.com/nrynss/kalari/v0.1.3"
+repo = "https://raw.githubusercontent.com/nrynss/kalari/v0.2.2"
 specs = "bench/workspaces/payout-sync/specs"
 for version in ("v1", "v2"):
     urllib.request.urlretrieve(
@@ -378,12 +378,12 @@ The key-shape check rejects ASCII-alphanumeric runs of 32 or more characters, in
 | Session path missing or noncanonical | Create the path and resolve it with `realpath` |
 | No artifact | Run the consumer that writes the configured filename |
 | Unsupported backend or decision configuration | Use Microsandbox and the shown Clef settings |
-| Observer rejected | Remove observer configuration from production |
+| Observer isolation refusal | Keep the broker-backed observer setup: guest-alias endpoint, listed allowlist entry, present server file |
 | MCP server exits immediately | Run its command manually and inspect stderr |
 
 Inspect the exact sandbox name before cleaning up an interrupted run. Remove only your own sandbox with `msb remove -f NAME`.
 
-Production rejects observer configuration. The frozen benchmark published zero lessons and measured no learned-memory benefit.
+Production accepts the observer only through the per-run broker and refuses other setups with an isolation error. See <DocLink to="learn/">how Kalari learns</DocLink> for the observer path.
 
 ## Build from source
 

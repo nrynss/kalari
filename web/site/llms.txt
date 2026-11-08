@@ -6,6 +6,7 @@
 
 - [Judges walkthrough](/docs/judges/): A text guide to the published evidence.
 - [Evidence and limits](/docs/evidence/): Benchmark scope, measurement basis, and limitations.
+- [How Kalari learns](/docs/learn/): Observed runs, lessons, recall, and the observer path.
 - [Installation](/docs/run-it-yourself/): Releases, configuration, and machine requirements.
 - [MCP commands](/docs/mcp/): Setup and complete arguments for all tools.
 - [Vultr deployment](/docs/vultr/): Hosting, inference, and operational commands.
@@ -28,5 +29,5 @@ The frozen comparison and manufactured showcase are separate datasets.
 The containment demonstration deliberately triggers a runaway cursor loop. It stays separate from benchmark totals.
 A process can exit zero while verification fails. Read the checks and passed value alongside the process verdict.
 Clef probabilities express a model's opinion. They are separate from measured outcomes.
-Production published no lessons during the frozen comparison. Those rows provide no measured learned-memory benefit.
+The frozen comparison rows ran on an earlier build whose production validation refused the observer, so those rows carry no lessons and show no learned-memory benefit. Results from current version are being added.
 The original benchmark and filming runs used earlier builds. New release fixes do not rewrite those rows.
