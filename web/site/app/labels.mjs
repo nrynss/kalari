@@ -46,6 +46,12 @@ export const UPGRADES = {
     blurb:
       "A connection whose end cursor is never null, repeats across pages, and empty pages that still continue.",
   },
+  disbursements: {
+    name: "Disbursement payouts",
+    format: "REST",
+    blurb:
+      "A windowed export where the final page still carries a token, amended records repeat, and one request in twenty answers with a retry delay.",
+  },
 };
 
 export const BEHAVIOURS = {

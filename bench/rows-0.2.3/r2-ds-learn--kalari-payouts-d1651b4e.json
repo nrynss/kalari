@@ -1,0 +1,316 @@
+{
+  "arm": "kalari",
+  "chain": null,
+  "checks_enforced": [
+    {
+      "checks": [
+        "candidate-v1-truth-v1"
+      ],
+      "recalled_checks_in_run": [],
+      "results": {
+        "candidate-v1-truth-v1": false,
+        "differential-v1": false
+      },
+      "run_id": "run-750fd43ac4"
+    },
+    {
+      "checks": [
+        "candidate-v1-truth-v1"
+      ],
+      "recalled_checks_in_run": [],
+      "results": {
+        "candidate-v1-truth-v1": false,
+        "differential-v1": false
+      },
+      "run_id": "run-6b90672020"
+    },
+    {
+      "checks": [
+        "candidate-v1-truth-v1"
+      ],
+      "recalled_checks_in_run": [],
+      "results": {
+        "candidate-v1-truth-v1": true,
+        "differential-v1": true
+      },
+      "run_id": "run-adf267fd4d"
+    },
+    {
+      "checks": [
+        "candidate-v1-truth-v1"
+      ],
+      "recalled_checks_in_run": [],
+      "results": {
+        "candidate-v1-truth-v1": true,
+        "differential-v1": true
+      },
+      "run_id": "run-1f32532ed6"
+    }
+  ],
+  "cleanup": {
+    "error": null,
+    "processes_left": [],
+    "sandboxes_left": [],
+    "sandboxes_removed": []
+  },
+  "cleanup_error": null,
+  "completed_steps": 17,
+  "consumer_exit": 0,
+  "cost_note": "DeepSeek V4.1 Flash list price, cached input counted as input, no cache discount",
+  "cost_usd": 0.036716,
+  "cutoff_reason": null,
+  "definition_notes": {
+    "cost": "coding-model usage delta x the model list price from GET /v1/models, cached input at full price, as in the frozen rows; cost_usd_all_models adds Clef and embedding deltas",
+    "cutoffs": "the session cap and the soft spend cutoff are the frozen runner's; its repeated-tool-failure stop and its bootstrap proxy are not used (a user's OpenCode has neither)",
+    "kalari_tokens": "tokens_input/tokens_output are OpenCode step totals (input excludes cache reads), as in the frozen Kalari rows; usage_delta holds the account-wide counts",
+    "reference_tokens": "tokens_input/tokens_output are the coding model usage delta, as in the frozen reference rows",
+    "retries": "API retry journals read-only: lines appended after a phase-start line count, counted by the frozen retry_journal.summarize; the frozen harness truncated the journals instead"
+  },
+  "evidence_first_run_id": "run-750fd43ac4",
+  "evidence_request_allowlist": [
+    {
+      "host": "the guest API alias",
+      "port": 18180
+    }
+  ],
+  "evidence_request_caps": {
+    "memory_mib": 512,
+    "output_cap_bytes": 65536,
+    "timeout_ms": 30000
+  },
+  "evidence_run_checks": [
+    [
+      [
+        "candidate-v1-truth-v1",
+        false
+      ],
+      [
+        "differential-v1",
+        false
+      ]
+    ],
+    [
+      [
+        "candidate-v1-truth-v1",
+        false
+      ],
+      [
+        "differential-v1",
+        false
+      ]
+    ],
+    [
+      [
+        "candidate-v1-truth-v1",
+        true
+      ],
+      [
+        "differential-v1",
+        true
+      ]
+    ],
+    [
+      [
+        "candidate-v1-truth-v1",
+        true
+      ],
+      [
+        "differential-v1",
+        true
+      ]
+    ]
+  ],
+  "evidence_run_passed": [
+    false,
+    false,
+    true,
+    true
+  ],
+  "evidence_run_verdicts": [
+    "exited",
+    "exited",
+    "exited",
+    "exited"
+  ],
+  "evidence_run_wall_ms": [
+    324,
+    1386,
+    1426,
+    1403
+  ],
+  "evidence_runs": 4,
+  "exit_code": 0,
+  "grade": {
+    "duplicates": 0,
+    "expected": 2431,
+    "extra": 0,
+    "mismatched": 0,
+    "missing": 0,
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "unreadable_lines": 0,
+    "verdict": "PASS"
+  },
+  "grader_status": "EXIT 0",
+  "headline": true,
+  "http_retries": {
+    "agent": {
+      "apis": {
+        "api-payouts-grading": {
+          "b5_429_responses": 0,
+          "clients": 0,
+          "matching_retry_attempts": 0,
+          "requests": 0,
+          "status": "ok",
+          "successful_matching_retries": 0
+        },
+        "payouts-observer": {
+          "b5_429_responses": 3,
+          "clients": 4,
+          "matching_retry_attempts": 3,
+          "requests": 79,
+          "status": "ok",
+          "successful_matching_retries": 3
+        },
+        "user-payouts-live": {
+          "b5_429_responses": 0,
+          "clients": 1,
+          "matching_retry_attempts": 0,
+          "requests": 2,
+          "status": "ok",
+          "successful_matching_retries": 0
+        }
+      },
+      "b5_429_responses": 3,
+      "clients": 5,
+      "matching_retry_attempts": 3,
+      "phase": "agent",
+      "requests": 81,
+      "status": "ok",
+      "successful_matching_retries": 3,
+      "window": "lines appended after the phase-start line count (read-only; the frozen harness truncated instead)"
+    },
+    "grading": {
+      "apis": {
+        "api-payouts-grading": {
+          "b5_429_responses": 1,
+          "clients": 1,
+          "matching_retry_attempts": 1,
+          "requests": 26,
+          "status": "ok",
+          "successful_matching_retries": 1
+        },
+        "payouts-observer": {
+          "b5_429_responses": 0,
+          "clients": 0,
+          "matching_retry_attempts": 0,
+          "requests": 0,
+          "status": "ok",
+          "successful_matching_retries": 0
+        },
+        "user-payouts-live": {
+          "b5_429_responses": 0,
+          "clients": 0,
+          "matching_retry_attempts": 0,
+          "requests": 0,
+          "status": "ok",
+          "successful_matching_retries": 0
+        }
+      },
+      "b5_429_responses": 1,
+      "clients": 1,
+      "matching_retry_attempts": 1,
+      "phase": "grading",
+      "requests": 26,
+      "status": "ok",
+      "successful_matching_retries": 1,
+      "window": "lines appended after the phase-start line count (read-only; the frozen harness truncated instead)"
+    }
+  },
+  "killed_timeout_runs": 0,
+  "lesson_records_in_session": 1,
+  "lessons_confirmed": [
+    {
+      "change_kind": "pagination_changed",
+      "check_id": "candidate-v1-truth-v1",
+      "memory_concept_id": "318fefb3-15c3-4f1c-a5ed-a477c658c5e0",
+      "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+      "run_id": "run-adf267fd4d"
+    }
+  ],
+  "lessons_published": [
+    "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it."
+  ],
+  "lessons_recalled": [],
+  "lessons_written": [
+    {
+      "change_kind": "pagination_changed",
+      "check_id": "candidate-v1-truth-v1",
+      "memory_concept_id": "318fefb3-15c3-4f1c-a5ed-a477c658c5e0",
+      "observation": "Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.",
+      "run_id": "run-adf267fd4d"
+    }
+  ],
+  "measures": {
+    "records_duplicated": 0,
+    "records_lost": 0,
+    "right_first_time": false,
+    "sandbox_runs": 8,
+    "time_stuck_s": 0.0,
+    "tokens_input": 15947,
+    "tokens_output": 4084,
+    "verdict": "PASS",
+    "wall_time_s": 59.287
+  },
+  "model": "deepseek-v4.1-flash-1017",
+  "model_name": "DeepSeek V4.1 Flash",
+  "opencode_exit": 0,
+  "opencode_tokens": {
+    "input": 15947,
+    "output": 4084,
+    "reasoning": 2979
+  },
+  "output_present": true,
+  "page_observations": [
+    [
+      "boundary_overlap_one",
+      "final_page_token",
+      "rate_limit_retry"
+    ],
+    [
+      "boundary_overlap_one",
+      "final_page_token",
+      "rate_limit_retry"
+    ]
+  ],
+  "process_elapsed_s": 59.287,
+  "project": "r2-ds-learn",
+  "recall_advice_checks": [],
+  "recall_required_checks": [],
+  "records_duplicated": 0,
+  "records_extra": 0,
+  "records_lost": 0,
+  "records_mismatched": 0,
+  "repeat": 2,
+  "retry_measure": {
+    "note": "an HTTP retry inside one consumer process is not a sandbox run",
+    "source": "API retry journals, line offset at each phase start, read at each phase end (read-only)"
+  },
+  "right_first_time_basis": "first trusted run did not pass",
+  "sandbox_runs_against_v2": 4,
+  "sandbox_runs_detail": "two consumer runs per trusted run record (candidate against v2 plus baseline against v1); trusted check and grading guests excluded",
+  "scenario": "payouts",
+  "session": "kalari-payouts-d1651b4e",
+  "session_cap_s": 900,
+  "session_capped": false,
+  "setup": "OpenCode 2.2.5 with kalari serve MCP (5 tools), no shell, no microsandbox-mcp; persistent project stores; operator observer (payouts) through the per-run broker",
+  "tool_calls": {
+    "kalari_blast_radius": 1,
+    "kalari_recall_lessons": 1,
+    "kalari_record_lesson": 2,
+    "kalari_run_in_sandbox": 4,
+    "kalari_what_changed": 1
+  },
+  "upgrade": "payouts"
+}

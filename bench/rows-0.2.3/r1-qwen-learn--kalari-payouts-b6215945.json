@@ -1,0 +1,171 @@
+{
+  "arm": "kalari",
+  "chain": null,
+  "checks_enforced": [],
+  "cleanup": {
+    "error": null,
+    "processes_left": [],
+    "sandboxes_left": [],
+    "sandboxes_removed": []
+  },
+  "cleanup_error": null,
+  "completed_steps": 15,
+  "consumer_exit": 0,
+  "cost_note": "Qwen3.8 27B list price, cached input counted as input, no cache discount",
+  "cost_usd": 0.078309,
+  "cutoff_reason": null,
+  "definition_notes": {
+    "cost": "coding-model usage delta x the model list price from GET /v1/models, cached input at full price, as in the frozen rows; cost_usd_all_models adds Clef and embedding deltas",
+    "cutoffs": "the session cap and the soft spend cutoff are the frozen runner's; its repeated-tool-failure stop and its bootstrap proxy are not used (a user's OpenCode has neither)",
+    "kalari_tokens": "tokens_input/tokens_output are OpenCode step totals (input excludes cache reads), as in the frozen Kalari rows; usage_delta holds the account-wide counts",
+    "reference_tokens": "tokens_input/tokens_output are the coding model usage delta, as in the frozen reference rows",
+    "retries": "API retry journals read-only: lines appended after a phase-start line count, counted by the frozen retry_journal.summarize; the frozen harness truncated the journals instead"
+  },
+  "evidence_first_run_id": null,
+  "evidence_request_allowlist": [],
+  "evidence_request_caps": {},
+  "evidence_run_checks": [],
+  "evidence_run_passed": [],
+  "evidence_run_verdicts": [],
+  "evidence_run_wall_ms": [],
+  "evidence_runs": 0,
+  "exit_code": 0,
+  "grade": {
+    "duplicates": 0,
+    "expected": 2431,
+    "extra": 0,
+    "mismatched": 0,
+    "missing": 0,
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "unreadable_lines": 0,
+    "verdict": "PASS"
+  },
+  "grader_status": "EXIT 0",
+  "headline": false,
+  "http_retries": {
+    "agent": {
+      "apis": {
+        "api-payouts-grading": {
+          "b5_429_responses": 0,
+          "clients": 0,
+          "matching_retry_attempts": 0,
+          "requests": 0,
+          "status": "ok",
+          "successful_matching_retries": 0
+        },
+        "payouts-observer": {
+          "b5_429_responses": 0,
+          "clients": 0,
+          "matching_retry_attempts": 0,
+          "requests": 0,
+          "status": "ok",
+          "successful_matching_retries": 0
+        },
+        "user-payouts-live": {
+          "b5_429_responses": 0,
+          "clients": 0,
+          "matching_retry_attempts": 0,
+          "requests": 0,
+          "status": "ok",
+          "successful_matching_retries": 0
+        }
+      },
+      "b5_429_responses": 0,
+      "clients": 0,
+      "matching_retry_attempts": 0,
+      "phase": "agent",
+      "requests": 0,
+      "status": "ok",
+      "successful_matching_retries": 0,
+      "window": "lines appended after the phase-start line count (read-only; the frozen harness truncated instead)"
+    },
+    "grading": {
+      "apis": {
+        "api-payouts-grading": {
+          "b5_429_responses": 1,
+          "clients": 1,
+          "matching_retry_attempts": 1,
+          "requests": 26,
+          "status": "ok",
+          "successful_matching_retries": 1
+        },
+        "payouts-observer": {
+          "b5_429_responses": 0,
+          "clients": 0,
+          "matching_retry_attempts": 0,
+          "requests": 0,
+          "status": "ok",
+          "successful_matching_retries": 0
+        },
+        "user-payouts-live": {
+          "b5_429_responses": 0,
+          "clients": 0,
+          "matching_retry_attempts": 0,
+          "requests": 0,
+          "status": "ok",
+          "successful_matching_retries": 0
+        }
+      },
+      "b5_429_responses": 1,
+      "clients": 1,
+      "matching_retry_attempts": 1,
+      "phase": "grading",
+      "requests": 26,
+      "status": "ok",
+      "successful_matching_retries": 1,
+      "window": "lines appended after the phase-start line count (read-only; the frozen harness truncated instead)"
+    }
+  },
+  "killed_timeout_runs": 0,
+  "lesson_records_in_session": 0,
+  "lessons_confirmed": [],
+  "lessons_published": [],
+  "lessons_recalled": [],
+  "lessons_written": [],
+  "measures": {
+    "records_duplicated": 0,
+    "records_lost": 0,
+    "right_first_time": false,
+    "sandbox_runs": 0,
+    "time_stuck_s": 0.0,
+    "tokens_input": 50547,
+    "tokens_output": 6732,
+    "verdict": "PASS",
+    "wall_time_s": 93.608
+  },
+  "model": "qwen3.8-27b",
+  "model_name": "Qwen3.8 27B",
+  "opencode_exit": 0,
+  "opencode_tokens": {
+    "input": 50547,
+    "output": 6732,
+    "reasoning": 26785
+  },
+  "output_present": true,
+  "page_observations": [],
+  "process_elapsed_s": 93.608,
+  "project": "r1-qwen-learn",
+  "recall_advice_checks": [],
+  "recall_required_checks": [],
+  "records_duplicated": 0,
+  "records_extra": 0,
+  "records_lost": 0,
+  "records_mismatched": 0,
+  "repeat": 1,
+  "retry_measure": {
+    "note": "an HTTP retry inside one consumer process is not a sandbox run",
+    "source": "API retry journals, line offset at each phase start, read at each phase end (read-only)"
+  },
+  "right_first_time_basis": "no consumer run against v2",
+  "sandbox_runs_against_v2": 0,
+  "sandbox_runs_detail": "two consumer runs per trusted run record (candidate against v2 plus baseline against v1); trusted check and grading guests excluded",
+  "scenario": "payouts",
+  "session": "kalari-payouts-b6215945",
+  "session_cap_s": 900,
+  "session_capped": false,
+  "setup": "OpenCode 2.2.5 with kalari serve MCP (5 tools), no shell, no microsandbox-mcp; persistent project stores; operator observer (payouts) through the per-run broker",
+  "tool_calls": {},
+  "upgrade": "payouts"
+}

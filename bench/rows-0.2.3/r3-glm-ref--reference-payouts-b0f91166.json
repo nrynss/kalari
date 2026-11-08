@@ -1,0 +1,148 @@
+{
+  "arm": "reference",
+  "chain": null,
+  "cleanup": {
+    "error": null,
+    "processes_left": [],
+    "sandboxes_left": [],
+    "sandboxes_removed": []
+  },
+  "consumer_exit": 0,
+  "cost_note": "GLM 5.3 Flash list price, cached input counted as input, no cache discount",
+  "cost_usd": 0.015574,
+  "cutoff_reason": null,
+  "definition_notes": {
+    "cost": "coding-model usage delta x the model list price from GET /v1/models, cached input at full price, as in the frozen rows; cost_usd_all_models adds Clef and embedding deltas",
+    "cutoffs": "the session cap and the soft spend cutoff are the frozen runner's; its repeated-tool-failure stop and its bootstrap proxy are not used (a user's OpenCode has neither)",
+    "kalari_tokens": "tokens_input/tokens_output are OpenCode step totals (input excludes cache reads), as in the frozen Kalari rows; usage_delta holds the account-wide counts",
+    "reference_tokens": "tokens_input/tokens_output are the coding model usage delta, as in the frozen reference rows",
+    "retries": "API retry journals read-only: lines appended after a phase-start line count, counted by the frozen retry_journal.summarize; the frozen harness truncated the journals instead"
+  },
+  "evidence_request_allowlist": null,
+  "grade": {
+    "duplicates": 0,
+    "expected": 2431,
+    "extra": 0,
+    "mismatched": 0,
+    "missing": 0,
+    "output_present": true,
+    "records": 2431,
+    "unique": 2431,
+    "unreadable_lines": 0,
+    "verdict": "PASS"
+  },
+  "headline": true,
+  "http_retries": {
+    "agent": {
+      "b5_429_responses": 3,
+      "matching_retry_attempts": 2,
+      "status": "ok",
+      "successful_matching_retries": 2
+    },
+    "grading": {
+      "b5_429_responses": 2,
+      "matching_retry_attempts": 2,
+      "status": "ok",
+      "successful_matching_retries": 2
+    },
+    "note": "an HTTP retry inside one consumer process is not a sandbox run",
+    "null_means": "unknown, not zero"
+  },
+  "measures": {
+    "records_duplicated": 0,
+    "records_lost": 0,
+    "right_first_time": true,
+    "sandbox_runs": 1,
+    "time_stuck_s": 0,
+    "tokens_input": 145767,
+    "tokens_output": 2850,
+    "verdict": "PASS",
+    "wall_time_s": 16.677
+  },
+  "model": "glm-5.3-flash",
+  "model_name": "GLM 5.3 Flash",
+  "opencode_exit": 0,
+  "opencode_tokens": {
+    "cache_read": 131328,
+    "input": 14439,
+    "output": 2472,
+    "reasoning": 378,
+    "steps": 13
+  },
+  "output_present": true,
+  "process_elapsed_s": 18.639,
+  "project": "r3-glm-ref",
+  "records_extra": 0,
+  "records_mismatched": 0,
+  "repeat": 3,
+  "retry_measure": {
+    "note": "an HTTP retry inside one consumer process is not a sandbox run",
+    "phases": {
+      "agent": {
+        "apis": {
+          "api-payouts-grading": {
+            "b5_429_responses": 0,
+            "clients": 0,
+            "matching_retry_attempts": 0,
+            "requests": 0,
+            "status": "ok",
+            "successful_matching_retries": 0
+          },
+          "user-payouts-live": {
+            "b5_429_responses": 3,
+            "clients": 1,
+            "matching_retry_attempts": 2,
+            "requests": 73,
+            "status": "ok",
+            "successful_matching_retries": 2
+          }
+        },
+        "b5_429_responses": 3,
+        "clients": 1,
+        "matching_retry_attempts": 2,
+        "phase": "agent",
+        "requests": 73,
+        "status": "ok",
+        "successful_matching_retries": 2,
+        "window": "lines appended after the phase-start line count (read-only; the frozen harness truncated instead)"
+      },
+      "grading": {
+        "apis": {
+          "api-payouts-grading": {
+            "b5_429_responses": 2,
+            "clients": 1,
+            "matching_retry_attempts": 2,
+            "requests": 52,
+            "status": "ok",
+            "successful_matching_retries": 2
+          },
+          "user-payouts-live": {
+            "b5_429_responses": 0,
+            "clients": 0,
+            "matching_retry_attempts": 0,
+            "requests": 0,
+            "status": "ok",
+            "successful_matching_retries": 0
+          }
+        },
+        "b5_429_responses": 2,
+        "clients": 1,
+        "matching_retry_attempts": 2,
+        "phase": "grading",
+        "requests": 52,
+        "status": "ok",
+        "successful_matching_retries": 2,
+        "window": "lines appended after the phase-start line count (read-only; the frozen harness truncated instead)"
+      }
+    },
+    "source": "API retry journals, line offset at each phase start, read at each phase end (read-only)"
+  },
+  "right_first_time_basis": "snapshot",
+  "sandbox_runs_against_v2": 1,
+  "scenario": "payouts",
+  "session": "reference-payouts-b0f91166",
+  "session_cap_s": 900,
+  "session_capped": false,
+  "setup": "OpenCode 2.2.5 with microsandbox-mcp, no Kalari tools",
+  "upgrade": "payouts"
+}

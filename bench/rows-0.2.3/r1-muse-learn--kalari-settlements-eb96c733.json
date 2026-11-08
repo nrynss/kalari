@@ -1,0 +1,155 @@
+{
+  "arm": "kalari",
+  "chain": null,
+  "checks_enforced": [],
+  "cleanup": {
+    "error": null,
+    "processes_left": [],
+    "sandboxes_left": [],
+    "sandboxes_removed": []
+  },
+  "cleanup_error": null,
+  "completed_steps": 1,
+  "consumer_exit": 1,
+  "cost_note": "Muse Glimmer 30B list price, cached input counted as input, no cache discount",
+  "cost_usd": 0.00189,
+  "cutoff_reason": null,
+  "definition_notes": {
+    "cost": "coding-model usage delta x the model list price from GET /v1/models, cached input at full price, as in the frozen rows; cost_usd_all_models adds Clef and embedding deltas",
+    "cutoffs": "the session cap and the soft spend cutoff are the frozen runner's; its repeated-tool-failure stop and its bootstrap proxy are not used (a user's OpenCode has neither)",
+    "kalari_tokens": "tokens_input/tokens_output are OpenCode step totals (input excludes cache reads), as in the frozen Kalari rows; usage_delta holds the account-wide counts",
+    "reference_tokens": "tokens_input/tokens_output are the coding model usage delta, as in the frozen reference rows",
+    "retries": "API retry journals read-only: lines appended after a phase-start line count, counted by the frozen retry_journal.summarize; the frozen harness truncated the journals instead"
+  },
+  "evidence_first_run_id": null,
+  "evidence_request_allowlist": [],
+  "evidence_request_caps": {},
+  "evidence_run_checks": [],
+  "evidence_run_passed": [],
+  "evidence_run_verdicts": [],
+  "evidence_run_wall_ms": [],
+  "evidence_runs": 0,
+  "exit_code": 0,
+  "grade": {
+    "duplicates": 0,
+    "expected": 1873,
+    "extra": 0,
+    "mismatched": 0,
+    "missing": 1873,
+    "output_present": false,
+    "records": 0,
+    "unique": 0,
+    "unreadable_lines": 0,
+    "verdict": "FAIL"
+  },
+  "grader_status": "EXIT 1",
+  "headline": false,
+  "http_retries": {
+    "agent": {
+      "apis": {
+        "api-settlements-grading": {
+          "b5_429_responses": 0,
+          "clients": 0,
+          "matching_retry_attempts": 0,
+          "requests": 0,
+          "status": "ok",
+          "successful_matching_retries": 0
+        },
+        "api-settlements-live": {
+          "b5_429_responses": 0,
+          "clients": 0,
+          "matching_retry_attempts": 0,
+          "requests": 0,
+          "status": "ok",
+          "successful_matching_retries": 0
+        }
+      },
+      "b5_429_responses": 0,
+      "clients": 0,
+      "matching_retry_attempts": 0,
+      "phase": "agent",
+      "requests": 0,
+      "status": "ok",
+      "successful_matching_retries": 0,
+      "window": "lines appended after the phase-start line count (read-only; the frozen harness truncated instead)"
+    },
+    "grading": {
+      "apis": {
+        "api-settlements-grading": {
+          "b5_429_responses": 0,
+          "clients": 1,
+          "matching_retry_attempts": 0,
+          "requests": 1,
+          "status": "ok",
+          "successful_matching_retries": 0
+        },
+        "api-settlements-live": {
+          "b5_429_responses": 0,
+          "clients": 0,
+          "matching_retry_attempts": 0,
+          "requests": 0,
+          "status": "ok",
+          "successful_matching_retries": 0
+        }
+      },
+      "b5_429_responses": 0,
+      "clients": 1,
+      "matching_retry_attempts": 0,
+      "phase": "grading",
+      "requests": 1,
+      "status": "ok",
+      "successful_matching_retries": 0,
+      "window": "lines appended after the phase-start line count (read-only; the frozen harness truncated instead)"
+    }
+  },
+  "killed_timeout_runs": 0,
+  "lesson_records_in_session": 0,
+  "lessons_confirmed": [],
+  "lessons_published": [],
+  "lessons_recalled": [],
+  "lessons_written": [],
+  "measures": {
+    "records_duplicated": 0,
+    "records_lost": 1873,
+    "right_first_time": false,
+    "sandbox_runs": 0,
+    "time_stuck_s": 0.0,
+    "tokens_input": 3239,
+    "tokens_output": 192,
+    "verdict": "FAIL",
+    "wall_time_s": 2.71
+  },
+  "model": "muse-glimmer-30b",
+  "model_name": "Muse Glimmer 30B",
+  "opencode_exit": 0,
+  "opencode_tokens": {
+    "input": 3239,
+    "output": 192,
+    "reasoning": 120
+  },
+  "output_present": false,
+  "page_observations": [],
+  "process_elapsed_s": 2.71,
+  "project": "r1-muse-learn",
+  "recall_advice_checks": [],
+  "recall_required_checks": [],
+  "records_duplicated": 0,
+  "records_extra": 0,
+  "records_lost": 1873,
+  "records_mismatched": 0,
+  "repeat": 1,
+  "retry_measure": {
+    "note": "an HTTP retry inside one consumer process is not a sandbox run",
+    "source": "API retry journals, line offset at each phase start, read at each phase end (read-only)"
+  },
+  "right_first_time_basis": "no consumer run against v2",
+  "sandbox_runs_against_v2": 0,
+  "sandbox_runs_detail": "two consumer runs per trusted run record (candidate against v2 plus baseline against v1); trusted check and grading guests excluded",
+  "scenario": "settlements",
+  "session": "kalari-settlements-eb96c733",
+  "session_cap_s": 900,
+  "session_capped": false,
+  "setup": "OpenCode 2.2.5 with kalari serve MCP (5 tools), no shell, no microsandbox-mcp; persistent project stores",
+  "tool_calls": {},
+  "upgrade": "settlements"
+}

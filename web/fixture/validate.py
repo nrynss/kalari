@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate evidence records against the kalari.benchmark.v1 contract.
+"""Validate evidence records against the benchmark contracts.
 
     python3 web/fixture/validate.py
 
@@ -10,10 +10,13 @@ exists, and the payload measures must match that file. A run_id is unique
 across benchmark records. A run or session id uses only A-Z, a-z, 0-9, dot,
 underscore and hyphen. The API routes use the same rule.
 
-A view fixture may set `synthetic: true` in the payload. The validator then
-treats the record as a view test, not a measurement. It still checks every
-other field, and it still requires a source that is readable JSON. It does not
-compare the payload with that source.
+Three benchmark schemas are accepted: kalari.benchmark.v1 (the frozen and
+pilot rows), kalari.repeat.v1 (one 0.2.3 repeat session, compared field by
+field with its published row) and kalari.baseline.v1 (the demoted earlier
+baseline). A view fixture may set `synthetic: true` in the payload. The
+validator then treats the record as a view test, not a measurement. It still
+checks every other field, and it still requires a source that is readable
+JSON. It does not compare the payload with that source.
 """
 
 from __future__ import annotations
@@ -135,7 +138,7 @@ def looks_like_benchmark(record: Any) -> bool:
     payload = record.get("payload")
     if not isinstance(payload, dict):
         return False
-    if payload.get("schema") == "kalari.benchmark.v1":
+    if payload.get("schema") in ("kalari.benchmark.v1", "kalari.repeat.v1", "kalari.baseline.v1"):
         return True
     return "condition" in payload and "upgrade" in payload
 
@@ -262,7 +265,12 @@ def validate_benchmark_record(record: dict[str, Any], run_ids: set[str]) -> list
     if not isinstance(payload, dict):
         return errors + ["payload is not an object"]
 
-    if payload.get("schema") != "kalari.benchmark.v1":
+    schema = payload.get("schema")
+    if schema == "kalari.repeat.v1":
+        return errors + validate_repeat_record(record)
+    if schema == "kalari.baseline.v1":
+        return errors + validate_baseline_record(record)
+    if schema != "kalari.benchmark.v1":
         errors.append("schema is not kalari.benchmark.v1")
     synthetic = payload.get("synthetic")
     if synthetic is not None and not isinstance(synthetic, bool):
@@ -366,6 +374,174 @@ def validate_benchmark_record(record: dict[str, Any], run_ids: set[str]) -> list
     else:
         errors.extend(source_errors(payload))
 
+    return errors
+
+
+REPEAT_MODELS = {
+    "deepseek-v4.1-flash-1017": "DeepSeek V4.1 Flash",
+    "glm-5.3-flash": "GLM 5.3 Flash",
+    "mimo-v2.6-flash": "MiMo V2.6 Flash",
+    "qwen3.8-27b": "Qwen3.8 27B",
+    "muse-glimmer-30b": "Muse Glimmer 30B",
+}
+REPEAT_SCENARIOS = {"payouts", "settlements", "disbursements"}
+REPEAT_GRADE_KEYS = (
+    "verdict",
+    "output_present",
+    "records",
+    "unique",
+    "expected",
+    "missing",
+    "extra",
+    "duplicates",
+    "mismatched",
+    "unreadable_lines",
+)
+
+
+def validate_repeat_record(record: dict[str, Any]) -> list[str]:
+    """Validate one 0.2.3 repeat payload against its published row."""
+    errors: list[str] = []
+    payload = record["payload"]
+    if payload.get("provenance") != "repeat023":
+        errors.append("provenance is not repeat023")
+    if payload.get("status") != "valid":
+        errors.append("status is not valid")
+    if payload.get("arm") not in ARMS:
+        errors.append("arm is not reference or kalari")
+    model_id = payload.get("model_id")
+    if REPEAT_MODELS.get(model_id) != payload.get("model"):
+        errors.append("model does not match model_id")
+    if payload.get("scenario") not in REPEAT_SCENARIOS:
+        errors.append("scenario is not a known upgrade")
+    if not isinstance(payload.get("project"), str) or not payload.get("project"):
+        errors.append("project is empty")
+    repeat = payload.get("repeat")
+    if repeat is not None and (not is_count(repeat) or repeat < 1):
+        errors.append("repeat is not a positive count or null")
+    if not isinstance(payload.get("headline"), bool):
+        errors.append("headline is not a boolean")
+    chain = payload.get("chain")
+    if chain is not None and chain != "glm3":
+        errors.append("chain is not glm3 or null")
+    if payload.get("session_id") != record.get("session_id"):
+        errors.append("payload session_id does not equal the envelope session_id")
+    if payload.get("session_capped") is True and not is_number(payload.get("session_cap_s")):
+        errors.append("a capped session needs session_cap_s")
+    if payload.get("verdict") not in VERDICTS:
+        errors.append("verdict is not PASS or FAIL")
+    if not isinstance(payload.get("right_first_time"), bool):
+        errors.append("right_first_time is not a boolean")
+    if not is_count(payload.get("sandbox_runs")):
+        errors.append("sandbox_runs is not a count")
+    for key in ("wall_time_s", "time_stuck_s", "cost_usd"):
+        value = payload.get(key)
+        if not is_number(value) or value < 0:
+            errors.append(f"{key} is not a non-negative number")
+    for key in ("tokens_input", "tokens_output", "records_lost", "records_duplicated"):
+        if not is_count(payload.get(key)):
+            errors.append(f"{key} is not a count")
+    for key in ("records_extra", "records_mismatched"):
+        value = payload.get(key)
+        if value is not None and not is_count(value):
+            errors.append(f"{key} is not a count or null")
+    grade = payload.get("grade")
+    if not isinstance(grade, dict):
+        errors.append("grade is not an object")
+    else:
+        for key in REPEAT_GRADE_KEYS:
+            if key in grade and grade[key] is not None and not is_count(grade[key]) and not isinstance(grade[key], bool) and grade[key] not in ("PASS", "FAIL"):
+                errors.append(f"grade.{key} is not a count, boolean or verdict")
+        if grade.get("verdict") != payload.get("verdict"):
+            errors.append("grade.verdict does not equal verdict")
+    for key in ("lessons_written", "lessons_recalled"):
+        if not is_count(payload.get(key)):
+            errors.append(f"{key} is not a count")
+    tool_calls = payload.get("tool_calls")
+    if tool_calls is not None and not isinstance(tool_calls, dict):
+        errors.append("tool_calls is not an object or null")
+    if not isinstance(payload.get("notes"), str):
+        errors.append("notes is not a string")
+    # The payload must match the published row it names.
+    source = payload.get("source")
+    path, problem = source_path(source)
+    if problem:
+        errors.append(problem)
+        return errors
+    assert path is not None
+    try:
+        row = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return errors + ["source is not readable JSON"]
+    if not isinstance(row, dict):
+        return errors + ["source row is not an object"]
+    if synthetic := payload.get("synthetic"):
+        if synthetic is not True:
+            errors.append("synthetic is not a boolean")
+        return errors
+    pairs = (
+        ("arm", "arm"),
+        ("model_id", "model"),
+        ("model", "model_name"),
+        ("scenario", "scenario"),
+        ("project", "project"),
+        ("repeat", "repeat"),
+        ("headline", "headline"),
+        ("chain", "chain"),
+        ("session_capped", "session_capped"),
+        ("verdict", ("measures", "verdict")),
+        ("right_first_time", ("measures", "right_first_time")),
+        ("sandbox_runs", ("measures", "sandbox_runs")),
+        ("wall_time_s", ("measures", "wall_time_s")),
+        ("time_stuck_s", ("measures", "time_stuck_s")),
+        ("tokens_input", ("measures", "tokens_input")),
+        ("tokens_output", ("measures", "tokens_output")),
+        ("cost_usd", "cost_usd"),
+    )
+    for payload_key, row_key in pairs:
+        want = rowget(row, row_key)
+        if payload.get(payload_key) != want:
+            errors.append(f"{payload_key} {payload.get(payload_key)!r} does not match the published row {want!r}")
+    grade_row = row.get("grade") or {}
+    for key in REPEAT_GRADE_KEYS:
+        if key in grade_row and grade.get(key) != grade_row.get(key):
+            errors.append(f"grade.{key} does not match the published row")
+    if payload.get("lessons_written") != len(row.get("lessons_published") or []):
+        errors.append("lessons_written does not match the published row")
+    if payload.get("lessons_recalled") != len(row.get("lessons_recalled") or []):
+        errors.append("lessons_recalled does not match the published row")
+    if (payload.get("tool_calls") or {}) != (row.get("tool_calls") or {}):
+        errors.append("tool_calls do not match the published row")
+    if payload.get("records_mismatched") != row.get("records_mismatched"):
+        errors.append("records_mismatched does not match the published row")
+    return errors
+
+
+def rowget(row: dict[str, Any], key: Any) -> Any:
+    value: Any = row
+    for part in (key if isinstance(key, tuple) else (key,)):
+        if not isinstance(value, dict):
+            return None
+        value = value.get(part)
+    return value
+
+
+def validate_baseline_record(record: dict[str, Any]) -> list[str]:
+    """Validate the demoted earlier-baseline payload."""
+    errors: list[str] = []
+    payload = record["payload"]
+    if payload.get("provenance") != "baseline":
+        errors.append("provenance is not baseline")
+    if payload.get("sessions") != 60:
+        errors.append("sessions is not 60")
+    for key in ("kalari_cost_usd", "reference_cost_usd"):
+        value = payload.get(key)
+        if not is_number(value) or value <= 0:
+            errors.append(f"{key} is not a positive number")
+    if payload.get("source") != "bench/RESULTS.md":
+        errors.append("source is not bench/RESULTS.md")
+    if not (REPO / "bench" / "RESULTS.md").is_file():
+        errors.append("bench/RESULTS.md is missing")
     return errors
 
 

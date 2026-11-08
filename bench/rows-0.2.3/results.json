@@ -1,0 +1,267 @@
+{
+ "_about": "Every number on slides/slides.html and in vo/VOICEOVER.md comes from this file. null renders as a visible placeholder (— for a number, TBD for a verdict). Fill the nulls from the repeat runs (tools/user/aggregate.py over the measures.json rows, groups arm-scenario-model) and the chained GLM retakes; never by hand from memory. Each filled value gets its source.",
+ "release": "Kalari 0.2.3",
+ "facts": {
+  "_source": "The user-path matrix in SHOTS.md (takes/2026-11-08-user-*.mkv) and the orchestrator's brief. Single filmed sessions, not repeats.",
+  "problem": {
+   "model": "GLM 5.3 Flash",
+   "scenario": "disbursements",
+   "arm": "reference",
+   "agent_called": "/v2/verify",
+   "agent_claim": "verified",
+   "records_shipped": 23,
+   "records_wrong": 23,
+   "verdict": "FAIL",
+   "grader": "23 mismatched",
+   "also_shipped_alone": [
+    "DeepSeek V4.1 Flash",
+    "MiMo V2.6 Flash"
+   ],
+   "source": "takes/2026-11-08-user-glm-disbursements-reference.mkv; repeats (takes/repeats-table.txt): alone disbursements failed GLM 5/5, DeepSeek 4/5, MiMo 2/5",
+   "alone_disbursements_failed": {
+    "GLM 5.3 Flash": "5 of 5",
+    "DeepSeek V4.1 Flash": "4 of 5",
+    "MiMo V2.6 Flash": "2 of 5"
+   }
+  },
+  "fixed": {
+   "model": "GLM 5.3 Flash",
+   "scenario": "disbursements",
+   "arm": "kalari",
+   "verdict": "PASS",
+   "records_right": 2341,
+   "records_total": 2341,
+   "source": "takes/2026-11-08-user-glm3-disbursements-kalari.mkv (Kalari 0.2.3), recalled lesson, PASS 2,341 of 2,341"
+  },
+  "learning": {
+   "model": "GLM 5.3 Flash",
+   "written_in": "payouts",
+   "lessons_written": 1,
+   "observed": [
+    "boundary_overlap_one",
+    "final_page_token",
+    "rate_limit_retry"
+   ],
+   "observed_plain": [
+    "the page boundary repeats a record",
+    "a token on the final page too",
+    "429: retry the identical request"
+   ],
+   "recalled_in": "settlements",
+   "lessons_recalled": 1,
+   "agent_quote": "The lesson confirms the pitfalls: boundary duplicates (dedupe by ID, last wins), short/empty pages while hasNextPage, and identical-request retry on 429.",
+   "settlements_verdict": "PASS",
+   "settlements_right_first_time": true,
+   "settlements_records_right": 1873,
+   "settlements_records_total": 1873,
+   "settlements_wall_s": 27.7,
+   "settlements_cost_usd": 0.012,
+   "also_learned": [
+    "DeepSeek V4.1 Flash",
+    "MiMo V2.6 Flash"
+   ],
+   "source": "takes/2026-11-08-user-glm3-payouts-kalari.mkv, -settlements-kalari.mkv (Kalari 0.2.3); quote from the glm3 settlements events.jsonl; also_learned from the repeats (settlements recalled 5 of 5 for DeepSeek and MiMo)"
+  }
+ },
+ "chain": {
+  "_about": "The Kalari arm keeps one project and one store across three upgrades, in order: payouts, settlements, disbursements (all pagination_changed). Filled from the chained GLM retakes.",
+  "_source": "takes/2026-11-08-user-glm3-{payouts,settlements,disbursements}-kalari.mkv; measures.json rows in project glm3-learn (Kalari 0.2.3)",
+  "model": "GLM 5.3 Flash",
+  "payouts": {
+   "verdict": "PASS",
+   "lessons_written": 1,
+   "lessons_confirmed": 0,
+   "records_right": 2431,
+   "records_total": 2431,
+   "wall_s": 57.4,
+   "cost_usd": 0.026
+  },
+  "settlements": {
+   "verdict": "PASS",
+   "lessons_recalled": 1,
+   "right_first_time": true,
+   "records_right": 1873,
+   "records_total": 1873,
+   "wall_s": 27.7,
+   "cost_usd": 0.012
+  },
+  "disbursements": {
+   "verdict": "PASS",
+   "lessons_recalled": 1,
+   "recalled_from": "payouts",
+   "right_first_time": true,
+   "records_wrong": 0,
+   "records_right": 2341,
+   "records_total": 2341,
+   "wall_s": 21.5,
+   "cost_usd": 0.009
+  }
+ },
+ "models": [
+  "DeepSeek V4.1 Flash",
+  "GLM 5.3 Flash",
+  "MiMo V2.6 Flash"
+ ],
+ "scenarios": [
+  "payouts",
+  "settlements",
+  "disbursements"
+ ],
+ "grid": {
+  "_about": "Passed the hidden grader, per model, scenario and arm, over the repeats: {pass, n}. alone = OpenCode with microsandbox-mcp only; kalari = OpenCode with the kalari serve entry.",
+  "_source": "takes/repeats-table.txt (aggregate.py table over the repeat projects' measures.json rows), Kalari 0.2.3, 5 repeats per cell",
+  "DeepSeek V4.1 Flash": {
+   "disbursements": {
+    "kalari": {
+     "pass": 5,
+     "n": 5
+    },
+    "alone": {
+     "pass": 1,
+     "n": 5
+    }
+   },
+   "payouts": {
+    "kalari": {
+     "pass": 5,
+     "n": 5
+    },
+    "alone": {
+     "pass": 5,
+     "n": 5
+    }
+   },
+   "settlements": {
+    "kalari": {
+     "pass": 5,
+     "n": 5
+    },
+    "alone": {
+     "pass": 5,
+     "n": 5
+    }
+   }
+  },
+  "GLM 5.3 Flash": {
+   "disbursements": {
+    "kalari": {
+     "pass": 5,
+     "n": 5
+    },
+    "alone": {
+     "pass": 0,
+     "n": 5
+    }
+   },
+   "payouts": {
+    "kalari": {
+     "pass": 5,
+     "n": 5
+    },
+    "alone": {
+     "pass": 5,
+     "n": 5
+    }
+   },
+   "settlements": {
+    "kalari": {
+     "pass": 5,
+     "n": 5
+    },
+    "alone": {
+     "pass": 5,
+     "n": 5
+    }
+   }
+  },
+  "MiMo V2.6 Flash": {
+   "disbursements": {
+    "kalari": {
+     "pass": 5,
+     "n": 5
+    },
+    "alone": {
+     "pass": 3,
+     "n": 5
+    }
+   },
+   "payouts": {
+    "kalari": {
+     "pass": 5,
+     "n": 5
+    },
+    "alone": {
+     "pass": 5,
+     "n": 5
+    }
+   },
+   "settlements": {
+    "kalari": {
+     "pass": 5,
+     "n": 5
+    },
+    "alone": {
+     "pass": 5,
+     "n": 5
+    }
+   }
+  }
+ },
+ "containment": {
+  "_about": "The containment take on the next release: a consumer that never stops, through run_in_sandbox.",
+  "_source": "takes/2026-11-08-containment-0.2.3.mkv; takes/2026-11-08-containment-0.2.3-transcript.txt (tests/live/containment.sh on 0.2.3)",
+  "cap_ms": 5000,
+  "measured_ms": 5007,
+  "verdict": "killed_timeout",
+  "allowed": 1,
+  "refused": 4,
+  "refused_targets": [
+   "other ports",
+   "host SSH",
+   "cloud metadata",
+   "internet"
+  ],
+  "sandboxes_left": 0,
+  "processes_left": 0,
+  "pages_before_kill": 68
+ },
+ "numbers": {
+  "_about": "Means per session over all repeats (cost, wall time) and the pass rate, with and without Kalari. ratio_* = alone / kalari.",
+  "_source": "takes/repeats-table.txt, the three models with 5 repeats (GLM, DeepSeek, MiMo); cost from /v1/usage deltas at list price; alone wall time includes 2 GLM payouts sessions stopped at the 900 s cap",
+  "sessions": 45,
+  "kalari": {
+   "cost_usd": 0.0242,
+   "wall_s": 58.4,
+   "pass": 45,
+   "n": 45,
+   "right_first_time": 26
+  },
+  "alone": {
+   "cost_usd": 0.0666,
+   "wall_s": 166.0,
+   "pass": 34,
+   "n": 45,
+   "right_first_time": 26
+  },
+  "ratio_cost": 2.8,
+  "ratio_wall": 2.8
+ },
+ "baseline_frozen": {
+  "_about": "Optional small line: the earlier frozen benchmark, DeepSeek V4.1 Flash, 60 sessions, mean cost per session.",
+  "kalari_cost_usd": 0.019,
+  "reference_cost_usd": 0.082,
+  "sessions": 60,
+  "source": "~/work/kalari/bench/RESULTS.md section 2"
+ },
+ "excluded": {
+  "_about": "Run but not in the headline (user decision: three models at n=5). One repeat each.",
+  "Qwen3.8 27B": {
+   "kalari": "2 of 3 (disbursements: never called Kalari, code mode)",
+   "alone": "2 of 3"
+  },
+  "Muse Glimmer 30B": {
+   "kalari": "1 of 3 (settlements, disbursements: malformed first tool call, session ended at 2.7 s)",
+   "alone": "2 of 3"
+  }
+ }
+}

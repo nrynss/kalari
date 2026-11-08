@@ -1,6 +1,6 @@
 import { boot } from "./boot.mjs";
 import { loadJudgesData } from "./api.mjs";
-import { judgesView } from "./views.mjs";
+import { judges023View as judgesView } from "./judges023.mjs";
 
 boot(async () => {
   const data = await loadJudgesData();

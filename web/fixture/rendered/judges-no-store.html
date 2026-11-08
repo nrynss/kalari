@@ -1,51 +1,7 @@
 <article class="judges">
-    <header class="judges-hero">
-    <h1>For judges: start here.</h1>
-    <p class="deck">Kalari rehearses an API upgrade in a contained arena. A proved gate checks each sandbox call. A hidden grader decides whether the upgrade works. Kalari writes a lesson from what the verified run showed.</p>
-    <p class="hero-copy">This page is the evidence index. Every figure comes from an evidence record, and every benchmark figure links to the run that produced it.</p>
-    <p class="status-line"><span class="status-dot" aria-hidden="true"></span>Waiting for published results</p>
-    <nav class="reading-path" aria-label="On this page">
-      <ul><li><a href="#what-is">What Kalari is</a></li><li><a href="#comparison">The pilot baseline</a></li><li><a href="#sessions">Read a session</a></li></ul>
-    </nav>
-  </header>
-
-    <section id="what-is" class="section section--whatis" aria-labelledby="what-is-title">
-    <p class="hero-kicker">What Kalari is</p>
-    <h2 id="what-is-title">A rehearsal arena for API upgrades.</h2>
-    <p>Kalari plugs into the coding agent you already use over MCP and rehearses an API upgrade in a contained arena. It works out what changed and what it touches. It runs the new code in a throwaway microVM against the real API, with the old version as the reference. It records what the run proved.</p>
-    <p>The agent writes the code, and Kalari decides what has to be checked and whether it passed.</p>
-    <ul class="tools-row" aria-label="The five Kalari tools">
-      <li><code>what_changed</code><span>Lists the changes between two API versions, with stable change IDs.</span></li><li><code>blast_radius</code><span>Finds the callers and tests each change touches.</span></li><li><code>recall_lessons</code><span>Returns lessons for these change kinds as checks that must pass.</span></li><li><code>run_in_sandbox</code><span>Runs the new code in a throwaway microVM behind the proved gate. It returns the verdict and logs.</span></li><li><code>record_lesson</code><span>Stores what a verified run showed about the API, keyed by change kind.</span></li>
-    </ul>
-    <p class="fine-print tools-proof">The five tools live in <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/788ecda667628352cbf2ae07366981fd0c994a46/Kalari/Mcp.lean">Kalari/Mcp.lean on GitHub</a>. The gate is proved, not just tested. Four theorems cover the workspace, the network, the caps and the secrets: <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/788ecda667628352cbf2ae07366981fd0c994a46/Kalari/Gate.lean#L189">decide_workspace</a>, <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/788ecda667628352cbf2ae07366981fd0c994a46/Kalari/Gate.lean#L201">decide_network</a>, <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/788ecda667628352cbf2ae07366981fd0c994a46/Kalari/Gate.lean#L211">decide_caps</a>, <a class="evidence-link" href="https://github.com/nrynss/kalari/blob/788ecda667628352cbf2ae07366981fd0c994a46/Kalari/Gate.lean#L222">decide_secrets</a>.</p>
-    <h3>Use it in three steps.</h3>
-    <ol class="steps">
-      <li>Run <code>kalari serve</code> with a config file and a session file.</li>
-      <li>Add Kalari to your agent as an MCP server:
-        <pre class="config-snippet"><code>{
-  "mcp": {
-    "servers": {
-      "kalari": {
-        "type": "local",
-        "command": ["kalari", "serve", "kalari.json", "session.json"]
-      }
-    }
-  }
-}</code></pre>
-      </li>
-      <li>Ask your agent to upgrade the consumer. Kalari checks each run and records the evidence.</li>
-    </ol>
-    <p><a class="button" href="/docs/">Read the docs</a></p>
-  </section>
-
-    <section id="comparison" class="section section--comparison">
-      <h2>Benchmark results are not yet published.</h2>
-      <p>The page is waiting for benchmark records in the evidence store. A producer will write one record per run. No producer exists yet.</p>
-      <p>When it does, this page will show the frozen before-and-after, each condition's result, and the containment moment. Every figure will link to the run that produced it.</p>
-      <p>The session view is ready now. It shows the shape of the evidence the page will read.</p>
-    </section>
-
-    <section id="sessions" class="section section--sessions">
-
+    <section class="section" aria-labelledby="empty-title">
+      <p class="hero-kicker">For judges</p>
+      <h2 id="empty-title">The 0.2.3 repeats are not yet published.</h2>
+      <p>The store holds no repeat session. When it does, every figure will link to the run behind it.</p>
     </section>
   </article>

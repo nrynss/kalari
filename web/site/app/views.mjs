@@ -47,18 +47,18 @@ export const EVIDENCE_REF = "788ecda667628352cbf2ae07366981fd0c994a46";
 
 const GITHUB_REPO = "https://github.com/nrynss/kalari";
 
-function githubUrl(path, fragment = "") {
+export function githubUrl(path, fragment = "") {
   return `${GITHUB_REPO}/blob/${EVIDENCE_REF}/${path}${fragment ? `#${fragment}` : ""}`;
 }
 
-function evidenceLink(url, label) {
+export function evidenceLink(url, label) {
   return `<a class="evidence-link" href="${attr(url)}">${h(label)}</a>`;
 }
 
 /* A model or tool version string. Versions carry digits, but they are names,
    not figures, so they never link to a run. The check allows only known
    names inside this marker. */
-function modelTag(name) {
+export function modelTag(name) {
   return `<span class="model-tag">${h(name)}</span>`;
 }
 
@@ -89,6 +89,8 @@ function runIdSet(runs) {
 function badge(text, tone = "neutral") {
   return `<span class="badge badge--${attr(tone)}">${h(text)}</span>`;
 }
+
+export { badge };
 
 function armLabel(arm) {
   if (arm === "kalari") return "Kalari arm";
@@ -2065,8 +2067,100 @@ function evidenceIndex(records, runIds) {
   </section>`;
 }
 
+function dollars3(value) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "";
+  return `$${Number(value).toFixed(3)}`;
+}
+
+/* A 0.2.3 repeat run: the session's measures, grade and lesson counts, with a
+   link to the published row. */
+function repeatRunDetail(record, runIds) {
+  const p = payloadOf(record);
+  const grade = object(p.grade) || {};
+  return `<section class="section" aria-labelledby="repeat-title">
+    <p class="hero-kicker">Repeat session · ${modelTag(p.model)} · ${h(p.arm === "kalari" ? "Kalari arm" : "Alone arm")}</p>
+    <h2 id="repeat-title">${h(upgradeLabel(p.scenario))} · ${h(p.project)}</h2>
+    <div class="table-wrap"><table class="measures-table">
+      <caption class="visually-hidden">The session measures</caption>
+      <tbody>
+        <tr><th scope="row">Verdict</th><td><span class="verdict ${p.verdict === "PASS" ? "is-pass" : "is-fail"}">${h(
+    verdictWord(p.verdict),
+  )}</span></td></tr>
+        <tr><th scope="row">Right first time</th><td>${h(boolWord(p.right_first_time))}</td></tr>
+        <tr><th scope="row">Wall time</th><td class="num">${runLink(record.run_id, seconds(p.wall_time_s), runIds, "Run wall time")}</td></tr>
+        <tr><th scope="row">Cost</th><td class="num">${runLink(record.run_id, money(p.cost_usd), runIds, "Run cost")}</td></tr>
+        <tr><th scope="row">Sandbox runs</th><td class="num">${runLink(record.run_id, count(p.sandbox_runs), runIds, "Run sandbox runs")}</td></tr>
+        <tr><th scope="row">Graded records</th><td class="num">${runLink(
+    record.run_id,
+    `${count(grade.records)} of ${count(grade.expected)}`,
+    runIds,
+    "Run records",
+  )}</td></tr>
+        <tr><th scope="row">Mismatched</th><td class="num">${runLink(record.run_id, count(grade.mismatched), runIds, "Run mismatched")}</td></tr>
+        <tr><th scope="row">Lessons</th><td class="num">${runLink(
+    record.run_id,
+    `${count(p.lessons_written)} written, ${count(p.lessons_recalled)} recalled`,
+    runIds,
+    "Run lessons",
+  )}</td></tr>
+      </tbody>
+    </table></div>
+    <p class="fine-print">Published row: ${evidenceLink(
+    githubUrl(p.source),
+    `${p.source} on GitHub`,
+  )}. ${h(p.notes || "")}</p>
+  </section>`;
+}
+
+function baselineRunDetail(record) {
+  const p = payloadOf(record);
+  const link = githubUrl("bench/RESULTS.md");
+  return `<section class="section" aria-labelledby="baseline-run-title">
+    <p class="hero-kicker">Earlier baseline</p>
+    <h2 id="baseline-run-title">The frozen 60-session benchmark, demoted</h2>
+    <p>${count(p.sessions)} sessions with ${modelTag(
+    "DeepSeek V4.1 Flash",
+  )}: <a href="${attr(link)}" title="Baseline Kalari cost">${h(dollars3(p.kalari_cost_usd))}</a> against <a href="${attr(
+    link,
+  )}" title="Baseline reference cost">${h(dollars3(p.reference_cost_usd))}</a> per session.</p>
+    <p class="fine-print">Evidence on GitHub: ${evidenceLink(link, "bench/RESULTS.md")}.</p>
+  </section>`;
+}
+
+function repeatOf(records) {
+  return (records || []).filter(
+    (record) =>
+      record && record.kind === "benchmark" && payloadOf(record).schema === "kalari.repeat.v1",
+  );
+}
+
+function baselineOf(records) {
+  return (records || []).filter(
+    (record) =>
+      record && record.kind === "benchmark" && payloadOf(record).schema === "kalari.baseline.v1",
+  );
+}
+
 export function sessionView({ sessionId = "", records = [], lessons = [], runs = null, warnings = [] } = {}) {
   const runIds = runIdSet(runs);
+  const repeats = repeatOf(records);
+  const baselines = baselineOf(records);
+  if (repeats.length || baselines.length) {
+    return `<article class="session-page">
+    <header class="page-head">
+      <p class="breadcrumb"><a href="index.html">For judges</a> <span aria-hidden="true">/</span> Session</p>
+      <div class="page-title"><h1>${h(repeats.length ? "Repeat session" : "Earlier baseline")}</h1>${badge(
+      repeats.length ? "Repeat session" : "Earlier baseline",
+      "live",
+    )}</div>
+      <p class="session-id">Session <code>${h(sessionId)}</code></p>
+      <p class="quiet-line"><a href="index.html">Back to the evidence index</a></p>
+    </header>
+    ${warningsSection(warnings)}
+    ${repeats.map((record) => repeatRunDetail(record, runIds)).join("")}
+    ${baselines.map((record) => baselineRunDetail(record)).join("")}
+  </article>`;
+  }
   const meta = sessionMeta(records);
   const bench = benchmarkRecords(records);
   const changes = ofKind(records, "change");
@@ -2678,6 +2772,24 @@ function showcaseRunDetail(record) {
 
 export function runView({ runId = "", records = [], runs = null, warnings = [] } = {}) {
   const runIds = runIdSet(runs);
+  const repeats = repeatOf(records);
+  const baselines = baselineOf(records);
+  if (repeats.length || baselines.length) {
+    const first = repeats.length ? payloadOf(repeats[0]) : payloadOf(baselines[0]);
+    return `<article class="run-page">
+    <header class="page-head">
+      <p class="breadcrumb"><a href="index.html">For judges</a> <span aria-hidden="true">/</span> Run</p>
+      <div class="page-title"><h1>${h(
+      repeats.length ? `Repeat run: ${upgradeLabel(first.scenario)}` : "Earlier baseline",
+    )}</h1>${badge(repeats.length ? "Repeat session" : "Earlier baseline", "live")}</div>
+      <p class="run-id"><code>${h(runId)}</code></p>
+      <p class="quiet-line"><a href="index.html">Back to the evidence index</a></p>
+    </header>
+    ${warningsSection(warnings)}
+    ${repeats.map((record) => repeatRunDetail(record, runIds)).join("")}
+    ${baselines.map((record) => baselineRunDetail(record)).join("")}
+  </article>`;
+  }
   const bench = benchmarkRecords(records);
   const runRecords = ofKind(records, "run");
   const shown = containmentOf(records);
