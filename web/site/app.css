@@ -618,6 +618,125 @@ p {
   margin-top: 0;
 }
 
+/* The 0.2.3 headline grid -------------------------------------------------- */
+/* One row per model, one column group per upgrade, Kalari and Alone side by
+   side inside each group. Follows the .contrast-grid / .loss-grid pattern:
+   paper-2 cards on paper with one rule border, the pass and fail tokens for
+   the counts, and the five session links small underneath. */
+
+.grid-model {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.grid-upgrade {
+  padding: 1rem 1.1rem;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  min-width: 0;
+}
+
+.grid-upgrade h5 {
+  margin: 0 0 0.6rem;
+}
+
+.grid-arms {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.grid-arm {
+  min-width: 0;
+  border-top: 1px solid var(--rule);
+  padding-top: 0.5rem;
+}
+
+.grid-arm-name {
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 0.25rem;
+}
+
+.grid-cell {
+  min-width: 0;
+}
+
+.grid-count {
+  font-family: var(--font-serif);
+  font-size: 1.7rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  margin: 0 0 0.35rem;
+}
+
+.grid-count .run-link {
+  text-decoration: none;
+}
+
+.grid-cell.is-pass .grid-count,
+.grid-cell.is-pass .grid-count .run-link {
+  color: var(--pass);
+}
+
+.grid-cell.is-fail .grid-count,
+.grid-cell.is-fail .grid-count .run-link {
+  color: var(--fail);
+}
+
+.grid-cell .tally {
+  flex-wrap: wrap;
+  gap: 0.3rem 0.6rem;
+  margin: 0;
+}
+
+.grid-cell .tally code {
+  font-size: 0.72rem;
+  background: transparent;
+  padding: 0;
+  color: var(--ink-2);
+}
+
+.grid-cell .tally .run-link {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Judges page structure ---------------------------------------------------- */
+/* Structural hooks the 0.2.3 view emits: the article wrapper, the opening
+   hero section, and the read-a-session groups. */
+
+.judges {
+  display: block;
+}
+
+.section--hero {
+  border-top: 0;
+  padding-top: 2.5rem;
+}
+
+.section--sessions {
+  max-width: 62rem;
+}
+
+.session-group {
+  margin-top: 1.5rem;
+}
+
+.session-group ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+}
+
 /* Conditions and tables -------------------------------------------------- */
 
 .condition-list {
@@ -1960,6 +2079,7 @@ td.num {
 
   .contrast-grid,
   .loss-grid,
+  .grid-model,
   .problem-grid {
     grid-template-columns: 1fr;
   }
@@ -2102,6 +2222,10 @@ td.num {
 }
 
 @media (max-width: 480px) {
+  .grid-arms {
+    grid-template-columns: 1fr;
+  }
+
   .facts {
     grid-template-columns: 1fr;
   }

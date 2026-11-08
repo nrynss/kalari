@@ -2154,6 +2154,63 @@ def assert_served_pages_local(base: str) -> None:
     say(f"no external URL in {len(paths)} served pages and assets, and every response carries the policy")
 
 
+def assert_judges_classes_have_css() -> None:
+    """Every class the judges page emits has a CSS rule, so no emitted
+    block (in particular the 0.2.3 grid) renders as an unstyled list."""
+
+    class ClassParser(HTMLParser):
+        def __init__(self) -> None:
+            super().__init__(convert_charrefs=True)
+            self.found: set[str] = set()
+
+        def handle_starttag(self, tag: str, attrs) -> None:
+            for key, value in attrs:
+                if key == "class":
+                    for token in value.split():
+                        self.found.add(token)
+
+    parser = ClassParser()
+    parser.feed(read_page("judges"))
+    css = css_without_comments((SITE / "app.css").read_text(encoding="utf-8"))
+    missing = sorted(
+        name for name in parser.found if not re.search(r"\." + re.escape(name) + r"(?![\w-])", css)
+    )
+    check(not missing, f"the judges page uses classes with no CSS rule: {', '.join(missing)}")
+    for name in ("grid-model", "grid-upgrade", "grid-arms", "grid-arm", "grid-arm-name", "grid-cell", "grid-count"):
+        check(name in parser.found, f"the judges page no longer emits .{name}")
+    say(f"every class the judges page emits has a CSS rule ({len(parser.found)} classes)")
+
+
+FALLBACK_RETIRED = (
+    "manufactured migration showcase",
+    "published no lessons",
+    "empty recall",
+)
+FALLBACK_023 = (
+    "three models",
+    "three upgrades",
+    "five repeats",
+    "45 of 45",
+    "34 of 45",
+    "recalled",
+    "earlier baseline",
+)
+
+
+def assert_fallback_copy() -> None:
+    """The index.html fallback tells the 0.2.3 story, not the retired one."""
+    text = (SITE / "index.html").read_text(encoding="utf-8")
+    lowered = text.lower()
+    for phrase in FALLBACK_RETIRED:
+        check(phrase not in lowered, f"index.html still tells the old story: {phrase!r}")
+    main_text = re.search(r"<main[^>]*>(.*?)</main>", text, re.DOTALL)
+    check(main_text is not None, "index.html has no main element")
+    summary = text_of(main_text.group(1)).lower()
+    for phrase in FALLBACK_023:
+        check(phrase in summary, f"the index.html fallback lacks the 0.2.3 summary phrase {phrase!r}")
+    say("the index.html fallback carries the 0.2.3 summary, not the retired story")
+
+
 def main() -> int:
     print("web check")
     assert_no_external_urls()
@@ -2163,6 +2220,8 @@ def main() -> int:
     assert_published_has_no_banner()
     assert_csp_shells()
     assert_footer_landmark()
+    assert_judges_classes_have_css()
+    assert_fallback_copy()
     assert_manifest()
     inputs = load_inputs()
     assert_inputs_valid(inputs)

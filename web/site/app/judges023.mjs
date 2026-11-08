@@ -203,7 +203,8 @@ function gridCell(repeats, modelId, scenario, arm, runIds) {
   const passed = passCount(cell);
   const median = medianBy(cell, "wall_time_s");
   const medianId = median ? median.run_id : "";
-  return `<div class="grid-cell" data-model="${attr(modelId)}" data-scenario="${attr(
+  const state = cell.length && passed === cell.length ? "is-pass" : "is-fail";
+  return `<div class="grid-cell ${state}" data-model="${attr(modelId)}" data-scenario="${attr(
     scenario,
   )}" data-arm="${attr(arm)}">
     <p class="grid-count">${runLink(medianId, `${count(passed)}/${count(cell.length)}`, runIds, "Grid pass tally")}</p>
