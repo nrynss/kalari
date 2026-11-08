@@ -527,15 +527,43 @@ try:
         lessons = first.call("record_lesson", {"run_id": first_run})
         if not lessons:
             raise SystemExit("first run published no lesson")
+        if len(lessons) != 1:
+            raise SystemExit(f"first run published {len(lessons)} lessons, want 1")
         for lesson in lessons:
             observation = lesson["observation"]
             if "429" not in observation or "identical request" not in observation:
                 raise SystemExit("lesson does not carry the retry observation")
             if lesson["check"]["id"] != "candidate-v1-truth-v1":
                 raise SystemExit("lesson does not keep the candidate truth check")
+            if lesson["run_id"] != first_run:
+                raise SystemExit("first lesson does not carry its proving run")
             line(f"first-a record_lesson: observation={observation!r}")
             line(f"first-a record_lesson: check={lesson['check']['id']} command={lesson['check']['command']}")
             line(f"first-a record_lesson: memory_concept_id={lesson['memory_concept_id']}")
+        first_concept = lessons[0]["memory_concept_id"]
+        line(f"first-a record_lesson: run {first_run} 1 written 0 confirmed {first_concept}")
+        # A second passing run teaches the same lesson: it confirms the
+        # existing lesson instead of writing a new constraint concept.
+        report2 = first.call("run_in_sandbox", {
+            "workspace": first_setup["workspace"], "command": command,
+            "caps": caps, "allowlist": [endpoint(observer_port)]})
+        show_run("first-a run_in_sandbox", report2)
+        if not report2["passed"]:
+            raise SystemExit("second run in the first session did not pass")
+        second_first_run = report2["run_id"]
+        if second_first_run == first_run:
+            raise SystemExit("second run reused the first run ID")
+        lessons2 = first.call("record_lesson", {"run_id": second_first_run})
+        if len(lessons2) != 1:
+            raise SystemExit(f"confirming run published {len(lessons2)} lessons, want 1")
+        confirmed = lessons2[0]
+        if confirmed["run_id"] != first_run:
+            raise SystemExit(f"confirming run did not return the existing lesson: {confirmed['run_id']}")
+        if confirmed["memory_concept_id"] != first_concept:
+            raise SystemExit("confirming run did not reuse the existing concept")
+        if confirmed["observation"] != lessons[0]["observation"]:
+            raise SystemExit("confirming run changed the lesson observation")
+        line(f"first-a record_lesson: run {second_first_run} 0 written 1 confirmed {first_concept}")
     finally:
         first.close()
     if lambo_children():
@@ -550,6 +578,8 @@ try:
         kinds = sorted({change["kind"] for change in changed["changes"]})
         recalled = second.call("recall_lessons", {"change_kinds": kinds})
         required = [entry for entry in recalled if entry["status"] == "required"]
+        if len(recalled) != 1 or len(required) != 1:
+            raise SystemExit(f"second session did not recall exactly 1 lesson: {recalled}")
         if not any(entry["lesson"]["check"]["id"] == "candidate-v1-truth-v1" and
                    entry["lesson"]["observation"] for entry in required):
             raise SystemExit(f"second session did not recall the lesson as required: {recalled}")
@@ -580,11 +610,19 @@ try:
         raise SystemExit("second session left a Lambo child")
 
     # 3. The evidence store links the published lesson and the rebound check.
+    # Two passing runs taught one lesson: exactly one lesson record, and the
+    # confirming run wrote none.
     store = evidence(work / "evidence/.kalari/evidence.jsonl")
+    all_lessons = [r for r in store if r["kind"] == "lesson"]
+    if len(all_lessons) != 1:
+        raise SystemExit(f"evidence holds {len(all_lessons)} lesson records, want 1")
     lesson_records = [r for r in store if r["kind"] == "lesson" and r["run_id"] == first_run]
     if not lesson_records or not lesson_records[0]["payload"]["observation"]:
         raise SystemExit("lesson evidence is empty")
+    if any(r["run_id"] == second_first_run for r in all_lessons):
+        raise SystemExit("confirming run wrote a duplicate lesson record")
     line(f"evidence: published lesson={lesson_records[0]['payload']['observation']!r}")
+    line(f"evidence: lesson records=1 confirming run={second_first_run} no duplicate lesson")
     run_records = {r["run_id"]: r for r in store if r["kind"] == "run"}
     record = run_records.get(second_run)
     if record is None:
