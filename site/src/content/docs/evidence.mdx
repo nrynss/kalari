@@ -8,7 +8,7 @@ import RepoLink from '../../components/RepoLink.astro';
 
 ## Method
 
-The 0.2.3 comparison runs three coding models (DeepSeek V4.1 Flash, GLM 5.3 Flash, MiMo V2.6 Flash) across three upgrades (payouts, settlements, disbursements, all `pagination_changed`), five repeats each, two arms. One arm is OpenCode 2.2.5 with microsandbox-mcp and no Kalari tools. The other is OpenCode 2.2.5 with the `kalari serve` MCP entry (five tools), no shell, no microsandbox-mcp, persistent project stores, and the operator observer through the per-run broker. That is 45 sessions per arm. One repeat each way for Qwen3.8 27B and Muse Glimmer 30B sits outside the headline by user decision, bringing the published total to 51 sessions per arm, 102 sessions, served through the evidence API from the published bundle. Each session caps at 900 seconds; two GLM payouts sessions alone stopped at the cap. The repeat rows live with the filmed takes in the published bundle behind `slides/data/results.json` and its `repeats-table.txt` aggregate (groups arm-scenario-model), Kalari 0.2.3, read through the evidence API rather than as committed rows.
+The 0.2.3 comparison runs three coding models (DeepSeek V4.1 Flash, GLM 5.3 Flash, MiMo V2.6 Flash) across three upgrades (payouts, settlements, disbursements, all `pagination_changed`), five repeats each, two arms. One arm is OpenCode 2.2.5 with microsandbox-mcp and no Kalari tools. The other is OpenCode 2.2.5 with the `kalari serve` MCP entry (five tools), no shell, no microsandbox-mcp, persistent project stores, and the operator observer through the per-run broker. That is 45 sessions per arm. One repeat each way for Qwen3.8 27B and Muse Glimmer 30B sits outside the headline by user decision, bringing the published total to 51 sessions per arm, 102 sessions, served through the evidence API from the published bundle. Each session caps at 900 seconds; two GLM payouts sessions alone stopped at the cap. The repeat rows live with the filmed takes in the committed rows in `bench/rows-0.2.3/` with `results.json` and its aggregate table (groups arm-scenario-model), Kalari 0.2.3, served live through the evidence API.
 
 Cost multiplies the `/v1/usage` delta per session by list price, with cached input at full price. Both arms use the same rule. The usage deltas matched OpenCode's own step tokens on the measured probe in <RepoLink path="dev-diary/research/coding-agent.md">research/coding-agent.md</RepoLink>. Totals from the rows: 102 sessions cost about $5.62 at list price (Kalari arm $1.53 over 51 sessions, alone $4.09 over 51).
 
@@ -16,7 +16,7 @@ PASS means the hidden grader passed the final file. RFT means the first consumer
 
 ## What is measured
 
-The <DocLink to="judges/">Judges walkthrough</DocLink> reports, per arm over the 45 headline sessions: pass rate (45/45 with Kalari, 34/45 alone), mean cost per session ($0.024 against $0.067), and mean wall time per session (58 s against 166 s). Every figure traces to the repeat rows in the published bundle behind `slides/data/results.json`, read through the evidence API.
+The <DocLink to="judges/">Judges walkthrough</DocLink> reports, per arm over the 45 headline sessions: pass rate (45/45 with Kalari, 34/45 alone), mean cost per session ($0.024 against $0.067), and mean wall time per session (58 s against 166 s). Every figure traces to the committed rows in `bench/rows-0.2.3/` behind `results.json`, served live through the evidence API.
 
 Lessons were written, recalled, and enforced across the upgrades. Payouts wrote one lesson in every repeat (15/15 across the three models): the page boundary repeats a record, a token sits on the final page, 429 means retry the identical request, and the last value by ID preserves truth. Settlements recalled that lesson in 15/15 sessions, disbursements in 14/15, and the service attaches every required recalled check before the run, so the new output must satisfy the old lesson. One MiMo disbursements session recalled nothing and still passed; no Kalari session ran in a project whose store lacked the payouts lesson.
 
@@ -28,9 +28,9 @@ The per-step cost drop ($0.026 to $0.012 to $0.009) is one filmed GLM chain in o
 
 ## Where the runs live
 
-- The repeat rows and filmed takes: the published bundle behind `slides/data/results.json` with its `repeats-table.txt` aggregate (demo-shoot, Kalari 0.2.3), read through the evidence API.
+- The repeat rows and filmed takes: the committed rows in `bench/rows-0.2.3/` with `results.json` (Kalari 0.2.3), served live through the evidence API.
 - The frozen rows: <RepoLink path="bench/runs/kalari/">bench/runs/kalari/</RepoLink> and <RepoLink path="bench/runs/reference/">bench/runs/reference/</RepoLink>.
 - The showcase rows: <RepoLink path="bench/showcase/disbursements/runs/">bench/showcase/disbursements/runs/</RepoLink>.
 - The containment runs: <RepoLink path="tests/live/containment-evidence/">tests/live/containment-evidence/</RepoLink>.
 - The reference problem: <RepoLink path="bench/reference-paging/">bench/reference-paging/</RepoLink>.
-- Every 0.2.3 figure above traces to the repeat rows in the published bundle behind `slides/data/results.json`, read through the evidence API; the live judges page and the run pages sit on the [demo host](https://kalari.nryn.dev/).
+- Every 0.2.3 figure above traces to the repeat rows in the published bundle behind `bench/rows-0.2.3/results.json`, read through the evidence API; the live judges page and the run pages sit on the [demo host](https://kalari.nryn.dev/).

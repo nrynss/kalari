@@ -6,7 +6,7 @@ description: Every result in demo order, each figure linked to its source rows.
 import DocLink from '../../components/DocLink.astro';
 import RepoLink from '../../components/RepoLink.astro';
 
-This page walks every result in the order of the [demo video on the submission page](https://lablab.build/ai-hackathons/vultr-hackathon/kalari/kalari-contained-rehearsals-for-api-upgrades). Every number below comes from `slides/data/results.json`: three models, three upgrades, five repeats each way, plus the filmed takes it names. The method, the cost rule, and the limits sit on the <DocLink to="evidence/">Evidence and limits</DocLink> page.
+This page walks every result in the order of the [demo video on the submission page](https://lablab.build/ai-hackathons/vultr-hackathon/kalari/kalari-contained-rehearsals-for-api-upgrades). Every number below comes from `bench/rows-0.2.3/results.json`: three models, three upgrades, five repeats each way, plus the filmed takes it names. The method, the cost rule, and the limits sit on the <DocLink to="evidence/">Evidence and limits</DocLink> page.
 
 Both arms run the same OpenCode 2.2.5 with the same model on Vultr Serverless Inference. Alone means microsandbox-mcp with no Kalari tools. With Kalari means the `kalari serve` MCP entry. The only difference is whether Kalari is plugged in.
 
@@ -34,7 +34,7 @@ Three models, three upgrades, five times each. With Kalari, all 45 passed. Alone
 | GLM 5.3 Flash | 5/5, 5/5 | 5/5, 5/5 | 0/5, 5/5 |
 | MiMo V2.6 Flash | 5/5, 5/5 | 5/5, 5/5 | 3/5, 5/5 |
 
-Passed means the hidden grader passed the final file, of 5 sessions per cell. One repeat each way for Qwen3.8 27B and Muse Glimmer 30B sits outside this grid by user decision. Source: `repeats-table.txt` (aggregate over the repeat rows, groups arm-scenario-model), Kalari 0.2.3, results.json `grid`.
+Passed means the hidden grader passed the final file, of 5 sessions per cell. One repeat each way for Qwen3.8 27B and Muse Glimmer 30B sits outside this grid by user decision. Source: the aggregate table over the committed rows in `bench/rows-0.2.3/` (groups arm-scenario-model), Kalari 0.2.3, `results.json` `grid`.
 
 ## The numbers
 
