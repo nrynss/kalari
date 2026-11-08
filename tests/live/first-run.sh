@@ -3,9 +3,11 @@
 # lessons -> record_lesson writes the retry lesson -> a second session
 # recalls it as a required check and passes with it. Not part of the gate.
 #
-# Production `kalari serve` refuses every observer. This rehearsal uses a
-# harness-only entry point, tests/live/observer-harness.lean, that calls the
-# same dispatcher with an observer setup. `kalari serve` cannot reach it.
+# Production `kalari serve` accepts a broker-backed observer (guest-alias
+# endpoint, allowlisted, present server) and refuses every other observer
+# with the isolation message. This rehearsal uses a harness-only entry point,
+# tests/live/observer-harness.lean, that calls the same dispatcher with an
+# observer setup. `kalari serve` cannot reach it.
 #
 # Budget: zero model calls. Clef calls are counted and redirected to a local
 # fake. The Lambo store uses the fixture embedder. No inference key is read.
@@ -323,6 +325,12 @@ def session(name, observer):
 
 first_setup = session("first-a", observer_port)
 second_setup = session("first-b", None)
+bad = json.loads(json.dumps(first_setup))
+bad["observer"]["endpoint"]["host"] = "127.0.0.1"
+(work / "bad-session.json").write_text(json.dumps(bad, indent=2) + "\n")
+missing = json.loads(json.dumps(first_setup))
+missing["observer"]["server"] = str(work / "missing-server.py")
+(work / "missing-server-session.json").write_text(json.dumps(missing, indent=2) + "\n")
 
 env = {
     "PATH": str(tools) + ":/usr/local/bin:/usr/bin:/bin",
@@ -457,6 +465,29 @@ def evidence(path):
                 records.append(json.loads(raw))
     return records
 
+def production_refusal(name, setup_path):
+    result = subprocess.run(
+        [str(tools / "kalari"), "serve", str(work / "config.json"), str(setup_path)],
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, cwd=repo, env=env)
+    message = result.stderr.strip().splitlines()[-1] if result.stderr.strip() else ""
+    if result.returncode == 0 or "observer requires verified exclusive guest source isolation" not in result.stderr:
+        raise SystemExit(f"production service did not refuse {name}")
+    line(f"refusal: {name} exit={result.returncode} message={message!r}")
+
+def production_acceptance(name, setup_path):
+    # A broker-backed observer (guest-alias endpoint, allowlisted, present
+    # server) is accepted: the run path forces a fresh per-run broker on
+    # loopback. stdin EOF ends the serve; anything else would refuse above.
+    result = subprocess.run(
+        [str(tools / "kalari"), "serve", str(work / "config.json"), str(setup_path)],
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, cwd=repo, env=env, timeout=120)
+    if result.returncode != 0 or "observer requires verified exclusive guest source isolation" in result.stderr:
+        raise SystemExit(f"production service did not accept {name}: "
+                         f"exit={result.returncode} stderr={result.stderr[-500:]!r}")
+    line(f"accept: {name} exit={result.returncode} no_refusal=1")
+
 fake_log = work / "fake-decisions.jsonl"
 fake_port = free_port()
 fake = subprocess.Popen(["python3", "-I", "-c", FAKE_DECISIONS, str(fake_port), str(fake_log)],
@@ -465,6 +496,13 @@ fake_url = f"http://127.0.0.1:{fake_port}/v1/systemone"
 try:
     wait_port(fake_port)
     line(f"decisions: local_fake=loopback:{fake_port} real_endpoint=blocked")
+
+    # 0. The production boundary for the observer config. The valid
+    #    broker-backed first-a observer is accepted; anything else refuses
+    #    closed with the isolation message.
+    production_acceptance("first-a observer", work / "first-a-session.json")
+    production_refusal("caller address", work / "bad-session.json")
+    production_refusal("missing server", work / "missing-server-session.json")
 
     # 1. First session on a fresh store: recall is empty, the run still passes.
     first = Service("first-a", work / "first-a-session.json")

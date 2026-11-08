@@ -3,15 +3,18 @@ versions: vimanam 2.1.0, lambo 0.9.0, msb msb 0.7.13
 embedder: fixture (local, no external model calls)
 preflight: lambo fixture embedder provisioned and derived one concept
 sandboxes: before list has no kalari test sandboxes
-apis: payouts live=loopback:37265, payouts observer=loopback:40507
+apis: payouts live=loopback:42191, payouts observer=loopback:48511
 lambo: private fixture store provisioned fresh, no change kinds seeded
-decisions: local_fake=loopback:56903 real_endpoint=blocked
+decisions: local_fake=loopback:44483 real_endpoint=blocked
+accept: first-a observer exit=0 no_refusal=1
+refusal: caller address exit=1 message='kalari serve: observer requires verified exclusive guest source isolation'
+refusal: missing server exit=1 message='kalari serve: observer requires verified exclusive guest source isolation'
 first-a what_changed: kinds=argument_added,field_added,field_required_changed,operation_moved,operation_renamed,pagination_changed,result_added,type_added
 first-a recall_lessons: [] (fresh store, no concept yet)
 first-a run_in_sandbox: passed=true verdict=exited exit=0 checks=[candidate-v1-truth-v1=pass, differential-v1=pass]
 first-a record_lesson: observation='Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.'
 first-a record_lesson: check=candidate-v1-truth-v1 command=['python3', 'kalari_candidate_truth_check.py', 'payouts.jsonl', 'kalari-v1-truth.jsonl']
-first-a record_lesson: memory_concept_id=e009ede6-5100-4c14-9a70-a7acc580d65e
+first-a record_lesson: memory_concept_id=4f72d42e-c75b-41c8-b4a8-c18b5f6aab9c
 harness: first-a model_calls=0 measured_clef_calls
 first-b recall_lessons: status=required check=candidate-v1-truth-v1 command=['python3', 'kalari_candidate_truth_check.py', 'payouts.jsonl', 'kalari-v1-truth.jsonl']
 first-b recall_lessons: observation='Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.'
