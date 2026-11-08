@@ -34,6 +34,17 @@ CONTAINMENT_OUT = REPO / "tests" / "live" / "containment-0.2.3"
 
 ID_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 PROJECT_RE = re.compile(r"^r([1-5])-(glm|ds|mimo|qwen|muse)-(learn|ref)$")
+URL_RE = re.compile(r"https?://[^\s\"'<>]+")
+IP_RE = re.compile(r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.])")
+HOME_RE = re.compile(r"/home/[^\s\"'<>]*")
+EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2}")
+SECRET_RES = (
+    re.compile(r"(?i)api[_-]?key"),
+    re.compile(r"(?i)bearer\s"),
+    re.compile(r"BEGIN [A-Z ]*PRIVATE KEY"),
+    re.compile(r"ssh-(?:rsa|ed25519)"),
+    re.compile(r"(?i)vultr[_-]?inference[_-]?api[_-]?key"),
+)
 
 MODEL_NAMES = {
     "deepseek-v4.1-flash-1017": "DeepSeek V4.1 Flash",
@@ -157,6 +168,109 @@ def clean_cleanup(value: object) -> object:
     if isinstance(value, dict):
         return {key: clean_cleanup(item) for key, item in value.items()}
     return value
+
+
+def sanitise_evidence_text(value: str) -> str:
+    """Scrub one free-text evidence string the way the rows were scrubbed.
+
+    Endpoint URLs become ENDPOINT and home paths become <work>/candidate,
+    following the containment bundle convention. The guest API alias keeps
+    the name the published rows already use for the microsandbox host. A raw
+    IPv4 address becomes the placeholder the raw rows already carry.
+    """
+    value = URL_RE.sub("ENDPOINT", value)
+    value = value.replace("host.microsandbox.internal", "the guest API alias")
+    value = HOME_RE.sub("<work>/candidate", value)
+    value = IP_RE.sub("the VM's public address", value)
+    return value
+
+
+def sanitise_record(record: dict) -> dict:
+    """Copy one raw lesson-store record with every string sanitised."""
+    cleaned = copy.deepcopy(record)
+    return sanitise_host_text(cleaned)
+
+
+def sanitise_host_text(value: object) -> object:
+    if isinstance(value, str):
+        return sanitise_evidence_text(value)
+    if isinstance(value, list):
+        return [sanitise_host_text(item) for item in value]
+    if isinstance(value, dict):
+        return {key: sanitise_host_text(item) for key, item in value.items()}
+    return value
+
+
+LESSON_KINDS = ("lesson", "run", "check", "page-observation")
+
+
+def assert_record_private(record: dict) -> None:
+    """Fail fast if a published lesson-store record still names a path, an
+    IP, a host, an endpoint URL or a key."""
+    blob = json.dumps(record, ensure_ascii=False)
+    problems: list[str] = []
+    if "/home/" in blob:
+        problems.append("a home path")
+    if IP_RE.search(blob):
+        problems.append("an IP address")
+    if EMAIL_RE.search(blob):
+        problems.append("an email address")
+    if "http://" in blob or "https://" in blob:
+        problems.append("a URL")
+    if "microsandbox.internal" in blob:
+        problems.append("a host name")
+    if "kfilm" in blob:
+        problems.append("a user name")
+    for pattern in SECRET_RES:
+        if pattern.search(blob):
+            problems.append(f"a secret pattern: {pattern.pattern}")
+    if problems:
+        raise ValueError(
+            f"lesson record {record.get('run_id')} still holds {', '.join(problems)}"
+        )
+
+
+def collect_lesson_records(raw: Path, published: set[str]) -> list[dict]:
+    """Collect the lesson records of the published sessions with companions.
+
+    Every lesson record written by a published 0.2.3 session is published,
+    plus the run, check and page-observation records of the teaching run_id
+    that wrote it. Lesson-policy records stay dropped, as before.
+    """
+    found: list[dict] = []
+    for path in sorted(raw.glob("*/runs/*/evidence.jsonl")):
+        session_dir = path.parts[-2]
+        if session_dir not in published:
+            continue
+        teaching: set[str] = set()
+        raw_records: list[dict] = []
+        with path.open(encoding="utf-8") as handle:
+            for line in handle:
+                if not line.strip():
+                    continue
+                record = json.loads(line)
+                if not isinstance(record, dict):
+                    raise ValueError(f"{path}: a lesson-store record is not an object")
+                raw_records.append(record)
+                if record.get("kind") == "lesson" and isinstance(record.get("run_id"), str):
+                    teaching.add(record["run_id"])
+        for record in raw_records:
+            if record.get("kind") == "lesson" or (
+                record.get("kind") in ("run", "check", "page-observation")
+                and record.get("run_id") in teaching
+            ):
+                cleaned = sanitise_record(record)
+                assert_record_private(cleaned)
+                found.append(cleaned)
+    order = {"run": 0, "check": 1, "page-observation": 2, "lesson": 3}
+    found.sort(
+        key=lambda record: (
+            str(record.get("session_id")),
+            str(record.get("run_id")),
+            order.get(str(record.get("kind")), 9),
+        )
+    )
+    return found
 
 
 def build_row(session: str, data: dict) -> dict:
@@ -340,14 +454,25 @@ def main() -> int:
     if len(set(bench_ids)) != len(bench_ids):
         print("duplicate benchmark run_id in produced records", file=sys.stderr)
         return 1
+    published_sessions = {session for _project, session, _data in items}
+    lesson_records = collect_lesson_records(raw, published_sessions)
+    lesson_ids = [
+        json.dumps(r, ensure_ascii=False, sort_keys=True) for r in lesson_records
+    ]
+    if len(set(lesson_ids)) != len(lesson_ids):
+        print("duplicate lesson-store record in produced records", file=sys.stderr)
+        return 1
+    records.extend(lesson_records)
     with OUT.open("w", encoding="utf-8", newline="\n") as handle:
         for record in records:
             line = json.dumps(record, ensure_ascii=False, separators=(",", ":"))
             json.loads(line)
             handle.write(line + "\n")
     repeats = sum(1 for r in records if (r.get("payload") or {}).get("schema") == "kalari.repeat.v1")
+    published_lessons = sum(1 for r in records if r.get("kind") == "lesson")
     print(f"wrote {len(items)} sanitised rows and {len(records)} evidence records to {OUT}")
     print(f"repeat records: {repeats}")
+    print(f"lesson records: {published_lessons}")
     return 0
 
 
