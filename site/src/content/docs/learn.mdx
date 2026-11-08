@@ -44,15 +44,15 @@ first-a recall_lessons: [] (fresh store, no concept yet)
 first-a run_in_sandbox: passed=true verdict=exited exit=0 checks=[candidate-v1-truth-v1=pass, differential-v1=pass]
 first-a record_lesson: observation='Adjacent pages repeated one payout at their boundary. The final page carried a continuation token. The API answered one request with HTTP 429 and a retry delay, and the identical request then succeeded. A controlled amended-record fixture shows that keeping the first value loses final truth; the last value by ID preserves it.'
 first-a record_lesson: check=candidate-v1-truth-v1 command=['python3', 'kalari_candidate_truth_check.py', 'payouts.jsonl', 'kalari-v1-truth.jsonl']
-first-a record_lesson: memory_concept_id=29cfd3ad-1c87-4da4-bc8e-1b97b76f5372
-first-a record_lesson: run tmp.XX2uilpR 1 written 0 confirmed 29cfd3ad-1c87-4da4-bc8e-1b97b76f5372
+first-a record_lesson: memory_concept_id=802773b2-f74f-40c2-8340-990163365c01
+first-a record_lesson: run run-2b96a4f4c1 1 written 0 confirmed 802773b2-f74f-40c2-8340-990163365c01
 first-a run_in_sandbox: passed=true verdict=exited exit=0 checks=[candidate-v1-truth-v1=pass, differential-v1=pass]
-first-a record_lesson: run tmp.XXe0WAQt 0 written 1 confirmed 29cfd3ad-1c87-4da4-bc8e-1b97b76f5372
+first-a record_lesson: run run-9485b26aee 0 written 1 confirmed 802773b2-f74f-40c2-8340-990163365c01
 ```
 
 The first passing run writes the lesson: 1 written, 0 confirmed. The second passing run returns the existing lesson: 0 written, 1 confirmed, same memory concept. The evidence store holds exactly one lesson record, and the confirming run writes no duplicate.
 
-Run IDs are the runs' temporary directory names, such as `tmp.XX2uilpR`. The versioned lesson reference embeds the run ID and the check ID, and recall resolves it through typed lesson evidence, so older temporary IDs still resolve.
+Run IDs are `run-` plus 10 lowercase hex chars (5 bytes from `/dev/urandom`), such as `run-2b96a4f4c1`. See <RepoLink path="Kalari/RunId.lean">Kalari/RunId.lean</RepoLink>. The versioned lesson reference embeds the run ID and the check ID, and recall resolves it through typed lesson evidence. Older `tmp.XX…` records are never rewritten; the envelope validators in lesson, recall, and HTTP evidence keep resolving them.
 
 ## Recall: required, advisory, or stale
 
@@ -69,7 +69,7 @@ first-b run_in_sandbox: passed=true verdict=exited exit=0 checks=[candidate-v1-t
 The second session recalls the lesson as required, with its observation and its source run, and the rebound check passes on the new run. The evidence confirms the rebinding:
 
 ```
-evidence: lesson records=1 confirming run=tmp.XXe0WAQt no duplicate lesson
+evidence: lesson records=1 confirming run=run-9485b26aee no duplicate lesson
 evidence: second run check rebound command=['python3', 'kalari_candidate_truth_check.py', 'payouts.jsonl', 'kalari-v1-truth.jsonl']
 ```
 

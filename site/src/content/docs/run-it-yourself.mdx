@@ -17,20 +17,20 @@ uname -m
 getconf GNU_LIBC_VERSION
 mkdir -p "$HOME/kalari-download"
 cd "$HOME/kalari-download"
-curl -fLO https://github.com/nrynss/kalari/releases/download/v0.2.2/kalari-0.2.2-linux-x86_64.tar.gz
-curl -fLO https://github.com/nrynss/kalari/releases/download/v0.2.2/SHA256SUMS
+curl -fLO https://github.com/nrynss/kalari/releases/download/v0.2.3/kalari-0.2.3-linux-x86_64.tar.gz
+curl -fLO https://github.com/nrynss/kalari/releases/download/v0.2.3/SHA256SUMS
 sha256sum -c SHA256SUMS
-tar -xzf kalari-0.2.2-linux-x86_64.tar.gz
+tar -xzf kalari-0.2.3-linux-x86_64.tar.gz
 mkdir -p "$HOME/.local/bin"
-install -m755 kalari-0.2.2-linux-x86_64/bin/kalari "$HOME/.local/bin/kalari"
-install -m755 kalari-0.2.2-linux-x86_64/bin/kalari-aashaan "$HOME/.local/bin/kalari-aashaan"
+install -m755 kalari-0.2.3-linux-x86_64/bin/kalari "$HOME/.local/bin/kalari"
+install -m755 kalari-0.2.3-linux-x86_64/bin/kalari-aashaan "$HOME/.local/bin/kalari-aashaan"
 export PATH="$HOME/.local/bin:$PATH"
 kalari --version
 ```
 
-Expect `kalari 0.2.2`. Add the PATH setting to your shell configuration. Upgrade by replacing both binaries.
+Expect `kalari 0.2.3`. Add the PATH setting to your shell configuration. Upgrade by replacing both binaries.
 
-[Release assets and runtime-library report](https://github.com/nrynss/kalari/releases/tag/v0.2.2).
+[Release assets and runtime-library report](https://github.com/nrynss/kalari/releases/tag/v0.2.3).
 
 ## Install host dependencies
 
@@ -270,7 +270,7 @@ Path("records.jsonl").write_text("".join(json.dumps(row) + "\n" for row in rows)
 """
 for name in ("candidate", "baseline"):
     (root / name / "consumer.py").write_text(program)
-repo = "https://raw.githubusercontent.com/nrynss/kalari/v0.2.2"
+repo = "https://raw.githubusercontent.com/nrynss/kalari/v0.2.3"
 specs = "bench/workspaces/payout-sync/specs"
 for version in ("v1", "v2"):
     urllib.request.urlretrieve(
