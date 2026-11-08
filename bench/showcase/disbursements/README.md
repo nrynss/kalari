@@ -105,6 +105,8 @@ one). The divergence claim holds for the mid tier — the models that can also b
 which is the economical way to run migrations, and exactly the tier where an enforced check
 earns its keep.
 
+**Correction (0.2.3 repeats are canonical).** The rows above ran on an earlier harness and an earlier Kalari release, where the reference agent shared an OS user with the API microVMs. In DeepSeek r2 and r3 it reached inside `api-disbursements-live` through microsandbox-mcp and read the server's source, so those two passes are not clean evidence; r1 had no such access and passed by comparing amounts against v1. With that access removed (0 guest calls in 45 sessions), DeepSeek alone failed disbursements 4 of 5, and the one pass was the one session whose tool calls compared amounts against v1. The suite, model, OpenCode version and reasoning effort did not change, and no session hit its cap. MiMo's "could not drive the harness" above was one run; in the repeats it completed every session.
+
 ## Honesty notes
 
 - The scenario is manufactured and labeled as such; the agent-facing docs contain no false
