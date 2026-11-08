@@ -61,7 +61,7 @@ The agent still needs permission to edit the candidate workspace. Keep its edits
 
 ## Discover tools without an agent
 
-This command checks MCP startup and lists the tools. It does not run a consumer or ask a model to solve a migration.
+This command checks MCP startup and lists the tools. It does not run a consumer or ask a model to solve a migration. Set `KALARI_WORK` to the work directory you created in [run-it-yourself](/kalari/run-it-yourself/) (it holds `kalari.json` and `session.json`). (`kalari check` is still a stub and exits 2; the probe below is the supported startup check.)
 
 ```sh
 printf '%s\n' \
